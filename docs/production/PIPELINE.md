@@ -1,4 +1,4 @@
-# AAA-yaklaşımlı üretim pipeline'ı — yaşayan plan v1.0
+# AAA-yaklaşımlı üretim pipeline'ı — yaşayan plan v1.1
 
 Bu plan AAA ölçeğinde rol disiplini ve kanıt standardı hedefler. Tek başına bu dosya AAA kalitesi garanti etmez.
 
