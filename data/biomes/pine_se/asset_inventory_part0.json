@@ -1,0 +1,435 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-24",
+  "scope": "island_se_01_only",
+  "vendor": "Poly Haven",
+  "license": "CC0",
+  "requirement": "1K only, no 2K substitution; Part0 is metadata research, no downloads or painting",
+  "source_page_status": "all 18 texture asset pages opened; each visibly lists 1K and PBR map previews",
+  "not_verified": [
+    "direct file API JSON for exact 1K variant",
+    "actual 1K diffuse and nor_gl bytes",
+    "per-file hashes",
+    "Godot import and visual/normal orientation"
+  ],
+  "risks": [
+    {
+      "id": "COAST_SAND_05",
+      "severity": "high",
+      "why": "1K only 0.4px per centimeter at physical scan scale; 10cm mouse spans about 4 pixels",
+      "action": "No near-camera use; defer to verified close-up sand material before Part1 shore paint"
+    },
+    {
+      "id": "COAST_SAND_01",
+      "severity": "high",
+      "why": "1K only 0.7px/cm; 10cm mouse spans about 7 pixels",
+      "action": "No near-camera use; do not upscale or misrepresent; review alternative texture at 1K"
+    },
+    {
+      "id": "ROCK_GROUND_02",
+      "severity": "medium",
+      "why": "1K ~3.4px/cm; roughly 34 pixels per 10cm",
+      "action": "Use on appropriate rock sections; normal/map scale closeup visual test before approval"
+    }
+  ],
+  "assets": [
+    {
+      "id": "forrest_ground_03",
+      "source_page": "https://polyhaven.com/a/forrest_ground_03",
+      "source_page_verified": true,
+      "vendor_page_1k_option_visible": true,
+      "vendor_page_map_previews_seen": [
+        "Diffuse",
+        "nor_gl",
+        "Rough",
+        "AO",
+        "Displacement"
+      ],
+      "physical_scan_width_m_approx": 2,
+      "one_k_pixels_per_cm_vendor": 5.1,
+      "approx_1k_pixels_across_10cm": 51,
+      "mouse_closeup_risk": "candidate_ok_requires_review",
+      "closeup_allowed_automatically": true,
+      "asset_level_1k_file_url_verified": false,
+      "actual_1k_file_hash_verified": false,
+      "maps_downloaded": false,
+      "data_status": "vendor_site_metadata_only"
+    },
+    {
+      "id": "forest_floor",
+      "source_page": "https://polyhaven.com/a/forest_floor",
+      "source_page_verified": true,
+      "vendor_page_1k_option_visible": true,
+      "vendor_page_map_previews_seen": [
+        "Diffuse",
+        "nor_gl",
+        "Rough",
+        "AO",
+        "Displacement"
+      ],
+      "physical_scan_width_m_approx": 2.1,
+      "one_k_pixels_per_cm_vendor": 4.8,
+      "approx_1k_pixels_across_10cm": 48,
+      "mouse_closeup_risk": "candidate_ok_requires_review",
+      "closeup_allowed_automatically": true,
+      "asset_level_1k_file_url_verified": false,
+      "actual_1k_file_hash_verified": false,
+      "maps_downloaded": false,
+      "data_status": "vendor_site_metadata_only"
+    },
+    {
+      "id": "mud_forest",
+      "source_page": "https://polyhaven.com/a/mud_forest",
+      "source_page_verified": true,
+      "vendor_page_1k_option_visible": true,
+      "vendor_page_map_previews_seen": [
+        "Diffuse",
+        "nor_gl",
+        "Rough",
+        "AO",
+        "Displacement"
+      ],
+      "physical_scan_width_m_approx": 2.33,
+      "one_k_pixels_per_cm_vendor": 4.4,
+      "approx_1k_pixels_across_10cm": 44,
+      "mouse_closeup_risk": "candidate_ok_requires_review",
+      "closeup_allowed_automatically": true,
+      "asset_level_1k_file_url_verified": false,
+      "actual_1k_file_hash_verified": false,
+      "maps_downloaded": false,
+      "data_status": "vendor_site_metadata_only"
+    },
+    {
+      "id": "roots",
+      "source_page": "https://polyhaven.com/a/roots",
+      "source_page_verified": true,
+      "vendor_page_1k_option_visible": true,
+      "vendor_page_map_previews_seen": [
+        "Diffuse",
+        "nor_gl",
+        "Rough",
+        "AO",
+        "Displacement"
+      ],
+      "physical_scan_width_m_approx": 1.68,
+      "one_k_pixels_per_cm_vendor": 6.1,
+      "approx_1k_pixels_across_10cm": 61,
+      "mouse_closeup_risk": "candidate_ok_requires_review",
+      "closeup_allowed_automatically": true,
+      "asset_level_1k_file_url_verified": false,
+      "actual_1k_file_hash_verified": false,
+      "maps_downloaded": false,
+      "data_status": "vendor_site_metadata_only"
+    },
+    {
+      "id": "rock_ground_02",
+      "source_page": "https://polyhaven.com/a/rock_ground_02",
+      "source_page_verified": true,
+      "vendor_page_1k_option_visible": true,
+      "vendor_page_map_previews_seen": [
+        "Diffuse",
+        "nor_gl",
+        "Rough",
+        "AO",
+        "Displacement"
+      ],
+      "physical_scan_width_m_approx": 3.01,
+      "one_k_pixels_per_cm_vendor": 3.4,
+      "approx_1k_pixels_across_10cm": 34,
+      "mouse_closeup_risk": "moderate_detail",
+      "closeup_allowed_automatically": false,
+      "asset_level_1k_file_url_verified": false,
+      "actual_1k_file_hash_verified": false,
+      "maps_downloaded": false,
+      "data_status": "vendor_site_metadata_only"
+    },
+    {
+      "id": "mossy_rock",
+      "source_page": "https://polyhaven.com/a/mossy_rock",
+      "source_page_verified": true,
+      "vendor_page_1k_option_visible": true,
+      "vendor_page_map_previews_seen": [
+        "Diffuse",
+        "nor_gl",
+        "Rough",
+        "AO",
+        "Displacement"
+      ],
+      "physical_scan_width_m_approx": 3.01,
+      "one_k_pixels_per_cm_vendor": 3.4,
+      "approx_1k_pixels_across_10cm": 34,
+      "mouse_closeup_risk": "moderate_detail",
+      "closeup_allowed_automatically": false,
+      "asset_level_1k_file_url_verified": false,
+      "actual_1k_file_hash_verified": false,
+      "maps_downloaded": false,
+      "data_status": "vendor_site_metadata_only"
+    },
+    {
+      "id": "forest_ground_05",
+      "source_page": "https://polyhaven.com/a/forest_ground_05",
+      "source_page_verified": true,
+      "vendor_page_1k_option_visible": true,
+      "vendor_page_map_previews_seen": [
+        "Diffuse",
+        "nor_gl",
+        "Rough",
+        "AO",
+        "Displacement"
+      ],
+      "physical_scan_width_m_approx": 2,
+      "one_k_pixels_per_cm_vendor": 5.1,
+      "approx_1k_pixels_across_10cm": 51,
+      "mouse_closeup_risk": "candidate_ok_requires_review",
+      "closeup_allowed_automatically": true,
+      "asset_level_1k_file_url_verified": false,
+      "actual_1k_file_hash_verified": false,
+      "maps_downloaded": false,
+      "data_status": "vendor_site_metadata_only"
+    },
+    {
+      "id": "forrest_ground_01",
+      "source_page": "https://polyhaven.com/a/forrest_ground_01",
+      "source_page_verified": true,
+      "vendor_page_1k_option_visible": true,
+      "vendor_page_map_previews_seen": [
+        "Diffuse",
+        "nor_gl",
+        "Rough",
+        "AO",
+        "Displacement"
+      ],
+      "physical_scan_width_m_approx": 2.01,
+      "one_k_pixels_per_cm_vendor": 5.1,
+      "approx_1k_pixels_across_10cm": 51,
+      "mouse_closeup_risk": "candidate_ok_requires_review",
+      "closeup_allowed_automatically": true,
+      "asset_level_1k_file_url_verified": false,
+      "actual_1k_file_hash_verified": false,
+      "maps_downloaded": false,
+      "data_status": "vendor_site_metadata_only"
+    },
+    {
+      "id": "forest_leaves_02",
+      "source_page": "https://polyhaven.com/a/forest_leaves_02",
+      "source_page_verified": true,
+      "vendor_page_1k_option_visible": true,
+      "vendor_page_map_previews_seen": [
+        "Diffuse",
+        "nor_gl",
+        "Rough",
+        "AO",
+        "Displacement"
+      ],
+      "physical_scan_width_m_approx": 3.01,
+      "one_k_pixels_per_cm_vendor": 3.4,
+      "approx_1k_pixels_across_10cm": 34,
+      "mouse_closeup_risk": "moderate_detail",
+      "closeup_allowed_automatically": false,
+      "asset_level_1k_file_url_verified": false,
+      "actual_1k_file_hash_verified": false,
+      "maps_downloaded": false,
+      "data_status": "vendor_site_metadata_only"
+    },
+    {
+      "id": "forest_ground_04",
+      "source_page": "https://polyhaven.com/a/forest_ground_04",
+      "source_page_verified": true,
+      "vendor_page_1k_option_visible": true,
+      "vendor_page_map_previews_seen": [
+        "Diffuse",
+        "nor_gl",
+        "Rough",
+        "AO",
+        "Displacement"
+      ],
+      "physical_scan_width_m_approx": 3.1,
+      "one_k_pixels_per_cm_vendor": 3.3,
+      "approx_1k_pixels_across_10cm": 33,
+      "mouse_closeup_risk": "moderate_detail",
+      "closeup_allowed_automatically": false,
+      "asset_level_1k_file_url_verified": false,
+      "actual_1k_file_hash_verified": false,
+      "maps_downloaded": false,
+      "data_status": "vendor_site_metadata_only"
+    },
+    {
+      "id": "brown_mud_leaves_01",
+      "source_page": "https://polyhaven.com/a/brown_mud_leaves_01",
+      "source_page_verified": true,
+      "vendor_page_1k_option_visible": true,
+      "vendor_page_map_previews_seen": [
+        "Diffuse",
+        "nor_gl",
+        "Rough",
+        "AO",
+        "Displacement"
+      ],
+      "physical_scan_width_m_approx": 1.3,
+      "one_k_pixels_per_cm_vendor": 7.9,
+      "approx_1k_pixels_across_10cm": 79,
+      "mouse_closeup_risk": "candidate_ok_requires_review",
+      "closeup_allowed_automatically": true,
+      "asset_level_1k_file_url_verified": false,
+      "actual_1k_file_hash_verified": false,
+      "maps_downloaded": false,
+      "data_status": "vendor_site_metadata_only"
+    },
+    {
+      "id": "brown_mud_rocks_01",
+      "source_page": "https://polyhaven.com/a/brown_mud_rocks_01",
+      "source_page_verified": true,
+      "vendor_page_1k_option_visible": true,
+      "vendor_page_map_previews_seen": [
+        "Diffuse",
+        "nor_gl",
+        "Rough",
+        "AO",
+        "Displacement"
+      ],
+      "physical_scan_width_m_approx": 1.3,
+      "one_k_pixels_per_cm_vendor": 7.9,
+      "approx_1k_pixels_across_10cm": 79,
+      "mouse_closeup_risk": "candidate_ok_requires_review",
+      "closeup_allowed_automatically": true,
+      "asset_level_1k_file_url_verified": false,
+      "actual_1k_file_hash_verified": false,
+      "maps_downloaded": false,
+      "data_status": "vendor_site_metadata_only"
+    },
+    {
+      "id": "coast_sand_05",
+      "source_page": "https://polyhaven.com/a/coast_sand_05",
+      "source_page_verified": true,
+      "vendor_page_1k_option_visible": true,
+      "vendor_page_map_previews_seen": [
+        "Diffuse",
+        "nor_gl",
+        "Rough",
+        "AO",
+        "Displacement"
+      ],
+      "physical_scan_width_m_approx": 25.6,
+      "one_k_pixels_per_cm_vendor": 0.4,
+      "approx_1k_pixels_across_10cm": 4,
+      "mouse_closeup_risk": "critical_low_physical_texel_density",
+      "closeup_allowed_automatically": false,
+      "asset_level_1k_file_url_verified": false,
+      "actual_1k_file_hash_verified": false,
+      "maps_downloaded": false,
+      "data_status": "vendor_site_metadata_only"
+    },
+    {
+      "id": "coast_sand_01",
+      "source_page": "https://polyhaven.com/a/coast_sand_01",
+      "source_page_verified": true,
+      "vendor_page_1k_option_visible": true,
+      "vendor_page_map_previews_seen": [
+        "Diffuse",
+        "nor_gl",
+        "Rough",
+        "AO",
+        "Displacement"
+      ],
+      "physical_scan_width_m_approx": 14.63,
+      "one_k_pixels_per_cm_vendor": 0.7,
+      "approx_1k_pixels_across_10cm": 7,
+      "mouse_closeup_risk": "critical_low_physical_texel_density",
+      "closeup_allowed_automatically": false,
+      "asset_level_1k_file_url_verified": false,
+      "actual_1k_file_hash_verified": false,
+      "maps_downloaded": false,
+      "data_status": "vendor_site_metadata_only"
+    },
+    {
+      "id": "stony_dirt_path",
+      "source_page": "https://polyhaven.com/a/stony_dirt_path",
+      "source_page_verified": true,
+      "vendor_page_1k_option_visible": true,
+      "vendor_page_map_previews_seen": [
+        "Diffuse",
+        "nor_gl",
+        "Rough",
+        "AO",
+        "Displacement"
+      ],
+      "physical_scan_width_m_approx": 2.2,
+      "one_k_pixels_per_cm_vendor": 4.7,
+      "approx_1k_pixels_across_10cm": 47,
+      "mouse_closeup_risk": "candidate_ok_requires_review",
+      "closeup_allowed_automatically": true,
+      "asset_level_1k_file_url_verified": false,
+      "actual_1k_file_hash_verified": false,
+      "maps_downloaded": false,
+      "data_status": "vendor_site_metadata_only"
+    },
+    {
+      "id": "pine_bark",
+      "source_page": "https://polyhaven.com/a/pine_bark",
+      "source_page_verified": true,
+      "vendor_page_1k_option_visible": true,
+      "vendor_page_map_previews_seen": [
+        "Diffuse",
+        "nor_gl",
+        "Rough",
+        "AO",
+        "Displacement"
+      ],
+      "physical_scan_width_m_approx": 2,
+      "one_k_pixels_per_cm_vendor": 5.1,
+      "approx_1k_pixels_across_10cm": 51,
+      "mouse_closeup_risk": "candidate_ok_requires_review",
+      "closeup_allowed_automatically": true,
+      "asset_level_1k_file_url_verified": false,
+      "actual_1k_file_hash_verified": false,
+      "maps_downloaded": false,
+      "data_status": "vendor_site_metadata_only"
+    },
+    {
+      "id": "wood_chips",
+      "source_page": "https://polyhaven.com/a/wood_chips",
+      "source_page_verified": true,
+      "vendor_page_1k_option_visible": true,
+      "vendor_page_map_previews_seen": [
+        "Diffuse",
+        "nor_gl",
+        "Rough",
+        "AO",
+        "Displacement"
+      ],
+      "physical_scan_width_m_approx": 2,
+      "one_k_pixels_per_cm_vendor": 5.1,
+      "approx_1k_pixels_across_10cm": 51,
+      "mouse_closeup_risk": "candidate_ok_requires_review",
+      "closeup_allowed_automatically": true,
+      "asset_level_1k_file_url_verified": false,
+      "actual_1k_file_hash_verified": false,
+      "maps_downloaded": false,
+      "data_status": "vendor_site_metadata_only"
+    },
+    {
+      "id": "rocks_ground_02",
+      "source_page": "https://polyhaven.com/a/rocks_ground_02",
+      "source_page_verified": true,
+      "vendor_page_1k_option_visible": true,
+      "vendor_page_map_previews_seen": [
+        "Diffuse",
+        "nor_gl",
+        "Rough",
+        "AO",
+        "Displacement"
+      ],
+      "physical_scan_width_m_approx": 2,
+      "one_k_pixels_per_cm_vendor": 5.1,
+      "approx_1k_pixels_across_10cm": 51,
+      "mouse_closeup_risk": "candidate_ok_requires_review",
+      "closeup_allowed_automatically": true,
+      "asset_level_1k_file_url_verified": false,
+      "actual_1k_file_hash_verified": false,
+      "maps_downloaded": false,
+      "data_status": "vendor_site_metadata_only"
+    }
+  ],
+  "vendor_reference": "https://polyhaven.com/our-api",
+  "critical_caveat": "An official asset page listing a 1K option is not proof that its particular downloadable 1K map bytes/hash were validated."
+}
