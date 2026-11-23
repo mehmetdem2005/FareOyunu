@@ -98,3 +98,11 @@ Bu maddeler mevcut sistemlerin ve yeni sektör uygulamalarının **planı**dır;
 - [ ] P7 — Çeşitli oyuncu sayısı, farklı adalar, persistent world ve operasyonel server release/observability ancak önceki kapılar geçince.
 
 **Bağımlılık uyarısı:** Multiplayer gereksinimi **şimdi mimariyi kısıtlar**, multiplayer mekaniklerini terrain ve chunk koduna gömmeyi haklı çıkarmaz. Bir parça onaylandığında yalnız o parçanın görevi yapılır.
+
+## Faz 0D — Ayrı teknik plan belgeleri (2026-11-24)
+- [x] Terrain veri ve canonical collision planını ayrı Markdown dosyasında tut.
+- [x] Visual chunk/LOD/streaming planını ayrı Markdown dosyasında tut.
+- [x] Dedicated server/network interest/replication planını ayrı Markdown dosyasında tut.
+- [x] Çok oyunculu entegrasyon/chaos test planını ayrı Markdown dosyasında tut.
+- [x] WORLD_ARCHITECTURE ve AGENTS'den ilgili planları bulmayı zorunlu/kolay hâle getir.
+- [ ] Bu belgelere uygun terrain/chunk/network kodu ve testleri: sonraki açık aşamalarda ele alınacak.
