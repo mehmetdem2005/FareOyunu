@@ -1,0 +1,482 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mehmetdem2005/FareOyunu/blob/docs/se-pine-biome-paint-plan/docs/production/PINE_SE_PAINT_PLAN.schema.json",
+  "title": "FareOyunu southeast pine biome paint plan v1.0.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "id",
+    "version",
+    "date",
+    "status",
+    "base_branch",
+    "branch",
+    "one_part_per_approval",
+    "target",
+    "restrictions",
+    "directories",
+    "maps",
+    "zones",
+    "masks",
+    "anti_tiling",
+    "render",
+    "part0_tasks",
+    "phases",
+    "quality_gates",
+    "blockers",
+    "references",
+    "revisions"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "id": {
+      "const": "fareoyunu.se_pine.paint"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "enum": [
+        "planning_only",
+        "part0_ready",
+        "part0_running",
+        "painting",
+        "complete",
+        "blocked"
+      ]
+    },
+    "base_branch": {
+      "const": "fix/terrain-direct-source-no-reconstruction"
+    },
+    "branch": {
+      "const": "docs/se-pine-biome-paint-plan"
+    },
+    "one_part_per_approval": {
+      "const": true
+    },
+    "target": {
+      "type": "object",
+      "required": [
+        "island_id",
+        "biome",
+        "mouse_body_length_m",
+        "engine",
+        "renderer",
+        "allowed_island_ids",
+        "unchanged_island_ids",
+        "source"
+      ],
+      "properties": {
+        "island_id": {
+          "const": "island_se_01"
+        },
+        "biome": {
+          "const": "dangerous_pine_forest"
+        },
+        "mouse_body_length_m": {
+          "const": 0.1
+        },
+        "engine": {
+          "const": "Godot 4.7.2 stable"
+        },
+        "renderer": {
+          "const": "Mobile"
+        },
+        "allowed_island_ids": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "const": "island_se_01"
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 1
+        },
+        "unchanged_island_ids": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "uniqueItems": true
+        },
+        "source": {
+          "type": "object",
+          "required": [
+            "path",
+            "original_codec",
+            "original_sha256",
+            "dimensions",
+            "scene",
+            "definition",
+            "preview_mesh",
+            "vertical_scale",
+            "rule"
+          ],
+          "properties": {
+            "path": {
+              "const": "assets/terrain/heightmaps/island_se_01_original.jpg"
+            },
+            "original_codec": {
+              "const": "JPEG"
+            },
+            "original_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "dimensions": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "const": 1536
+                },
+                {
+                  "const": 1536
+                }
+              ],
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "scene": {
+              "const": "scenes/terrain/island_se_01.tscn"
+            },
+            "definition": {
+              "const": "data/terrain/island_se_01.tres"
+            },
+            "rule": {
+              "type": "string",
+              "pattern": "^NEVER"
+            }
+          }
+        }
+      }
+    },
+    "restrictions": {
+      "type": "object",
+      "required": [
+        "plan_only_no_download_or_paint",
+        "material_resolution_px",
+        "forbid_2k",
+        "prohibit",
+        "paint_layer_state_is_client_visual_only"
+      ],
+      "properties": {
+        "plan_only_no_download_or_paint": {
+          "const": true
+        },
+        "material_resolution_px": {
+          "const": 1024
+        },
+        "forbid_2k": {
+          "const": true
+        },
+        "prohibit": {
+          "type": "array",
+          "minItems": 5
+        },
+        "paint_layer_state_is_client_visual_only": {
+          "const": true
+        }
+      }
+    },
+    "directories": {
+      "type": "object",
+      "required": [
+        "create_now",
+        "plan_for_later",
+        "rules"
+      ]
+    },
+    "maps": {
+      "type": "object",
+      "required": [
+        "resolution_policy",
+        "required",
+        "optional",
+        "albedo_color_space",
+        "data_maps_color_space",
+        "normal_convention",
+        "metallic_constant",
+        "roughness_policy",
+        "ao_policy",
+        "displacement_policy",
+        "import_recommendations",
+        "materials"
+      ],
+      "properties": {
+        "metallic_constant": {
+          "const": 0
+        },
+        "normal_convention": {
+          "const": "OpenGL GL"
+        },
+        "materials": {
+          "type": "array",
+          "minItems": 18,
+          "maxItems": 18,
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "name",
+              "source_url",
+              "tier",
+              "zones",
+              "resolution",
+              "mandatory_maps",
+              "roughness",
+              "metallic",
+              "downloaded",
+              "one_k_file_verified"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 3
+              },
+              "source_url": {
+                "type": "string",
+                "pattern": "^https://polyhaven\\.com/a/"
+              },
+              "tier": {
+                "enum": [
+                  "core",
+                  "support",
+                  "support_object_only"
+                ]
+              },
+              "zones": {
+                "type": "array",
+                "minItems": 1
+              },
+              "resolution": {
+                "const": "1k_only"
+              },
+              "mandatory_maps": {
+                "type": "array",
+                "contains": {
+                  "const": "nor_gl"
+                }
+              },
+              "metallic": {
+                "const": 0
+              },
+              "downloaded": {
+                "type": "boolean"
+              },
+              "one_k_file_verified": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    },
+    "zones": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "materials",
+          "mask_rule",
+          "risk"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^Z[1-7]$"
+          },
+          "materials": {
+            "type": "array",
+            "minItems": 2
+          }
+        }
+      }
+    },
+    "masks": {
+      "type": "object",
+      "required": [
+        "source_immutable",
+        "derived_max_size_px",
+        "sequence",
+        "note"
+      ],
+      "properties": {
+        "source_immutable": {
+          "const": true
+        },
+        "derived_max_size_px": {
+          "const": 1024
+        },
+        "sequence": {
+          "type": "array",
+          "minItems": 10
+        }
+      }
+    },
+    "anti_tiling": {
+      "type": "object",
+      "required": [
+        "levels",
+        "uv",
+        "variants",
+        "deterministic_seed_for_masks_only",
+        "provisional_max_blended_layers_per_fragment",
+        "realism",
+        "no_single_material_carpet",
+        "no_fixed_width_beach_ring"
+      ],
+      "properties": {
+        "no_single_material_carpet": {
+          "const": true
+        },
+        "no_fixed_width_beach_ring": {
+          "const": true
+        },
+        "provisional_max_blended_layers_per_fragment": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        }
+      }
+    },
+    "render": {
+      "type": "object",
+      "required": [
+        "after_each_part",
+        "engine_output_only",
+        "renderer",
+        "island_id",
+        "format",
+        "resolution_px",
+        "camera",
+        "lock",
+        "output_template",
+        "metadata_template",
+        "evidence",
+        "prohibited"
+      ],
+      "properties": {
+        "after_each_part": {
+          "const": true
+        },
+        "engine_output_only": {
+          "const": true
+        },
+        "format": {
+          "const": "PNG"
+        },
+        "island_id": {
+          "const": "island_se_01"
+        },
+        "renderer": {
+          "const": "Godot 4.7.2 Mobile"
+        },
+        "resolution_px": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "const": 1536
+            },
+            {
+              "const": 1536
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    "part0_tasks": {
+      "type": "array",
+      "minItems": 12,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "instruction",
+          "output",
+          "status",
+          "evidence"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^P0-\\d{2}$"
+          },
+          "status": {
+            "enum": [
+              "not_started",
+              "blocked",
+              "running",
+              "verified",
+              "rejected"
+            ]
+          }
+        }
+      }
+    },
+    "phases": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "materials_added",
+          "work",
+          "render",
+          "status",
+          "user_approval_gate",
+          "do_not_auto_advance"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^part_0[0-5]$"
+          },
+          "user_approval_gate": {
+            "const": true
+          },
+          "do_not_auto_advance": {
+            "const": true
+          }
+        }
+      }
+    },
+    "quality_gates": {
+      "type": "array",
+      "minItems": 11
+    },
+    "blockers": {
+      "type": "array",
+      "minItems": 5
+    },
+    "references": {
+      "type": "array",
+      "minItems": 5
+    },
+    "revisions": {
+      "type": "array",
+      "minItems": 1
+    }
+  }
+}

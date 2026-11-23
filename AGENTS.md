@@ -1,4 +1,4 @@
-# FareOyunu: bağlayıcı çalışma kuralları (v1.2, 2026-11-23)
+# FareOyunu: bağlayıcı çalışma kuralları (v1.3, 2026-11-24)
 
 ## Her görevden ÖNCE
 - README, PIPELINE, ROADMAP, mimari sözleşme ve ilgili policies dosyalarını yeniden oku.
@@ -51,3 +51,12 @@ Godot 4.7.2 stable + Mobile hedefi; editör içinde terrain görünür; minimum 
 - Ada yerleşimi, kıyı/deniz tabanı, hidroloji, biyom, navmesh, foliage, world editor veya world persistence ile ilgili yeni bir göreve başlamadan `docs/production/WORLD_CREATION_GAP_AUDIT.md` aç; kapsamdaki W01-W24 boşluk, sahibin modülü, önkoşulları ve kalite kapısını oku.
 - Yeni dünyaya yönelik alan ayrı bir uzmanlık planı gerektiriyorsa yalnız o alanın işi başlatılınca ayrı .md dosyası oluştur; başta boş planlar üretme. İçeriği mevcut WORLD_ARCHITECTURE/PIPELINE/ROADMAP ile linkle; politika kopyalaması yapma.
 - Kritik veri contract'ları ve gerçek cihaz/oyuncu testleri eksikken bitmiş dünya veya AAA kalitesi iddia etme. Alt modül tamamlanmadan sonraki fazı otomatik başlatma.
+
+## Sağ alt çam biyomu boyama kuralı (2026-11-24)
+- Sağ alt ada `island_se_01` boyama işinde işlemden önce `docs/production/PINE_SE_PAINT_PLAN.json`, `docs/production/PINE_SE_PAINT_PLAN.schema.json`, `docs/production/PINE_SE_PART0_CHECKLIST.md` ve terrain/multiplayer sınır belgelerini oku.
+- **Yalnız SE ada**. Diğer üç adanın dosyaları veya renderları bu işte değiştirilemez. Kullanıcının kaynak JPEG heightmap'i hash'le korunur; yeniden çizme, kodla üretme, smoothing, 32-bit'e yeniden dönüştürme, geometrisini sessiz değiştirme yok.
+- Poly Haven malzemeleri yalnız **orijinal 1K** varyantlarla; her map gerçekten dosya düzeyinde doğrulanmadan “indirildi” sayılmaz. PBR map seçimi toprağın/kayanın fiziksel ihtiyacına göre; AO/roughness/displacement otomatik açılmaz.
+- Fare uzunluğu 10cm; gerçek world-unit/metre eşlemesi onaylanmadan UV fiziksel ölçeği sabitlenmez.
+- Tek partta tek amaç; her tamamlanan partın sonunda **gerçek Godot 4.7.2 Mobile Renderer kuşbakışı PNG**, hash/metrik ve kullanıcı incelemesi. PNG yoksa FAIL/BLOCKED; Python/AI görüntüsünü gerçek render diye sunma.
+- Boyama materyalleri **client visual-only**; height source, collision, visual chunk lifecycle veya authoritative network state değiştiremez.
+- Part 0 sadece envanter/kamera/import/mask/ölçek hazırlığıdır. Kullanıcı yeni partı açmadan boyama, doku indirme veya sonraki faz kodu ekleme.
