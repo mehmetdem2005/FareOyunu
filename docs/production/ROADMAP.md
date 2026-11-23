@@ -106,3 +106,10 @@ Bu maddeler mevcut sistemlerin ve yeni sektör uygulamalarının **planı**dır;
 - [x] Çok oyunculu entegrasyon/chaos test planını ayrı Markdown dosyasında tut.
 - [x] WORLD_ARCHITECTURE ve AGENTS'den ilgili planları bulmayı zorunlu/kolay hâle getir.
 - [ ] Bu belgelere uygun terrain/chunk/network kodu ve testleri: sonraki açık aşamalarda ele alınacak.
+
+## Faz 0E — Dünya üretimi ve modül eksiklikleri audit'i (2026-11-24)
+- [x] [WORLD_CREATION_GAP_AUDIT.md](WORLD_CREATION_GAP_AUDIT.md) içinde 24 dünya oluşturma boşluğunu P0/P1/P2 olarak sınıflandır.
+- [x] World topology, coordinate/precision, coast/bathymetry, data pipeline, editor authoring, terrain caves, hydro, biome, navigation, ecology, persistence ve packaging için domain ownership/kalite kapılarını belirle.
+- [x] Yeni uzmanlık plan dosyalarını yalnız ilgili iş parçası başladığında oluşturma yaklaşımını koru.
+- [ ] Öncelikli W01-W06 modüllerinin gerçek sözleşme ve implementasyonları — daha sonra, her biri ayrı onay ve PR.
+- [ ] Çoklu ada, oyun içi dünya, biyom ve gerçek cihaz/oyuncu testleri — henüz uygulanmadı.
