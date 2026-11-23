@@ -145,3 +145,15 @@ Bu maddeler mevcut sistemlerin ve yeni sektör uygulamalarının **planı**dır;
 - [ ] Terrain heightmap değiştirme, diğer üç adayı boyama, deniz/chunk/multiplayer uygulama: bu işin kapsamı dışında.
 
 Referans: [PINE_SE_PAINT_PLAN.json](PINE_SE_PAINT_PLAN.json) (tek karar kaynağı), [PINE_SE_PART0_CHECKLIST.md](PINE_SE_PART0_CHECKLIST.md).
+
+## Faz 1D / Part 0 uygulama denetimi — 2026-11-24
+Tek kanıt dosyası: [PINE_SE_PART0_EXECUTION_REPORT.json](PINE_SE_PART0_EXECUTION_REPORT.json). Materyal sayfası/1K fiziksel tarama envanteri `data/biomes/pine_se/asset_inventory_part0.json`; render ve import sözleşmeleri `data/biomes/pine_se/*_profile_part0.json`.
+- [x] Kullanıcının yerel proje ZIP'inde 4 JPEG ve 4 GLB bulundu; SHA ve ZIP CRC kontrol edildi. **GitHub branch'inde binary asset'ler hâlâ eksik.**
+- [x] Poly Haven'ın 18 adayının resmi sayfaları ve 1K seçenekleri tarandı; fiziksel tarama ölçüleri kayıt edildi. **1K indirme dosyası URL/SHA doğrulaması henüz yapılamadı.**
+- [x] Yalnız SE için dış kaynak kamera ve PBR import profili hazırlandı; çok büyük fiziksel taramaya sahip Coast Sand 01/05 için fare yakınında kalite riski kayıt edildi.
+- [x] Kaynak ve diğer üç ada değişmedi; hiçbir heightmap, gerçek boya, mask output, 1K download veya Godot PNG oluşturulmadı.
+- [ ] Godot 4.7.2 stable çalıştırma/import/render (yerel binary kurulu değil, indirme engeli).
+- [ ] Dünya birimi/gerçek metre ve 10cm fare ölçeği ADR'si onaylanmadı.
+- [ ] Kıyı beach/cliff, göl/nehir ve wetness maskelerine güvenilir anotasyon verisi gerek.
+- [ ] Gerçek 1K diffuse+nor_gl dosyalarının byte/hash doğrulaması ve cihaz içe aktarma testi.
+- [ ] **Part 0 STOP / Part 1 kapalı:** 3 verified, 6 partial, 3 blocked. Kullanıcı onayı ve açık kapılar çözülmeden boya yapılmaz.
