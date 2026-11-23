@@ -84,3 +84,6 @@ Bu dosya genel dünya invariants ve domain sınırlarının üst sözleşmesidir
 | Entegrasyon / adversarial QA | [MULTIPLAYER_INTEGRATION_TEST_PLAN.md](../testing/MULTIPLAYER_INTEGRATION_TEST_PLAN.md) | Client/server/terrain/chunk sözleşmelerinin ortak ve kaos testleri |
 
 Bu belgeler kod değildir: görsel chunk sistemi, authoritative sunucu ve editor terrain önizlemesi henüz uygulanmış sayılmaz.
+
+## Dünya üretimi genişleme ve açık listesi (2026-11-24)
+Mevcut terrain, chunk, multiplayer ve entegrasyon planlarının DIŞINDA kalan world layout, koordinat, kıyı/bathymetry, su yolları, biyom/ekoloji, navigation, editör authoring, world persistence, content/UX ve görsel bütçe ihtiyaçları [WORLD_CREATION_GAP_AUDIT.md](../production/WORLD_CREATION_GAP_AUDIT.md) içinde P0/P1/P2 olarak kaydedildi. Bunlar uygulanmış modüller değildir. İlgili detay planı, modül başladığında açılır ve buradan linklenir; aynı sorumluluk farklı dosyalarda yeniden tanımlanmaz.
