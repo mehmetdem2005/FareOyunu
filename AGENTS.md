@@ -39,3 +39,10 @@ Godot 4.7.2 stable + Mobile hedefi; editör içinde terrain görünür; minimum 
 - İlk prototipte server authority, protocol/world revision handshake, stable entity IDs ve late join/reconnect durumları güvenlik/QA önkoşulu olarak planlanır.
 - Bug önleme kuralı: yalnız happy-path değil, cross-module contract, packet loss/reorder, malicious RPC, hızlı chunk unload, low-memory ve iki+ client headless testleri olmadan tamamlandı denmez.
 - Yeni asset, shader, terrain veya chunk optimizasyonu multiplayer regresyon risk analizi ve gerekli testleri tetikler. Uygulanmamış güvenlik/testler asla tamamlandı diye yazılmaz.
+
+## Ayrı plan dosyalarını okumadan kod yazma (2026-11-24)
+- Terrain/heightmap/collider işi öncesinde `docs/architecture/TERRAIN_ARCHITECTURE.md` okunur.
+- Görsel chunk/LOD/streaming işi öncesinde `docs/architecture/CHUNK_STREAMING_ARCHITECTURE.md` okunur.
+- Multiplayer/auth/replication/network interest işi öncesinde `docs/architecture/MULTIPLAYER_ARCHITECTURE.md` okunur.
+- Modüller arası değişiklikte `docs/testing/MULTIPLAYER_INTEGRATION_TEST_PLAN.md` ve `docs/policies/QUALITY.md` birlikte okunur.
+- Genel dünya invariants için `docs/architecture/WORLD_ARCHITECTURE.md` esastır; alt sistemlerin detayları kendi planlarında sürümlenir. Çelişki ADR ile çözümlenir. Kopyalanmış politikalar oluşturulmaz.
