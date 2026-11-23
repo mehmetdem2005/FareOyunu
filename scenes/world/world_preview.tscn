@@ -1,0 +1,20 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/world_preview.gd" id="1_world"]
+[ext_resource type="Resource" path="res://data/world/world_preview_layout.tres" id="2_layout"]
+[ext_resource type="PackedScene" path="res://scenes/terrain/island_nw_01.tscn" id="3_nw"]
+[ext_resource type="PackedScene" path="res://scenes/terrain/island_sw_01.tscn" id="4_sw"]
+[ext_resource type="PackedScene" path="res://scenes/terrain/island_north_01.tscn" id="5_north"]
+[ext_resource type="PackedScene" path="res://scenes/terrain/island_se_01.tscn" id="6_se"]
+
+[node name="WorldPreview" type="Node3D"]
+script = ExtResource("1_world")
+layout = ExtResource("2_layout")
+
+[node name="NorthwestIsland" parent="." instance=ExtResource("3_nw")]
+
+[node name="SouthwestIsland" parent="." instance=ExtResource("4_sw")]
+
+[node name="NorthernIsland" parent="." instance=ExtResource("5_north")]
+
+[node name="SoutheastIsland" parent="." instance=ExtResource("6_se")]
