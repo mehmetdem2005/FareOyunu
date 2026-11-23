@@ -46,3 +46,8 @@ Godot 4.7.2 stable + Mobile hedefi; editör içinde terrain görünür; minimum 
 - Multiplayer/auth/replication/network interest işi öncesinde `docs/architecture/MULTIPLAYER_ARCHITECTURE.md` okunur.
 - Modüller arası değişiklikte `docs/testing/MULTIPLAYER_INTEGRATION_TEST_PLAN.md` ve `docs/policies/QUALITY.md` birlikte okunur.
 - Genel dünya invariants için `docs/architecture/WORLD_ARCHITECTURE.md` esastır; alt sistemlerin detayları kendi planlarında sürümlenir. Çelişki ADR ile çözümlenir. Kopyalanmış politikalar oluşturulmaz.
+
+## Dünya tasarımı ve yeni modül açma kontrolü (2026-11-24)
+- Ada yerleşimi, kıyı/deniz tabanı, hidroloji, biyom, navmesh, foliage, world editor veya world persistence ile ilgili yeni bir göreve başlamadan `docs/production/WORLD_CREATION_GAP_AUDIT.md` aç; kapsamdaki W01-W24 boşluk, sahibin modülü, önkoşulları ve kalite kapısını oku.
+- Yeni dünyaya yönelik alan ayrı bir uzmanlık planı gerektiriyorsa yalnız o alanın işi başlatılınca ayrı .md dosyası oluştur; başta boş planlar üretme. İçeriği mevcut WORLD_ARCHITECTURE/PIPELINE/ROADMAP ile linkle; politika kopyalaması yapma.
+- Kritik veri contract'ları ve gerçek cihaz/oyuncu testleri eksikken bitmiş dünya veya AAA kalitesi iddia etme. Alt modül tamamlanmadan sonraki fazı otomatik başlatma.
