@@ -1,12 +1,11 @@
-; FareOyunu terrain only: Godot 4.7.2 Mobile renderer
+; Godot 4.7.2 Mobile, original source terrain editor preview
 config_version=5
 
 [application]
-config/name="FareOyunu — Terrain Prototype"
+config/name="FareOyunu — Original Heightmap Preview"
 config/features=PackedStringArray("4.7", "Mobile")
-run/main_scene="res://scenes/terrain/island_se_01.tscn"
+run/main_scene="res://scenes/world/world_preview.tscn"
 
 [rendering]
 renderer/rendering_method="mobile"
 renderer/rendering_method.mobile="mobile"
-textures/default_filters/use_nearest_mipmap_filter=false

@@ -1,22 +1,23 @@
-# FareOyunu
+# FareOyunu — Terrain directly from original uploaded images
 
-Godot 4.7.2 stable / Mobile Renderer için hedeflenen çok adalı açık dünya fare oyunu.
+Godot 4.7.2 stable / Mobile Renderer. Open `scenes/world/world_preview.tscn` to see all four textureless islands **in the editor without pressing Play**.
 
-## Durum
-Aşama 0: kaynak heightmap incelemesi, üretim kuralları, mimari sözleşmeleri, kalite kapıları ve aşamalı plan. Oyuncu, deniz, chunk akışı, editör terrain önizlemesi **henüz uygulanmadı**.
+## Source integrity
+The four files provided as `.png` actually contain **JPEG** data. They are copied **byte-for-byte unchanged** into `assets/terrain/heightmaps/*_original.jpg`; only the extension matches the actual codec. Check SHA-256 in `data/terrain/sources.json`. No regenerated/reconstructed heightmaps, smoothing, erosion, procedural relief or EXR conversion occurs.
 
-Bu depo sıfırdan kurulmuştur; önceki Fare deposundan dosya alınmamıştır.
+The `*.glb` files are *geometry preview meshes*, sampled from original brightness (L) with bilinear vertex interpolation. A 0.020 display-only cutoff trims the black sea background. Neither operation produces a new heightmap or restores lost 8-bit/JPEG source precision.
 
-## Başlangıç sırası
-1. AGENTS.md: her işe başlamadan oku.
-2. docs/production/PIPELINE.md: işlem sırası ve durdurma kapıları.
-3. docs/production/ROADMAP.md: yalnızca yetkilendirilen parça.
-4. docs/architecture/WORLD_ARCHITECTURE.md: bağımlılık sınırları.
-5. docs/policies/: kalite, değişiklik, test kuralları.
-6. docs/assets/SE_HEIGHTMAP.md: kaynak veri kaydı ve eksik ikili dosya.
+## Editor controls
+- All four in `scenes/world/world_preview.tscn`.
+- Individual scenes: `scenes/terrain/island_*.tscn`.
+- Preview-only height and width: `data/terrain/island_*.tres`.
+- Provisional editor placement: `data/world/world_preview_layout.tres`.
 
-## Kaynak durumu
-Sağ alt ada (SE-01) için EXR float32 üretildi ve yerelde doğrulandı. GitHub bağlayıcısının ikili dosya yükleme sınırı nedeniyle EXR **bu dalda henüz commit edilmedi**; dosya kullanıcıya ayrıca teslim edilir. Tam veri entegrasyonu onaylanana kadar arazi sahnesi oluşturulmaz.
+The world layout units are not approved metres. No textures/materials, ocean, collision, chunk streaming, multiplayer or player logic have been added.
 
-## Dal politikası
-main = korunan bütünleşme dalı. feat/, fix/, chore/, docs/ ve test/ ön ekleri kullanılır. Yeni özellikler küçük, konuya odaklı commit ve PR ile taşınır. Onay ve test olmadan main'e merge edilmez.
+## Binary asset status
+The complete 4 JPEG byte-copies and 4 GLB preview binaries are delivered in the **downloadable ZIP**. GitHub connector writes only text files here; until corresponding binary assets are committed to `assets/terrain/`, the GitHub branch alone is NOT import-ready.
+
+Godot editor/runtime/mobile import has not been tested by the assistant. The user can import the complete ZIP locally.
+
+Main engineering policy: AGENTS.md; pipeline: docs/production/PIPELINE.md; world architecture: docs/architecture/WORLD_ARCHITECTURE.md.

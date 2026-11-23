@@ -1,79 +1,95 @@
 {
-  "schema_version": 1,
-  "asset_policy": "Immutable EXR sources, disposable editor preview meshes; no world positions/network authority",
-  "source_note": "Artist grayscale images are 8-bit information stored as real 32-bit FLOAT EXR",
+  "schema_version": 2,
+  "source_policy": "Preserve user image bytes unchanged. Original extension .png, actual JPEG codec; copied to .jpg by byte-copy only. No EXR or altered heightmaps.",
+  "source_note": "Preview GLB geometry is the only derived asset. No new elevation measurement or precision is claimed.",
   "assets": [
     {
-      "id": "island_nw_01",
-      "revision": "preview-source-2026-11-24-v1",
-      "source": "assets/terrain/heightmaps/island_nw_01_f32.exr",
-      "sha256": "89e74e2772f9bd4985c08111fe72ce43aa7f2ce69102d5a6f6078e35f3083da1",
+      "id": "island_se_01",
+      "source": "assets/terrain/heightmaps/island_se_01_original.jpg",
+      "upload_filename": "file_0000000029b081fbb47a64c8e3a95c34.png",
+      "upload_format": "JPEG",
+      "sha256": "12e0868d2ab57f5d7840747a31222fbb5b6561f1d00e94103ed0834d7c781691",
       "dimensions": [
-        1254,
-        1254
+        1536,
+        1536
       ],
-      "pixel_type": "FLOAT32",
-      "channels": 1,
       "preview_grid": [
-        129,
-        129
+        257,
+        257
+      ],
+      "preview_mesh": "assets/terrain/preview_meshes/island_se_01_preview.glb",
+      "preview_scale": [
+        660,
+        32,
+        660
+      ],
+      "sea_clip_display_threshold": 0.02
+    },
+    {
+      "id": "island_nw_01",
+      "source": "assets/terrain/heightmaps/island_nw_01_original.jpg",
+      "upload_filename": "file_0000000007e881f4b1d06412c9785149.png",
+      "upload_format": "JPEG",
+      "sha256": "6b93f65e8bcdc5a5b123c8ac03dad155c30e87d368773e9dd992f23733633673",
+      "dimensions": [
+        1536,
+        1536
+      ],
+      "preview_grid": [
+        257,
+        257
       ],
       "preview_mesh": "assets/terrain/preview_meshes/island_nw_01_preview.glb",
-      "note": "preview-unit scale is not metres"
+      "preview_scale": [
+        610,
+        22,
+        610
+      ],
+      "sea_clip_display_threshold": 0.02
     },
     {
       "id": "island_sw_01",
-      "revision": "preview-source-2026-11-24-v1",
-      "source": "assets/terrain/heightmaps/island_sw_01_f32.exr",
-      "sha256": "7aab62c9ea0cc4c50ad188d48bfe7e2122249eb4b3e2333bc52947fe68ae71cf",
+      "source": "assets/terrain/heightmaps/island_sw_01_original.jpg",
+      "upload_filename": "file_00000000fc2481f49508e9a14e387424.png",
+      "upload_format": "JPEG",
+      "sha256": "9845c85bfa9e80d6385adfc93d38ce569c63b3162c393fb811445ecbe85a9d0a",
       "dimensions": [
-        1254,
-        1254
+        1536,
+        1536
       ],
-      "pixel_type": "FLOAT32",
-      "channels": 1,
       "preview_grid": [
-        129,
-        129
+        257,
+        257
       ],
       "preview_mesh": "assets/terrain/preview_meshes/island_sw_01_preview.glb",
-      "note": "preview-unit scale is not metres"
+      "preview_scale": [
+        610,
+        19,
+        610
+      ],
+      "sea_clip_display_threshold": 0.02
     },
     {
       "id": "island_north_01",
-      "revision": "preview-source-2026-11-24-v1",
-      "source": "assets/terrain/heightmaps/island_north_01_f32.exr",
-      "sha256": "a4ffcc4c648161b864e88ec99d58581b0880b9fb61827eae6659c94a2884f329",
+      "source": "assets/terrain/heightmaps/island_north_01_original.jpg",
+      "upload_filename": "file_00000000188882108acbcae16b372889.png",
+      "upload_format": "JPEG",
+      "sha256": "9de70460c91fba1d2c8accc8c30d368352d0e1a494c9da052f92850648f81d7c",
       "dimensions": [
         1536,
         1024
       ],
-      "pixel_type": "FLOAT32",
-      "channels": 1,
       "preview_grid": [
-        193,
-        129
+        257,
+        171
       ],
       "preview_mesh": "assets/terrain/preview_meshes/island_north_01_preview.glb",
-      "note": "preview-unit scale is not metres"
-    },
-    {
-      "id": "island_se_01",
-      "revision": "preview-source-2026-11-24-v1",
-      "source": "assets/terrain/heightmaps/island_se_01_soft_coast_f32.exr",
-      "sha256": "a04e7a281a5c1fb72e5ee7789ae26add31142a56d187c9dd6dd7c938a7803c97",
-      "dimensions": [
-        1254,
-        1254
+      "preview_scale": [
+        920,
+        54,
+        615
       ],
-      "pixel_type": "FLOAT32",
-      "channels": 1,
-      "preview_grid": [
-        129,
-        129
-      ],
-      "preview_mesh": "assets/terrain/preview_meshes/island_se_01_preview.glb",
-      "note": "preview-unit scale is not metres"
+      "sea_clip_display_threshold": 0.02
     }
   ]
 }

@@ -1,11 +1,13 @@
-# FareOyunu — textureless terrain stage 1 (2026-11-24)
+# Stage 1 — Direct-source terrain preview (2026-11-24)
 
-The four separate island scenes reference EXTERNAL GLB editor preview meshes and .tres definitions; their canonical sources remain four immutable single-channel FLOAT32 EXRs, tracked by SHA256 in data/terrain/sources.json. No surface textures/materials, no collision, ocean, chunk streaming, game/world layout, RPC, or server implementation.
+Scope: **only** 4 independently sourced textureless island preview meshes + a combined editor world scene. No map drawings or conversion to 32-bit.
 
-Open `project.godot` in Godot 4.7.2 Mobile, then open `scenes/terrain/island_*.tscn`. Preview model appears from the externally imported GLB without running the game. Select `data/terrain/island_*.tres` to change preview width/height/depth. These are abstract preview units, NOT metres or authoritative server physics. To change terrain shape edit the EXR and rerun tools/terrain/build_preview_meshes.py; source checksums must then be revised with provenance.
+All four uploaded files with .png filenames have JPEG magic bytes. They are **byte copied** into correctly named .jpg files; SHA256, dimension, codec and source filenames are versioned in `data/terrain/sources.json`. No source pixel changes.
 
-**Binary limitation:** GitHub connected text writes cannot upload the 4 EXRs and 4 GLBs in this operation. The complete binary assets are delivered in the downloadable project ZIP alongside this PR. They must be placed at their recorded paths; until then the GitHub branch alone is not a complete importable project.
+`tools/terrain/build_preview_meshes.py` reads RGB JPEG brightness as L and constructs a preview GLB from sampled height values, clipping the sea background triangles at a small visual-only threshold 0.020. This creates **mesh vertices only**, not a new heightmap. The display threshold and preview vertical scale are not authoritative coastline or elevations in metres.
 
-Locally verified: EXR float32/checksum, GLB face count, normals +Y, no embedded materials/textures/images, external-only scene refs (6 unit tests). Godot 4.7.2 editor import and Android device proof **not yet performed** (engine not installed in build environment). Earlier historical 1536×1536 SE01 manifest remains unchanged; new southeast source is versioned separately.
+The scene hierarchy references external island .tscn, .tres and GLB assets; placement exists in a separate world preview resource. The editor @tool scripts only adjust transforms; no chunk/physics/network dependencies.
 
-**STOP:** Do not implement chunk, physics, server, water, foliage or any additional systems during this phase.
+Local complete ZIP: 6 tests passed: source hash/format, four islands, GLB no material/texture, mesh normals, external scene references, and no regenerated heightmap assets.
+
+Unverified: Godot 4.7.2 actual editor import, Mobile Renderer on phone and scale aesthetics. GitHub text-only branch is missing 8 binary assets (4 JPEGs, 4 GLBs); do not claim GitHub branch imports cleanly.
