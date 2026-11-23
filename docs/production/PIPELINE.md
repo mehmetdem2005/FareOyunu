@@ -1,4 +1,4 @@
-# AAA-yaklaşımlı üretim pipeline'ı — yaşayan plan v1.2
+# AAA-yaklaşımlı üretim pipeline'ı — yaşayan plan v1.3
 
 Bu plan AAA ölçeğinde rol disiplini ve kanıt standardı hedefler. Tek başına bu dosya AAA kalitesi garanti etmez.
 
@@ -110,3 +110,10 @@ Prototip hedefi, sprint olmayan küçük bir feature queue, risk register, depen
 **Dağıtım riski:** server ve client farklı release sürümleri arasındaki protokol/asset compatibility kontrollü yürütülür; onaysız eski client'a yeni dünya gösterilip state bozmasına izin verilmez.
 
 **Kapsam:** Bu revizyon yalnız belge ve yapılacaklar listesi değişikliğidir; server/client/terrain/chunk uygulama kodu eklenmemiştir.
+
+## J. SE çam biyomu görsel boyama üretim kapısı (2026-11-24)
+- Geçerli dış kontrat: `docs/production/PINE_SE_PAINT_PLAN.json` (schema + Part0 checklist). Kaynak SE original JPEG/hash korunur, diğer adalar salt okunur.
+- Part 0: 1K gerçek vendor map envanteri, kaynak binary+engine teyidi, real world scale, görsel-only maske sözleşmesi, render profilinin sabitlenmesi. Bu adımda malzeme indirme ve boyama yapılmaz.
+- Part 1–5: tek part -> kaynak/malzeme/test/ölçüm -> gerçek Godot 4.7.2 Mobile sabit kamera PNG -> insan incelemesi -> yeni parta ayrıca izin.
+- Texture 1K şart, roughness/AO/ARM/displacement yalnız gerekli/ölçülmüşse; GPU mask/blend sayısı limitleri cihaz testiyle seçilir. Source heightmap, server collider, entity, chunk/LOD ve AOI birbirinden bağımsız kalır.
+- Gerçek Godot render veya maliyet ölçümü yapılmadıysa `BLOCKED/UNVERIFIED` bildir; hazırlanmış maket ile tamamlandı iddia etme.
