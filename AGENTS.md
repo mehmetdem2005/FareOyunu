@@ -1,4 +1,4 @@
-# FareOyunu: bağlayıcı çalışma kuralları (v1.0, 2026-11-23)
+# FareOyunu: bağlayıcı çalışma kuralları (v1.1, 2026-11-23)
 
 ## Her görevden ÖNCE
 - README, PIPELINE, ROADMAP, mimari sözleşme ve ilgili policies dosyalarını yeniden oku.
@@ -24,3 +24,9 @@
 
 ## Kritik kabul koşulları
 Godot 4.7.2 stable + Mobile hedefi; editör içinde terrain görünür; minimum dört ada konsepti; ayrık chunk/LOD/streaming/deniz; dünya verisi harici; kesintisiz ve adil oyuncu deneyimi. Bunlar tasarım hedefidir, mevcut kodda uygulanmış özellikler değildir.
+
+## Üretim/oyuncu kalite kapısı — 2026-11-23 revizyonu
+- Yeni göreve başlamadan tek satırlık test listesi değil, **Definition of Ready**, **Definition of Done**, risk seviyesi, oyuncu faydası ve ölçüm yöntemi oluştur. Maliyet/performans/UX çakışması varsa çözmeden implementasyona geçme.
+- Her proje değişikliğinde G0-G9 kontrollerinden hangilerinin gerekli olduğunu işaretle; doğrulanmamış olanı kanıtlandı diye yazma. İnsan playtest, Android cihaz ve editor önizlemesi, otomatik CI başarısından bağımsızdır.
+- Birden çok onay bekleyen parça varsa ROADMAP'de beklet; kullanıcı onayı olmadan başka adıma atlama. Yeni kural ihtiyacında mevcut politika belgelerini güncelle; dosya çöplüğü yaratma.
+- Görsel heightmap ve fiziksel gerçek DEM ayrımını koru; orijinal 1536² ile son 1254² varyantını metadata/hash olmadan birbirinin yerine kullanma.
