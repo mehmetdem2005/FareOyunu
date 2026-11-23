@@ -10,7 +10,7 @@ Birden fazla görev aynı istekte verilmiş olsa bile fazlar sırayla ilerler; s
 - [x] Kaynak/çıktı manifesti, çalışma politikaları, QA ve mimari/pipeline planları.
 - [x] Converter'a yönelik sentetik otomatik test ve başlangıç CI tanımla.
 - [~] EXR ikili veriyi repo asset yoluna koy: yalnızca yerel artifakt hazır, GitHub commit henüz yok.
-- [ ] GitHub Actions üzerindeki CI yürütmesini incele ve sonuçlarını raporla (PR / run gerektirir).
+- [x] GitHub Actions üzerinde Phase 0 converter-tests başarılı: workflow run 45255819266; ayrıca 5 sentetik unit test yerelde geçti (2026-11-23).
 
 ## Faz 1 — sonraki açık kullanıcı onayıyla
 - [ ] Godot 4.7.2 Mobile tam proje iskeleti ve engine-pin testleri.
