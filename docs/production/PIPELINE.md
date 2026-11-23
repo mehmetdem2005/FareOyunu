@@ -1,4 +1,4 @@
-# AAA-yaklaşımlı üretim pipeline'ı — yaşayan plan v1.1
+# AAA-yaklaşımlı üretim pipeline'ı — yaşayan plan v1.2
 
 Bu plan AAA ölçeğinde rol disiplini ve kanıt standardı hedefler. Tek başına bu dosya AAA kalitesi garanti etmez.
 
@@ -89,3 +89,24 @@ Prototip hedefi, sprint olmayan küçük bir feature queue, risk register, depen
 - Android vitals: https://developer.android.com/games/optimize/vitals
 - GitHub branch protection: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches
 - Game Accessibility Guidelines: https://gameaccessibilityguidelines.com/full-list/
+
+## I. Çok oyunculu dünya entegrasyon kapısı — v1.2
+**Mimari belgeler önce:** WORLD_ARCHITECTURE'daki TerrainData/VisualChunkManager/SimulationAuthority/NetworkInterest/Replication sınırları kabul edilir; yeni sistem bu sınırların dışına çıkarsa ADR ve kalite incelemesi yapılmadan uygulanmaz.
+
+**Sıralama (implementasyon değil):**
+1. TerrainSource + world manifest erişim sözleşmesi; server ve client aynı logical terrain revizyonunu tanır.
+2. Authoritative Physics/Simulation sorguları görsel tile'dan bağımsız; dedicated headless testler.
+3. VisualChunkManager, renderer ve LOD sadece istemci; bağımsız boşaltma/yükleme mock testleri.
+4. NetworkAuthority + protokol, snapshot/revision handshake, auth, RPC validation ve NetworkInterest sözleşmesi ayrı.
+5. İki istemci + server entegrasyonu; packet loss/jitter/late join/desync + farklı LOD/telefon testleri.
+6. Vertical slice gameplay ve gerçek cihaz ölçümleri; ancak sonra ölçeklendirme.
+
+**Bağımlılık kontrolü:** `terrain-data-contract` -> `authoritative-physics` ve `visual-chunk-only` birbirinden bağımsız. `network-interest` -> `replication-protocol` -> `multi-peer-integration` -> `device-e2e`. Basamak atlanmaz ve tek başarı hepsine uygulanmaz.
+
+**Protokol kararı için ADR:** dedicated vs listen-server (öneri dedicated), server tick, maksimum oyuncu, transport, auth, interest radius/shape, state snapshot strategy, prediction/reconciliation, anti-cheat threat model, disconnection policy, authoritative coordinate/origin model, dynamic world mutation. Benchmark ve prototip olmadan değerler kesinleştirilmez.
+
+**Değişiklik/QA kıstası:** chunk/LOD değişikliği multiplayer contract testini; terrain revision değişikliği server-collision ve handshake testini; replication değişikliği headless multi-peer regression'ı tetikler. Her feature'ın PR'ında hangi çapraz testlerin koştuğu yazılır.
+
+**Dağıtım riski:** server ve client farklı release sürümleri arasındaki protokol/asset compatibility kontrollü yürütülür; onaysız eski client'a yeni dünya gösterilip state bozmasına izin verilmez.
+
+**Kapsam:** Bu revizyon yalnız belge ve yapılacaklar listesi değişikliğidir; server/client/terrain/chunk uygulama kodu eklenmemiştir.

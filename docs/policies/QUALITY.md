@@ -1,4 +1,4 @@
-# Kalite, saldırgan test ve kabul prosedürü v1.1
+# Kalite, saldırgan test ve kabul prosedürü v1.2
 
 ## Test matrisi
 - Asset doğruluğu: magic bytes; dosya uzantısı; hash; yüksek hassasiyet algısı; kanal sayısı; gamma; orientation; NaN/Inf; uç değerler; boyut; yanlış ada ID.
@@ -35,3 +35,30 @@ Bir test aynı modülde arka arkaya kırılırsa prosedür/CI ek denetimi günce
 
 ## Kabul/ret kanıtı
 Tüm test çıktılarında test edilen build SHA, cihaz modeli/GPU/sürücü, Godot sürümü, kaynak manifest hash, amaç, ölçüm profili, başarısızlık, screenshot/capture ve rerun tarihi kaydedilir. Sayısal eşikler ADR ile onaylanmadan rastgele “geçti” etiketi verilemez. S0/S1 açıkken release/merge kapısı kilitli kalır. Gereksinimin olmadığı yerde test gereksizdir; ama test eksikliği açık yazılır.
+
+## Multiplayer / terrain / streaming ayrım testleri — v1.2 (gelecekte uygulama)
+**Ayrı test grupları:** `terrain-data-contract`, `visual-chunk-only`, `authoritative-physics`, `network-interest`, `replication-protocol`, `multi-peer-integration`, `real-device-e2e`. Birinin başarısı öbürünün kanıtı değildir.
+
+### Yapısal bağımsızlık (kod geldiğinde CI bloklayıcı)
+- TerrainData modülünün `MultiplayerAPI`, RPC, kamera veya chunk manager import/erişimi varsa FAIL.
+- VisualChunkManager'ın authoritative world/entity state, inventory, damage veya server collision/interest değiştirmesi FAIL.
+- NetworkInterest'ın render view-distance değerini gameplay entity existence/authority kararı olarak kullanması FAIL.
+- Dedicated server GPU/context, visual node veya editor plugin gerektirirse FAIL.
+- Deterministic height sample query, client render LOD ve server authoritative collider farklı sonuç verirse FAIL.
+
+### Saldırgan çok oyunculu senaryolar
+- 2/4/8+ eşzamanlı oyuncu ile ayrı manifest/world revisions: yanlış sürüm sessiz kabul edilmeyecek; revision migration/deny raporlanacak.
+- Client A uzak görsel chunk'ı unload ederken B aynı alanda hareket/etkileşim gerçekleştirir; server world state ve B etkilenmeyecek.
+- A/B aynı koordinatta, farklı FPS ve grafik/LOD seviyesiyle: authoritative konum/grounding ve etkileşim kuralları aynı.
+- Kıyı/deniz/eğim sınırında teleport, AOI enter/leave ve chunk create/destroy binlerce tekrar; ghost/duplicate entity ve stale snapshot yok.
+- Paket kaybı/jitter/reorder/duplicate, değişken ping, ani disconnect, late join, repeated reconnect; tick/sequence dedup/reconciliation ve doğru state.
+- Sahte client konum/hız/silaha sahip olma, izinsiz RPC, diğer peer entity'sini taşımak, aşırı input spam, eski replay, geçersiz asset id; yetkisiz state değişimi yok.
+- Zayıf Android cihaz, termal kısılma, background/resume, memory pressure anında client chunk unload; server state etkilenmez, client yakalanır ya da güvenli fallback.
+- World origin shifting ve uzak adada precision/physics; server global position doğru kalır ve client render shift ile teleport karıştırılmaz.
+- İleride world-edit/destruction: eşzamanlı edit çatışması, patch sıra/revision, server collider güncelleme ve bütün clientlarda tutarlılık.
+
+### Otomasyon ve release kapıları
+- Önce bir headless server + iki ayrı client fixture ile deterministik protokol testi; gerçek çok cihaz/network conditioning sonradan bağımsız faz.
+- Test kanıtında server/client build SHA, protocol version, world manifest/hash, seed, tick, peer sayısı, packet loss/jitter profile, authoritative state diff, repro ve süre kaydı.
+- Yetkisiz state güncellemesi, başka oyuncunun stream durumundan etkilenmesi, kaybolmuş kayıt/nesne, collision desync veya exploit açığı kritik (S0/S1). Kanıt tamamlanmadan PR merge/release yok.
+- '0 hata' bir iddia olamaz; amaç hata üretimini zorlaştırmak, etkisini izole etmek ve kritik hatalar için otomatik önleyici kapılar koymaktır.

@@ -1,4 +1,4 @@
-# FareOyunu: bağlayıcı çalışma kuralları (v1.1, 2026-11-23)
+# FareOyunu: bağlayıcı çalışma kuralları (v1.2, 2026-11-23)
 
 ## Her görevden ÖNCE
 - README, PIPELINE, ROADMAP, mimari sözleşme ve ilgili policies dosyalarını yeniden oku.
@@ -30,3 +30,19 @@ Godot 4.7.2 stable + Mobile hedefi; editör içinde terrain görünür; minimum 
 - Her proje değişikliğinde G0-G9 kontrollerinden hangilerinin gerekli olduğunu işaretle; doğrulanmamış olanı kanıtlandı diye yazma. İnsan playtest, Android cihaz ve editor önizlemesi, otomatik CI başarısından bağımsızdır.
 - Birden çok onay bekleyen parça varsa ROADMAP'de beklet; kullanıcı onayı olmadan başka adıma atlama. Yeni kural ihtiyacında mevcut politika belgelerini güncelle; dosya çöplüğü yaratma.
 - Görsel heightmap ve fiziksel gerçek DEM ayrımını koru; orijinal 1536² ile son 1254² varyantını metadata/hash olmadan birbirinin yerine kullanma.
+
+## Çok oyunculu ve görsel chunk bağımsızlığı — zorunlu v1.2
+- TerrainData yalnız dış kaynak yükseklik/world sample hizmeti verir. RPC, peer, görünür chunk, render kamerası veya GPU yükleme kodu içeremez.
+- VisualChunkManager yalnız client visual loading/LOD/cache/render işini yönetir. Server world state, authoritative collision, actor lifetime, inventory, damage, replication interest veya object ownership değiştiremez.
+- SimulationAuthority ve dedicated headless server, istemcinin chunk/LOD durumunu bilmeden gameplay ve collision'ı çalıştırır; doğruluk ekran/cihaz kalitesine göre değişemez.
+- NetworkInterest/AOI, network replication ve transport ayrı arayüzlerdir; visual chunk görünürlük hesaplarından veya player FPS'den authoritative state kararları çıkarılmaz.
+- İlk prototipte server authority, protocol/world revision handshake, stable entity IDs ve late join/reconnect durumları güvenlik/QA önkoşulu olarak planlanır.
+- Bug önleme kuralı: yalnız happy-path değil, cross-module contract, packet loss/reorder, malicious RPC, hızlı chunk unload, low-memory ve iki+ client headless testleri olmadan tamamlandı denmez.
+- Yeni asset, shader, terrain veya chunk optimizasyonu multiplayer regresyon risk analizi ve gerekli testleri tetikler. Uygulanmamış güvenlik/testler asla tamamlandı diye yazılmaz.
+
+## Ayrı plan dosyalarını okumadan kod yazma (2026-11-24)
+- Terrain/heightmap/collider işi öncesinde `docs/architecture/TERRAIN_ARCHITECTURE.md` okunur.
+- Görsel chunk/LOD/streaming işi öncesinde `docs/architecture/CHUNK_STREAMING_ARCHITECTURE.md` okunur.
+- Multiplayer/auth/replication/network interest işi öncesinde `docs/architecture/MULTIPLAYER_ARCHITECTURE.md` okunur.
+- Modüller arası değişiklikte `docs/testing/MULTIPLAYER_INTEGRATION_TEST_PLAN.md` ve `docs/policies/QUALITY.md` birlikte okunur.
+- Genel dünya invariants için `docs/architecture/WORLD_ARCHITECTURE.md` esastır; alt sistemlerin detayları kendi planlarında sürümlenir. Çelişki ADR ile çözümlenir. Kopyalanmış politikalar oluşturulmaz.

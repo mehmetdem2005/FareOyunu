@@ -1,4 +1,4 @@
-# Mühendislik ve varlık politikası v1.1
+# Mühendislik ve varlık politikası v1.2
 
 1. Branch: main sadece PR üzerinden; feat/, fix/, chore/, docs/, test/ tipleri. Bir iş / bir reviewable commit grubu; Conventional Commit başlıkları.
 2. Değişiklik: bağımlılıklar, uyumluluk matrisi, veri sözleşmesi, ölçülebilir kriter ve geri alma yöntemi olmadan riskli değişiklik yapma.
@@ -20,3 +20,12 @@
 16. **Oyuncu-odaklı evrim:** sisteme eklenen her teknoloji oyuncunun algısal kazanımını ve bütçe maliyetini gerekçelendirmeli. Teknik üstünlük hissedilen performans/okunabilirliğe zarar veriyorsa tasarım yeniden değerlendirilir.
 17. **Güvenlik/gizlilik:** cihaz günlüklerine, hata dump'ına veya telemetriye kişisel verileri/secret'ları plansız yazma; veri toplama sadece ihtiyaç olduğunda, rıza ve saklama politikasıyla tasarlanır. Harici eklentiler ve yapay üretim kaynakları için provenance/lisans audit.
 18. **Kurtarma:** repo/asset yedekleme, yanlış commit geri alma ve artifact kaybında restore tatbikatı gelecekte planlanır. “main korunuyor” ancak branch rules doğrulaması ve yedek testiyle kanıtlanır.
+
+## Zorunlu bağımsızlık ve ağ güvenliği (v1.2)
+19. **No cross-control:** TerrainData, VisualChunkManager, SimulationAuthority, NetworkInterest ve Replication arasında serbest singleton çağrısı/scene node referansı yok. Public interface ve testte bağımlılık grafiği kontrolü zorunlu. Scene `.tscn` harici verilere referans verir; authoritative state sahneye gömülmez.
+20. **Server source of truth:** Client RPC ile dünya konumunu/loot/hasar/terrain durumunu nihai değer olarak seçemez. Input, gönderici kimliği, hız, rate, replay/sequence, yetki ve aralık sunucuda doğrulanır. Authentication ve session controls açık güvenlik gereğidir.
+21. **Visual-only unload:** Client chunk unload veya LOD değişimi authoritative entity life cycle, collider truth, object ownership ve NetworkInterest'ı değiştiremez; buna aykırı PR bloklanır.
+22. **Data-plane/protocol versioning:** world_id, content hash, island_id, entity_id, tick/sequence, schema version ve snapshot compatibility sürümlü sözleşmede tutulur; protocol ve terrain data revision değişimi migration/rollout planı olmadan release edilmez.
+23. **Headless/dedicated:** server GPU/display bağımlılığı olmadan build/test edilir. Ağ sunucusunu client viewer ile aynı runtime state singletons üzerinden başlatmak yasaktır.
+24. **Safe publication:** zaman aşımı, eksik chunk, network kopması veya eski snapshot halinde oyuncuyu sessizce boş zemine/yanlış collider'a düşürmek yerine açık durum makinesi, güvenli konum koruma ve retry/reconciliation uygulanır.
+25. **Etkileşim ve world persistence:** çevre/nesne değişiklikleri kalıcı world state + idempotent server event olarak sürümlenir. Deterministic fixture ve mock link üzerinden contract test olmadan canlı gameplay entegrasyonu yok.
