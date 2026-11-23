@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "scope": "island_se_01_only",
+  "source_glb": "assets/terrain/preview_meshes/island_se_01_preview.glb",
+  "source_glb_sha256": "f6cc6c3e3d4580a9acbd9c466d6667367626d007bbd18b3de2e1d291526b0c05",
+  "scale_preview_units": [
+    660,
+    32,
+    660
+  ],
+  "camera": {
+    "projection": "orthographic",
+    "resolution_px": [
+      1536,
+      1536
+    ],
+    "view": "top_down",
+    "rotation_degrees_xyz": [
+      -90,
+      0,
+      0
+    ],
+    "yaw_degrees": 0,
+    "roll_degrees": 0,
+    "center_world_preview_units_approx": [
+      -0.886,
+      0,
+      -7.743
+    ],
+    "position_world_preview_units_provisional": [
+      -0.886,
+      75,
+      -7.743
+    ],
+    "orthographic_size_preview_units": 725,
+    "isolation": "render island_se_01 scene only, never combined 4-island world scene",
+    "crop_margin_fraction_approx": 0.1
+  },
+  "measured_source_bounds_unscaled_mesh": [
+    [
+      -0.4972656369,
+      0,
+      -0.4385904968
+    ],
+    [
+      0.4945811033,
+      0.9779166579,
+      0.4151268601
+    ]
+  ],
+  "measured_source_bounds_scaled_preview_units": [
+    [
+      -328.195,
+      0,
+      -289.47
+    ],
+    [
+      326.42,
+      31.293,
+      273.983
+    ]
+  ],
+  "lighting": {
+    "editor_preview_only": true,
+    "directional_light_direction": "lock_at_actual_capture_time",
+    "directional_light_intensity": "LOCK_WHEN_GODOT_AVAILABLE",
+    "environment_exposure": "LOCK_WHEN_GODOT_AVAILABLE",
+    "tonemap": "LOCK_WHEN_GODOT_AVAILABLE",
+    "background": "LOCK_WHEN_GODOT_AVAILABLE",
+    "note": "Not falsely asserted as already captured."
+  },
+  "source_tool": "Godot 4.7.2 stable Mobile renderer",
+  "status": "specification_only_no_engine_capture",
+  "output_on_success": "artifacts/reviews/pine_se/part_00_overhead.png",
+  "capture_metadata_required": [
+    "Godot binary hash",
+    "input ZIP hash",
+    "SE jpg hash",
+    "SE glb hash",
+    "camera/lighting settings",
+    "viewport 1536x1536",
+    "PNG hash",
+    "capture UTC"
+  ],
+  "prohibited": [
+    "Python or AI illustration labeled Godot",
+    "three other islands",
+    "modification of scene or heightmap",
+    "inferred sunlight exposure without real engine"
+  ]
+}
