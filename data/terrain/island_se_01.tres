@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="TerrainDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/terrain/terrain_definition.gd" id="1_definition"]
+
+[resource]
+script = ExtResource("1_definition")
+island_id = "island_se_01"
+source_exr = "res://assets/terrain/heightmaps/island_se_01_soft_coast_f32.exr"
+source_sha256 = "a04e7a281a5c1fb72e5ee7789ae26add31142a56d187c9dd6dd7c938a7803c97"
+preview_width_units = 600.0
+preview_height_units = 75.0
+preview_depth_units = 600.0
