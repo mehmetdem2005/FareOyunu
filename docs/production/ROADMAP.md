@@ -123,3 +123,11 @@ Bu maddeler mevcut sistemlerin ve yeni sektör uygulamalarının **planı**dır;
 - [ ] Godot 4.7.2 gerçek editör importu ve Play'e basmadan 3D görünürlük/Inspector güncelleme kontrolü (Godot binary bu çalışma ortamında kurulu değil).
 - [ ] Android Mobile Renderer gerçek cihaz testi.
 - [ ] Dünya yerleşimi, deniz, collider, chunk/LOD, NPC ve multiplayer **sonraki fazlar**; bu aşamada yapılmadı.
+
+## Faz 1B — Sürekli FLOAT32 heightmap revizyonu (2026-11-24)
+- [x] Önceki EXR'lerde 240–256 bağımsız yükseklik değeri bulundu, dosya formatı ile kaynak bilgi hassasiyeti ayrıldı.
+- [x] Dört adanın source EXR'leri korunup yeni multiscale smooth, coastal taper ve deterministik mikrorelief ile 810.622–906.051 farklı float32 örnek üretildi.
+- [x] Yeni EXR SHA256, sürüm bilgileri ve tekrarlanabilir dönüştürme kodu; dokusuz harici GLB preview meshleri yenilendi.
+- [x] Yerelde 9 otomatik test geçti (source integrity, EXR Y/FLOAT32, fark, daha düşük eğim sıçraması, GLB ve .tscn referansları).
+- [~] GitHub'a yalnız metin script/manifest/testler kaydedildi. EXR ve GLB binary ZIP'te; repo tek başına tamamlanmış değil.
+- [ ] Godot 4.7.2 Mobile gerçek editör / Android testleri; bu turda fizik, chunk, deniz, world scene yapılmadı.

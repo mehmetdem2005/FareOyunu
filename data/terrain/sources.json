@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "asset_policy": "Immutable EXR sources, disposable editor preview meshes; no world positions/network authority",
-  "source_note": "Artist grayscale images are 8-bit information stored as real 32-bit FLOAT EXR",
+  "source_note": "Continuous float32 synthetic terrain V2: new interpolated/procedurally authored elevations, not lost DEM precision recovered.",
   "assets": [
     {
       "id": "island_nw_01",
-      "revision": "preview-source-2026-11-24-v1",
-      "source": "assets/terrain/heightmaps/island_nw_01_f32.exr",
-      "sha256": "89e74e2772f9bd4985c08111fe72ce43aa7f2ce69102d5a6f6078e35f3083da1",
+      "revision": "procedural-continuous-f32-v2-2026-11-24",
+      "source": "assets/terrain/heightmaps/island_nw_01_terrain_continuous_f32_v2.exr",
+      "sha256": "eb08b231445c44e7cad3036d21cf47be7f2fccfc2c63f2fc51598850d7494c7d",
       "dimensions": [
         1254,
         1254
@@ -19,13 +19,20 @@
         129
       ],
       "preview_mesh": "assets/terrain/preview_meshes/island_nw_01_preview.glb",
-      "note": "preview-unit scale is not metres"
+      "note": "preview-unit scale is not metres",
+      "previous_source": "assets/terrain/heightmaps/island_nw_01_f32.exr",
+      "previous_sha256": "89e74e2772f9bd4985c08111fe72ce43aa7f2ce69102d5a6f6078e35f3083da1",
+      "provenance": "Synthetic continuous FLOAT32 from prior artist/8-bit-derived heightfield; no recovered measured terrain",
+      "generated_by": "tools/terrain/reconstruct_continuous_heightmaps.py",
+      "seed": 32455,
+      "source_unique_sample_values": 240,
+      "result_unique_sample_values": 810622
     },
     {
       "id": "island_sw_01",
-      "revision": "preview-source-2026-11-24-v1",
-      "source": "assets/terrain/heightmaps/island_sw_01_f32.exr",
-      "sha256": "7aab62c9ea0cc4c50ad188d48bfe7e2122249eb4b3e2333bc52947fe68ae71cf",
+      "revision": "procedural-continuous-f32-v2-2026-11-24",
+      "source": "assets/terrain/heightmaps/island_sw_01_terrain_continuous_f32_v2.exr",
+      "sha256": "60222ad4d8a11dee3c291c18319c6b3cad28c232382f8b3411bc52d5c9ac72f5",
       "dimensions": [
         1254,
         1254
@@ -37,13 +44,20 @@
         129
       ],
       "preview_mesh": "assets/terrain/preview_meshes/island_sw_01_preview.glb",
-      "note": "preview-unit scale is not metres"
+      "note": "preview-unit scale is not metres",
+      "previous_source": "assets/terrain/heightmaps/island_sw_01_f32.exr",
+      "previous_sha256": "7aab62c9ea0cc4c50ad188d48bfe7e2122249eb4b3e2333bc52947fe68ae71cf",
+      "provenance": "Synthetic continuous FLOAT32 from prior artist/8-bit-derived heightfield; no recovered measured terrain",
+      "generated_by": "tools/terrain/reconstruct_continuous_heightmaps.py",
+      "seed": 59112,
+      "source_unique_sample_values": 256,
+      "result_unique_sample_values": 821769
     },
     {
       "id": "island_north_01",
-      "revision": "preview-source-2026-11-24-v1",
-      "source": "assets/terrain/heightmaps/island_north_01_f32.exr",
-      "sha256": "a4ffcc4c648161b864e88ec99d58581b0880b9fb61827eae6659c94a2884f329",
+      "revision": "procedural-continuous-f32-v2-2026-11-24",
+      "source": "assets/terrain/heightmaps/island_north_01_terrain_continuous_f32_v2.exr",
+      "sha256": "242ceb8b358c0373100dd9751258759569dbafff1b2428bc8fe10c7934046d01",
       "dimensions": [
         1536,
         1024
@@ -55,13 +69,20 @@
         129
       ],
       "preview_mesh": "assets/terrain/preview_meshes/island_north_01_preview.glb",
-      "note": "preview-unit scale is not metres"
+      "note": "preview-unit scale is not metres",
+      "previous_source": "assets/terrain/heightmaps/island_north_01_f32.exr",
+      "previous_sha256": "a4ffcc4c648161b864e88ec99d58581b0880b9fb61827eae6659c94a2884f329",
+      "provenance": "Synthetic continuous FLOAT32 from prior artist/8-bit-derived heightfield; no recovered measured terrain",
+      "generated_by": "tools/terrain/reconstruct_continuous_heightmaps.py",
+      "seed": 11427,
+      "source_unique_sample_values": 256,
+      "result_unique_sample_values": 906051
     },
     {
       "id": "island_se_01",
-      "revision": "preview-source-2026-11-24-v1",
-      "source": "assets/terrain/heightmaps/island_se_01_soft_coast_f32.exr",
-      "sha256": "a04e7a281a5c1fb72e5ee7789ae26add31142a56d187c9dd6dd7c938a7803c97",
+      "revision": "procedural-continuous-f32-v2-2026-11-24",
+      "source": "assets/terrain/heightmaps/island_se_01_terrain_continuous_f32_v2.exr",
+      "sha256": "f74da15bd7ce2bd98b5a7252a415858d300dee9a7aadc5c849557c106deef531",
       "dimensions": [
         1254,
         1254
@@ -69,11 +90,18 @@
       "pixel_type": "FLOAT32",
       "channels": 1,
       "preview_grid": [
-        129,
-        129
+        193,
+        193
       ],
       "preview_mesh": "assets/terrain/preview_meshes/island_se_01_preview.glb",
-      "note": "preview-unit scale is not metres"
+      "note": "preview-unit scale is not metres",
+      "previous_source": "assets/terrain/heightmaps/island_se_01_soft_coast_f32.exr",
+      "previous_sha256": "a04e7a281a5c1fb72e5ee7789ae26add31142a56d187c9dd6dd7c938a7803c97",
+      "provenance": "Synthetic continuous FLOAT32 from prior artist/8-bit-derived heightfield; no recovered measured terrain",
+      "generated_by": "tools/terrain/reconstruct_continuous_heightmaps.py",
+      "seed": 77193,
+      "source_unique_sample_values": 256,
+      "result_unique_sample_values": 853968
     }
   ]
 }

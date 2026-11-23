@@ -1,0 +1,34 @@
+{
+  "version": "continuous-f32-v2",
+  "based_on": "8-bit artist-derived source; new heightfield mathematically synthesized, not recovered real DEM",
+  "assets": [
+    {
+      "id": "island_nw_01",
+      "old_unique": 240,
+      "new_unique": 810622,
+      "sha256": "eb08b231445c44e7cad3036d21cf47be7f2fccfc2c63f2fc51598850d7494c7d",
+      "mean_abs_change": 0.08620422333478928
+    },
+    {
+      "id": "island_sw_01",
+      "old_unique": 256,
+      "new_unique": 821769,
+      "sha256": "60222ad4d8a11dee3c291c18319c6b3cad28c232382f8b3411bc52d5c9ac72f5",
+      "mean_abs_change": 0.09666386991739273
+    },
+    {
+      "id": "island_north_01",
+      "old_unique": 256,
+      "new_unique": 906051,
+      "sha256": "242ceb8b358c0373100dd9751258759569dbafff1b2428bc8fe10c7934046d01",
+      "mean_abs_change": 0.08427267521619797
+    },
+    {
+      "id": "island_se_01",
+      "old_unique": 256,
+      "new_unique": 853968,
+      "sha256": "f74da15bd7ce2bd98b5a7252a415858d300dee9a7aadc5c849557c106deef531",
+      "mean_abs_change": 0.039474133402109146
+    }
+  ]
+}

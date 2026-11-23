@@ -3,7 +3,7 @@
 Godot 4.7.2 stable / Mobile Renderer için hedeflenen çok adalı açık dünya fare oyunu.
 
 ## Durum
-Aşama 0: kaynak heightmap incelemesi, üretim kuralları, mimari sözleşmeleri, kalite kapıları ve aşamalı plan. Oyuncu, deniz, chunk akışı, editör terrain önizlemesi **henüz uygulanmadı**.
+Aşama 1 textureless terrain preview kodu ve dört harici GLB/EXR kaynağı için hazırlık. Editor görünümü gerçek Godot cihazında henüz kanıtlanmadı. Deniz, chunk, fizik ve multiplayer uygulanmadı.
 
 Bu depo sıfırdan kurulmuştur; önceki Fare deposundan dosya alınmamıştır.
 
@@ -16,7 +16,9 @@ Bu depo sıfırdan kurulmuştur; önceki Fare deposundan dosya alınmamıştır.
 6. docs/assets/SE_HEIGHTMAP.md: kaynak veri kaydı ve eksik ikili dosya.
 
 ## Kaynak durumu
-Sağ alt ada (SE-01) için EXR float32 üretildi ve yerelde doğrulandı. GitHub bağlayıcısının ikili dosya yükleme sınırı nedeniyle EXR **bu dalda henüz commit edilmedi**; dosya kullanıcıya ayrıca teslim edilir. Tam veri entegrasyonu onaylanana kadar arazi sahnesi oluşturulmaz.
+Dört adanın önceki EXR'leri 240–256 ayrı yükseklik seviyesi taşıyordu. Yeni sürekli FLOAT32 v2 heightmap'ler (810.622–906.051 farklı değer) hesaplanarak yeniden üretildi. Bunun fiziksel ölçülmüş arazi detayını geri getirmediği belgelenmiştir. Github dalındaki metin dosyaları yüklenmiştir; ikili 4 EXR + 4 GLB yalnız indirme ZIP'indedir. GitHub tek başına Godot'a import edilebilir değildir.
 
 ## Dal politikası
 main = korunan bütünleşme dalı. feat/, fix/, chore/, docs/ ve test/ ön ekleri kullanılır. Yeni özellikler küçük, konuya odaklı commit ve PR ile taşınır. Onay ve test olmadan main'e merge edilmez.
+
+Yeni kaynak üretimi: `tools/terrain/reconstruct_continuous_heightmaps.py`; ayrıntılar: `docs/implementation/TERRAIN_FLOAT32_V2.md`. Yeni yükseklikler yalnız görsel preview içindir; gerçek dünya ölçeği ve collision yetkisi oluşturulmadı.
