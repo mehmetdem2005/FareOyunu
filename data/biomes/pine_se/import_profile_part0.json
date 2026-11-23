@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "engine": "Godot 4.7.2 stable",
+  "renderer": "mobile",
+  "texture_source_resolution_px": [
+    1024,
+    1024
+  ],
+  "no_2k": true,
+  "status": "settings_proposal_not_import_tested",
+  "profiles": {
+    "diffuse": {
+      "color_space": "sRGB",
+      "mipmaps": true,
+      "repeat": true,
+      "compression": "Mobile GPU-supported compressed format, determine in import test",
+      "intended_usage": "albedo only"
+    },
+    "nor_gl": {
+      "color_space": "linear",
+      "mipmaps": true,
+      "repeat": true,
+      "normal_flag": true,
+      "normal_map_convention": "OpenGL",
+      "compression": "Mobile GPU-supported normal-friendly format; device test"
+    },
+    "rough": {
+      "color_space": "linear",
+      "mipmaps": true,
+      "repeat": true,
+      "mandatory": false,
+      "policy": "Use only for wet mud/moss-rock or visually justified variance; otherwise calibrated scalar roughness"
+    },
+    "ao": {
+      "color_space": "linear",
+      "mipmaps": true,
+      "repeat": true,
+      "mandatory": false,
+      "policy": "Enable only when local AO improves appearance and does not double-darken or break frame budget"
+    },
+    "arm": {
+      "color_space": "linear",
+      "mipmaps": true,
+      "repeat": true,
+      "mandatory": false,
+      "policy": "After channel-layout test, replaces separate AO/rough/metal maps, never sampled in parallel"
+    },
+    "displacement": {
+      "color_space": "linear",
+      "mipmaps": false,
+      "repeat": false,
+      "mandatory": false,
+      "policy": "Offline/geometric authoring reference only, no runtime terrain or server height changes"
+    }
+  },
+  "material_selection": "read from PINE_SE_PAINT_PLAN.json; 18 selected ≠ 18 concurrent GPU texture layers",
+  "benchmark_requirements": [
+    "real Android device",
+    "frame time p50/p95/p99",
+    "RAM/VRAM",
+    "import cache size",
+    "texture residency",
+    "shader compile hitch",
+    "thermal sustained performance"
+  ],
+  "note": "Check Godot import settings against installed 4.7.2 editor before committing .import artifacts; no guessed compression enum values."
+}

@@ -1,0 +1,167 @@
+{
+  "schema_version": 1,
+  "scope": "Part0 only; SE pine biome; no paint/downloads/heightmap modifications",
+  "report_date": "2026-11-24",
+  "repo": "mehmetdem2005/FareOyunu",
+  "branch": "feat/se-pine-part0-readiness",
+  "base_branch": "docs/se-pine-biome-paint-plan",
+  "overall_status": "blocked_not_ready_for_part1",
+  "source": {
+    "archive_filename": "FareOyunu_Godot_4.7.2_Original_Heightmaps_Direct_Terrain.zip",
+    "archive_sha256": "caa7c95627993105201c87bdd4413aca93522e36e9c760129e992d74e0452ba6",
+    "archive_crc": "all_members_ok",
+    "local_source_jpegs_verified": 4,
+    "local_glbs_present": 4,
+    "se_original_jpeg_sha256": "12e0868d2ab57f5d7840747a31222fbb5b6561f1d00e94103ed0834d7c781691",
+    "se_preview_glb_sha256": "f6cc6c3e3d4580a9acbd9c466d6667367626d007bbd18b3de2e1d291526b0c05",
+    "local_mesh_triangles": 84316,
+    "se_preview_mesh_bounds_unscaled": [
+      [
+        -0.49726563692092896,
+        0,
+        -0.43859049677848816
+      ],
+      [
+        0.49458110332489014,
+        0.9779166579246521,
+        0.41512686014175415
+      ]
+    ],
+    "repo_binary_assets": "absent_in_git_branch_source_zip_local_only",
+    "source_altered": false,
+    "other_three_island_assets_altered": false
+  },
+  "engine": {
+    "target": "Godot 4.7.2 stable",
+    "official_release_page": "https://godotengine.org/download/archive/4.7.2-stable/",
+    "release_exists_verified": true,
+    "installed_in_this_runtime": false,
+    "installation_attempt": "official link identified; container download blocked, network DNS requests failed",
+    "editor_import_tested": false,
+    "real_godot_capture_created": false,
+    "android_mobile_verified": false
+  },
+  "materials": {
+    "vendor": "Poly Haven",
+    "license": "CC0",
+    "official_asset_pages_visited": 18,
+    "official_page_1k_option_seen": 18,
+    "exact_1k_file_download_urls_verified": 0,
+    "actual_file_hashes_verified": 0,
+    "files_downloaded": 0,
+    "material_inventory": "data/biomes/pine_se/asset_inventory_part0.json",
+    "closeup_unsafe_1k_due_large_scan": [
+      "coast_sand_05",
+      "coast_sand_01"
+    ],
+    "note": "Vendor page 1K option != verified file-level 1K material."
+  },
+  "physical_scale": {
+    "mouse_length_m": 0.1,
+    "preview_width_units": 660,
+    "preview_vertical_units": 32,
+    "world_units_to_metre": "not_approved",
+    "scan_widths_from_vendor": "registered in material inventory",
+    "texture_uv_metres_per_repeat": "not_approved",
+    "disposition": "Do not finalize texturing UV scale, slope threshold or near-ground acceptance before ADR."
+  },
+  "masks": {
+    "strategy": "M0-M11 plan retained; immutable original JPEG, derived external masks only",
+    "derived_mask_files_generated": 0,
+    "water_annotations_verified": false,
+    "shore_cliff_beach_annotations_verified": false,
+    "note": "Black JPEG pixels are not validated hydrological boundaries."
+  },
+  "renderer": {
+    "profile": "data/biomes/pine_se/render_profile_part0.json",
+    "import_profile": "data/biomes/pine_se/import_profile_part0.json",
+    "expected_capture": "artifacts/reviews/pine_se/part_00_overhead.png",
+    "capture_status": "blocked_real_engine_unavailable",
+    "synthetic_render_substitution": false
+  },
+  "tasks": [
+    {
+      "id": "P0-01",
+      "status": "partial",
+      "evidence": "Local delivered ZIP passes CRC+4 JPEG SHA checks and SE GLB hash. GitHub still missing binaries."
+    },
+    {
+      "id": "P0-02",
+      "status": "blocked",
+      "evidence": "Official 4.7.2 stable release verified; local godot executable unavailable, binary download restricted, no engine smoke."
+    },
+    {
+      "id": "P0-03",
+      "status": "partial",
+      "evidence": "18 official Poly Haven texture pages and 1K choices reviewed; actual 1K file-byte/hash/API endpoints inaccessible; zero textures downloaded."
+    },
+    {
+      "id": "P0-04",
+      "status": "verified",
+      "evidence": "Logical external folder ownership laid out; files created only when needed; no empty asset folders."
+    },
+    {
+      "id": "P0-05",
+      "status": "blocked",
+      "evidence": "Mouse size 0.10m known; editor preview 660x32x660 units not approved as metres. Vendor 1K px/cm recorded; no approved UV physical calibration."
+    },
+    {
+      "id": "P0-06",
+      "status": "partial",
+      "evidence": "Map profiles saved (sRGB albedo, linear normal GL/AO/roughness, selective maps); no Godot import/compression verification."
+    },
+    {
+      "id": "P0-07",
+      "status": "partial",
+      "evidence": "Mask dependency order frozen in plan; verified water/shore annotations and approved physical slope missing; generated masks=0."
+    },
+    {
+      "id": "P0-08",
+      "status": "verified",
+      "evidence": "18 selected candidates mapped to seven biome zones, roughness/AO optional and 1K-only; painting not started."
+    },
+    {
+      "id": "P0-09",
+      "status": "partial",
+      "evidence": "Initial <=3 layers/fragment is a hypothesis, performance/memory/thermal test matrix defined but not measured."
+    },
+    {
+      "id": "P0-10",
+      "status": "partial",
+      "evidence": "Measured SE GLB bounds and proposed 1536-square top-down 725 preview-unit ortho framing recorded; engine PNG not produced."
+    },
+    {
+      "id": "P0-11",
+      "status": "verified",
+      "evidence": "Only new docs/config/audit text files on work branch; source ZIP bytes unchanged; no geometry/other islands/network/physics/source asset writes."
+    },
+    {
+      "id": "P0-12",
+      "status": "blocked",
+      "evidence": "Cannot produce real Godot baseline PNG without verified 4.7.2 runtime. No Part 1 authorization."
+    }
+  ],
+  "tally": {
+    "verified": 3,
+    "partial": 6,
+    "blocked": 3
+  },
+  "next_actions_only_after_resolution": [
+    "Make exact binary JPEG+GLB sources available to GitHub/working tree without modifying bytes",
+    "Install/verify official Godot 4.7.2 stable and test actual Mobile renderer/editor import",
+    "Verify file-level exact Poly Haven 1k diffuse/nor_gl via vendor API and record hashes (download only under permitted later stage)",
+    "Approve one world preview unit = ? metres, plus 10cm mouse UV calibration",
+    "Provide/author verifiable water/shoreline annotations; avoid inferred river/gulf claims",
+    "Capture reproducible truly engine-rendered SE-only baseline PNG at frozen camera before Part1"
+  ],
+  "unperformed": [
+    "Part1 paint",
+    "any material or heightmap download",
+    "any heightmap remap or blur",
+    "other-island modifications",
+    "real engine render",
+    "GPU/mobile hardware testing",
+    "new chunk/network/physics code"
+  ],
+  "decision": "STOP at Part0; do not advance to Part1 without passing blockers and user approval."
+}
