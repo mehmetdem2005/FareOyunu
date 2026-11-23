@@ -1,0 +1,985 @@
+{
+  "$schema": "./PINE_SE_PAINT_PLAN.schema.json",
+  "schema_version": "1.0.0",
+  "id": "fareoyunu.se_pine.paint",
+  "version": "1.0.0",
+  "date": "2026-11-24",
+  "status": "planning_only",
+  "base_branch": "fix/terrain-direct-source-no-reconstruction",
+  "branch": "docs/se-pine-biome-paint-plan",
+  "one_part_per_approval": true,
+  "target": {
+    "island_id": "island_se_01",
+    "biome": "dangerous_pine_forest",
+    "mouse_body_length_m": 0.1,
+    "engine": "Godot 4.7.2 stable",
+    "renderer": "Mobile",
+    "allowed_island_ids": [
+      "island_se_01"
+    ],
+    "unchanged_island_ids": [
+      "island_nw_01",
+      "island_sw_01",
+      "island_north_01"
+    ],
+    "source": {
+      "path": "assets/terrain/heightmaps/island_se_01_original.jpg",
+      "original_codec": "JPEG",
+      "original_sha256": "12e0868d2ab57f5d7840747a31222fbb5b6561f1d00e94103ed0834d7c781691",
+      "dimensions": [
+        1536,
+        1536
+      ],
+      "scene": "scenes/terrain/island_se_01.tscn",
+      "definition": "data/terrain/island_se_01.tres",
+      "preview_mesh": "assets/terrain/preview_meshes/island_se_01_preview.glb",
+      "vertical_scale": "display_units_not_authoritative_metres",
+      "rule": "NEVER generate, draw, smooth, erode, rewrite, or fake precision of source heightmap"
+    }
+  },
+  "restrictions": {
+    "plan_only_no_download_or_paint": true,
+    "material_resolution_px": 1024,
+    "forbid_2k": true,
+    "prohibit": [
+      "editing other three islands",
+      "source terrain heightmap changes",
+      "chunk/LOD logic",
+      "network/authority/physics logic",
+      "water or vegetation gameplay",
+      "scene-embedded big data"
+    ],
+    "paint_layer_state_is_client_visual_only": true,
+    "source_of_truth": "this JSON and linked production contracts",
+    "changes_require_version_and_user_approval": true
+  },
+  "directories": {
+    "create_now": [
+      "docs/production/PINE_SE_PAINT_PLAN.json",
+      "docs/production/PINE_SE_PART0_CHECKLIST.md",
+      "docs/production/PINE_SE_PAINT_PLAN.schema.json"
+    ],
+    "plan_for_later": [
+      "assets/materials/polyhaven/1k/<asset_id>/<map>.*",
+      "data/biomes/pine_se/material_catalog.json",
+      "data/biomes/pine_se/paint_rules.json",
+      "data/biomes/pine_se/masks/<derived_mask>.png",
+      "data/biomes/pine_se/render_profile.tres",
+      "materials/terrain/pine_se/<external_resource>.tres",
+      "tools/paint/pine_se/<script>",
+      "tests/paint/pine_se/<test>",
+      "artifacts/reviews/pine_se/part_<NN>_overhead.png",
+      "artifacts/reviews/pine_se/part_<NN>_metrics.json"
+    ],
+    "rules": [
+      "Only external resources in .tscn",
+      "snake_case folder and names",
+      "Never overwrite uploaded source",
+      "Per-asset URL, hash, licence and physical size"
+    ]
+  },
+  "maps": {
+    "resolution_policy": "Poly Haven source textures exact 1k only; original source JPEG resolution unchanged",
+    "required": [
+      "diffuse",
+      "nor_gl"
+    ],
+    "optional": [
+      "rough",
+      "ao",
+      "displacement",
+      "arm"
+    ],
+    "albedo_color_space": "sRGB",
+    "data_maps_color_space": "linear",
+    "normal_convention": "OpenGL GL",
+    "metallic_constant": 0,
+    "roughness_policy": "constant for matt dry soils; optional 1k maps for materially different wet/moss/rock",
+    "ao_policy": "only after no-double-darkening and GPU budget proof",
+    "arm_orm_policy": "optional packed replacement; avoid loading redundant separate maps",
+    "displacement_policy": "preserve 1k maps as reference only, no runtime ground/collision displacement without separate approval",
+    "import_recommendations": {
+      "diffuse": "1K; sRGB; mipmaps ON; repeat ON; mobile compression to verify",
+      "normal_gl": "1K; linear normal data; normal import flag; mipmaps ON; repeat ON; mobile compression to verify",
+      "rough_ao": "1K optional; linear data; packed ORM only after channel validation",
+      "height": "1K optional; offline authoring reference only; no change to source heightmap"
+    },
+    "materials": [
+      {
+        "id": "forrest_ground_03",
+        "name": "Forest Ground 03",
+        "source_url": "https://polyhaven.com/a/forrest_ground_03",
+        "tier": "core",
+        "zones": [
+          "Z1",
+          "Z3"
+        ],
+        "resolution": "1k_only",
+        "mandatory_maps": [
+          "diffuse",
+          "nor_gl"
+        ],
+        "roughness": "constant",
+        "optional_maps": [
+          "ao",
+          "rough",
+          "displacement"
+        ],
+        "ao": "optional_only_if_justified",
+        "displacement": "reference_only_no_runtime_geometry",
+        "metallic": 0,
+        "physical_scan_width_m": null,
+        "file_hashes": {},
+        "downloaded": false,
+        "one_k_file_verified": false
+      },
+      {
+        "id": "forest_floor",
+        "name": "Forest Floor",
+        "source_url": "https://polyhaven.com/a/forest_floor",
+        "tier": "core",
+        "zones": [
+          "Z1",
+          "Z2",
+          "Z6"
+        ],
+        "resolution": "1k_only",
+        "mandatory_maps": [
+          "diffuse",
+          "nor_gl"
+        ],
+        "roughness": "constant",
+        "optional_maps": [
+          "ao",
+          "rough",
+          "displacement"
+        ],
+        "ao": "optional_only_if_justified",
+        "displacement": "reference_only_no_runtime_geometry",
+        "metallic": 0,
+        "physical_scan_width_m": null,
+        "file_hashes": {},
+        "downloaded": false,
+        "one_k_file_verified": false
+      },
+      {
+        "id": "mud_forest",
+        "name": "Mud Forest",
+        "source_url": "https://polyhaven.com/a/mud_forest",
+        "tier": "core",
+        "zones": [
+          "Z2",
+          "Z6"
+        ],
+        "resolution": "1k_only",
+        "mandatory_maps": [
+          "diffuse",
+          "nor_gl"
+        ],
+        "roughness": "mapped_wet",
+        "optional_maps": [
+          "ao",
+          "rough",
+          "displacement"
+        ],
+        "ao": "optional_only_if_justified",
+        "displacement": "reference_only_no_runtime_geometry",
+        "metallic": 0,
+        "physical_scan_width_m": null,
+        "file_hashes": {},
+        "downloaded": false,
+        "one_k_file_verified": false
+      },
+      {
+        "id": "roots",
+        "name": "Roots",
+        "source_url": "https://polyhaven.com/a/roots",
+        "tier": "core",
+        "zones": [
+          "Z3"
+        ],
+        "resolution": "1k_only",
+        "mandatory_maps": [
+          "diffuse",
+          "nor_gl"
+        ],
+        "roughness": "constant_review",
+        "optional_maps": [
+          "ao",
+          "rough",
+          "displacement"
+        ],
+        "ao": "optional_only_if_justified",
+        "displacement": "reference_only_no_runtime_geometry",
+        "metallic": 0,
+        "physical_scan_width_m": null,
+        "file_hashes": {},
+        "downloaded": false,
+        "one_k_file_verified": false
+      },
+      {
+        "id": "rock_ground_02",
+        "name": "Rock Ground 02",
+        "source_url": "https://polyhaven.com/a/rock_ground_02",
+        "tier": "core",
+        "zones": [
+          "Z4",
+          "Z5"
+        ],
+        "resolution": "1k_only",
+        "mandatory_maps": [
+          "diffuse",
+          "nor_gl"
+        ],
+        "roughness": "mapped_conditional",
+        "optional_maps": [
+          "ao",
+          "rough",
+          "displacement"
+        ],
+        "ao": "optional_only_if_justified",
+        "displacement": "reference_only_no_runtime_geometry",
+        "metallic": 0,
+        "physical_scan_width_m": null,
+        "file_hashes": {},
+        "downloaded": false,
+        "one_k_file_verified": false
+      },
+      {
+        "id": "mossy_rock",
+        "name": "Mossy Rock",
+        "source_url": "https://polyhaven.com/a/mossy_rock",
+        "tier": "core",
+        "zones": [
+          "Z4",
+          "Z5"
+        ],
+        "resolution": "1k_only",
+        "mandatory_maps": [
+          "diffuse",
+          "nor_gl"
+        ],
+        "roughness": "mapped_moss_rock",
+        "optional_maps": [
+          "ao",
+          "rough",
+          "displacement"
+        ],
+        "ao": "optional_only_if_justified",
+        "displacement": "reference_only_no_runtime_geometry",
+        "metallic": 0,
+        "physical_scan_width_m": null,
+        "file_hashes": {},
+        "downloaded": false,
+        "one_k_file_verified": false
+      },
+      {
+        "id": "forest_ground_05",
+        "name": "Forest Ground 05",
+        "source_url": "https://polyhaven.com/a/forest_ground_05",
+        "tier": "support",
+        "zones": [
+          "Z1"
+        ],
+        "resolution": "1k_only",
+        "mandatory_maps": [
+          "diffuse",
+          "nor_gl"
+        ],
+        "roughness": "constant",
+        "optional_maps": [
+          "ao",
+          "rough",
+          "displacement"
+        ],
+        "ao": "optional_only_if_justified",
+        "displacement": "reference_only_no_runtime_geometry",
+        "metallic": 0,
+        "physical_scan_width_m": null,
+        "file_hashes": {},
+        "downloaded": false,
+        "one_k_file_verified": false
+      },
+      {
+        "id": "forrest_ground_01",
+        "name": "Forest Ground 01",
+        "source_url": "https://polyhaven.com/a/forrest_ground_01",
+        "tier": "support",
+        "zones": [
+          "Z7"
+        ],
+        "resolution": "1k_only",
+        "mandatory_maps": [
+          "diffuse",
+          "nor_gl"
+        ],
+        "roughness": "constant",
+        "optional_maps": [
+          "ao",
+          "rough",
+          "displacement"
+        ],
+        "ao": "optional_only_if_justified",
+        "displacement": "reference_only_no_runtime_geometry",
+        "metallic": 0,
+        "physical_scan_width_m": null,
+        "file_hashes": {},
+        "downloaded": false,
+        "one_k_file_verified": false
+      },
+      {
+        "id": "forest_leaves_02",
+        "name": "Forest Leaves 02",
+        "source_url": "https://polyhaven.com/a/forest_leaves_02",
+        "tier": "support",
+        "zones": [
+          "Z2"
+        ],
+        "resolution": "1k_only",
+        "mandatory_maps": [
+          "diffuse",
+          "nor_gl"
+        ],
+        "roughness": "mapped_conditional",
+        "optional_maps": [
+          "ao",
+          "rough",
+          "displacement"
+        ],
+        "ao": "optional_only_if_justified",
+        "displacement": "reference_only_no_runtime_geometry",
+        "metallic": 0,
+        "physical_scan_width_m": null,
+        "file_hashes": {},
+        "downloaded": false,
+        "one_k_file_verified": false
+      },
+      {
+        "id": "forest_ground_04",
+        "name": "Forest Ground 04",
+        "source_url": "https://polyhaven.com/a/forest_ground_04",
+        "tier": "support",
+        "zones": [
+          "Z4",
+          "Z7"
+        ],
+        "resolution": "1k_only",
+        "mandatory_maps": [
+          "diffuse",
+          "nor_gl"
+        ],
+        "roughness": "constant",
+        "optional_maps": [
+          "ao",
+          "rough",
+          "displacement"
+        ],
+        "ao": "optional_only_if_justified",
+        "displacement": "reference_only_no_runtime_geometry",
+        "metallic": 0,
+        "physical_scan_width_m": null,
+        "file_hashes": {},
+        "downloaded": false,
+        "one_k_file_verified": false
+      },
+      {
+        "id": "brown_mud_leaves_01",
+        "name": "Brown Mud Leaves 01",
+        "source_url": "https://polyhaven.com/a/brown_mud_leaves_01",
+        "tier": "support",
+        "zones": [
+          "Z2"
+        ],
+        "resolution": "1k_only",
+        "mandatory_maps": [
+          "diffuse",
+          "nor_gl"
+        ],
+        "roughness": "mapped_wet",
+        "optional_maps": [
+          "ao",
+          "rough",
+          "displacement"
+        ],
+        "ao": "optional_only_if_justified",
+        "displacement": "reference_only_no_runtime_geometry",
+        "metallic": 0,
+        "physical_scan_width_m": null,
+        "file_hashes": {},
+        "downloaded": false,
+        "one_k_file_verified": false
+      },
+      {
+        "id": "brown_mud_rocks_01",
+        "name": "Brown Mud Rocks 01",
+        "source_url": "https://polyhaven.com/a/brown_mud_rocks_01",
+        "tier": "support",
+        "zones": [
+          "Z5",
+          "Z6"
+        ],
+        "resolution": "1k_only",
+        "mandatory_maps": [
+          "diffuse",
+          "nor_gl"
+        ],
+        "roughness": "mapped_wet",
+        "optional_maps": [
+          "ao",
+          "rough",
+          "displacement"
+        ],
+        "ao": "optional_only_if_justified",
+        "displacement": "reference_only_no_runtime_geometry",
+        "metallic": 0,
+        "physical_scan_width_m": null,
+        "file_hashes": {},
+        "downloaded": false,
+        "one_k_file_verified": false
+      },
+      {
+        "id": "coast_sand_05",
+        "name": "Coast Sand 05",
+        "source_url": "https://polyhaven.com/a/coast_sand_05",
+        "tier": "support",
+        "zones": [
+          "Z6"
+        ],
+        "resolution": "1k_only",
+        "mandatory_maps": [
+          "diffuse",
+          "nor_gl"
+        ],
+        "roughness": "constant_review",
+        "optional_maps": [
+          "ao",
+          "rough",
+          "displacement"
+        ],
+        "ao": "optional_only_if_justified",
+        "displacement": "reference_only_no_runtime_geometry",
+        "metallic": 0,
+        "physical_scan_width_m": null,
+        "file_hashes": {},
+        "downloaded": false,
+        "one_k_file_verified": false
+      },
+      {
+        "id": "coast_sand_01",
+        "name": "Coast Sand 01",
+        "source_url": "https://polyhaven.com/a/coast_sand_01",
+        "tier": "support",
+        "zones": [
+          "Z6"
+        ],
+        "resolution": "1k_only",
+        "mandatory_maps": [
+          "diffuse",
+          "nor_gl"
+        ],
+        "roughness": "mapped_conditional",
+        "optional_maps": [
+          "ao",
+          "rough",
+          "displacement"
+        ],
+        "ao": "optional_only_if_justified",
+        "displacement": "reference_only_no_runtime_geometry",
+        "metallic": 0,
+        "physical_scan_width_m": null,
+        "file_hashes": {},
+        "downloaded": false,
+        "one_k_file_verified": false
+      },
+      {
+        "id": "stony_dirt_path",
+        "name": "Stony Dirt Path",
+        "source_url": "https://polyhaven.com/a/stony_dirt_path",
+        "tier": "support",
+        "zones": [
+          "Z7"
+        ],
+        "resolution": "1k_only",
+        "mandatory_maps": [
+          "diffuse",
+          "nor_gl"
+        ],
+        "roughness": "constant_review",
+        "optional_maps": [
+          "ao",
+          "rough",
+          "displacement"
+        ],
+        "ao": "optional_only_if_justified",
+        "displacement": "reference_only_no_runtime_geometry",
+        "metallic": 0,
+        "physical_scan_width_m": null,
+        "file_hashes": {},
+        "downloaded": false,
+        "one_k_file_verified": false
+      },
+      {
+        "id": "pine_bark",
+        "name": "Pine Bark",
+        "source_url": "https://polyhaven.com/a/pine_bark",
+        "tier": "support_object_only",
+        "zones": [
+          "Z3"
+        ],
+        "resolution": "1k_only",
+        "mandatory_maps": [
+          "diffuse",
+          "nor_gl"
+        ],
+        "roughness": "constant_review",
+        "optional_maps": [
+          "ao",
+          "rough",
+          "displacement"
+        ],
+        "ao": "optional_only_if_justified",
+        "displacement": "reference_only_no_runtime_geometry",
+        "metallic": 0,
+        "physical_scan_width_m": null,
+        "file_hashes": {},
+        "downloaded": false,
+        "one_k_file_verified": false
+      },
+      {
+        "id": "wood_chips",
+        "name": "Wood Chips",
+        "source_url": "https://polyhaven.com/a/wood_chips",
+        "tier": "support",
+        "zones": [
+          "Z3",
+          "Z7"
+        ],
+        "resolution": "1k_only",
+        "mandatory_maps": [
+          "diffuse",
+          "nor_gl"
+        ],
+        "roughness": "constant",
+        "optional_maps": [
+          "ao",
+          "rough",
+          "displacement"
+        ],
+        "ao": "optional_only_if_justified",
+        "displacement": "reference_only_no_runtime_geometry",
+        "metallic": 0,
+        "physical_scan_width_m": null,
+        "file_hashes": {},
+        "downloaded": false,
+        "one_k_file_verified": false
+      },
+      {
+        "id": "rocks_ground_02",
+        "name": "Rocks Ground 02",
+        "source_url": "https://polyhaven.com/a/rocks_ground_02",
+        "tier": "support",
+        "zones": [
+          "Z4"
+        ],
+        "resolution": "1k_only",
+        "mandatory_maps": [
+          "diffuse",
+          "nor_gl"
+        ],
+        "roughness": "mapped_conditional",
+        "optional_maps": [
+          "ao",
+          "rough",
+          "displacement"
+        ],
+        "ao": "optional_only_if_justified",
+        "displacement": "reference_only_no_runtime_geometry",
+        "metallic": 0,
+        "physical_scan_width_m": null,
+        "file_hashes": {},
+        "downloaded": false,
+        "one_k_file_verified": false
+      }
+    ]
+  },
+  "zones": [
+    {
+      "id": "Z1",
+      "name": "Ana kuru çam örtüsü",
+      "materials": [
+        "forrest_ground_03",
+        "forest_floor",
+        "forest_ground_05"
+      ],
+      "mask_rule": "forest_upland; gentle_to_medium_slope",
+      "risk": "No single carpet"
+    },
+    {
+      "id": "Z2",
+      "name": "Tehlikeli nemli çukurlar",
+      "materials": [
+        "mud_forest",
+        "brown_mud_leaves_01",
+        "forest_leaves_02",
+        "forest_floor"
+      ],
+      "mask_rule": "verified_wetness; concavity; near_verified_water",
+      "risk": "Never infer a swamp from JPEG darkness"
+    },
+    {
+      "id": "Z3",
+      "name": "Kök bantları",
+      "materials": [
+        "roots",
+        "forrest_ground_03",
+        "wood_chips",
+        "pine_bark"
+      ],
+      "mask_rule": "future_tree_base_annotations; slope_shoulder",
+      "risk": "Pine Bark is mainly object texture"
+    },
+    {
+      "id": "Z4",
+      "name": "Taşlı yamaçlar",
+      "materials": [
+        "rock_ground_02",
+        "rocks_ground_02",
+        "mossy_rock",
+        "forest_ground_04"
+      ],
+      "mask_rule": "slope_curvature_plus_manual_exposed_rock",
+      "risk": "Do not make whole island rocky"
+    },
+    {
+      "id": "Z5",
+      "name": "Dik kayalık kıyılar",
+      "materials": [
+        "mossy_rock",
+        "rock_ground_02",
+        "brown_mud_rocks_01"
+      ],
+      "mask_rule": "approved_cliff_shore",
+      "risk": "Not every coast is sand"
+    },
+    {
+      "id": "Z6",
+      "name": "Yumuşak kıyılar",
+      "materials": [
+        "coast_sand_01",
+        "coast_sand_05",
+        "brown_mud_rocks_01",
+        "forest_floor"
+      ],
+      "mask_rule": "approved_beach_or_estuary_shore",
+      "risk": "No identical-width sand outline"
+    },
+    {
+      "id": "Z7",
+      "name": "Seyrek çamlık geçitleri",
+      "materials": [
+        "forrest_ground_01",
+        "stony_dirt_path",
+        "forest_ground_04",
+        "wood_chips"
+      ],
+      "mask_rule": "approved_path_annotation_and_light_exposure",
+      "risk": "No invented roads"
+    }
+  ],
+  "masks": {
+    "source_immutable": true,
+    "derived_max_size_px": 1024,
+    "sequence": [
+      "M0 immutable original JPEG + SHA",
+      "M1 provisional island/sea segmentation (preview cutoff is NOT coastline authority)",
+      "M2 relative elevation map",
+      "M3 slope after real unit scale approval",
+      "M4 curvature/concavity",
+      "M5 manual-approved cliff vs beach shoreline",
+      "M6 verified river/lake masks or BLOCKED",
+      "M7 distance-to-water and wetness proxy after water verification",
+      "M8 habitat and manual path/tree-base annotations",
+      "M9 deterministic macro/mid masks with separate overrides",
+      "M10 weight normalization and material cap",
+      "M11 per-mask hash/LOD edge test and 1K derived mask export"
+    ],
+    "note": "Water is not reliably inferable from black JPEG pixels alone; visual source cannot imply physical bathymetry."
+  },
+  "anti_tiling": {
+    "levels": [
+      "macro map-driven zone breaks",
+      "mid local material blend",
+      "micro normal/roughness"
+    ],
+    "uv": "physical size from vendor, world space for gentle slope, selective triplanar on steep slopes if mobile-tested",
+    "variants": [
+      "deterministic region rotation",
+      "bounded per-patch scale variance",
+      "small material substitution at ecologically justified locations"
+    ],
+    "deterministic_seed_for_masks_only": 719031,
+    "provisional_max_blended_layers_per_fragment": 3,
+    "realism": "10cm mouse needs true object/mesh microrelief later; normal maps alone do not alter geometry/collision",
+    "no_single_material_carpet": true,
+    "no_fixed_width_beach_ring": true
+  },
+  "render": {
+    "after_each_part": true,
+    "engine_output_only": true,
+    "renderer": "Godot 4.7.2 Mobile",
+    "island_id": "island_se_01",
+    "format": "PNG",
+    "resolution_px": [
+      1536,
+      1536
+    ],
+    "camera": "fixed orthographic top-down; centered on SE bounding box, 10 percent margin; no tilt/yaw",
+    "lock": [
+      "camera position/projection/frame",
+      "key light",
+      "exposure/tonemap",
+      "background",
+      "rendering resolution"
+    ],
+    "output_template": "artifacts/reviews/pine_se/part_<NN>_overhead.png",
+    "metadata_template": "artifacts/reviews/pine_se/part_<NN>_metrics.json",
+    "evidence": [
+      "commit SHA",
+      "source SHA",
+      "material and mask hashes",
+      "Godot version",
+      "camera/light profile hash",
+      "renderer and hardware",
+      "perf p50/p95/p99 or not measured",
+      "human review"
+    ],
+    "prohibited": "Do not label an image as real Godot render if it was generated with Python/AI or a different engine."
+  },
+  "part0_tasks": [
+    {
+      "id": "P0-01",
+      "name": "Kaynak + dal",
+      "instruction": "Compare base/branch; verify source JPEG SHA, 4 IDs, SE scene and GLB binaries; block if repo only has text",
+      "output": "hash inventory + verified original source",
+      "status": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "P0-02",
+      "name": "Godot motoru",
+      "instruction": "Confirm/install at execution time Godot 4.7.2 stable, Mobile renderer and templates; pin version + SHA; editor import smoke",
+      "output": "verified engine/import report",
+      "status": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "P0-03",
+      "name": "Poly Haven 1K PBR",
+      "instruction": "Check exact 1K diffuse and OpenGL normal for 18 assets, optional maps selectively; reject 2K substitution; record sizes, license, hashes",
+      "output": "asset 1K availability register",
+      "status": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "P0-04",
+      "name": "Dizin ve sahiplik",
+      "instruction": "Approve path layout, naming, source vs derived mask split; do not open empty feature folders yet",
+      "output": "folder ownership agreement",
+      "status": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "P0-05",
+      "name": "Fare ölçeği",
+      "instruction": "Calibrate 10cm mouse, world-to-metre relation (currently UNKNOWN), vendor physical texture width; establish texel/m reference",
+      "output": "scale ADR",
+      "status": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "P0-06",
+      "name": "Import ayarları",
+      "instruction": "Verify sRGB for diffuse, linear for data, GL normal, mipmap/repeat, mobile compression, AO/ORM and metallic=0",
+      "output": "per-map import matrix",
+      "status": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "P0-07",
+      "name": "Maske sıra/sınırları",
+      "instruction": "Specify immutable JPEG->height candidate->slope after approved scale->curvature->authored shore->water->wetness->zone weights; no source rewrite",
+      "output": "dependency diagram + uncertainty flags",
+      "status": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "P0-08",
+      "name": "Boya matrisi",
+      "instruction": "Confirm zones, material use, roughness needs and anti-repeat; forbid per-pixel 18-layer shader",
+      "output": "rule/mask approval",
+      "status": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "P0-09",
+      "name": "Mobil maliyet",
+      "instruction": "Set provisional <=3 blended layers per pixel hypothesis; plan CPU/GPU/RAM/thermal measurements, no performance claims",
+      "output": "benchmark plan",
+      "status": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "P0-10",
+      "name": "Render profili",
+      "instruction": "Lock SE-only orthographic birdseye, lighting/exposure, output PNG format, file naming and hash metadata",
+      "output": "camera + lighting metadata specification",
+      "status": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "P0-11",
+      "name": "Negatif test",
+      "instruction": "Check no other islands changed, no heightmap alteration, no embedded mesh, no network/chunk/collision coupling",
+      "output": "PASS/BLOCKED evidence log",
+      "status": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "P0-12",
+      "name": "Tur kapısı",
+      "instruction": "When engine and sources ready produce genuine unpainted baseline PNG; ask user review and stop before Part1",
+      "output": "Part0 handoff + user decision",
+      "status": "not_started",
+      "evidence": null
+    }
+  ],
+  "phases": [
+    {
+      "id": "part_00",
+      "name": "Envanter/kalibrasyon/baseline",
+      "materials_added": [],
+      "work": [
+        "Part0 checklist, no painting"
+      ],
+      "render": "baseline Godot PNG if setup available; otherwise BLOCKED",
+      "status": "not_started",
+      "user_approval_gate": true,
+      "do_not_auto_advance": true
+    },
+    {
+      "id": "part_01",
+      "name": "Makro biyom boyası",
+      "materials_added": [
+        "forrest_ground_03",
+        "forest_floor",
+        "mud_forest",
+        "rock_ground_02",
+        "mossy_rock",
+        "coast_sand_01"
+      ],
+      "work": [
+        "height/slope/shore masks, coarse zoning, no microdetails"
+      ],
+      "render": "Godot birdseye PNG",
+      "status": "not_started",
+      "user_approval_gate": true,
+      "do_not_auto_advance": true
+    },
+    {
+      "id": "part_02",
+      "name": "Nemli cepler ve kıyı ayrımı",
+      "materials_added": [
+        "brown_mud_leaves_01",
+        "brown_mud_rocks_01",
+        "coast_sand_05"
+      ],
+      "work": [
+        "wetness and shore type refinement, selective roughness"
+      ],
+      "render": "Godot birdseye PNG",
+      "status": "not_started",
+      "user_approval_gate": true,
+      "do_not_auto_advance": true
+    },
+    {
+      "id": "part_03",
+      "name": "Kök/rota/saha ölçeği",
+      "materials_added": [
+        "roots",
+        "stony_dirt_path",
+        "wood_chips",
+        "pine_bark"
+      ],
+      "work": [
+        "roots local zone, path texture, 10cm closeup geometry debt"
+      ],
+      "render": "Godot birdseye + closeup PNG",
+      "status": "not_started",
+      "user_approval_gate": true,
+      "do_not_auto_advance": true
+    },
+    {
+      "id": "part_04",
+      "name": "Anti-repeat/çeşitlilik",
+      "materials_added": [
+        "forest_ground_05",
+        "forrest_ground_01",
+        "forest_leaves_02",
+        "forest_ground_04",
+        "rocks_ground_02"
+      ],
+      "work": [
+        "broad rotation/UV variation, regions, map blend limits, profiling"
+      ],
+      "render": "Godot birdseye PNG",
+      "status": "not_started",
+      "user_approval_gate": true,
+      "do_not_auto_advance": true
+    },
+    {
+      "id": "part_05",
+      "name": "Son boya QA",
+      "materials_added": [],
+      "work": [
+        "audit all selected assets, closeup/visual/thermal debt and remaining clutter"
+      ],
+      "render": "Godot final birdseye + closeup PNG",
+      "status": "not_started",
+      "user_approval_gate": true,
+      "do_not_auto_advance": true
+    }
+  ],
+  "quality_gates": [
+    "Q1 only SE changed; other three unchanged byte/hash",
+    "Q2 original JPEG hash unchanged; no fabricated EXR or rewritten heightmap",
+    "Q3 all installed material maps exact 1K and provenance verified",
+    "Q4 GL normal, correct color spaces, roughness selectivity, metallic zero",
+    "Q5 slopes/shore/water masks grounded; unknown region explicitly BLOCKED",
+    "Q6 10cm mouse, metres-per-unit and texel density actually calibrated",
+    "Q7 no visible pattern repeat in overhead/near-ground checks",
+    "Q8 Mobile real FPS/frame-time/memory/thermal measured before performance claims",
+    "Q9 texture work does not control chunk/terrain truth/network/physics",
+    "Q10 actual Godot PNG fixed camera after every approved part",
+    "Q11 provenance/CC0 and source hashes for every file"
+  ],
+  "blockers": [
+    "B1 GitHub text-only branch lacks binary JPEG/GLB; verify complete assets in Part0",
+    "B2 Godot engine installation/import not yet demonstrated in this working runtime",
+    "B3 preview units 660x32x660 not approved as physical metres",
+    "B4 shoreline/lake/river annotations absent, visual JPEG cannot prove water boundaries",
+    "B5 Poly Haven exact 1K file variants and map names not yet verified individually"
+  ],
+  "references": [
+    "https://polyhaven.com/license",
+    "https://polyhaven.com/our-api",
+    "https://docs.godotengine.org/en/4.7/tutorials/3d/standard_material_3d.html",
+    "https://docs.godotengine.org/en/4.7/tutorials/3d/3d_rendering_limitations.html",
+    "https://docs.godotengine.org/en/4.7/tutorials/performance/optimizing_3d_performance.html"
+  ],
+  "revisions": [
+    {
+      "version": "1.0.0",
+      "change": "Initial SE-only 18-asset 1K multi-round planning, no engine changes"
+    }
+  ]
+}
