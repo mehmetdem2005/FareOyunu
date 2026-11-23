@@ -123,3 +123,14 @@ Bu maddeler mevcut sistemlerin ve yeni sektör uygulamalarının **planı**dır;
 - [ ] Godot 4.7.2 gerçek editör importu ve Play'e basmadan 3D görünürlük/Inspector güncelleme kontrolü (Godot binary bu çalışma ortamında kurulu değil).
 - [ ] Android Mobile Renderer gerçek cihaz testi.
 - [ ] Dünya yerleşimi, deniz, collider, chunk/LOD, NPC ve multiplayer **sonraki fazlar**; bu aşamada yapılmadı.
+
+## Faz 1C — Kullanıcının orijinal haritalarıyla doğrudan terrain (2026-11-24)
+- [x] Dört yüklenen görselin gerçek codec'ini inceledik: uzantı .png, gerçek içerik RGB JPEG, 1536×1536 (3 adet) / 1536×1024 (1 adet).
+- [x] Ham görüntü baytlarını hiç değiştirmeden .jpg uzantısıyla dış kaynak olarak sakla; her biri SHA256 ile sabitlenmiş.
+- [x] Hiçbir EXR/yeniden üretilmiş heightmap, smoothing, erosion veya prosedürel heightfield KULLANMA.
+- [x] Harici dokusuz GLB mesh'lerini kaynak pikselleri okuyarak üret; yalnız mesh'te bilinear vertex interpolation ve siyah su arka planını clip et.
+- [x] Dört adayı tek harici referanslı `scenes/world/world_preview.tscn` sahnesinde göster; yerleşim `data/world/world_preview_layout.tres` içinde ve editörde değiştirilebilir.
+- [x] Yerelde 6 doğrulama testi + tekrar üretme / ZIP CRC kontrolü geçti.
+- [~] GitHub'a metin script/sahne/manifest dosyaları commit edildi. **İkili dört JPEG ve dört GLB GitHub'da yok; tam Godot proje ZIP'i ayrıca verildi.**
+- [ ] Godot 4.7.2 gerçek editor açılışı ve Mobile renderer cihaz testi (bu turda yapılmadı).
+- [ ] Kullanıcı onayı olmadan kaynak görselin heightmap'e dönüştürülmesi veya çizilmesi YASAK; kullanıcı isterse ayrı iş.
