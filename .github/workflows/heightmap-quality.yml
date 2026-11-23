@@ -1,0 +1,43 @@
+name: Heightmap foundation checks
+
+on:
+  push:
+    branches:
+      - "feat/**"
+      - "fix/**"
+      - "chore/**"
+      - "test/**"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  converter-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Checkout pinned action
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Install test dependencies
+        run: |
+          python3 -m pip install --disable-pip-version-check -r tools/heightmap/requirements.txt
+      - name: Run converter unit tests
+        env:
+          OPENCV_IO_ENABLE_OPENEXR: "1"
+        run: |
+          python3 -m unittest discover -s tests -p "test_*.py" -v
+      - name: Validate phase metadata and policies
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          required = ["AGENTS.md", "docs/production/PIPELINE.md", "docs/production/ROADMAP.md", "docs/policies/ENGINEERING.md", "docs/policies/QUALITY.md", "docs/architecture/WORLD_ARCHITECTURE.md", "docs/assets/SE_HEIGHTMAP.md"]
+          for path in required:
+              assert Path(path).stat().st_size > 100, path
+          meta = json.loads(Path("assets/terrain/manifest/se_01.json").read_text())
+          assert meta["asset_id"] == "island_se_01"
+          assert meta["format"] == "float32 EXR"
+          assert meta["dimensions"] == [1536, 1536]
+          assert meta["git_binary_present"] is False
+          PY

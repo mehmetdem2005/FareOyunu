@@ -1,0 +1,8 @@
+# Godot editor generated files
+.godot/
+.import/
+*.tmp
+__pycache__/
+.pytest_cache/
+.venv/
+# Explicitly do not ignore source assets or f32 heightmaps
