@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "asset_id": "island_se_01",
+  "region": "southeast",
+  "dimensions": [
+    1536,
+    1536
+  ],
+  "format": "float32 EXR",
+  "channel": "luminance",
+  "source_actual_format": "JPEG",
+  "source_mode": "RGB uint8",
+  "mapping": "Pillow RGB->L, value=byte/255.0, no gamma, no auto-stretch",
+  "source_sha256": "e5f3348669c1941fdf0ec225fff46c54c31cc4f101ddc5204ecdaaaa319b1d4e",
+  "output_sha256": "126ba5de760160a1562b2beefc2000562a227007c21569feeda2db04deac0d1f",
+  "output_target_path": "assets/terrain/heightmaps/island_se_01_f32.exr",
+  "git_binary_present": false,
+  "world_scale_meters": null,
+  "sea_level": null,
+  "note": "F32 storage does not restore JPEG height precision."
+}
