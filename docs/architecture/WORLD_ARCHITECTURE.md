@@ -72,3 +72,15 @@ Oyuncu A uzaktaki adada, oyuncu B kıyıda: A'nın telefonundaki görsel ada chu
 - https://docs.godotengine.org/en/stable/classes/class_multiplayersynchronizer.html
 - https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_dedicated_servers.html
 - https://docs.godotengine.org/en/stable/tutorials/performance/optimizing_3d_performance.html
+
+## Uzmanlık planları — kaynak hiyerarşisi (2026-11-24)
+Bu dosya genel dünya invariants ve domain sınırlarının üst sözleşmesidir. Aşağıdaki **ayrı Markdown belgeleri** ilgili alt sistemin ayrıntılı tek kaynağıdır. Çelişki halinde uygulamayı durdur, ADR/PR'de uzlaştır; sessizce yorumlama.
+
+| Alt sistem | Ayrı plan dosyası | Sahipliği |
+| --- | --- | --- |
+| Terrain / collision source | [TERRAIN_ARCHITECTURE.md](TERRAIN_ARCHITECTURE.md) | Immutable heightmap, sampler, canonical collision input ve editör veri önizlemesi |
+| Görsel chunk / LOD | [CHUNK_STREAMING_ARCHITECTURE.md](CHUNK_STREAMING_ARCHITECTURE.md) | Client visual tile scheduling, LOD, mesh, GPU/cache |
+| Multiplayer | [MULTIPLAYER_ARCHITECTURE.md](MULTIPLAYER_ARCHITECTURE.md) | Dedicated server authority, AOI, replication, protocol ve session |
+| Entegrasyon / adversarial QA | [MULTIPLAYER_INTEGRATION_TEST_PLAN.md](../testing/MULTIPLAYER_INTEGRATION_TEST_PLAN.md) | Client/server/terrain/chunk sözleşmelerinin ortak ve kaos testleri |
+
+Bu belgeler kod değildir: görsel chunk sistemi, authoritative sunucu ve editor terrain önizlemesi henüz uygulanmış sayılmaz.
