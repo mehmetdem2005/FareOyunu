@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="WorldPreviewLayout" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/world_preview_layout.gd" id="1_layout"]
+
+[resource]
+script = ExtResource("1_layout")
+northwest_position = Vector3(-650, 0, -420)
+southwest_position = Vector3(-650, 0, 420)
+north_position = Vector3(290, 0, -440)
+southeast_position = Vector3(320, 0, 420)
