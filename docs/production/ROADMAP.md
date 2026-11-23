@@ -113,3 +113,13 @@ Bu maddeler mevcut sistemlerin ve yeni sektör uygulamalarının **planı**dır;
 - [x] Yeni uzmanlık plan dosyalarını yalnız ilgili iş parçası başladığında oluşturma yaklaşımını koru.
 - [ ] Öncelikli W01-W06 modüllerinin gerçek sözleşme ve implementasyonları — daha sonra, her biri ayrı onay ve PR.
 - [ ] Çoklu ada, oyun içi dünya, biyom ve gerçek cihaz/oyuncu testleri — henüz uygulanmadı.
+
+## Faz 1A — Dokusuz terrain önizlemesi (2026-11-24)
+- [x] Dört son kaynak EXR için ayrı revision/SHA/gerçek boyut manifesti hazırlandı. Kuzey kaynak 1536x1024; diğer üçü 1254x1254. Eski 1536² SE manifesti korunmuştur.
+- [x] Dört statik dokusuz harici GLB editor mesh preview ve dört .tscn + .tres tanımı Python'da üretildi; sahneye height/vertex dizisi gömülmedi.
+- [x] Godot 4.7.2 Mobile `project.godot`, editor preview @tool ölçek kontrolü ve yeniden üretme aracı ZIP'te teslim edildi.
+- [x] ZIP içeriğinde 6 yerel otomatik test geçti (EXR/sha, GLB topology/normal, material sıfır, dış sahne referansları).
+- [~] GitHub dalında sahne, kaynak kodu ve manifest mevcut; **ikili EXR/GLB'ler GitHub'a commit edilmedi**, tamamı teslim edilen ZIP'te. Depo binary asset'ler eklenene kadar import edilebilir değildir.
+- [ ] Godot 4.7.2 gerçek editör importu ve Play'e basmadan 3D görünürlük/Inspector güncelleme kontrolü (Godot binary bu çalışma ortamında kurulu değil).
+- [ ] Android Mobile Renderer gerçek cihaz testi.
+- [ ] Dünya yerleşimi, deniz, collider, chunk/LOD, NPC ve multiplayer **sonraki fazlar**; bu aşamada yapılmadı.
