@@ -5,8 +5,8 @@
 [resource]
 script = ExtResource("1_definition")
 island_id = "island_sw_01"
-source_exr = "res://assets/terrain/heightmaps/island_sw_01_f32.exr"
-source_sha256 = "7aab62c9ea0cc4c50ad188d48bfe7e2122249eb4b3e2333bc52947fe68ae71cf"
-preview_width_units = 600.0
-preview_height_units = 30.0
-preview_depth_units = 600.0
+source_image = "res://assets/terrain/heightmaps/island_sw_01_original.jpg"
+source_sha256 = "9845c85bfa9e80d6385adfc93d38ce569c63b3162c393fb811445ecbe85a9d0a"
+preview_width_units = 610.0
+preview_height_units = 19.0
+preview_depth_units = 610.0
