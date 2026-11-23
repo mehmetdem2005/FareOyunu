@@ -42,3 +42,50 @@ Creative direction/worldbuilding; game design & pacing; player UX/accessibility;
 
 ## G. Değişiklik yönetimi
 Bir darboğaz, başarısız test veya yeni gereksinim çıktığında ilgili politika/planı in-place sürümleyerek güncelle. Her revizyon neden/kanıt/tarih ile kaydedilir. Kapsam dışı öneriler ROADMAP Backlog'a alınır; kendiliğinden uygulanmaz.
+
+## H. Eksik üretim disiplinleri — genişletme v1.1 (2026-11-23)
+Bu bölüm planlama aşamasıdır; aşağıdaki kapılar henüz otomasyonla uygulanmış değildir.
+
+### H1. Dikey kesit önce, tam dünya sonra
+- **Proof of concept (PoC):** tek EXR ve editor preview yeteneğinin teknik olarak mümkün olduğunun kanıtı.
+- **Vertical slice:** oynanabilir fare ölçeğinde küçük, cilalı kıyı→yamaç→tepe rotası; kontrol, kamera, materyal, ses, kayıt, performans ve UX beraber sınanır. Dört adaya yayılmadan önce karar kapısı.
+- **Content production:** kanıtlanmış modüllerle diğer adalara ancak kabul edilen kalite/bütçe sınırlarında ölçeklenir. Haritanın büyük olması oynanışı kendi başına güçlendirmez.
+- **Alpha:** tüm temel oyun döngüleri birbiriyle çalışır; geçici içerik olabilir.
+- **Beta:** içerik bütünlüğü, hata azaltma ve oynanabilirlik; belgesiz özellik ekleme yok.
+- **Release candidate:** bilinen kritik arıza yok; sürüm, test kanıtı, geri dönüş ve destek planı sabitlenmiştir.
+
+### H2. Karar, sahiplik ve objektif kapılar
+Her modül ticket/PR'ında: owner rolü, neden/oyuncu değeri, dahil-hariç kapsam, giriş bağımlılıkları, **Definition of Ready**, ölçülebilir **Definition of Done**, test/kanıt linki, risk/severity, rollback, dokunduğu asset/sözleşme, uyumluluk matrisi ve bir sonraki karar. Roller (rendering, level art, gameplay, QA, producer vs.) sorumluluk tanımlar; tek kişi birden çok rolü üstlenebilir, bağımsız eleştirel inceleme yine yapılır.
+
+**Ready:** gerçek asset ve kabul kriterleri belli, ilgili veri sürümü doğrulanmış, Godot sürümü doğrulanmış, risk ve test stratejisi yazılmış.
+**Done:** unit/integration/editor/cihaz kapsamından ilgili testler tamam; sonuçlar tekrar üretilebilir; perf & UX bütçesi ölçülmüş veya açık blocker; lisans/provenance ve dokümanlar güncel; kullanıcı onayı; onaysız kapsam yok.
+
+### H3. Kanıt katmanları ve release kararları
+- G8 **oyuncu deneyimi:** first-time user experience, kamera/kontrol, fare algısı, okunabilirlik, navigasyon, özgürlük/amaç dengesi, tekrarlama ve erişilebilirlik; gerçek kör/ilk-kez oyuncu testleri.
+- G9 **sürüm ve kurtarma:** deterministik build, package/signing, versiyon, kurulum/güncelleme, save migration, crash/ANR ve hata raporu, roll-back planı, dağıtım öncesi go/no-go.
+- CI green yalnız makinenin test ettiği koşulları kanıtlar. G4 editor, G5 GPU visual, G6 termal, G8 insan playtest olmadan AAA veya cihaz doğrulaması iddia edilmez.
+- Faz özetinde **done / unverified / blocked / deferred / rejected** etiketlerinden biri ve kanıt zorunlu.
+
+### H4. Kalite ve üretim maliyeti bütçeleri
+Device-tier tanımı (low / target / high), 30/60 FPS hedefi ve RAM/VRAM/depolama/CPU/GPU/ısı/işlemci batarya bütçeleri gerçek cihaz ölçümünden sonra ADR ile belirlenir. Başlangıç hesabı: 30 fps = 33.33ms, 60 fps = 16.67ms kare süresi; bu hedefler değil matematiksel referanslardır. Ortalama FPS tek başına geçiş kriteri değil: p50, p95, p99, jank/hitch, shader compilation, streaming upload, editor latency, overdraw ve termal sürdürülebilirlik raporlanır.
+
+### H5. Tek kaynaktan üretim, veri ve sürüm izlenebilirliği
+Her kaynak: asset ID, ada/lokasyon, sürüm, özgün hash, codec gerçek pixel type, kanal, çözünürlük, renk/lineer dönüşümü, autor/izin, dönüşüm kod sürümü, hedef hash, importer parametreleri, önceki sürüm ve geçiş kararı. İçerik editörden değiştirilebilmeli ancak editör cache veya .tscn büyük veri deposu olamaz. Veri manifest değiştiyse downstream invalidation ve yeniden test zorunlu.
+
+### H6. Bütçe ve zaman yönetimi
+Prototip hedefi, sprint olmayan küçük bir feature queue, risk register, dependency map, değişiklik maliyeti, teknik borç limiti, build süresi/CI dakika maliyeti, asset paket boyutu, mobil depolama ve teslim tarihi aralığı gözetilir. Kanıtsız “AAA” etiketine zaman harcanmaz. Üretimi durduran kalite borcu yeni özellik önüne alınır.
+
+### H7. Bilinen açıklar ve öncelikli takvim
+1. Şimdi: DOD/DOR, risk matrisi, oyuncu kalite kriteri, üretim kapıları, sürüm izleri (yalnız belgeler).
+2. Sonraki teknik parça: eski 1536² asset manifest ↔ yeni 1254² yumuşak sahil f32 EXR farkı uzlaştırma; önce gerçek source/output checksum ve metadata, sonra asset'i GitHub'a bağla.
+3. İlk editor+terrain parçası: Godot 4.7.2 binary hash ve @tool lifecycle/safe preview.
+4. İlk oynanabilir vertical slice: gerçek oyuncu testleri, sürüm-kayıt/geri yükleme ve cihaz bütçesi.
+5. Diğer adalar sonra: dünya sürekliliği, büyük ölçek ve UX doğrulanınca.
+
+### H8. Referanslar (dış doğrulama, 2026-11-23)
+- Godot Mobile/Compatibility renderer sınırları: https://docs.godotengine.org/en/stable/tutorials/rendering/renderers.html
+- Godot editörde kod çalıştırma: https://docs.godotengine.org/en/stable/tutorials/plugins/running_code_in_the_editor.html
+- Android performans/termal: https://developer.android.com/games/optimize
+- Android vitals: https://developer.android.com/games/optimize/vitals
+- GitHub branch protection: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches
+- Game Accessibility Guidelines: https://gameaccessibilityguidelines.com/full-list/
