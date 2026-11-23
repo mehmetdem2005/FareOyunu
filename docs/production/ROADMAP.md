@@ -134,3 +134,14 @@ Bu maddeler mevcut sistemlerin ve yeni sektör uygulamalarının **planı**dır;
 - [~] GitHub'a metin script/sahne/manifest dosyaları commit edildi. **İkili dört JPEG ve dört GLB GitHub'da yok; tam Godot proje ZIP'i ayrıca verildi.**
 - [ ] Godot 4.7.2 gerçek editor açılışı ve Mobile renderer cihaz testi (bu turda yapılmadı).
 - [ ] Kullanıcı onayı olmadan kaynak görselin heightmap'e dönüştürülmesi veya çizilmesi YASAK; kullanıcı isterse ayrı iş.
+
+## Faz 1D — Sağ alt çam biyomu: plan sabitleme (2026-11-24)
+- [x] `PINE_SE_PAINT_PLAN.json` ile tam sürümlü, SE-only, 1K Poly Haven, 18 materyal / 7 bölge / 6 tur planı kaydedildi.
+- [x] `PINE_SE_PAINT_PLAN.schema.json` ile gerekli alanlar ve kritik sınırlar tanımlandı.
+- [x] `PINE_SE_PART0_CHECKLIST.md` ile 12 adet sıralı Part 0 görevi ve kuşbakışı PNG standardı belgelendi.
+- [x] JSON ve kaynak manifest ilişkisi için `tests/test_se_pine_paint_plan.py` plan sözleşme testi eklendi.
+- [ ] Part 0'ın **gerçek icrası**: binary kaynak/hash ve Godot 4.7.2 doğrulaması; 1K PBR envanteri, gerçek ölçek kalibrasyonu, maskeleri doğrulama ve mümkünse boyasız PNG.
+- [ ] Part 1–5 boya turları: ayrı izin, ayrı kanıt ve her tur sonunda aynı kameradan gerçek Godot PNG.
+- [ ] Terrain heightmap değiştirme, diğer üç adayı boyama, deniz/chunk/multiplayer uygulama: bu işin kapsamı dışında.
+
+Referans: [PINE_SE_PAINT_PLAN.json](PINE_SE_PAINT_PLAN.json) (tek karar kaynağı), [PINE_SE_PART0_CHECKLIST.md](PINE_SE_PART0_CHECKLIST.md).
