@@ -1,0 +1,11 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/terrain/terrain_preview.gd" id="1_preview"]
+[ext_resource type="Resource" path="res://data/terrain/island_north_01.tres" id="2_definition"]
+[ext_resource type="PackedScene" path="res://assets/terrain/preview_meshes/island_north_01_preview.glb" id="3_mesh"]
+
+[node name="island_north_01" type="Node3D"]
+script = ExtResource("1_preview")
+definition = ExtResource("2_definition")
+
+[node name="PreviewModel" parent="." instance=ExtResource("3_mesh")]
