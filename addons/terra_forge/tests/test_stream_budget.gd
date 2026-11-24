@@ -18,13 +18,22 @@ func _initialize() -> void:
     if terrain._tile_nodes.size() != 0 or terrain._tile_queue.size() != 16:
         _fail("Initial sync allocated tiles outside the frame budget", terrain)
         return
-    terrain._drain_tile_queue()
-    if terrain._tile_nodes.size() != 2 or terrain._tile_queue.size() != 14:
-        _fail("First frame did not build exactly two tiles", terrain)
-        return
-    terrain._drain_tile_queue()
-    if terrain._tile_nodes.size() != 4 or terrain._tile_queue.size() != 12:
-        _fail("Second frame exceeded or missed build budget", terrain)
+    # The production scheduler has TWO limits: count and elapsed time.
+    # A slow runner can legitimately stop after one tile. Assert forward
+    # progress, the hard count cap and conservation on EVERY drain instead
+    # of assuming two meshes always fit into the default 3 ms time budget.
+    for frame in range(16):
+        if terrain._tile_queue.is_empty():
+            break
+        var before: int = terrain._tile_nodes.size()
+        terrain._drain_tile_queue()
+        var after: int = terrain._tile_nodes.size()
+        var built: int = after - before
+        if built < 1 or built > terrain.tile_updates_per_frame or after + terrain._tile_queue.size() != 16:
+            _fail("Frame exceeded build cap, lost work or made no progress", terrain)
+            return
+    if terrain._tile_nodes.size() != 16 or not terrain._tile_queue.is_empty():
+        _fail("Bounded drains failed to finish all desired tiles", terrain)
         return
     terrain._stream_anchor = Vector3(99999, 0, 99999)
     terrain._sync_resident_tiles()
