@@ -3,6 +3,7 @@ class_name TerraForgeTerrain
 extends Node3D
 ## A self-contained, Float32, tiled terrain. Generated children are transient.
 const HEIGHT_STORE = preload("res://addons/terra_forge/core/height_store.gd")
+const HEIGHT_LAYERS = preload("res://addons/terra_forge/core/height_layers.gd")
 const LOD_POLICY = preload("res://addons/terra_forge/core/lod_policy.gd")
 const BRUSH_SHAPES = preload("res://addons/terra_forge/core/brush_shapes.gd")
 const LANDFORM_PATHS = preload("res://addons/terra_forge/core/landform_paths.gd")
@@ -14,6 +15,10 @@ const MAX_HISTORY: int = 20
 @export_range(32, 2048, 32) var cells_z: int = 256
 @export_range(0.25, 4.0, 0.25) var sample_spacing: float = 1.0
 @export_file("*.tfh") var data_file: String = "res://terraforge_data/terrain.tfh"
+# P1 is intentionally OFF for all existing scenes. TFL1 is one authoritative
+# file containing base + layers; legacy TFH is never modified in this mode.
+@export var layer_mode: bool = false
+@export_file("*.tfl") var layer_file: String = ""
 @export_range(80.0, 640.0, 16.0) var view_distance: float = 224.0
 @export_range(32, 256, 8) var max_visible_tiles: int = 96
 @export_range(1, 6, 1) var tile_updates_per_frame: int = 2
@@ -25,6 +30,8 @@ const MAX_HISTORY: int = 20
 # height file. A reopened scene with a missing .tfh must fail closed instead.
 var allow_data_creation: bool = false
 var height_data
+var _layer_stack
+var _active_layer: int = 0
 var _tile_nodes: Dictionary = {}  # Resident tiles only; not all map tiles.
 var _desired_tiles: Dictionary = {}  # Keys + selected LOD before any node allocation.
 var _dirty_tiles: Dictionary = {}
@@ -71,19 +78,33 @@ var _terrain_material: StandardMaterial3D
 
 func _ready() -> void:
     height_data = HEIGHT_STORE.new()
-    var load_error: Error = height_data.load_file(data_file)
-    _source_load_error = load_error
-    if load_error != OK:
-        height_data.initialize(
-            Vector2i(maxi(TILE_CELLS, cells_x), maxi(TILE_CELLS, cells_z)),
-            sample_spacing
-        )
-        if load_error != ERR_FILE_NOT_FOUND or not allow_data_creation:
+    _read_only_source = false
+    if layer_mode:
+        # Layer file is the SINGLE authoritative document. Never fall back
+        # to the legacy .tfh if an expected TFL1 is missing/corrupt.
+        _layer_stack = HEIGHT_LAYERS.new()
+        _source_load_error = _layer_stack.load_file(layer_file)
+        if _source_load_error == OK:
+            height_data.initialize(_layer_stack.cells, _layer_stack.spacing)
+            height_data.heights = _layer_stack.compose()
+        else:
             _read_only_source = true
-            push_error(
-                "TerraForge: Height data is missing or unreadable. This scene is read-only "
-                + "to protect the original terrain: " + data_file
+            height_data.initialize(Vector2i(cells_x, cells_z), sample_spacing)
+            push_error("TerraForge: Layer file missing/corrupt, terrain locked: " + layer_file)
+    else:
+        var load_error: Error = height_data.load_file(data_file)
+        _source_load_error = load_error
+        if load_error != OK:
+            height_data.initialize(
+                Vector2i(maxi(TILE_CELLS, cells_x), maxi(TILE_CELLS, cells_z)),
+                sample_spacing
             )
+            if load_error != ERR_FILE_NOT_FOUND or not allow_data_creation:
+                _read_only_source = true
+                push_error(
+                    "TerraForge: Height data is missing or unreadable. This scene is read-only "
+                    + "to protect the original terrain: " + data_file
+                )
     cells_x = height_data.cells.x
     cells_z = height_data.cells.y
     sample_spacing = height_data.spacing
@@ -469,6 +490,84 @@ func _refresh_dirty_tiles() -> void:
             _tile_queue[key] = true
     _dirty_tiles.clear()
 
+func enable_layers() -> Error:
+    # Conversion is opt-in and refused if the target exists, to protect
+    # against overwriting an earlier working layer document.
+    if layer_mode:
+        return ERR_ALREADY_IN_USE
+    if height_data == null or _read_only_source or _stroke_open:
+        return ERR_UNAVAILABLE
+    var new_path: String = data_file.get_basename() + ".tfl"
+    if new_path.is_empty() or FileAccess.file_exists(new_path):
+        return ERR_ALREADY_EXISTS
+    var stack = HEIGHT_LAYERS.new()
+    var err: Error = stack.initialize(height_data.heights, height_data.cells, height_data.spacing)
+    if err != OK:
+        return err
+    if stack.add_layer("Sculpt 1") < 0:
+        return ERR_CANT_CREATE
+    err = stack.save_file(new_path)
+    if err != OK:
+        return err
+    _layer_stack = stack
+    layer_file = new_path
+    layer_mode = true
+    _active_layer = 0
+    _history.clear()
+    _redo.clear()
+    _changed_since_save = false
+    allow_data_creation = false
+    return OK
+
+func add_edit_layer(name: String) -> int:
+    if not layer_mode or _read_only_source or _layer_stack == null:
+        return -1
+    if _stroke_open:
+        end_stroke()
+    var new_index: int = _layer_stack.add_layer(name)
+    if new_index >= 0:
+        _active_layer = new_index
+        _changed_since_save = true
+        _last_edit_time = Time.get_ticks_msec()
+    return new_index
+
+func set_active_edit_layer(index: int) -> Error:
+    if not layer_mode or _layer_stack == null or _stroke_open:
+        return ERR_UNAVAILABLE
+    if index < 0 or index >= _layer_stack.layers.size():
+        return ERR_INVALID_PARAMETER
+    # Hidden or semi-transparent layers may be selected for inspection.
+    # _layer_is_editable() still blocks drawing into them.
+    _active_layer = index
+    return OK
+
+func set_edit_layer_visible(index: int, visible: bool) -> Error:
+    if not layer_mode or _layer_stack == null or _read_only_source:
+        return ERR_UNAVAILABLE
+    if _stroke_open:
+        end_stroke()
+    var err: Error = _layer_stack.set_enabled(index, visible)
+    if err != OK:
+        return err
+    # Undo records depend on earlier composition; reset after layer toggles.
+    _history.clear()
+    _redo.clear()
+    height_data.heights = _layer_stack.compose()
+    for key in _tile_nodes:
+        _tile_queue[key] = true
+    _dirty_tiles.clear()
+    _changed_since_save = true
+    _last_edit_time = Time.get_ticks_msec()
+    return OK
+
+func _layer_is_editable() -> bool:
+    if not layer_mode:
+        return true
+    if _layer_stack == null or _active_layer < 0 or _active_layer >= _layer_stack.layers.size():
+        return false
+    var layer: Dictionary = _layer_stack.layers[_active_layer]
+    return bool(layer["enabled"]) and float(layer["opacity"]) == 1.0
+
 func begin_stroke() -> void:
     if _stroke_open:
         end_stroke()
@@ -493,7 +592,7 @@ func paint_at(
         stamp_preset: int = 0,
         ramp_rise: float = 5.0
     ) -> void:
-    if not _stroke_open or _read_only_source or height_data == null:
+    if not _stroke_open or _read_only_source or height_data == null or not _layer_is_editable():
         return
     # Unit tests may operate on an off-tree terrain. Node3D.to_local()
     # uses the global transform and emits engine errors before _enter_tree().
@@ -774,7 +873,23 @@ func end_stroke() -> void:
             indexes.append(int(idx))
             before.append(float(_stroke_before[idx]))
             after.append(height_data.heights[int(idx)])
-        _history.append({"indices": indexes, "before": before, "after": after})
+        var record: Dictionary = {"indices": indexes, "before": before, "after": after}
+        if layer_mode:
+            # A stroke changes only its selected layer. The current
+            # displayed heights are the cached composite, not the source.
+            var delta_before: PackedFloat32Array = PackedFloat32Array()
+            var delta_after: PackedFloat32Array = PackedFloat32Array()
+            for i in range(indexes.size()):
+                var idx: int = indexes[i]
+                var before_delta: float = _layer_stack.read_delta(_active_layer, idx)
+                var after_delta: float = before_delta + after[i] - before[i]
+                delta_before.append(before_delta)
+                delta_after.append(after_delta)
+                _layer_stack.set_delta(_active_layer, idx, after_delta)
+            record["layer_index"] = _active_layer
+            record["layer_before"] = delta_before
+            record["layer_after"] = delta_after
+        _history.append(record)
         if _history.size() > MAX_HISTORY:
             _history.remove_at(0)
         _redo.clear()
@@ -786,9 +901,15 @@ func _apply_history(record: Dictionary, use_after: bool) -> void:
     var indexes: PackedInt32Array = record["indices"]
     var values: PackedFloat32Array = record["after"] if use_after else record["before"]
     var stride: int = height_data.cells.x + 1
+    var layer_index: int = int(record.get("layer_index", -1))
+    var delta_values: PackedFloat32Array = (
+        record["layer_after"] if use_after else record["layer_before"]
+    ) if layer_index >= 0 else PackedFloat32Array()
     for i in range(indexes.size()):
         var idx: int = indexes[i]
         height_data.heights[idx] = values[i]
+        if layer_index >= 0:
+            _layer_stack.set_delta(layer_index, idx, delta_values[i])
         _mark_sample_dirty(idx % stride, int(idx / stride))
     _refresh_dirty_tiles()
     _changed_since_save = true
@@ -817,13 +938,20 @@ func save_data() -> Error:
         return ERR_UNCONFIGURED
     if _read_only_source:
         return _source_load_error
-    var result: Error = height_data.save_file(data_file)
+    # In layer mode TFL1 is the sole durable source, containing both the
+    # unchanged base and all deltas. TFH is deliberately NOT rewritten.
+    var result: Error = (
+        _layer_stack.save_file(layer_file)
+        if layer_mode
+        else height_data.save_file(data_file)
+    )
     if result == OK:
         _changed_since_save = false
         _source_load_error = OK
         allow_data_creation = false
     else:
-        push_error("TerraForge: Cannot save %s: %s" % [data_file, error_string(result)])
+        var target_file: String = layer_file if layer_mode else data_file
+        push_error("TerraForge: Cannot save %s: %s" % [target_file, error_string(result)])
     return result
 
 func find_surface_from_ray(ray_origin: Vector3, ray_direction: Vector3) -> Dictionary:

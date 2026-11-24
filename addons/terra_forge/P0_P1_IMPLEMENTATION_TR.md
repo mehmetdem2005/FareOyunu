@@ -1,5 +1,5 @@
 # TerraForge — P0 doğrulama ve P1 veri katmanları, ilk uygulama
-Sürüm: 0.4.0-dev.1
+Sürüm: 0.4.0-dev.2
 Durum: **Yapılandırıldı ve kodlandı; Godot 4.7.2 / Android 11 üzerinde henüz çalıştırılmadı.**
 
 ## P0 — Güvenlik ve regresyon kapısı
@@ -41,3 +41,12 @@ Yeni modül: `core/height_layers.gd` (`TFL1` sidecar formatı).
 5. Sonra yalnız terrain geometrisi için quadtree/clipmap, gerçek diskten stream ve ekran-hatası LOD prototiplerini değerlendirmeye başla.
 
 Malzeme boyama, bitki, taş ve obje yerleştirme bu fazın dışındadır.
+
+## P1 canlı katman entegrasyonu (0.4.0-dev.2)
+
+- İsteğe bağlı **Enable Layers** işlemi mevcut TFH verisinden TFL1 belge yaratır; eski dosya dokunulmadan kalır. Sahne dosyasını ayrıca kaydetmek zorunludur.
+- TFL1, base + tüm delta katmanlarının **tek kalıcı otorite dosyasıdır**; TFH'ye çift yazım yapılmaz.
+- Fırça/Undo/Redo seçilen katmana uygulanır. Katman görünürlüğü kompoziti yeniden hesaplar ve geçmişi temizler.
+- `tests/test_live_layers.gd` opt-in, eski TFH'nin değişmemesi, çoklu katman, Undo/Redo, save/reopen ve eksik TFL1 korumasını denetler.
+- **Sınır:** Opaklığı 1 olmayan katmana fırça yapılmaz. Eklenti katman dosyası yokken mevcut TFH'ye sessizce dönmez. CI testleri yeşil olmadan cihaz kullanımında kararlı olduğu iddia edilmez.
+- **P0:** Test sayısı artık 16'dır; gerçek Android GPU/ısı ve uzun süreli dokunmatik testleri bekliyor.

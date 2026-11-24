@@ -26,6 +26,7 @@ suite=(
   test_height_store
   test_data_safety
   test_height_layers
+  test_live_layers
   test_lod_policy
   test_surface_faces
   test_lod_normals
@@ -56,6 +57,10 @@ for name in "${suite[@]}"; do
   # one explicit warning while proving that protected data cannot be saved.
   filtered_errors="$LOG_DIR/$name.unexpected-errors.log"
   grep -E '(^ERROR:|^SCRIPT ERROR:|Parse Error:|Parser Error:|Compile Error:|Failed to load script|Failed to parse script)' "$log" >"$filtered_errors" || true
+  if [[ "$name" == "test_live_layers" ]]; 
+    grep -vF 'TerraForge: Layer file missing/corrupt, terrain locked:' "$filtered_errors" >"$filtered_errors.tmp" || true
+    mv "$filtered_errors.tmp" "$filtered_errors"
+  fi
   if [[ "$name" == "test_data_safety" ]]; then
     grep -vF 'TerraForge: Height data is missing or unreadable.' "$filtered_errors" >"$filtered_errors.tmp" || true
     mv "$filtered_errors.tmp" "$filtered_errors"

@@ -15,6 +15,11 @@ var _tool_select: OptionButton
 var _radius: HSlider
 var _strength: HSlider
 var _profile_select: OptionButton
+var _layer_row: HBoxContainer
+var _layer_enable: Button
+var _layer_select: OptionButton
+var _layer_add: Button
+var _layer_visible: CheckButton
 var _advanced_row: HBoxContainer
 var _advanced_label: Label
 var _stamp_preset: OptionButton
@@ -173,6 +178,31 @@ func _enter_tree() -> void:
     diagnostics_button.pressed.connect(_run_self_test)
     profile_row.add_child(diagnostics_button)
 
+    # One small contextual row instead of another tall mobile dock.
+    _layer_row = HBoxContainer.new()
+    _layer_row.add_theme_constant_override("separation", 3)
+    content.add_child(_layer_row)
+    _layer_enable = Button.new()
+    _layer_enable.text = "Enable Layers"
+    _layer_enable.tooltip_text = "Create a separate .tfl document; legacy .tfh remains untouched. Save the scene after enabling."
+    _layer_enable.pressed.connect(_enable_layer_mode)
+    _layer_row.add_child(_layer_enable)
+    _layer_select = OptionButton.new()
+    _layer_select.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    _layer_select.item_selected.connect(_choose_layer)
+    _layer_row.add_child(_layer_select)
+    _layer_add = Button.new()
+    _layer_add.text = "+"
+    _layer_add.tooltip_text = "Add another independent sculpt layer (maximum 8)"
+    _layer_add.pressed.connect(_add_layer)
+    _layer_row.add_child(_layer_add)
+    _layer_visible = CheckButton.new()
+    _layer_visible.text = "On"
+    _layer_visible.tooltip_text = "Show or hide selected layer"
+    _layer_visible.toggled.connect(_toggle_layer_visible)
+    _layer_row.add_child(_layer_visible)
+    _refresh_layer_ui()
+
     _stats_label = Label.new()
     _stats_label.text = "Tiles: -"
     _stats_label.modulate.a = 0.7
@@ -207,7 +237,7 @@ func _toggle_popup() -> void:
     var window_size: Vector2i = get_editor_interface().get_base_control().get_window().size
     var button_position: Vector2i = Vector2i(_menu_button.get_screen_position())
     var width: int = mini(300, maxi(240, window_size.x - 16))
-    var required_height: int = 310 if _advanced_row.visible else 275
+    var required_height: int = 350 if _advanced_row.visible else 315
     var height: int = mini(required_height, maxi(180, window_size.y - 16))
     var x: int = clampi(button_position.x, 0, maxi(0, window_size.x - width))
     var y: int = clampi(
@@ -281,6 +311,72 @@ func _on_tool_changed(tool: int) -> void:
         _popup.hide()
         _toggle_popup()
 
+func _refresh_layer_ui() -> void:
+    if _layer_row == null:
+        return
+    var has_terrain: bool = is_instance_valid(_active)
+    var enabled: bool = has_terrain and _active.layer_mode and _active._layer_stack != null
+    _layer_enable.visible = not enabled
+    _layer_enable.disabled = not has_terrain or (has_terrain and _active._read_only_source)
+    _layer_select.visible = enabled
+    _layer_add.visible = enabled
+    _layer_visible.visible = enabled
+    if not enabled:
+        return
+    _layer_select.clear()
+    for layer in _active._layer_stack.layers:
+        _layer_select.add_item(str(layer["name"]))
+    _layer_select.select(_active._active_layer)
+    _layer_add.disabled = _active._read_only_source or _active._layer_stack.layers.size() >= 8
+    _layer_visible.disabled = _active._read_only_source
+    _layer_visible.set_pressed_no_signal(bool(_active._layer_stack.layers[_active._active_layer]["enabled"]))
+
+func _enable_layer_mode() -> void:
+    if not is_instance_valid(_active):
+        return
+    _finish_stroke()
+    var err: Error = _active.enable_layers()
+    if err == OK:
+        _set_status("Layers enabled: .tfh preserved, .tfl authoritative. Save the Godot scene!")
+    else:
+        _set_status("Cannot enable layers: " + error_string(err))
+    _refresh_layer_ui()
+
+func _add_layer() -> void:
+    if not is_instance_valid(_active):
+        return
+    _finish_stroke()
+    var count: int = _active._layer_stack.layers.size()
+    var added: int = _active.add_edit_layer("Sculpt %d" % (count + 1))
+    _set_status("New layer added; Save writes .tfl." if added >= 0 else "Layer limit reached.")
+    _refresh_layer_ui()
+
+func _choose_layer(index: int) -> void:
+    if not is_instance_valid(_active):
+        return
+    _finish_stroke()
+    var err: Error = _active.set_active_edit_layer(index)
+    if err != OK:
+        _set_status("Cannot select layer: " + error_string(err))
+    elif not _active._layer_is_editable():
+        _set_status("Layer is hidden or opacity is not 100%; enable it before sculpting.")
+    else:
+        _set_status("Sculpting layer: " + str(_active._layer_stack.layers[index]["name"]))
+    _refresh_layer_ui()
+
+func _toggle_layer_visible(visible: bool) -> void:
+    if not is_instance_valid(_active) or not _active.layer_mode:
+        return
+    _finish_stroke()
+    var err: Error = _active.set_edit_layer_visible(_active._active_layer, visible)
+    if err == OK:
+        _brush_button.set_pressed_no_signal(false)
+        _brush_button.text = "Brush"
+        _set_status("Layer visibility updated. Save .tfl to keep this change.")
+    else:
+        _set_status("Visibility error: " + error_string(err))
+    _refresh_layer_ui()
+
 func _run_self_test() -> void:
     _finish_stroke()
     _set_status("Checking Float32, geology and touch-independent paths...")
@@ -336,6 +432,7 @@ func _set_active(terrain: TerraForgeTerrain) -> void:
         return
     _finish_stroke()
     _active = terrain
+    _refresh_layer_ui()
     _brush_button.set_pressed_no_signal(false)
     _brush_button.text = "Brush"
     if terrain == null:
@@ -382,10 +479,12 @@ func _create_terrain() -> void:
     _popup.hide()
 
 func _toggle_brush(enabled: bool) -> void:
-    if enabled and is_instance_valid(_active) and _active._read_only_source:
+    if enabled and is_instance_valid(_active) and (
+            _active._read_only_source or not _active._layer_is_editable()
+        ):
         _brush_button.set_pressed_no_signal(false)
         _brush_button.text = "Brush"
-        _set_status("Cannot sculpt: original .tfh file is missing or damaged.")
+        _set_status("Cannot sculpt: height source is locked or selected layer is hidden.")
         return
     if enabled and not is_instance_valid(_active):
         _brush_button.set_pressed_no_signal(false)
@@ -406,7 +505,10 @@ func _save_active() -> void:
         return
     _finish_stroke()
     var result: Error = _active.save_data()
-    _set_status("Heights saved. Save the scene separately." if result == OK else "Save error: " + error_string(result))
+    _set_status(
+        ("Layer document saved. Save the scene separately." if _active.layer_mode else "Heights saved. Save the scene separately.")
+        if result == OK else "Save error: " + error_string(result)
+    )
 
 func _save_external_data() -> void:
     if is_instance_valid(_active):

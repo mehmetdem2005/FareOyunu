@@ -110,6 +110,27 @@ func put_delta(layer_index: int, index: int, delta: float) -> Error:
     layers[layer_index]["tiles"] = tiles
     return OK
 
+## Absolute write for stroke Undo/Redo. Unlike put_delta(), setting a
+## recorded value is idempotent and does not accumulate float rounding.
+func set_delta(layer_index: int, index: int, value: float) -> Error:
+    if not _valid_layer(layer_index) or not _valid_index(index) or not is_finite(value):
+        return ERR_INVALID_PARAMETER
+    var address: Dictionary = _tile_sample_address(index)
+    var key: Vector2i = address["tile"]
+    var tiles: Dictionary = layers[layer_index]["tiles"]
+    if not tiles.has(key) and value == 0.0:
+        return OK
+    var values: PackedFloat32Array
+    if tiles.has(key):
+        values = tiles[key]
+    else:
+        values = PackedFloat32Array()
+        values.resize(TILE_VALUES)
+    values[int(address["offset"])] = value
+    tiles[key] = values
+    layers[layer_index]["tiles"] = tiles
+    return OK
+
 func composite_height(index: int) -> float:
     if not _valid_index(index):
         return 0.0

@@ -1,4 +1,4 @@
-# TerraForge Mobile — v0.4.0-dev.1 (P0 validation + P1 sparse height layers)
+# TerraForge Mobile — v0.4.0-dev.2 (opt-in live Float32 layers)
 
 Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, native library, or changes to game files. Designed for Android editor testing with Mobile Renderer.
 
@@ -38,14 +38,24 @@ Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, nativ
 - **Smooth**: two-pass neighborhood snapshot plus a 55% bilateral blend reduces directional scan artifacts while retaining some high-contrast edges. Ramp/Stamp/Weather controls remain contextual; Undo/Redo and Float32 data format are unchanged.
 - Mobile **Check** button tests Float32 roundtrip, path consistency, local mass balance and reports CPU processing times without changing the user's terrain.
 
+## P1 opt-in live sculpting (0.4.0-dev.2)
+
+- **Terrain > Enable Layers** creates a separate authoritative `.tfl` from the current `.tfh`, preserving the original byte-for-byte. It refuses to overwrite an existing layer file.
+- After enabling, the same mobile menu offers a compact layer selector, **+** to create a new layer, and **On** to toggle visibility.
+- All existing sculpt tools (Raise/Lower/Smooth/Flatten/Ridge/Valley/Ramp/Stamp/Weather) update only the active layer's Float32 deltas; Undo/Redo restore layer deltas and the visible composite.
+- Once enabled, the TFL1 file contains both base and layers and is the **only authoritative save target**. The legacy TFH is retained as a backup snapshot and never written in layer mode.
+- On reopen, a missing or invalid TFL1 locks the scene read-only. The plugin **never falls back** to the TFH and overwrites new work. Remember to **save the Godot scene** separately after conversion so the new layer path/mode persist.
+- The active layer must be enabled at full opacity (100%) to sculpt; hiding a layer recomposes all heights, updates tile meshes/physics and clears stroke undo history to prevent inconsistent cross-layer restoration.
+- This is still **experimental**. Background processing and tested multi-file crash recovery are not implemented. CI covers 16 headless tests (including `test_live_layers.gd`), not Android UI/FPS.
+
 ## P0/P1 initial implementation (0.4.0-dev.1)
 
 - Added `core/height_layers.gd`: experimental **non-destructive additive Float32 height layer stack** with 32×32 sparse delta chunks, enable/disable, opacity, reorder, and composite-on-demand. Base elevations remain unchanged.
 - Added independent `TFL1` versioned serialization to a `.tfl` sidecar with validated dimensions, bounded layer counts, checks for non-finite values and fail-closed corrupted files. Only explicit calls save these files; no existing `.tfh` is migrated.
 - Added `tests/test_height_layers.gd` for layer fidelity, border samples, toggles, opacity, save/reload, and corrupt file isolation.
-- Added `tests/run_all.sh` to run all 14 Godot regression scripts against a real project and Godot **4.7.2**.
+- Added `tests/run_all.sh` to run all 16 Godot regression scripts against a real project and Godot **4.7.2**.
 - Extended **Terrain > Check** with a non-destructive scratch-layer smoke test, reported as `Layers ... ms`.
-- **Not connected to live sculpting, scene serialization, or Undo/Redo yet.** This intentionally avoids multi-file save risks until P0 tests pass. Read [P0_P1_IMPLEMENTATION_TR.md](P0_P1_IMPLEMENTATION_TR.md) before enabling such integration.
+- The underlying P1 prototype began isolated in v0.4.0-dev.1. v0.4.0-dev.2 adds **explicit opt-in live sculpting** and per-layer Undo/Redo, without changing the default legacy behavior. Read [P0_P1_IMPLEMENTATION_TR.md](P0_P1_IMPLEMENTATION_TR.md) before enabling such integration.
 
 ## Experimental drainage analysis (0.3.3; no terrain modification)
 
@@ -111,6 +121,7 @@ godot --headless --path /path/to/project --script res://addons/terra_forge/tests
 godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_edge_normals.gd
 godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_drainage_analysis.gd
 godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_height_layers.gd
+godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_live_layers.gd
 ```
 
 See [MOBILE_TEST_PLAN.md](MOBILE_TEST_PLAN.md) for hands-on Android checks and acceptance criteria. These tests have **not yet been executed** with the Godot engine here.
@@ -121,7 +132,7 @@ Read [QUALITY_GATE.md](QUALITY_GATE.md). The addon **is not certified optimized 
 
 ## Next stages
 
-1. Run the complete **14-test** Godot 4.7.2 CLI regression suite (P0) and fix all parse/API/behavior failures.
+1. Run the complete **16-test** Godot 4.7.2 CLI regression suite (P0) and fix all parse/API/behavior failures.
 2. Run **Terrain > Check** on Android 11 and record the new Layers timings (P1 scratch test).
 2. Inspect long ridge/valley shape quality at ground-camera height and fix contour artifacts.
 3. Validate thermal mass-balance, LOD edge normals, seam continuity and collision on-device.

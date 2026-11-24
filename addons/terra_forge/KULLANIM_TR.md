@@ -1,4 +1,4 @@
-# TerraForge Mobile 0.4.0-dev.1 — Türkçe kullanım
+# TerraForge Mobile 0.4.0-dev.2 — Türkçe kullanım
 
 ## Kurulum (telefon / Godot 4.7.2)
 
@@ -49,12 +49,24 @@ Hepsinde **Size** etki alanını, **Power** etki şiddetini belirler. Ramp, Stam
 - Android'in dokunmatik olaylardan türetebildiği sahte fare tıklamaları bir süre yok sayılır.
 - **Yeni:** Fırça artık her dokunma olayı için değil, parmağın katettiği mesafe boyunca sabit aralıklarla etki uygular. Hızlı ve yavaş sürüklemede güç farkı azalır. Parmağı sabit tutmak devamlı kazma/yükseltme yapmaz.
 
+## v0.4.0-dev.2 — Gerçek düzenlenebilir katmanlar
+
+1. Mevcut arazini yedekle. Godot'ta TerraForge'un üstteki küçük **Terrain** menüsünü aç.
+2. **Enable Layers** düğmesine dokun. Eklenti eski `.tfh` dosyasını koruyarak, içinde temel yükseklik ve katmanlar bulunan yeni `.tfl` dosyası oluşturur. Aynı adlı `.tfl` varsa **üstüne yazmaz**.
+3. **Godot sahneni kaydet.** Katman modu ve yeni dosyanın yolu sahneyle beraber saklanmalıdır.
+4. Küçük satırdan **Sculpt 1** katmanını seçip Brush ile şekillendir. **+** ile başka katman ekle.
+5. **On** anahtarıyla katmanı gizle veya göster. Gizli katmanda Brush kullanamazsın. Katmanı gizlemek Undo geçmişini temizler.
+6. **Terrain > Save** katmanları ve temel yüksekliği **tek `.tfl`** dosyasına kaydeder. Artık eski `.tfh` dosyasına yazmaz.
+7. Sahneyi yeniden açınca katmanlar geri gelmeli. Eksik/bozuk `.tfl` varsa arazi salt okunur açılır; eski `.tfh` dosyasına otomatik dönülmez.
+
+**Dikkat:** Bu özellik isteğe bağlıdır. Açmadığın bütün eski sahneler yine normal `.tfh` sistemiyle çalışır. Bu sürümde katman opaklığı API'de var, ancak küçük mobil menüde hâlâ yalnız görünürlük kontrolü bulunuyor. Android cihaz testi bekliyor.
+
 ## P0/P1 uygulamasının ilk sürümü (0.4.0-dev.1)
 
 - Yeni `core/height_layers.gd` katman çekirdeği **ayrı** kodlandı. 32×32 seyrek bloklarda Float32 yükseklik farkları tutar; temel arazi dosyasını değiştirmez.
-- Şimdilik **canlı fırça menüsünde yeni katman aracı yok**. Katman aç/kapat/opacity ve `.tfl` yan dosyası işlevleri test ortamında bulunuyor. Tam doğrulanana kadar gerçek haritanda otomatik etkinleştirilmiyor.
+- Bu **v0.4.0-dev.1** açıklaması, izole ilk prototipin tarihçesidir. **v0.4.0-dev.2** ile katmanları mobil menüden isteğe bağlı açabiliyorsun.
 - **Terrain > Check** düğmesi artık katman kaydet/aç, görünürlük ve birleştirmeyi de kullanıcının arazisinden bağımsız test eder.
-- Bilgisayarda Godot 4.7.2 yüklüyse, tüm 14 regresyonu `bash addons/terra_forge/tests/run_all.sh /proje/yolu /godot/yolu` ile çalıştır.
+- Bilgisayarda Godot 4.7.2 yüklüyse, tüm 16 regresyonu `bash addons/terra_forge/tests/run_all.sh /proje/yolu /godot/yolu` ile çalıştır.
 - Ayrıntılı uygulama ve geriye uyumluluk sınırları: [P0_P1_IMPLEMENTATION_TR.md](P0_P1_IMPLEMENTATION_TR.md).
 
 ## 0.3.3 — Yeni mühendislik düzeltmeleri
