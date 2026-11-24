@@ -19,6 +19,7 @@ var _strength_display: Label
 var _active: TerraForgeTerrain
 var _stroke_active: bool = false
 var _touch_session: bool = false
+var _last_touch_ms: int = -100000
 var _last_stats_update_ms: int = -100000
 
 func _enter_tree() -> void:
@@ -169,9 +170,14 @@ func _toggle_popup() -> void:
         return
     var window_size: Vector2i = get_editor_interface().get_base_control().get_window().size
     var button_position: Vector2i = Vector2i(_menu_button.get_screen_position())
-    var x: int = clampi(button_position.x, 0, maxi(0, window_size.x - 310))
-    var y: int = button_position.y + int(_menu_button.size.y) + 3
-    _popup.popup(Rect2i(Vector2i(x, y), Vector2i(300, 275)))
+    var width: int = mini(300, maxi(240, window_size.x - 16))
+    var height: int = mini(275, maxi(180, window_size.y - 16))
+    var x: int = clampi(button_position.x, 0, maxi(0, window_size.x - width))
+    var y: int = clampi(
+        button_position.y + int(_menu_button.size.y) + 3,
+        0, maxi(0, window_size.y - height)
+    )
+    _popup.popup(Rect2i(Vector2i(x, y), Vector2i(width, height)))
 
 func _radius_changed(value: float) -> void:
     _radius_display.text = "%.1fm" % value
@@ -265,13 +271,23 @@ func _create_terrain() -> void:
     terrain.data_file = "res://terraforge_data/%s_%s.tfh" % [
         root.name.to_snake_case(), Crypto.new().generate_random_bytes(12).hex_encode()
     ]
+    terrain.position = Vector3(
+        -float(terrain.cells_x) * terrain.sample_spacing * 0.5,
+        0.0,
+        -float(terrain.cells_z) * terrain.sample_spacing * 0.5
+    )
     root.add_child(terrain)
     terrain.owner = root
+    # A new terrain must not reference a missing .tfh if the scene is saved.
+    var data_error: Error = terrain.save_data()
+    if data_error != OK:
+        _set_status("Terrain was created but the height file could not be saved: " + error_string(data_error))
     var selection: EditorSelection = get_editor_interface().get_selection()
     selection.clear()
     selection.add_node(terrain)
     _set_active(terrain)
-    _set_status("Flat terrain ready. Raise to sculpt; save scene + heights.")
+    if data_error == OK:
+        _set_status("Terrain ready at scene origin. Save the scene with Godot.")
     _popup.hide()
 
 func _toggle_brush(enabled: bool) -> void:
@@ -334,6 +350,7 @@ func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
     if not is_instance_valid(_active) or not _brush_button.button_pressed:
         return EditorPlugin.AFTER_GUI_INPUT_PASS
     if event is InputEventScreenTouch:
+        _last_touch_ms = Time.get_ticks_msec()
         if event.index > 0:
             if event.pressed:
                 _finish_stroke()
@@ -349,11 +366,15 @@ func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
             _touch_session = false
         return EditorPlugin.AFTER_GUI_INPUT_STOP
     if event is InputEventScreenDrag and event.index == 0:
+        _last_touch_ms = Time.get_ticks_msec()
         if _stroke_active and _touch_session:
             _paint_at(camera, event.position)
             return EditorPlugin.AFTER_GUI_INPUT_STOP
         return EditorPlugin.AFTER_GUI_INPUT_PASS
     if _touch_session:
+        return EditorPlugin.AFTER_GUI_INPUT_PASS
+    # Filter synthetic mouse events emitted after a touch sequence on Android.
+    if Time.get_ticks_msec() - _last_touch_ms < 350:
         return EditorPlugin.AFTER_GUI_INPUT_PASS
     if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
         if event.pressed:
