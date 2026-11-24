@@ -53,19 +53,29 @@ func _check_geometry(ref_terrain, source, tx: int, tz: int, lod: int,
     var old_indices: PackedInt32Array = old_arrays[Mesh.ARRAY_INDEX]
     var new_indices: PackedInt32Array = regional_arrays[Mesh.ARRAY_INDEX]
     if old_vertices.size() != new_vertices.size() or old_indices != new_indices:
+        print("PARITY FAIL: vertex count or index topology tx=", tx, " tz=", tz, " lod=", lod,
+            " v=", old_vertices.size(), " vs ", new_vertices.size(),
+            " index equal=", old_indices == new_indices)
         return false
     for i in range(old_vertices.size()):
         if old_vertices[i].distance_to(new_vertices[i]) > 0.00002:
+            print("PARITY FAIL vertex: tile=", Vector2i(tx, tz), " lod=", lod, " i=", i,
+                " old=", old_vertices[i], " regional=", new_vertices[i])
             return false
         if old_normals[i].distance_to(new_normals[i]) > 0.00002:
+            print("PARITY FAIL normal: tile=", Vector2i(tx, tz), " lod=", lod, " i=", i,
+                " old=", old_normals[i], " regional=", new_normals[i])
             return false
     if lod == 0:
         var old_shape: HeightMapShape3D = (base_tile["collision"] as CollisionShape3D).shape
         var new_heights: PackedFloat32Array = built["collision_heights"]
         if old_shape.map_width != int(built["width"]) or old_shape.map_data.size() != new_heights.size():
+            print("PARITY FAIL collision width/count: old width=", old_shape.map_width, " new=", built["width"],
+                " old samples=", old_shape.map_data.size(), " new=", new_heights.size())
             return false
         for i in range(new_heights.size()):
             if absf(old_shape.map_data[i] - new_heights[i]) > 0.00002:
+                print("PARITY FAIL collision: i=", i, " old=", old_shape.map_data[i], " regional=", new_heights[i])
                 return false
     elif not (built["collision_heights"] as PackedFloat32Array).is_empty():
         return false
