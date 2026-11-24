@@ -117,6 +117,7 @@ func _initialize() -> void:
     preview.view_distance = 80.0
     preview.max_visible_tiles = 4
     if not preview.verify_pages_on_demand or preview.start_preview(world, 9, 2) != OK:
+        preview.stop_preview()
         preview.free()
         _die("Read-only preview failed to use the manifest-first startup")
         return
@@ -131,13 +132,16 @@ func _initialize() -> void:
                 break
         OS.delay_msec(1)
     if not visible or preview.stats()["source"]["verification_mode"] != "on_demand":
+        preview.stop_preview()
         preview.free()
         _die("Missing distant tile prevented nearby, verified mesh/collision")
         return
     if preview.save_data() != ERR_UNAVAILABLE:
+        preview.stop_preview()
         preview.free()
         _die("Readonly lazy preview unexpectedly allowed save")
         return
+    preview.stop_preview()
     preview.free()
     if not _write_bytes(far_path, far_bytes):
         _die("Could not restore disposable outer page")
