@@ -28,6 +28,9 @@ var _reader
 var _tiles: Dictionary = {}
 var _desired_tiles: Dictionary = {}
 var _pending_tiles: Dictionary = {}
+# Terminal failures are isolated per desired tile and camera generation.
+# Existing verified geometry stays at its original world coordinate.
+var _blocked_tiles: Dictionary = {}
 var _material: StandardMaterial3D
 var _anchor: Vector3 = Vector3.ZERO
 var _anchor_valid: bool = false
@@ -103,6 +106,7 @@ func stop_preview() -> void:
     _tiles.clear()
     _desired_tiles.clear()
     _pending_tiles.clear()
+    _blocked_tiles.clear()
     _anchor_valid = false
     _queue_focus_page = Vector2i(-999999, -999999)
     if _reader != null:
@@ -173,6 +177,7 @@ func _sync_tiles() -> void:
             return
         _queue_focus_page = focus_page
         _camera_cancellations += 1
+        _blocked_tiles.clear()
         # Page errors from the old camera generation do not describe the
         # current area; if damage persists, the new IO reports it again.
         _last_error = OK
@@ -197,10 +202,12 @@ func _sync_tiles() -> void:
         if not _tiles.has(key) or int(_tiles[key]["lod"]) != level:
             _pending_tiles[key] = true
         if int(previous.get(key, -1)) != level:
+            _blocked_tiles.erase(key)
             for direction in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
                 var adjacent: Vector2i = key + direction
                 if _tiles.has(adjacent) and new_desired.has(adjacent):
                     _pending_tiles[adjacent] = true
+                    _blocked_tiles.erase(adjacent)
     for key in _tiles.keys():
         if not new_desired.has(key):
             var root: Node3D = _tiles[key]["root"]
@@ -210,6 +217,7 @@ func _sync_tiles() -> void:
     for key in _pending_tiles.keys():
         if not new_desired.has(key):
             _pending_tiles.erase(key)
+            _blocked_tiles.erase(key)
 
 func _create_tile(tx: int, tz: int) -> Dictionary:
     var root: Node3D = Node3D.new()
@@ -242,7 +250,9 @@ func _create_tile(tx: int, tz: int) -> Dictionary:
 func _build_pending_tiles() -> void:
     if _pending_tiles.is_empty():
         return
-    var keys: Array = _pending_tiles.keys()
+    var keys: Array = _pending_tiles.keys().filter(func(key: Variant) -> bool:
+        return not _blocked_tiles.has(key)
+    )
     keys.sort_custom(func(a: Variant, b: Variant) -> bool:
         return LOD.tile_distance(a, float(TILE_CELLS) * _reader.spacing, _anchor) < LOD.tile_distance(b, float(TILE_CELLS) * _reader.spacing, _anchor)
     )
@@ -257,6 +267,17 @@ func _build_pending_tiles() -> void:
         # Keep every already-loaded member of this tile's height/normal
         # halo hotter than unrelated pages before new IO completions
         # evict anything. The reader still enforces its exact page cap.
+        # Check terminal errors before issuing more IO for this tile.
+        # One missing page must not starve independent healthy tiles.
+        var blocked: bool = false
+        for page in required:
+            var state: Error = _reader.page_status(page)
+            if state != OK and state != ERR_BUSY:
+                _block_tile(key, page, state)
+                blocked = true
+                break
+        if blocked:
+            continue
         _reader.prioritize_resident(required)
         var all_resident: bool = true
         for page in required:
@@ -264,17 +285,19 @@ func _build_pending_tiles() -> void:
             if state != OK:
                 all_resident = false
                 if state != ERR_BUSY:
-                    _last_error = state
-                    _last_error_page = page
-                    return
+                    _block_tile(key, page, state)
+                    blocked = true
+                    break
                 if submitted < max_background_jobs and not _reader.is_requested(page):
                     var request: Error = _reader.request_page(page)
                     if request != OK and request != ERR_BUSY:
-                        _last_error = request
-                        _last_error_page = page
-                        return
+                        _block_tile(key, page, request)
+                        blocked = true
+                        break
                     if request == OK:
                         submitted += 1
+        if blocked:
+            continue
         if not all_resident:
             _waiting_tile_frames += 1
             # Focus only on the nearest pending tile. Otherwise page loads
@@ -286,8 +309,8 @@ func _build_pending_tiles() -> void:
         var error: Error = int(generated.get("error", ERR_FILE_CORRUPT))
         if error != OK:
             if error != ERR_BUSY:
-                _last_error = error
-                _last_error_page = key
+                _block_tile(key, key, error)
+                continue
             break
         # Fail-closed: don't allocate or replace any visible/collision tile
         # until ALL required Float32 data and geometry arrays are valid.
@@ -315,13 +338,26 @@ func _build_pending_tiles() -> void:
         _max_build_ms = maxf(_max_build_ms, _last_build_ms)
         max_builds -= 1
 
+func _block_tile(key: Vector2i, page: Vector2i, error: Error) -> void:
+    _blocked_tiles[key] = error
+    _last_error = error
+    _last_error_page = page
+    # Do not free or modify an existing mesh/shape on a failed rebuild.
+    # A never-loaded tile remains absent; never fabricate collision.
+
 func stats() -> Dictionary:
     var source: Dictionary = _reader.stats() if _reader != null else {}
     var vertices: int = 0
     for tile in _tiles.values():
         vertices += int(tile["vertex_count"])
+    var retained: int = 0
+    for key in _blocked_tiles:
+        if _tiles.has(key):
+            retained += 1
     return {
         "active": _reader != null,
+        "blocked_tiles": _blocked_tiles.size(),
+        "retained_failed_tiles": retained,
         "tiles": _tiles.size(),
         "pending_tiles": _pending_tiles.size(),
         "vertices": vertices,
