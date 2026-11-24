@@ -1,4 +1,4 @@
-# TerraForge Mobile — v0.4.3-dev.2 (camera-aware paged mesh streaming and bounded halo cache)
+# TerraForge Mobile — v0.4.4-dev.1 (manifest-first region loading; strict mode preserved)
 > **NEW CHAT / FULL PROJECT MEMORY (2026-11-24):** Start with [DOCS_INDEX_TR.md](DOCS_INDEX_TR.md) and [HANDOFF_START_HERE_TR.md](HANDOFF_START_HERE_TR.md). The complete P0–P7 plan, actual CI results, full code/data architecture, risks, terrain geology research, mobile workflow, and the next exact GitHub CI implementation tasks are saved as multiple Markdown documents in this addon branch. **The opt-in regional preview now streams visible mesh/collision, but the legacy editable terrain has NOT been migrated.**
 
 
@@ -39,6 +39,14 @@ Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, nativ
 - **Weather**: tap a steep area and release for 1–6 bounded thermal passes (up to 32m). It now uses two scans of the four neighbors rather than allocating candidate arrays per sample. Material is transferred conservatively; **no water flow or sediment simulation is claimed**.
 - **Smooth**: two-pass neighborhood snapshot plus a 55% bilateral blend reduces directional scan artifacts while retaining some high-contrast edges. Ramp/Stamp/Weather controls remain contextual; Undo/Redo and Float32 data format are unchanged.
 - Mobile **Check** button tests Float32 roundtrip, path consistency, local mass balance and reports CPU processing times without changing the user's terrain.
+
+## P1.5 manifest-first loading of enormous worlds (v0.4.4-dev.1)
+
+- `core/async_region_source.gd` adds fourth optional argument `verify_all_pages=true`. **Strict remains the default for existing callers.** An explicit `false` verifies the bounded, checksummed TFM1 manifest at startup without opening every region file. Each TFR1 page is then validated on the worker before exposing any Float32 sample or mesh.
+- The **separate read-only** `paged_terrain_preview.gd` sets `verify_pages_on_demand=true` by default. Set it to false in Inspector if the entire world's pages must be verified before any preview is shown.
+- `plugin.gd` displays **READ-ONLY ON-DEMAND / FULL**, with checked and total manifest page counts. In lazy mode, a remote missing/corrupt region may be discovered only when requested. It is NEVER converted to flat terrain.
+- New `test_lazy_world_open.gd` (26th test) confirms strict backward compatibility, corrupt/missing TFM1 rejection, on-demand SHA, missing/corrupt cold pages, nearby real ArrayMesh/collision and worker shutdown. [Godot 4.7.2 CI 26/26 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45420063664).
+- This removes the synchronous all-pages startup scan **only for opt-in on-demand mode**, not the manifest parse (still synchronous), existing editable terrain, or blocking last worker IO on close. Android startup/RAM/FPS benchmark still needed. See [P1_5_LAZY_WORLD_OPEN_TR.md](P1_5_LAZY_WORLD_OPEN_TR.md).
 
 ## P1.3b camera-jump cancellation + minimum-cache halo priority (v0.4.3-dev.2)
 

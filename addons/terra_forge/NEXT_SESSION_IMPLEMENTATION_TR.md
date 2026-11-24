@@ -1,13 +1,13 @@
 # Sıradaki Uygulama İş Emri — P1.3 Sahada Doğrulama ve P1.4 Veri İşlemleri
 
-**24 Kasım 2026.** Kod tabanı `bf5c1dde57cf4f56a08b606b03c89270d09599c2`, dal `feat/terraforge-mobile-addon`. P1.2b worker IO ve P1.3 opt-in read-only preview + P1.3b kamera/cache stresi DONE / 25/25 CI PASS. P1.3 gerçek Android kalite kapısı + P1.4 writable transaction PLAN. Kullanıcı mobil telefon kullanıyor; CI GitHub Actions üzerinde çalışmalı.
+**24 Kasım 2026.** Kod tabanı `73603a15361766397854d11bad44ecb41e9bd53e`, dal `feat/terraforge-mobile-addon`. P1.2b worker IO ve P1.3 opt-in read-only preview + P1.3b kamera/cache stresi DONE / 26/26 CI PASS. P1.3 gerçek Android kalite kapısı + P1.4 writable transaction PLAN. Kullanıcı mobil telefon kullanıyor; CI GitHub Actions üzerinde çalışmalı.
 
 ## Önce kontrol
 
 - [ ] GitHub'dan **güncel branch head** al. Bu belgede sabit görünen commit dokümantasyon öncesi kodun referansıdır.
 - [ ] `HANDOFF_START_HERE_TR.md`, `ENGINE_ARCHITECTURE_TR.md`, `ROADMAP_MASTER_TR.md`, `RISKS_AND_DECISIONS_TR.md`, `QUALITY_TESTS_AND_BENCHMARKS_TR.md` oku.
 - [ ] `core/region_store.gd`, `core/region_manifest.gd`, `core/region_export.gd`, `terrain/terra_forge_terrain.gd` ve `tests/run_all.sh` dosyalarını gerçekten fetch et.
-- [ ] Son doğrulanan CI run: https://github.com/mehmetdem2005/FareOyunu/actions/runs/45415690507 (25/25 Godot 4.7.2 PASS).
+- [ ] Son doğrulanan CI run: https://github.com/mehmetdem2005/FareOyunu/actions/runs/45420063664 (26/26 Godot 4.7.2 PASS).
 - [ ] Kodlar yalnız `addons/terra_forge/`, gerekli CI değişiklikleri yalnız `.github/workflows/terraforge-ci.yml`. `main`, oyun sahneleri ve `terraforge_data` korunur.
 
 ## PR 1 — DONE: manifest-verified read-only paged source
@@ -56,6 +56,18 @@
 - [ ] Büyük world manifest first-open senkron SHA ve worker join beklemesi sürüyor.
 
 **Bundan sonra ilk iş:** gerçek cihaz QA (editor+Mobile Renderer), kısa/yavaş/hızlı kamera trace, eski TFH ile bölgesel snapshot RSS/fps karşılaştırması. Cihaz sınamasını yapmadan başardık deme. Sonra P1.4 veri bütünlüğü tasarım/uygulama.
+
+## PR 3c / P1.5 — DONE: manifest-first hızlı açılış
+
+- [x] `async_region_source.open(directory,resident_limit,max_jobs, verify_all_pages=true)` eski **strict** davranışını varsayılan tutar; `false` TFM1 bütünlüğünü senkron doğrular, bütün TFR1 sayfalarını açılışta taramaz.
+- [x] TFR1 SHA-256, internal SHA, world/page metadata, finite Float32 worker tarafından sayfanın ilk talebinde mutlaka kontrol edilir. Eksik sayfa `ERR_FILE_NOT_FOUND`, bozuk `ERR_FILE_CORRUPT`, hazır olmayan `ERR_BUSY`; asla düz zemin yok.
+- [x] `paged_terrain_preview.verify_pages_on_demand=true` yalnız opt-in read-only node'da varsayılan. `plugin.gd` ON-DEMAND/FULL ve Checked/manifest sayıları.
+- [x] `test_lazy_world_open.gd` (26. test): strict missing/corrupt startup refusal, manifest-first success, lazy cold SHA, TFM1 tamper refusal, yakın mesh+collision, TFH değişmezlik, off-tree worker stop. [26/26 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45420063664).
+- [ ] **Gerçek Android süre/kare kazancı ÖLÇÜLMEDİ**; TFM1 JSON açılışı hâlâ küçük fakat senkron, `close()` join tek IO bitene kadar bekleyebilir.
+- [ ] Missing/corrupt **uzak** sayfa, lazy modda ilgili sayfa ilk istenene kadar bilinmez. `verified_at_open=false` bunu açıkça gösterir.
+- [ ] Legacy editable `TerraForgeTerrain` global Float32 source kullanmaya devam ediyor; atomik region write P1.4 hâlâ PLAN.
+
+**Sonraki uygulanabilir tek adım:** Android test sahnesinde manifest-first vs strict açılış süresi/RSS ölçümü, fast-camera/hole ve LOD collision visual QA; ardından güvenli generation-pinned P1.4 write transaction'ın ilk küçük testi. Detay: [P1_5_LAZY_WORLD_OPEN_TR.md](P1_5_LAZY_WORLD_OPEN_TR.md).
 
 ## PR 4 — P1.4 edit-mode region transaction (PLAN)
 

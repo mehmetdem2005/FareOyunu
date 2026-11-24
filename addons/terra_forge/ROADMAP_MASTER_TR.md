@@ -14,11 +14,11 @@
 
 ## P0 — Doğrulama, ürün güvenliği ve proje izolasyonu
 
-**Durum:** Linux headless CI ve kod regresyonları **DONE, 25/25 PASS**; Android son kullanıcı onayı **AÇIK**.
+**Durum:** Linux headless CI ve kod regresyonları **DONE, 26/26 PASS**; Android son kullanıcı onayı **AÇIK**.
 
 ### P0.1 — DONE: altyapı
 - İzole `feat/terraforge-mobile-addon` dalı; oyun ve `main` dosyaları korunuyor.
-- Godot 4.7.2 headless CI, geçici test projesi, `bash -n`, script import, eklenti editör yükleme, 25 test.
+- Godot 4.7.2 headless CI, geçici test projesi, `bash -n`, script import, eklenti editör yükleme, 26 test.
 - Mevcut bozuk/eksik TFH/TFL dosyalarında fail-closed read-only ve yedek kurtarma.
 - `QUALITY_GATE.md` ve `MOBILE_TEST_PLAN.md` kabul belgeleri.
 
@@ -55,7 +55,7 @@
 - [x] **P1.2b:** `async_region_source.gd` tek Godot worker Thread, Mutex/Semaphore bounded 1–8 iş, SHA-256 **tek dosya buffer** üzerinden, main-thread sonuç kabulü, stale in-flight generation drop, explicit shutdown.
 - [x] `camera_page_prefetch.configure_async()` opt-in; 23. test eski işi iptal/bozuk sayfa/safe join.
 - [x] Kod SHA `4d5ed1bd`, [Godot 4.7.2 CI 23/23 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45408761313).
-- [ ] Büyük dünyanın full-manifest `open()` doğrulaması senkron; lazy/open background stratejisi güvenlik şartları korunarak tasarlanacak.
+- [x] **P1.5 read-only preview** TFM1 manifest-first + TFR1 on-demand SHA; strict eski varsayılan korunuyor. [26/26 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45420063664).
 - [ ] `close()` aktif dosya okumasını bekler; Android storage stalls ve gerçek frame p95/p99 ölçülecek.
 - [ ] Canlı scene mesh/collision bağlantısı ve oyun RAM kazancı **yok**; P1.3 öncelikli.
 
@@ -91,7 +91,15 @@
 - [ ] Eski .tfh/.tfl biçimlerinden **tek yönlü zorunlu** geçiş YOK; kullanıcı açıkça seçebilir ve geri dönebilir.
 - **Kapı:** Çok bölgeli sculpt edit/undo + crash injection ile tutarlı commit; hiçbir ara sürüm “geçerli dünya” gibi açılmaz.
 
-### P1.5 — PLAN: dev harita/bellek profili
+### P1.5 — Manifest-first lazy opening DONE; gerçek dev harita profili PLAN
+
+- [x] `async_region_source.open(..., verify_all_pages=false)` checksummed TFM1 manifest-first, TFR1 sayfaları yalnız ihtiyaç duyulunca worker SHA doğrulanır; strict varsayılan korunur.
+- [x] `paged_terrain_preview.verify_pages_on_demand=true` (yalnız read-only preview), Inspector'dan strict geri dönüş; ON-DEMAND/FULL doğrulama sayıları `plugin.gd` panelinde.
+- [x] `test_lazy_world_open.gd` 26. regresyon; missing/corrupt page, bozuk TFM1, yakın gerçek mesh/collision, stale işçi kaynakları güvenli kapanış. [26/26 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45420063664).
+- [ ] Manifest-only open tüm dünyanın **sağlam olduğunu kanıtlamaz**; cold page hata verir. Android 11 FPS / RSS / startup süre ölçümü yok.
+- [ ] Gerçek 2048²/4096² harita, FileAccess latency ve 30 dk kamera testleri bekliyor. Ayrıntı [P1_5_LAZY_WORLD_OPEN_TR.md](P1_5_LAZY_WORLD_OPEN_TR.md).
+
+### P1.5.1 — PLAN: dev harita/bellek profili
 - [ ] 2048², 4096², 8192² world profile; yakın ~24/48/96 sayfa bütçesi; region resident memory ve mesh budget ayrı.
 - [ ] IO gecikme histogramı, RAM peak, cache hit ratio, kamera rotası, sayfa aç/kapat, depolama hızı/ısınma.
 - [ ] Sık gzip/zstd sıkıştırma veya sayfa boyutu optimizasyonunu **ölçümden sonra** düşün; CPU maliyetini artıran rastgele optimizasyon yok.

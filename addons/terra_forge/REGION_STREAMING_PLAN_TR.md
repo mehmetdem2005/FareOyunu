@@ -1,4 +1,4 @@
-# TerraForge P1 — Bölgesel Float32 yükseklik belleği (v0.4.3-dev.2)
+# TerraForge P1 — Bölgesel Float32 yükseklik belleği (v0.4.4-dev.1)
 
 **Durum: API prototipi + regresyon testi; canlı Terrain3D mesh/çarpışma/fırça sistemine henüz entegre değil.**
 
@@ -68,3 +68,10 @@ Mevcut `.tfh`, `.tfl` ve `.tfl.bak` kayıtları **dokunulmadan korunuyor**.
 - `paged_terrain_preview._sync_tiles`: odak en az 2 sayfa ilerlerse `generation` iptal; küçük hareketlerde mevcut yüklemeler korunur; stats'de `camera_cancellations` ve `waiting_tile_frames`.
 - `test_paged_camera_stress.gd` 9 page cache, 2 background job, çoklu teleport, LOD0 gerçek HeightMapShape3D, source TFH SHA. [GitHub CI 25/25 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45415690507).
 - Bu, **Android 11 Mobile Renderer FPS/RAM testi değildir**; legacy full Float32 height source global kaynak olarak kullanılıyor. Kalan riskler [P1_3_PAGED_RENDER_TR.md](P1_3_PAGED_RENDER_TR.md).
+
+## P1.5 v0.4.4-dev.1 — Checksummed manifest-first cold page validation
+
+- `async_region_source.open(directory,resident_limit,max_jobs, verify_all_pages=true)` **eski strict davranışı korur**; `false` modunda TFM1 checksum/şema açılışta geçer, bütün TFR1 dosyaları taranmaz.
+- `paged_terrain_preview.verify_pages_on_demand=true` read-only opt-in preview için yeni başlangıç varsayılanı; doğrulanmış manifestteki TFR1 sayfaları ihtiyaç duyulduğunda worker SHA/internal SHA ile kontrol edilir. UI `READ-ONLY ON-DEMAND / FULL` ve `Checked n/total` gösterir.
+- Uzak bozuk/missing sayfa lazy açılışta saklı kalabilir, ancak talepte **ERR_FILE_CORRUPT / ERR_FILE_NOT_FOUND** ile fail-closed, height=0 uydurma yok. [Godot CI 26/26 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45420063664).
+- Gerçek Android açılış süresi/RSS/GPU, editable `TerraForgeTerrain` migration ve multi-page atomik transaction **henüz yok**. [P1_5_LAZY_WORLD_OPEN_TR.md](P1_5_LAZY_WORLD_OPEN_TR.md).

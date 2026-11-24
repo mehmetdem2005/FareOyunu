@@ -283,10 +283,17 @@ func _process(_delta: float) -> void:
     if paged:
         var preview_stats: Dictionary = _active_preview.stats()
         var source: Dictionary = preview_stats.get("source", {})
-        _stats_label.text = "PAGED READ-ONLY | Tiles %d / Pending %d / Vertices %d\nRAM pages %d/%d | Disk reads %d | IO max %.1fms" % [
-            int(preview_stats["tiles"]), int(preview_stats["pending_tiles"]),
-            int(preview_stats["vertices"]), int(source.get("resident", 0)),
-            int(source.get("limit", 0)), int(source.get("disk_reads", 0)),
+        var check_mode: String = (
+            "ON-DEMAND" if str(source.get("verification_mode", "strict")) == "on_demand"
+            else "FULL"
+        )
+        var checked: int = int(source.get("pages_verified_on_demand", 0))
+        if check_mode == "FULL":
+            checked = int(source.get("manifest_entries", 0))
+        _stats_label.text = "READ-ONLY %s | Tiles %d / Pending %d\nRAM %d/%d pages | Checked %d/%d | IO max %.1fms" % [
+            check_mode, int(preview_stats["tiles"]), int(preview_stats["pending_tiles"]),
+            int(source.get("resident", 0)), int(source.get("limit", 0)),
+            checked, int(source.get("manifest_entries", 0)),
             float(source.get("max_io_ms", 0.0))
         ]
     elif legacy:

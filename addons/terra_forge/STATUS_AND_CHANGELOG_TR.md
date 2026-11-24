@@ -1,12 +1,12 @@
 # TerraForge Mobile — Tam İlerleme Kaydı, Kanıt Düzeyi ve Sürüm Günlüğü
 
-**Son durum tarihi:** 2026-11-24. **Aktif kod tabanı:** v0.4.3-dev.2, `bf5c1dde57cf4f56a08b606b03c89270d09599c2` (dokümantasyon öncesi uygulama commit'i). **Dal:** `feat/terraforge-mobile-addon`.  
+**Son durum tarihi:** 2026-11-24. **Aktif kod tabanı:** v0.4.4-dev.1, `73603a15361766397854d11bad44ecb41e9bd53e` (dokümantasyon öncesi uygulama commit'i). **Dal:** `feat/terraforge-mobile-addon`.  
 **Durum anahtarı:** **DONE** = kod commit edildi; **CI PASS** = GitHub Actions Godot Linux headless testleri geçti; **DEVICE PENDING** = Android kullanıcı testinde henüz kanıt yok; **PLAN** = uygulanmadı. GitHub CI sonuçları, “kullanıcının telefonunda sorunsuz” anlamına gelmez.
 
 ## 1. En son kanıt ve geçerlilik
 
-- **GitHub Actions run:** https://github.com/mehmetdem2005/FareOyunu/actions/runs/45415690507  
-  **Sonuç:** 25/25 GDScript regresyonu PASS, Godot 4.7.2 stable, ubuntu-24.04 headless. Son kod SHA `bf5c1dde57cf4f56a08b606b03c89270d09599c2`.
+- **GitHub Actions run:** https://github.com/mehmetdem2005/FareOyunu/actions/runs/45420063664  
+  **Sonuç:** 26/26 GDScript regresyonu PASS, Godot 4.7.2 stable, ubuntu-24.04 headless. Son kod SHA `73603a15361766397854d11bad44ecb41e9bd53e`.
 - İş akışı kaynağı: `.github/workflows/terraforge-ci.yml`. Eklentiyi geçici `project.godot` ile parse eder, editör eklentisinin başlatılmasını kontrol eder, `tests/run_all.sh` ile tek tek test çalıştırır. Exit code + `PASS:` + istenmeyen Godot ERROR/SCRIPT ERROR denetimi vardır.
 - İstisna: bazı testler **bilerek** salt okunur kaynak-koruma hatası üretir; test çalıştırıcısı yalnız bu beklenen mesajları filtreler.
 - Gerçek **Android 11 Mobile Renderer**, GPU, touch davranışı, uzun stres, VRAM, sıcaklık, 30/60 FPS, görsel doğallık ve Terrain3D karşılaştırması **DEVICE PENDING**.
@@ -40,6 +40,8 @@
 
 | v0.4.3-dev.2 | `bf5c1dde` | P1.3b: büyük kamera sıçraması worker generation iptali; mevcut tile halo sayfalarını LRU'da öne al; duplicate cold request job-budget koruması; 9 sayfa/2 job kamera stres testi | **25/25 CI PASS**; mobil ölçüm bekliyor |
 
+| v0.4.4-dev.1 | `a582c862` → `73603a15` | Read-only preview için TFM1 **manifest-first** açık dünya başlangıcı, TFR1 worker cold SHA doğrulama, strict eski API varsayılan, 26. missing/corrupt manifest/page testi, off-tree thread cleanup | **26/26 CI PASS**; Android startup ölçümü yok |
+
 Not: erken commit prefix'leri tarihsel kayıt amacıyla verilmiştir; yeni dal ilerledikçe tam baş SHA'yı **GitHub'dan yeniden okuyun**. `main`'e merge edilmedi.
 
 ## 3. Güncel özellik envanteri (gerçek / kısmi / plan)
@@ -61,7 +63,8 @@ Not: erken commit prefix'leri tarihsel kayıt amacıyla verilmiştir; yeni dal i
 | TFM1 dünya manifesti/export | DONE / CI PASS **izole** | Snapshot, TFL edit katmanlarını düzleştirir; gerçek runtime değil |
 | Kamera yönlü **senkron** bounded prefetch | DONE / CI PASS **izole** | P1.2 |
 | Worker-thread asenkron disk IO | **DONE / CI PASS (izole)** | P1.2b; tek worker, bounded IO, late cancellation |
-| Async startup manifest verification | **PLAN** | P1.5 / sonraki optimizasyon |
+| Manifest-first read-only preview açılışı / sayfaya özel SHA | **DONE / CI PASS (opt-in preview)** | P1.5; strict default korunur |
+| Ana thread manifest JSON ve editable full-world verification profil/optimizasyonu | **PLAN** | P1.5 sonraki çalışma |
 | Salt okunur paged sampler + LRU | DONE / CI PASS **izole** | P1.2 |
 | Opt-in **ayrı read-only** regional preview ArrayMesh/collision | **DONE / CI PASS (izole)** | P1.3; eski live node unchanged |
 | Eski TerraForgeTerrain'e ortak HeightSource adaptörü, bölgesel edit/sculpt | **PLAN** | P1.3 sonrası / P1.4 |
@@ -83,6 +86,10 @@ Not: erken commit prefix'leri tarihsel kayıt amacıyla verilmiştir; yeni dal i
 - Dönüşümlerin eski veriyi değiştirmemesi ve yedekleri koruması birincil gereklilik.
 
 ## 5. Şimdiki öncelik / sıradaki değişiklik
+
+**P1.5 DONE / [26/26 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45420063664):** `async_region_source.open(..., verify_all_pages=false)` TFM1 checksum/şemasıyla açılır, TFR1 sayfalarını yalnız worker cold load'da SHA + finite metadata ile doğrular. `paged_terrain_preview.verify_pages_on_demand=true` varsayılan; `plugin.gd` read-only ON-DEMAND/FULL sayacı sunar. Strict source default değiştirilmedi. Dünyanın uzak bozuk sayfaları **ilk talebe kadar bilinmez**, ama hatalı sayfa asla mesh/height dönmez. Android startup/FPS/RAM ölçülmedi. Yeni source: [P1_5_LAZY_WORLD_OPEN_TR.md](P1_5_LAZY_WORLD_OPEN_TR.md).
+
+
 
 **P1.3b uygulandı:** `async_region_source.is_requested/prioritize_resident` ve `paged_terrain_preview` camera generation cancellation. `test_paged_camera_stress.gd` ile 9 sayfa/2 job/çoklu teleport, LOD0 collision ve source SHA regresyonu, [25/25 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45415690507). Bu, gerçek Android render/FPS ölçümü değildir; eski editable TerrainNode full Float32 RAM yolu değişmedi. Bir sonraki iş Android Mobile Renderer görsel/deliksizlik ve gerçek RSS/p95 ölçümü, ardından kaynak abstraction ve atomik P1.4 işlemler.
 

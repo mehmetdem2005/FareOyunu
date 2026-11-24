@@ -7,8 +7,8 @@
 - GitHub repo: https://github.com/mehmetdem2005/FareOyunu
 - Geliştirme dalı: https://github.com/mehmetdem2005/FareOyunu/tree/feat/terraforge-mobile-addon
 - Eklenti klasörü: `addons/terra_forge/`
-- Son doğrulanmış kod commit'i: `bf5c1dde57cf4f56a08b606b03c89270d09599c2`
-- Son PASS CI: https://github.com/mehmetdem2005/FareOyunu/actions/runs/45415690507 (25/25; Linux Godot 4.7.2)
+- Son doğrulanmış kod commit'i: `73603a15361766397854d11bad44ecb41e9bd53e`
+- Son PASS CI: https://github.com/mehmetdem2005/FareOyunu/actions/runs/45420063664 (26/26; Linux Godot 4.7.2)
 - Son kaynak ZIP örneği: https://github.com/mehmetdem2005/FareOyunu/archive/734c9088d76603279599654d345249b0cc90e321.zip — **tüm repo arşivi**. Kopyalanacak addon yalnız `addons/terra_forge/`.
 - Altında çalışılan sahne ve `terraforge_data/`, TFH/TFL/TFL.bak kaynakları ZIP değiştirirken silinmez.
 - GitHub Actions ekranı: depo > Actions > TerraForge Godot 4.7.2 CI. Yeşil check Linux headless testi ifade eder.
@@ -51,6 +51,13 @@
 - `paged_terrain_preview.gd` kamerası >=2 sayfa uzaklaştığında bekleyen eski disk işlerini bırakır; `async_region_source` geçerli mesh için halo sayfalarını LRU önceliğine alır.
 - GitHub [25/25 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45415690507); 9-page limit + 2 worker job + hızlı kamera geçişi + gerçek LOD0 collision test edildi.
 - **Gerçek Android'deki FPS/RSS ölçülmedi**. Test sahnesi dışında legacy oyun/editör terrain'i otomatik optimize olmaz. Kalan cihaz kontrol listesi [P1_3_PAGED_RENDER_TR.md](P1_3_PAGED_RENDER_TR.md).
+
+## 2.5 P1.5 — Hızlı açılış ve doğrulama modu (v0.4.4-dev.1)
+
+- Ayrı `paged_terrain_preview.gd` test sahnesinde `verify_pages_on_demand=true` varsayılan: checksummed TFM1 manifesti açılışta, istenen TFR1 sayfa ilk cold load'da worker Thread SHA-256 ile doğrulanır. Eski `async_region_source.open()` çağrıları varsayılan **strict** modda kalır.
+- Editör popup `READ-ONLY ON-DEMAND` veya `FULL` ve `Checked x/y` gösterir. ON-DEMAND'da henüz istenmemiş bozuk/missing dünya parçası açılışta bulunmayabilir. Hata halinde sahte düz y=0 arazi gösterilmez.
+- [26/26 Godot CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45420063664). Gerçek Android başlangıç süresi/termal/GPU/RSS hâlâ kullanıcı cihazında ölçülmeyi bekliyor.
+- Tam teknik durum [P1_5_LAZY_WORLD_OPEN_TR.md](P1_5_LAZY_WORLD_OPEN_TR.md).
 
 ## 3. Dokuz mevcut şekillendirme aracının kısa kullanımı
 

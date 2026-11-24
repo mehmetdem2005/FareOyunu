@@ -1,6 +1,6 @@
 # TerraForge — As-Built Mimari, Veri Formatları ve Modül Envanteri
 
-**Kod tabanı:** v0.4.3-dev.2, `bf5c1dde57cf4f56a08b606b03c89270d09599c2`. **Hedef:** Godot 4.7.2 / Android 11 Mobile. **Kural:** Bu belgeyi kod değiştikçe güncelle; doğrulanmamış bileşenleri CANLI diye sunma.
+**Kod tabanı:** v0.4.4-dev.1, `73603a15361766397854d11bad44ecb41e9bd53e`. **Hedef:** Godot 4.7.2 / Android 11 Mobile. **Kural:** Bu belgeyi kod değiştikçe güncelle; doğrulanmamış bileşenleri CANLI diye sunma.
 
 ## 1. Modül envanteri
 
@@ -27,7 +27,7 @@
 | `terrain/paged_terrain_preview.gd` | Opt-in @tool Node3D: kamera streaming ile ArrayMesh ve HeightMapShape3D collision; no full height array, no writes | **İSTEĞE BAĞLI PREVIEW / CI PASS** |
 | `tests/*.gd` | 20 Godot headless regresyon | CI PASS |
 | `tests/run_all.sh` | 4.7.2 version, PASS çıktısı, exit code, engine log kontrolleri | CI PASS |
-| `.github/workflows/terraforge-ci.yml` | Ubuntu, geçici Godot projesi, 25 test, log artifacts | CI PASS |
+| `.github/workflows/terraforge-ci.yml` | Ubuntu, geçici Godot projesi, 26 test, log artifacts | CI PASS |
 
 **Kesin ayrım:** `region_store.gd` bulunması, çalışan oyunda RAM tasarruflu streaming yapıldığı anlamına GELMEZ. Canlı terrain hâlâ `height_data.heights` için bütün world Float32 yükseklik dizisini bellekte tutuyor.
 
@@ -108,7 +108,7 @@
 ## 5.1 P1.2b — Asenkron disk IO (UYGULANDI / 23 test)
 
 - `async_region_source.gd`: `Thread`, `Mutex`, `Semaphore`; tek düşük öncelikli worker yalnız TFR1 dosya byte'ını alır, aynı buffer'da tam dosya ve internal SHA'yı doğrular, Float32 finite/metadata kontrolünü gerçekleştirir.
-- `open(dir,resident_limit,max_jobs)` önce **tüm TFM1 dünya dosyalarını senkron** doğrular; sonra thread başlatır. `request_page` main thread'de bounded queue'ya ekler; `poll_results` main thread cache'e kabul eder. `get_height/sample_local` hazır değilse `ERR_BUSY` veya gerçek veri hatası verir, sıfır yer üretmez.
+- `open(dir,resident_limit,max_jobs, verify_all_pages=true)` varsayılan strict modda bütün TFR1 dosyalarını açılışta doğrular; isteğe bağlı `false` modda yalnız checksummed TFM1 manifestini açar ve her TFR1'i ihtiyaç duyulunca worker içinde doğrular. `request_page` main thread'de bounded queue'ya ekler; `poll_results` main thread cache'e kabul eder. `get_height/sample_local` hazır değilse `ERR_BUSY` veya gerçek veri hatası verir, sıfır yer üretmez.
 - `camera_page_prefetch.configure_async(reader)` opt-in background IO scheduler; eski senkron API korunur. Kamera generation değiştirince eski pending/late worker sonuçları kabul edilmez.
 - `close()` worker shutdown ve `Thread.wait_to_finish()` ile explicit join yapar; aktif IO bitene kadar bloklayabilir. Android GPU/RAM/FPS ölçümü henüz yapılmadı.
 - Güncel kanıt: [Godot 4.7.2 CI 23/23 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45408761313). **Canlı `TerraForgeTerrain` hâlâ global `height_data.heights` kullanıyor**; RAM/FPS artışı iddia edilmez.
@@ -117,10 +117,10 @@
 ## 5.2 P1.3 — Opt-in paged ArrayMesh + HeightMapShape3D
 
 - **UYGULANDI:** `paged_tile_geometry.gd` `TFR1` resident Float32 sayfalarını, 3×3'e kadar komşu page halo ile 32-cell tile'lara çevirir. LOD stride 1/2/4, aynı LOD komşu merkezî normal ve mixed LOD kenar interpolasyonu, legacy'nin collision sample ölçekleme semantiği.
-- **UYGULANDI:** `paged_terrain_preview.gd` `@tool Node3D` varsayılan `preview_enabled=false`; `start_preview` bütün world manifestini hash doğrular, worker başlatır, camera-nearest tile için async sayfaları ister; `pump_stream()` main thread mesh/shape yaratır. Cache limit 9–64 page (varsayılan 16), background job 1–8.
+- **UYGULANDI:** `paged_terrain_preview.gd` `@tool Node3D` varsayılan `preview_enabled=false`; `start_preview` varsayılan lazy modda checksummed TFM1 manifestini doğrular, TFR1 full SHA'yı sayfa ihtiyaç duyulduğunda worker'a bırakır, camera-nearest tile için async sayfaları ister; `pump_stream()` main thread mesh/shape yaratır. Cache limit 9–64 page (varsayılan 16), background job 1–8.
 - **UYGULANDI:** `plugin.gd` seçilmiş preview scene düğümüne editör camera global_position forward eder, küçük popup read-only sayfa/mesh/IO sayacı gösterir; brush disabled. Legacy sculpt UI yolunu değiştirmez.
 - **CI:** `test_paged_terrain_preview.gd` legacy LOD0/1/2 vertices/normals/collision ve mixed LOD0↔LOD2 seam numerical parity, fail-closed corruption ve source immutability; [Godot 4.7.2 CI 24/24 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45413288421).
-- **AÇIK:** eski `TerraForgeTerrain` hâlâ full-grid Float32, gerçek Android GPU/RSS/p95/p99 yok; sync `open()` ve blocking `close()`, fast camera gaps test edilmeli; çok-region writable transaction olmadan terrain brush kapalı.
+- **AÇIK:** eski `TerraForgeTerrain` hâlâ full-grid Float32, gerçek Android GPU/RSS/p95/p99 yok; strict modda sync full-page `open()` ve blocking `close()`, fast camera gaps test edilmeli; çok-region writable transaction olmadan terrain brush kapalı.
 - Ayrıntılı kurulum, API ve riskler [P1_3_PAGED_RENDER_TR.md](P1_3_PAGED_RENDER_TR.md).
 
 ## 5.3 P1.3b — Kamera generation ve minimum-cache LRU (DONE / CI)
@@ -129,6 +129,15 @@
 - `paged_terrain_preview._sync_tiles`: dünya coordinate ile 32-cell focus sayfasını hesaplar; odak son queue focus'dan >=2 page taşınırsa `source.set_generation(next)` ile henüz başlamayan işleri ve geç tamamlanan eski sonuçları iptal eder. Kamera küçük hareketinde iş iptalinden kaçınır. `stats` camera_cancellations, focus_page, waiting_tile_frames içerir.
 - `test_paged_camera_stress.gd` 25. test: 128×128 test haritası, minimum 9 resident page, 2 outstanding worker, 3 uzun kamera geçişi, LOD0 gerçek collision, TFH checksum. [25/25 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45415690507).
 - **Kalan:** Android GPU/FPS/RSS onayı yok, çok büyük harita açılış `open()` tüm sayfaları senkron hashler; legacy `TerraForgeTerrain` hâlâ tam global Float32 array kullanıyor.
+
+## 5.4 P1.5 — Manifest-first fast open (UYGULANDI / 26/26 CI)
+
+- `async_region_source.open(directory,resident_limit,max_jobs,verify_all_pages=true)`: **strict default** legacy behavior korunur; `false` ise yalnız TFM1 checksum/schema kontrolü yapar ve worker Thread'i başlatır. TFR1 dosyası ilk kez istenene kadar **varlık/bütünlük doğrulanmış sayılmaz**. TFR1 full-file + internal SHA, world/coord/Float32 on-demand cold load'da geçmeden mesh verisi üretilmez.
+- `paged_terrain_preview.verify_pages_on_demand=true` yalnız yeni opt-in readonly Node'da varsayılandır. Editor popup `READ-ONLY ON-DEMAND` veya `FULL` ve `Checked n/total` kapsamını gösterebilir; bu global dünya sağlığı metriği değildir.
+- `stats` `verified_at_open,verification_mode,manifest_entries,pages_verified_on_demand,open_verify_ms` içerir. Cache'de doğrulanmış bir sayfa sonradan değişirse yeni cold read'de yeniden SHA yapılır; cache içindeki kopya kendiliğinden tekrar kontrol edilmez.
+- `test_lazy_world_open.gd` strict missing/corrupt startup, manifest-only lazy open, verify-on-demand fail-closed, corrupt TFM1 immediate fail, gerçek nearby ArrayMesh/collision ve off-tree explicit `stop_preview` kontrol eder. [26/26 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45420063664).
+- **Kalan:** Android 11 p95/RSS/startup doğrulanmadı, TFM1 JSON açılışı hâlâ senkron ve 2MiB sınırda; `close()` tek IO'yu join etmek için bloklayabilir; eski editable `TerraForgeTerrain` global height Float32 kullanır.
+- Kaynak: [P1_5_LAZY_WORLD_OPEN_TR.md](P1_5_LAZY_WORLD_OPEN_TR.md).
 
 ## 6. Bilinen operasyonel sınırlar
 

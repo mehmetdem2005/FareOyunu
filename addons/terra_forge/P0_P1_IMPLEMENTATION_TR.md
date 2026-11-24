@@ -1,5 +1,5 @@
 # TerraForge — P0 doğrulama ve P1 veri katmanları, ilk uygulama
-Sürüm: 0.4.3-dev.2
+Sürüm: 0.4.4-dev.1
 Durum: **Godot 4.7.2 Linux GitHub CI üzerinden test ediliyor; Android 11 GPU ve dokunmatik testleri henüz yapılmadı.**
 
 ## P0 — Güvenlik ve regresyon kapısı
@@ -97,3 +97,9 @@ Malzeme boyama, bitki, taş ve obje yerleştirme bu fazın dışındadır.
 - `async_region_source.gd` main-thread `is_requested` / `prioritize_resident`; bounded 1–8 jobs, 1–64 cache sınırları değişmez.
 - `paged_terrain_preview.gd` kamera >=2 page sıçramasında `set_generation` ile eski queued/late worker results iptal; LRU halo priority ve wait-frame counters.
 - `test_paged_camera_stress.gd` ile [Godot 4.7.2 CI 25/25 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45415690507); gerçek Android GPU/RAM/FPS ve büyük dünya startup sync verification hâlâ açık.
+
+## v0.4.4-dev.1 — P1.5 hızlı açılış ve salt okunur doğrulama kapsamı
+
+- `async_region_source.open(..., verify_all_pages=false)`: TFM1 checksum + schema doğrulanır; TFR1 page full SHA + internal SHA yalnız cold worker read'de. Legacy strict default `true` korunur.
+- `paged_terrain_preview.verify_pages_on_demand=true` read-only test modunda varsayılan; panel ON-DEMAND/FULL + doğrulanmış sayfa sayısını gösterir.
+- `test_lazy_world_open.gd` (26. test) missing/corrupt page, manifest tamper, yakın gerçek mesh/collision, worker cleanup, TFH immutability; [Godot CI 26/26 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45420063664). Android başlangıç süreleri/CPU/RAM ölçülmedi; eski `TerraForgeTerrain` full-grid Float32. Detay [P1_5_LAZY_WORLD_OPEN_TR.md](P1_5_LAZY_WORLD_OPEN_TR.md).

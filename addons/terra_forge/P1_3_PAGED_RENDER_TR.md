@@ -1,6 +1,6 @@
 # P1.3 — Gerçek Bölgesel ArrayMesh ve Çarpışma Entegrasyonu (Salt Okunur)
 
-**Durum:** v0.4.3-dev.2 / **izole opt-in prototip UYGULANDI**. **25/25 Godot 4.7.2 CI PASS**: https://github.com/mehmetdem2005/FareOyunu/actions/runs/45415690507  
+**Durum:** v0.4.4-dev.1 / **izole opt-in prototip UYGULANDI**. **25/25 Godot 4.7.2 CI PASS**: https://github.com/mehmetdem2005/FareOyunu/actions/runs/45415690507  
 **Kod commit'leri:** `4422e0b6` (ilk prototip), `c0068833` (adil mesh-normal parity testi), `286b135d` (editör kamerası köprüsü).  
 **Dal:** `feat/terraforge-mobile-addon`. Ana `main`, Fare oyununun mevcut sahneleri ve `terraforge_data` korunmuştur.
 
@@ -37,9 +37,13 @@ Bu, **legacy `TerraForgeTerrain` düğümünün değiştiği anlamına gelmez**;
 - `test_paged_camera_stress.gd`: 9-page minimum cache, 2 worker job, 128×128 bölgesel dünya, çoklu uzak kamera sıçraması ve gerçek LOD0 HeightMapShape3D collision ile senkron karşılaştırmalı stres. [CI 25/25 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45415690507).
 - **Dikkat:** Bu CI Linux Godot headless testidir; Android 11 RAM/GPU/FPS ve gerçek görüntü deliksizlik testi hâlâ gerekli.
 
+## P1.5 güncellemesi — manifest-first preview DONE
+
+**Tarihsel P1.3 açıklamalarına güncel ek:** `paged_terrain_preview.verify_pages_on_demand=true` ile yeni preview ilk açılışta yalnız checksummed TFM1'i doğrular, tüm TFR1 dosyalarını taramaz. İstenen sayfa worker'da SHA geçmeden mesh/collision olmaz; bozuk uzak sayfa ilk istenene kadar bilinmeyebilir. `false` seçilirse önceki full-world strict açılış çalışır. [26/26 Godot CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45420063664), gerçek Android süre profili yok. İlgili yeni otorite: [P1_5_LAZY_WORLD_OPEN_TR.md](P1_5_LAZY_WORLD_OPEN_TR.md).
+
 ## Büyük açık sınırlar — bitmiş gibi anlatma
 
-- **Büyük dünya açılışı hâlâ senkron:** `async_region_source.open()` tüm TFR1 sayfalarını SHA-256 ile tarar, Godot editörü bu aşamada bekleyebilir.
+- **Büyük dünya açılışı:** Eski strict `async_region_source.open()` tüm TFR1 sayfalarını başta doğrular. Yeni read-only preview **ON-DEMAND** varsayılanında yalnız TFM1 manifestini senkron açar, TFR1 SHA'ları ihtiyaç anına erteler. Bu mod tüm dünya hasarsız garantisi değildir.
 - **Eski editör Terrain node değişmedi:** `TerraForgeTerrain` hâlâ global `height_data.heights` kullanır. Şu andaki RAM tasarrufu yalnız **yeni test önizleme düğümünün** kaynak dizi tutmamasıyla sınırlı; tüm oyunda karşılaştırmalı RSS/GPU kanıtı yok.
 - **Tek tile için page halo:** Normal/çarpışma dahil up to 3×3 = 9 TFR1 sayfa gerekebilir; bu yüzden preview cache min=9, default=16. Main-thread `ArrayMesh` oluşturma ve `HeightMapShape3D` collision upload maliyeti ayrıca profillenmeli.
 - **Fizik LOD0 ile sınırlı**, legacy davranış gibi uzak LOD1/2 fizik shape boş. Near-fare kamera ve hızlı hareket halinde collision coverage ayrı incelenmeli.

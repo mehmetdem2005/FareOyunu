@@ -39,6 +39,10 @@ Eski P1.2 prototipinde kamera her yeni arazi parçasını diskten **ana thread'd
 - Resmî Godot Thread/Mutex/Semaphore ve thread-safe API ilkeleri doğrulandı: https://docs.godotengine.org/en/stable/tutorials/performance/using_multiple_threads.html ve https://docs.godotengine.org/en/stable/tutorials/performance/thread_safe_apis.html .
 - **GitHub Actions:** https://github.com/mehmetdem2005/FareOyunu/actions/runs/45408761313 — **23/23 PASS**, Godot 4.7.2 Linux headless. Bu, Android 11 GPU, touch, zaman sıçraması ve gerçek telefon benchmark'ı değildir.
 
+## v0.4.4-dev.1 geçiş notu — manifest-first hızlı açılış
+
+Bu belge **P1.2b tarihsel implementasyonunu** anlatır. Artık `async_region_source.open(directory,resident_limit,max_jobs,verify_all_pages=true)` şeklinde opsiyonel dördüncü parametre vardır. Varsayılan strict mod bu sayfadaki ilk davranışı korur; yeni `false` mod checksummed TFM1 ile hemen açar, her TFR1 cold IO'da hashlenir. Yeni readonly preview bunu varsayılan seçer. [26/26 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45420063664). Ayrıntı [P1_5_LAZY_WORLD_OPEN_TR.md](P1_5_LAZY_WORLD_OPEN_TR.md).
+
 ## Bilinen açık riskler
 
 - `open()` tüm sayfaları senkron doğrular; dev dünya startup latency. Gelecek iş: startup manifest-first ve aşamalı doğrulama **fail-closed** semantiğini bozmadan tasarla (yapılmış değil).

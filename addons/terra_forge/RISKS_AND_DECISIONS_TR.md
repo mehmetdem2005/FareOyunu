@@ -1,6 +1,6 @@
 # TerraForge — Karar Günlüğü, Risk Kaydı ve Geri Dönüş İlkeleri
 
-**Güncel as-built:** v0.4.3-dev.2 / 24 Kasım 2026. **Status:** Bazı çekirdekler Linux CI PASS; Android performans/doğallık kanıtı yok. Risklerin giderilmiş olması için ayrıca belirtilen kabul testi şarttır.
+**Güncel as-built:** v0.4.4-dev.1 / 24 Kasım 2026. **Status:** Bazı çekirdekler Linux CI PASS; Android performans/doğallık kanıtı yok. Risklerin giderilmiş olması için ayrıca belirtilen kabul testi şarttır.
 
 ## A. Değiştirilmeyecek temel kararlar
 
@@ -33,7 +33,7 @@
 **Önem: YÜKSEK.** TFR1 sayfa read/write, manifest full-check ve hashler senkron; TFL2 büyük dosya kaydı/main thread. Android düşük depolama hızı ve termal throttling ile dokunmatik editör donabilir. **Kısmi önlem DONE:** Bounded 1–8 **senkron** page read/tick, cache hit/miss ve IO last/max ms ölçülüyor. Bu bir frame-time garantisi değil. **Kalan:** background worker + bounded inflight, generation cancellation sonuç yayınında, cold source immutable buffer, main-thread scene commit.
 
 ### R-04 — Android gerçek test eksik
-**Önem: YÜKSEK.** Godot 4.7.2 Linux headless CI 25/25 PASS, ancak Redmi/Android sürücü/gesture/perf kanıtı yok. Önemli yüzey mesh, collision ve UI problemleri önceden yalnız kullanıcı görselinden tespit edilmişti. **Önlem:** P0 cihaz smoke, 30 dk memory, FPS/ısınma; hata raporu ve birebir sahne.
+**Önem: YÜKSEK.** Godot 4.7.2 Linux headless CI 26/26 PASS, ancak Redmi/Android sürücü/gesture/perf kanıtı yok. Önemli yüzey mesh, collision ve UI problemleri önceden yalnız kullanıcı görselinden tespit edilmişti. **Önlem:** P0 cihaz smoke, 30 dk memory, FPS/ısınma; hata raporu ve birebir sahne.
 
 ### R-05 — Görsel LOD topoloji gerçekten stitched değil
 **Önem: YÜKSEK.** Mevcut LOD komşu height uyarlaması ve normals daha iyi fakat T-junction, aşırı eğim normal, ani transition/popping, physics sınırı olabilir. **Önlem:** Analytical seam tests + ground-camera screenshot; gerekirse edge stitching ve geomorph; hızlı kamera hareketi test.
@@ -84,6 +84,10 @@
 ### R-19 — Gereksiz uzak sayfa IO ve minimum-cache halo thrash
 
 **Önem: ORTA (İZOLE düzeltme uygulandı).** Önceki P1.3 önizleme, kamera hızla zıpladığında eskiden kalan worker job'ları iptal etmiyordu. 9 sayfalık cache'de gereken edge halo sayfalarının MRU önceliği de yoktu. `bf5c1dde`: >=2 region kamera sıçramasında `set_generation()`, `prioritize_resident()` (MRU hint, hard pin değil), `is_requested()` duplicate submit engeli. [CI 25/25 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45415690507). **Kalan risk:** yavaş Android flash, GPU upload ve 30 dk gerçek kamera yürüyüşü ölçülmedi. Editör ve oyun sahnesi hâlâ ayrı test yolları.
+
+### R-20 — Hızlı açılışta uzak sayfa sonradan bozuk/missing çıkabilir
+
+**Önem: YÜKSEK (KABUL EDİLEN read-only mod semantiği).** `v0.4.4-dev.1` ile `async_region_source.open(...,false)` yalnız checksummed TFM1 manifestini doğrular; bütün TFR1 SHA kontrolleri **worker cold read** anına ertelenir. Uzak bozuk/missing sayfa başlangıçta kabul edilmiş dünyada sonradan tespit edilebilir. **Bu tam dünya onayı DEĞİL!** `get_height` başarısızlıkta sahte 0 döndürmez, ilgili tile mesh/collision oluşturulmaz. Eski `open()` strict default korunur; preview Inspector'da `verify_pages_on_demand=true` varsayılan, false strict. `stats.verified_at_open` ve Checked/Total, kullanıcıyı yanlış güvene sokmaz. [26/26 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45420063664). **Kalan:** telefon cihazında gerçek render/IO, eski mesh koruma ve collision coverage testi, immutable generation-pinned multi-page transaction P1.4.
 
 ## C. Acil veri kaybı anında yapılacaklar
 

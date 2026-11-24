@@ -1,6 +1,6 @@
 # TerraForge — CI, Test Matrisi, Android Performans ve Kalite Kapısı
 
-**Tarih:** 2026-11-24. **Baz kod:** v0.4.3-dev.2, `bf5c1dde57cf4f56a08b606b03c89270d09599c2`. **Son doğrulanmış run:** [GitHub Actions 45415690507, 25/25 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45415690507).
+**Tarih:** 2026-11-24. **Baz kod:** v0.4.4-dev.1, `73603a15361766397854d11bad44ecb41e9bd53e`. **Son doğrulanmış run:** [GitHub Actions 45420063664, 26/26 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45420063664).
 
 ## A. GitHub CI gerçek kapsamı
 
@@ -8,7 +8,7 @@ Workflow: `.github/workflows/terraforge-ci.yml`. Sadece `feat/terraforge-mobile-
 
 Test çalıştırıcı: `addons/terra_forge/tests/run_all.sh`. Her test logu, exit code + explicit `PASS:` + Godot engine Error/Parse Error analizi; beklenen özel veri koruma hata satırları kontrollü olarak filtrelenir. Özet ve log artifact Actions içinde. Bu **Android build, Vulkan/OpenGL sürücü testi, gerçek GPU p95 FPS testi** değildir.
 
-### Mevcut 25 test ve neyi kanıtladıkları
+### Mevcut 26 test ve neyi kanıtladıkları
 
 | # | Dosya | Kapsanan davranış |
 |---:|---|---|
@@ -41,7 +41,9 @@ Test çalıştırıcı: `addons/terra_forge/tests/run_all.sh`. Her test logu, ex
 
 | 25 | `test_paged_camera_stress.gd` | 9-page cache + 2 outstanding IO, büyük kamera teleport generation cancellation, origin stale mesh unload, LOD0 HeightMapShape3D oluşturma, TFH SHA değişmezlik |
 
-**Doğrulanmış:** 25 testin tümü `bf5c1dde` commit'i için geçti. [GitHub Actions](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45415690507). Yeni dokümantasyon commit'i kod değişikliği yapmazsa 25 testlik kod sonucu aynı referans kalır; Actions otomatik yeni run başlatmışsa ayrı kaydedilmelidir.
+| 26 | `test_lazy_world_open.gd` | Strict default tüm sayfa doğrulama, TFM1 checksum ve schema, lazy TFR1 cold worker SHA, missing/corrupt page no flat height, yakın gerçek mesh/collision, off-tree stop/join, TFH integrity |
+
+**Doğrulanmış:** 26 testin tümü `73603a15` commit'i için geçti. [GitHub Actions](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45420063664). Yeni dokümantasyon commit'i kod değişikliği yapmazsa 26 testlik kod sonucu aynı referans kalır; Actions otomatik yeni run başlatmışsa ayrı kaydedilmelidir.
 
 **CI'da YOK / GERÇEK CİHAZ BEKLİYOR:** 3D editörde gerçek Android finger/tap, Mobile renderer görüntüsü, telefon GPU driver, shader upload, uzun süreli RAM/VRAM leak, fizik adımı, termal throttling, kalıcı depolama izinleri ve kullanıcı ekranı.
 
@@ -52,7 +54,7 @@ Test çalıştırıcı: `addons/terra_forge/tests/run_all.sh`. Her test logu, ex
 - `.github/workflows/terraforge-ci.yml` script import/EditorPlugin startup testini kaldırma.
 - CI run job logunu aç, **total fails 0** görmeden başarılı deme. Beklenen hata mesajını sadece ilgili testte filtrele; bütün `ERROR:` satırlarını globally gizleme.
 - SHA, run URL, test sayısı, yeni risk ve rollback'i `STATUS_AND_CHANGELOG_TR.md` dosyasına kaydet.
-- P1.3b kamera/cache stres regresyonu ile toplam **25 test**. Android gerçek render/performans ayrı zorunlu doğrulama; sonraki kod değişikliği 24 testin hepsini koruyacak.
+- P1.5 manifest-first read-only preview regresyonuyla toplam **26 test**. Android gerçek render/performans ayrı zorunlu doğrulama; sonraki kod değişikliği 24 testin hepsini koruyacak.
 
 ## C. Teknik doğruluk kabul kapıları
 
