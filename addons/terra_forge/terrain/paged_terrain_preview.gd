@@ -10,8 +10,11 @@ const TILE_CELLS: int = 32
 
 @export var preview_enabled: bool = false
 @export_dir var region_directory: String = ""
+## Explicit choice; never guess a format or fall back on errors.
+@export_enum("TFM1", "TFM2") var region_index_format: int = 0
+@export_range(1, 16, 1) var resident_shard_limit: int = 4
 ## Faster startup for this read-only opt-in preview: checks the TFM1
-## manifest first and fully hashes each TFR1 on its worker's first read.
+## manifest or TFM2 root first; each cold shard/page is verified on worker.
 ## Bad/missing pages stay ERR_FILE_CORRUPT/ERR_FILE_NOT_FOUND, never flat.
 ## Disable for the previous whole-world, strictly checked open behavior.
 @export var verify_pages_on_demand: bool = true
@@ -73,7 +76,11 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
         return _last_error
     _ensure_material()
     var next = ASYNC.new()
-    var status: Error = next.open(directory, cache_pages, max_jobs, not verify_pages_on_demand)
+    var status: Error = ERR_INVALID_PARAMETER
+    if region_index_format == 0:
+        status = next.open(directory, cache_pages, max_jobs, not verify_pages_on_demand)
+    elif region_index_format == 1:
+        status = next.open_v2(directory, cache_pages, max_jobs, not verify_pages_on_demand, resident_shard_limit)
     if status != OK:
         next.close()
         _last_error = status
@@ -87,6 +94,9 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
     _queue_focus_page = Vector2i(-999999, -999999)
     _camera_cancellations = 0
     _waiting_tile_frames = 0
+    _mesh_builds = 0
+    _last_build_ms = 0.0
+    _max_build_ms = 0.0
     _anchor = Vector3(
         float(_reader.cells.x) * _reader.spacing * 0.5,
         0.0, float(_reader.cells.y) * _reader.spacing * 0.5
@@ -394,6 +404,7 @@ func stats() -> Dictionary:
         "max_build_ms": _max_build_ms,
         "source": source,
         "verify_pages_on_demand": verify_pages_on_demand,
+        "index_format": source.get("index_format", "TFM2" if region_index_format == 1 else "TFM1"),
         "last_error": _last_error,
         "last_error_page": _last_error_page,
         "focus_page": _queue_focus_page,
