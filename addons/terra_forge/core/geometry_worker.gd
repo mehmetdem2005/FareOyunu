@@ -22,6 +22,7 @@ var _serial: int = 0
 var _snapshot: String = ""
 var _epoch: int = 0
 var _cap: int = 2
+var _scalar_sampling: bool = false
 var _next_id: int = 0
 var _pending: Array[Dictionary] = []
 var _finished: Array[Dictionary] = []
@@ -34,7 +35,7 @@ var _peak_slots: int = 0
 var _pruned_pending: int = 0
 var _pruned_finished: int = 0
 
-func start(source, cap: int=2) -> Error:
+func start(source, cap: int=2, scalar_sampling: bool=false) -> Error:
     close()
     if source==null or not source.is_open() or cap<1 or cap>4:
         return ERR_INVALID_PARAMETER
@@ -44,6 +45,7 @@ func start(source, cap: int=2) -> Error:
     _snapshot=stats["snapshot_id"]
     _epoch=stats["generation"]
     _cap=cap
+    _scalar_sampling=scalar_sampling
     _stop=false
     _thread=Thread.new()
     var status: Error=_thread.start(Callable(self,"_loop"),Thread.PRIORITY_LOW)
@@ -150,7 +152,7 @@ func _loop() -> void:
             var key: Vector2i=job["key"]
             var started: int=Time.get_ticks_usec()
             job["queue_wait_us"]=started-int(job["queued_us"])
-            var generated: Dictionary=G.generate(job["buffer"],key.x,key.y,job["lod"],job["desired"])
+            var generated: Dictionary=G.generate_owned_dense_scalar(job["buffer"],key.x,key.y,job["lod"],job["desired"]) if _scalar_sampling else G.generate(job["buffer"],key.x,key.y,job["lod"],job["desired"])
             var elapsed: int=Time.get_ticks_usec()-started
             var output_bytes: int=0
             if generated["error"]==OK:
@@ -246,7 +248,7 @@ func active_ids() -> Array[int]:
 
 func stats() -> Dictionary:
     _mutex.lock()
-    var result: Dictionary={"open":_open,"pending":_pending.size(),"inflight":_inflight,"finished":_finished.size(),"slots":_slots(),"cap":_cap,"reserved_payload_bytes":_slots()*SLOT_BYTES,"payload_cap_bytes":_cap*SLOT_BYTES,"peak_slots":_peak_slots,"pruned_pending":_pruned_pending,"pruned_finished":_pruned_finished,"submitted":_submitted,"delivered":_delivered,"dropped":_dropped,"epoch":_epoch}
+    var result: Dictionary={"open":_open,"scalar_sampling":_scalar_sampling,"pending":_pending.size(),"inflight":_inflight,"finished":_finished.size(),"slots":_slots(),"cap":_cap,"reserved_payload_bytes":_slots()*SLOT_BYTES,"payload_cap_bytes":_cap*SLOT_BYTES,"peak_slots":_peak_slots,"pruned_pending":_pruned_pending,"pruned_finished":_pruned_finished,"submitted":_submitted,"delivered":_delivered,"dropped":_dropped,"epoch":_epoch}
     _mutex.unlock()
     return result
 
@@ -262,6 +264,7 @@ func close() -> void:
         _thread.wait_to_finish()
     _thread=null
     _open=false
+    _scalar_sampling=false
     _armed=false
     _wake=Semaphore.new()
     _inflight=0

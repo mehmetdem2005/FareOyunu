@@ -23,7 +23,7 @@ const TILE_CELLS: int = 32
 ## Experimental A/B CPU sampling path. Default stays baseline until measured.
 @export var use_tile_read_view: bool = false
 ## -1 preserves serialized legacy bool. Explicit mode overrides it.
-@export_enum("Legacy flag:-1", "A direct:0", "B tile view:1", "C dense buffer:2", "E geometry worker:3", "F priority worker:4") var sampling_strategy: int = -1
+@export_enum("Legacy flag:-1", "A direct:0", "B tile view:1", "C dense buffer:2", "E geometry worker:3", "F priority worker:4", "G scalar priority worker:5") var sampling_strategy: int = -1
 var _active_sampling_strategy: int = 0
 var _dense_payload_peak: int = 0
 @export_range(1,4,1) var geometry_job_limit: int = 2
@@ -92,7 +92,7 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
         _last_error = ERR_INVALID_PARAMETER
         return _last_error
     var selected: int = resolved_sampling_strategy()
-    if selected < 0 or selected > 4:
+    if selected < 0 or selected > 5:
         _last_error = ERR_INVALID_PARAMETER
         return _last_error
     _active_sampling_strategy = selected
@@ -109,9 +109,9 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
         _last_error = status
         return status
     _reader = next
-    if selected==3 or selected==4:
+    if selected>=3:
         _geometry_worker=WORKER.new()
-        status=_geometry_worker.start(_reader,geometry_job_limit)
+        status=_geometry_worker.start(_reader,geometry_job_limit,selected==5)
         if status!=OK:
             stop_preview()
             _last_error=status
@@ -200,7 +200,7 @@ func pump_stream() -> Dictionary:
         _last_sync_msec = current
     var started: int=Time.get_ticks_usec()
     if _geometry_worker!=null:
-        if _active_sampling_strategy==4:
+        if _active_sampling_strategy>=4:
             var reconciled: Error=_geometry_worker.reconcile(_reader,_desired_tiles,_priority_ranks())
             if reconciled!=OK:
                 _last_error=reconciled
@@ -347,7 +347,7 @@ func _build_pending_tiles(started: int = -1) -> void:
     var keys: Array = _pending_tiles.keys().filter(func(key: Variant) -> bool:
         return not _blocked_tiles.has(key) and not _geometry_jobs.has(key)
     )
-    if _active_sampling_strategy==4:
+    if _active_sampling_strategy>=4:
         var ranks: Dictionary=_priority_ranks()
         keys.sort_custom(func(a: Variant,b: Variant)->bool: return int(ranks[a])<int(ranks[b]))
     else:

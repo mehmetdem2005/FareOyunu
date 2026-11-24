@@ -173,6 +173,10 @@ static func generate_with_dense(source, tx: int, tz: int, lod: int, desired: Dic
     result["dense_payload_bytes"] = buffer.payload_bytes()
     return result
 
+## Worker-owned dense buffer, no reader or lease involved.
+static func generate_owned_dense_scalar(buffer,tx: int,tz: int,lod: int,desired: Dictionary) -> Dictionary:
+    return _generate(buffer,tx,tz,lod,desired,true)
+
 static func generate(source, tx: int, tz: int, lod: int, desired: Dictionary) -> Dictionary:
     return _generate(source,tx,tz,lod,desired,false)
 

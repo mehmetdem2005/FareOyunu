@@ -52,7 +52,7 @@ static func _fingerprints(p) -> Dictionary:
     return result
 
 static func run(directory: String,format: int,mode: int,cap: int) -> Dictionary:
-    if mode not in [2,3] or cap not in [1,2,4] or format not in [0,1]:
+    if mode not in [2,3,4,5] or cap not in [1,2,4] or format not in [0,1]:
         return {"error":ERR_INVALID_PARAMETER}
     var p=P.new()
     p.region_index_format=format
@@ -86,7 +86,10 @@ static func run(directory: String,format: int,mode: int,cap: int) -> Dictionary:
         var batch_main: int=0
         for step in range(3000):
             var started: int=Time.get_ticks_usec()
-            if mode==3:
+            if mode>=4:
+                if p._geometry_worker.reconcile(p._reader,p._desired_tiles,p._priority_ranks())!=OK:
+                    return _close(p,{"error":ERR_BUG,"stage":"reconcile"})
+            if mode>=3:
                 p._publish_worker_results(started)
             p._build_pending_tiles(started)
             var elapsed: int=Time.get_ticks_usec()-started
@@ -97,7 +100,7 @@ static func run(directory: String,format: int,mode: int,cap: int) -> Dictionary:
             var s: Dictionary=p.stats()
             if s["last_error"]!=OK or s["geometry_reservations"]>cap or s["source"]["tile_view_active_pages"]!=0:
                 return _close(p,{"error":ERR_BUG,"stage":"work bounds"})
-            if mode==3 and (s["geometry_worker"]["slots"]>cap or s["geometry_worker"]["submitted"]>4*(batch+1)):
+            if mode>=3 and (s["geometry_worker"]["slots"]>cap or s["geometry_worker"]["submitted"]>4*(batch+1)):
                 return _close(p,{"error":ERR_BUG,"stage":"duplicate job or capacity"})
             if p._pending_tiles.is_empty():
                 break
@@ -117,9 +120,9 @@ static func run(directory: String,format: int,mode: int,cap: int) -> Dictionary:
     var after: Dictionary=p._reader.stats()
     if before["disk_reads"]!=after["disk_reads"] or before["evictions"]!=after["evictions"] or before["submitted"]!=after["submitted"]:
         return _close(p,{"error":ERR_BUG,"stage":"unexpected IO"})
-    var result: Dictionary={"error":OK,"format":format+1,"mode":mode,"cap":cap if mode==3 else 0,"completed":BATCHES*4,"warmup_builds":4,"pages":pages.size(),"main_total_us":total_main_us,"wall_total_us":total_wall_us,"main_us_per_tile":float(total_main_us)/(BATCHES*4),"wall_us_per_tile":float(total_wall_us)/(BATCHES*4),"pumps":pump_count,"main_ms":main.report(),"batch_wall_ms":batch_wall.report(),"fingerprints":reference,"worker":s["geometry_worker"],"copy_ms_including_warmup":s["geometry_copy_ms"],"queue_ms_including_warmup":s["geometry_queue_ms"],"build_ms_including_warmup":s["geometry_worker_ms"],"delivery_ms_including_warmup":s["geometry_delivery_ms"],"publish_ms_including_warmup":s["geometry_publish_ms"]}
+    var result: Dictionary={"error":OK,"format":format+1,"mode":mode,"cap":cap if mode>=3 else 0,"completed":BATCHES*4,"warmup_builds":4,"pages":pages.size(),"main_total_us":total_main_us,"wall_total_us":total_wall_us,"main_us_per_tile":float(total_main_us)/(BATCHES*4),"wall_us_per_tile":float(total_wall_us)/(BATCHES*4),"pumps":pump_count,"main_ms":main.report(),"batch_wall_ms":batch_wall.report(),"fingerprints":reference,"worker":s["geometry_worker"],"copy_ms_including_warmup":s["geometry_copy_ms"],"queue_ms_including_warmup":s["geometry_queue_ms"],"build_ms_including_warmup":s["geometry_worker_ms"],"delivery_ms_including_warmup":s["geometry_delivery_ms"],"publish_ms_including_warmup":s["geometry_publish_ms"]}
     # Teardown with outstanding work: submit then close immediately.
-    if mode==3:
+    if mode>=3:
         var accepted: Dictionary=p._geometry_worker.submit(p._reader,Vector2i(15,15),0,DESIRED)
         if accepted["error"]!=OK:
             return _close(p,{"error":ERR_BUG,"stage":"close setup"})

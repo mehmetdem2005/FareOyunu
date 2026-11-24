@@ -2,7 +2,7 @@
 extends RefCounted
 ## Experimental C: copied, stride-aligned canonical heights plus a normal
 ## halo. Independent of the page cache after synchronous construction.
-## Never share with a worker until an explicit ownership contract exists.
+## Workers may own a private copy; never share a mutable buffer.
 const MAX_SAMPLES: int = 35 * 35
 var cells: Vector2i
 var spacing: float
@@ -54,3 +54,17 @@ func get_height(x: int,z: int) -> Dictionary:
     if ix>=_extent.x or iz>=_extent.y or x>cells.x or z>cells.y:
         return {"error":ERR_INVALID_PARAMETER}
     return {"error":OK,"height":_values[iz*_extent.x+ix]}
+
+## Scalar access for the worker-owned copy. No dictionary on success;
+## off-grid/outside samples and nonfinite values fail closed.
+func read_finite_or_nan(x: int,z: int) -> float:
+    var dx: int=x-_first.x
+    var dz: int=z-_first.y
+    if not is_open() or dx<0 or dz<0 or dx%_stride!=0 or dz%_stride!=0:
+        return NAN
+    var ix: int=dx/_stride
+    var iz: int=dz/_stride
+    if ix>=_extent.x or iz>=_extent.y or x>cells.x or z>cells.y:
+        return NAN
+    var value: float=_values[iz*_extent.x+ix]
+    return value if is_finite(value) else NAN
