@@ -1,4 +1,4 @@
-# TerraForge Mobile — v0.4.2-dev.1 (manifest-verified paging and camera prefetch)
+# TerraForge Mobile — v0.4.2-dev.2 (bounded background region page IO)
 > **NEW CHAT / FULL PROJECT MEMORY (2026-11-24):** Start with [DOCS_INDEX_TR.md](DOCS_INDEX_TR.md) and [HANDOFF_START_HERE_TR.md](HANDOFF_START_HERE_TR.md). The complete P0–P7 plan, actual CI results, full code/data architecture, risks, terrain geology research, mobile workflow, and the next exact GitHub CI implementation tasks are saved as multiple Markdown documents in this addon branch. **These documents do not mean live regional streaming is implemented.**
 
 
@@ -39,6 +39,15 @@ Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, nativ
 - **Weather**: tap a steep area and release for 1–6 bounded thermal passes (up to 32m). It now uses two scans of the four neighbors rather than allocating candidate arrays per sample. Material is transferred conservatively; **no water flow or sediment simulation is claimed**.
 - **Smooth**: two-pass neighborhood snapshot plus a 55% bilateral blend reduces directional scan artifacts while retaining some high-contrast edges. Ramp/Stamp/Weather controls remain contextual; Undo/Redo and Float32 data format are unchanged.
 - Mobile **Check** button tests Float32 roundtrip, path consistency, local mass balance and reports CPU processing times without changing the user's terrain.
+
+## P1.2b actual background region IO (v0.4.2-dev.2)
+
+- Added `core/async_region_source.gd`: one low-priority **Godot Thread** loads verified TFR1 Float32 pages. `Mutex` and `Semaphore` protect a bounded queue (1–8 queued/inflight/completed jobs); only the main thread commits verified Float32 buffers to a resident cache (1–64 pages).
+- The worker verifies a page's manifest SHA-256, internal TFR1 payload checksum, world dimensions, page key, sample spacing and finite Float32 values from **one immutable file read buffer**. Missing/corrupt data fails closed; no zero-height fallback.
+- `core/camera_page_prefetch.gd` now offers optional `configure_async(reader)`. Existing synchronous `configure(reader)` path is preserved. Pending/late old-generation results are discarded after camera teleports.
+- Added `tests/test_async_page_io.gd` including real Thread life cycle, cancellation races, bounded pending/results, bilinear seam values, missing/corrupt page, and shutdown. [Godot 4.7.2 CI: 23/23 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45408761313).
+- **Not integrated into the live terrain mesh, collision or brush.** No FPS/RAM benefit measured. The full-world manifest validation in `open()` is still synchronous, and `close()` may wait for a single ongoing IO read. See [P1_2_ASYNC_IO_TR.md](P1_2_ASYNC_IO_TR.md).
+- Next: P1.3 opt-in read-only mesh/physics source adapter; P1.4 atomic multi-page transactions before enabling regional sculpt.
 
 ## P1.2 verified read-only paged sampler (v0.4.2-dev.1)
 

@@ -1,6 +1,6 @@
 # TerraForge — As-Built Mimari, Veri Formatları ve Modül Envanteri
 
-**Kod tabanı:** v0.4.2-dev.1, `a214c907b6fba2d3cd7dba32f883ee5fad7ed446`. **Hedef:** Godot 4.7.2 / Android 11 Mobile. **Kural:** Bu belgeyi kod değiştikçe güncelle; doğrulanmamış bileşenleri CANLI diye sunma.
+**Kod tabanı:** v0.4.2-dev.2, `4d5ed1bdce11727f5bc129087432198956ff2ce5`. **Hedef:** Godot 4.7.2 / Android 11 Mobile. **Kural:** Bu belgeyi kod değiştikçe güncelle; doğrulanmamış bileşenleri CANLI diye sunma.
 
 ## 1. Modül envanteri
 
@@ -21,10 +21,11 @@
 | `core/region_manifest.gd` | TFM1 world manifest + source/page hash kontrolü | İZOLE |
 | `core/region_export.gd` | TFH/TFL snapshot → staged TFR1 pages + manifest | İZOLE |
 | `core/paged_height_source.gd` | TFM1/TFR1 read-only verified Float32 cache, cross-page bilinear, 1–64 LRU | İZOLE / CI PASS |
-| `core/camera_page_prefetch.gd` | Kamera yakın/yön priority, 1–8 senkron page read/tick, generation reset | İZOLE / CI PASS |
+| `core/camera_page_prefetch.gd` | Kamera yakın/yön priority, opsiyonel configure_async ile worker scheduler | İZOLE / CI PASS |
+| `core/async_region_source.gd` | Thread/Mutex/Semaphore bounded TFR1 IO, tek-buffer SHA, ana-thread Float32 cache | İZOLE / CI PASS |
 | `tests/*.gd` | 20 Godot headless regresyon | CI PASS |
 | `tests/run_all.sh` | 4.7.2 version, PASS çıktısı, exit code, engine log kontrolleri | CI PASS |
-| `.github/workflows/terraforge-ci.yml` | Ubuntu, geçici Godot projesi, 22 test, log artifacts | CI PASS |
+| `.github/workflows/terraforge-ci.yml` | Ubuntu, geçici Godot projesi, 23 test, log artifacts | CI PASS |
 
 **Kesin ayrım:** `region_store.gd` bulunması, çalışan oyunda RAM tasarruflu streaming yapıldığı anlamına GELMEZ. Canlı terrain hâlâ `height_data.heights` için bütün world Float32 yükseklik dizisini bellekte tutuyor.
 
@@ -101,6 +102,15 @@
 **Kodlandı / 22/22 CI PASS:** `camera_page_prefetch.gd` `configure,request_focus,tick,release_distant,stats` API'lerini sunar. En yakın sayfaya, sonra hareket yönüne öncelik verir; 1–8 **senkron** cold read/tick, eski bekleyen sıraları generation ile iptal. Her page'nin tek IO okuması kare süresini aşabilir.
 
 **PLAN:** worker-thread async IO, bounded inflight, generation-id ile **geç sonuçları** atma, startup full world sync SHA optimizasyonu, `HeightSource` ile gerçek `TerraForgeTerrain` mesh/normal/physics bağlama ve multi-page writable transaction. Canlı terrain hâlâ bütün Float32 height array'i tutar. Teknik API kaydı: [P1_2_PAGED_SAMPLER_TR.md](P1_2_PAGED_SAMPLER_TR.md).
+
+## 5.1 P1.2b — Asenkron disk IO (UYGULANDI / 23 test)
+
+- `async_region_source.gd`: `Thread`, `Mutex`, `Semaphore`; tek düşük öncelikli worker yalnız TFR1 dosya byte'ını alır, aynı buffer'da tam dosya ve internal SHA'yı doğrular, Float32 finite/metadata kontrolünü gerçekleştirir.
+- `open(dir,resident_limit,max_jobs)` önce **tüm TFM1 dünya dosyalarını senkron** doğrular; sonra thread başlatır. `request_page` main thread'de bounded queue'ya ekler; `poll_results` main thread cache'e kabul eder. `get_height/sample_local` hazır değilse `ERR_BUSY` veya gerçek veri hatası verir, sıfır yer üretmez.
+- `camera_page_prefetch.configure_async(reader)` opt-in background IO scheduler; eski senkron API korunur. Kamera generation değiştirince eski pending/late worker sonuçları kabul edilmez.
+- `close()` worker shutdown ve `Thread.wait_to_finish()` ile explicit join yapar; aktif IO bitene kadar bloklayabilir. Android GPU/RAM/FPS ölçümü henüz yapılmadı.
+- Güncel kanıt: [Godot 4.7.2 CI 23/23 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45408761313). **Canlı `TerraForgeTerrain` hâlâ global `height_data.heights` kullanıyor**; RAM/FPS artışı iddia edilmez.
+- Tüm teknik sözleşme ve sıradaki P1.3 işleri: [P1_2_ASYNC_IO_TR.md](P1_2_ASYNC_IO_TR.md).
 
 ## 6. Bilinen operasyonel sınırlar
 

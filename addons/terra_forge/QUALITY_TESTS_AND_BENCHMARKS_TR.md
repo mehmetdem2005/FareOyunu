@@ -1,6 +1,6 @@
 # TerraForge — CI, Test Matrisi, Android Performans ve Kalite Kapısı
 
-**Tarih:** 2026-11-24. **Baz kod:** v0.4.2-dev.1, `a214c907b6fba2d3cd7dba32f883ee5fad7ed446`. **Son doğrulanmış run:** [GitHub Actions 45404989825, 22/22 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45404989825).
+**Tarih:** 2026-11-24. **Baz kod:** v0.4.2-dev.2, `4d5ed1bdce11727f5bc129087432198956ff2ce5`. **Son doğrulanmış run:** [GitHub Actions 45408761313, 23/23 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45408761313).
 
 ## A. GitHub CI gerçek kapsamı
 
@@ -8,7 +8,7 @@ Workflow: `.github/workflows/terraforge-ci.yml`. Sadece `feat/terraforge-mobile-
 
 Test çalıştırıcı: `addons/terra_forge/tests/run_all.sh`. Her test logu, exit code + explicit `PASS:` + Godot engine Error/Parse Error analizi; beklenen özel veri koruma hata satırları kontrollü olarak filtrelenir. Özet ve log artifact Actions içinde. Bu **Android build, Vulkan/OpenGL sürücü testi, gerçek GPU p95 FPS testi** değildir.
 
-### Mevcut 22 test ve neyi kanıtladıkları
+### Mevcut 23 test ve neyi kanıtladıkları
 
 | # | Dosya | Kapsanan davranış |
 |---:|---|---|
@@ -35,7 +35,9 @@ Test çalıştırıcı: `addons/terra_forge/tests/run_all.sh`. Her test logu, ex
 | 21 | `test_paged_height_source.gd` | TFM1/TFR1 SHA, Float32 sınır/bilinear, LRU, bozulmuş/eksik source, TFL2 immutable composite |
 | 22 | `test_camera_page_prefetch.gd` | Kamera öncelik, read/tick, generation cancel, 80 konumlu trace, fail-closed corruption |
 
-**Doğrulanmış:** 22 testin hepsi `a214c907` commit için geçti. [Başarılı run](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45404989825). Yeni dokümantasyon commit'i kod değişikliği yapmazsa 22 testlik kod sonucu aynı referans kalır; Actions otomatik yeni run başlatmışsa ayrı kaydedilmelidir.
+| 23 | `test_async_page_io.gd` | Gerçek Thread/Mutex/Semaphore, bounded jobs, Float32 cross-page, stale generation drop, missing/corrupt page, close/join ve source immutability |
+
+**Doğrulanmış:** 23 testin hepsi `4d5ed1bd` uygulama commit'i için geçti. [GitHub Actions](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45408761313). Yeni dokümantasyon commit'i kod değişikliği yapmazsa 23 testlik kod sonucu aynı referans kalır; Actions otomatik yeni run başlatmışsa ayrı kaydedilmelidir.
 
 **CI'da YOK / GERÇEK CİHAZ BEKLİYOR:** 3D editörde gerçek Android finger/tap, Mobile renderer görüntüsü, telefon GPU driver, shader upload, uzun süreli RAM/VRAM leak, fizik adımı, termal throttling, kalıcı depolama izinleri ve kullanıcı ekranı.
 
@@ -46,7 +48,7 @@ Test çalıştırıcı: `addons/terra_forge/tests/run_all.sh`. Her test logu, ex
 - `.github/workflows/terraforge-ci.yml` script import/EditorPlugin startup testini kaldırma.
 - CI run job logunu aç, **total fails 0** görmeden başarılı deme. Beklenen hata mesajını sadece ilgili testte filtrele; bütün `ERROR:` satırlarını globally gizleme.
 - SHA, run URL, test sayısı, yeni risk ve rollback'i `STATUS_AND_CHANGELOG_TR.md` dosyasına kaydet.
-- P1.2 iki yeni testle 20 → 22 oldu; P1.2b yeni IO regressions ile en az 23 test hedefleniyor.
+- P1.2b yeni worker regression ile toplam **23 test**. P1.3 ilk canlı read-only adapter testinde en az 24 test ve gerçek yeni CI run gereklidir.
 
 ## C. Teknik doğruluk kabul kapıları
 
@@ -56,6 +58,7 @@ Test çalıştırıcı: `addons/terra_forge/tests/run_all.sh`. Her test logu, ex
 | Katmanlar | Görünürlük, Undo/Redo, scene reopen, max layer sınırı, backup | CI PASS / Android bekliyor |
 | TFR1 world snapshot | Sınır örneği = tek sahip, tüm dosya/manifest SHA, output-overwrite reddi | CI PASS / canlı yok |
 | Paged sampler | Bilinear cross-page, cache limit, bozuk page fail closed, 1–64 limit | **İZOLE CI PASS** / canlıya bağlı değil |
+| Worker-thread IO | Mutex/Semaphore, job cap 1–8, stale generation, SHA buffer, join/close | **İZOLE CI PASS** / Android profili yok |
 | Live region mesh | Legacy ile aynı vertex, normals/seam/height, missing-page doğru fallback veya kilit | **PLAN** |
 | Live collision | Görsel height ile yüzey hata toleransı altında eşit, boş collision yok | **PLAN** |
 | LOD0↔LOD1↔LOD2 | Görünür yarık, gap, checkerboard skirt, yanlış normal, popping yok | Headless kısmi / Android QA bekliyor |
@@ -102,7 +105,7 @@ Test çalıştırıcı: `addons/terra_forge/tests/run_all.sh`. Her test logu, ex
 
 Her GitHub PR/commit sonrası burada veya STATUS belgesinde:
 - Commit SHA / version / çalıştırılmış run URL ve sonucu.
-- 22 + yeni test adı ve PASS/FAIL; CI raw logs varsa nerede.
+- 23 + yeni test adı ve PASS/FAIL; CI raw logs varsa nerede.
 - Dönüşümde kaynak SHA değişti mi, yeni dosyalar doğrulandı mı?
 - Test platformu: Linux headless mı Android gerçek mi?
 - Görsel/kare süreleri varsa cihaz modeli, Android sürümü, renderer, quality profile, kamera ve test world.

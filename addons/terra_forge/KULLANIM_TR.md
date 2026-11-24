@@ -1,4 +1,4 @@
-# TerraForge Mobile 0.4.2-dev.1 — Türkçe kullanım
+# TerraForge Mobile 0.4.2-dev.2 — Türkçe kullanım
 > **Yeni sohbette unutulmasın:** Önce [DOCS_INDEX_TR.md](DOCS_INDEX_TR.md) ve [HANDOFF_START_HERE_TR.md](HANDOFF_START_HERE_TR.md) oku. Sürüm geçmişi, P0–P7 tüm fazları, profesyonel terrain araştırması, mimari, CI kanıtları, riskler ve sıradaki uygulanabilir işler bu daldaki yeni MD dosyalarında kalıcı olarak kayıtlı.
 
 
@@ -50,6 +50,14 @@ Hepsinde **Size** etki alanını, **Power** etki şiddetini belirler. Ramp, Stam
 - Küçük ekranlarda açılır menü pencere sınırları içinde tutulmaya çalışılır; alt panel açılmaz.
 - Android'in dokunmatik olaylardan türetebildiği sahte fare tıklamaları bir süre yok sayılır.
 - **Yeni:** Fırça artık her dokunma olayı için değil, parmağın katettiği mesafe boyunca sabit aralıklarla etki uygular. Hızlı ve yavaş sürüklemede güç farkı azalır. Parmağı sabit tutmak devamlı kazma/yükseltme yapmaz.
+
+## v0.4.2-dev.2 — Gerçek arka plan arazi dosyası yükleme
+
+- Yeni `core/async_region_source.gd` ile disk verisi artık **ayrı Godot Thread** içinde yüklenebiliyor. Ana thread verinin bitmesini beklemek yerine hazır gelen Float32 sayfaları alıyor.
+- `Mutex` ve `Semaphore` ile aynı anda bekleyen/çalışan/biten işler 1–8 sınırında, RAM cache'i 1–64 sayfada tutuluyor. Kamera aniden değişince eski generation sonuçları yeni haritaya karışmıyor.
+- Her TFR1 dosyası **tek buffer snapshot** üzerinden tam dosya SHA + iç checksum + koordinat ve Float32 doğrulamasına tabi; eksik/bozuk sayfa sıfır yükseklik sayılmaz.
+- Yeni 23. GitHub regresyonu dâhil **23/23 PASS:** https://github.com/mehmetdem2005/FareOyunu/actions/runs/45408761313.
+- **Henüz oyun sahnesinin terrain mesh/collision/Brush yollarına bağlı değil**; bu sürümde telefon ekranında yeni tuş, garanti FPS artışı veya RAM düşüşü bekleme. Büyük dünyanın açılış kontrolü hâlâ senkron. Sonraki P1.3 opt-in read-only terrain adaptasyonu: [P1_2_ASYNC_IO_TR.md](P1_2_ASYNC_IO_TR.md).
 
 ## v0.4.2-dev.1 — İzole salt okunur yükseklik ve kamera ön yükleme prototipi
 

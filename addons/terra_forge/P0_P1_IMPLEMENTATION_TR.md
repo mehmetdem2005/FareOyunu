@@ -1,5 +1,5 @@
 # TerraForge — P0 doğrulama ve P1 veri katmanları, ilk uygulama
-Sürüm: 0.4.2-dev.1
+Sürüm: 0.4.2-dev.2
 Durum: **Godot 4.7.2 Linux GitHub CI üzerinden test ediliyor; Android 11 GPU ve dokunmatik testleri henüz yapılmadı.**
 
 ## P0 — Güvenlik ve regresyon kapısı
@@ -79,3 +79,9 @@ Malzeme boyama, bitki, taş ve obje yerleştirme bu fazın dışındadır.
 - `core/paged_height_source.gd` ve `core/camera_page_prefetch.gd` **uygulandı**; TFM1 ve TFR1 tam SHA, Float32 bilinear, LRU, senkron nearest-first camera prefetch ve pending generation reset.
 - İki yeni regresyonla [Godot 4.7.2 CI 22/22 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45404989825).
 - **Hâlâ:** gerçek canlı `TerraForgeTerrain` tüm Float32 `height_data.heights` verisini RAM'de tutar. Asenkron işçi IO, canlı mesh/collision/Brush entegrasyonu ve Android GPU/perf ölçümü yok. Sonraki görev [NEXT_SESSION_IMPLEMENTATION_TR.md](NEXT_SESSION_IMPLEMENTATION_TR.md).
+
+## v0.4.2-dev.2 — Asenkron page IO ve kamera generation testleri
+
+- `core/async_region_source.gd`: Thread/Mutex/Semaphore, main-thread committed Float32 cache ve bounded 1–8 jobs; file SHA ve TFR1 internal checksum **tek buffer** üzerinde; `close()` explicit join.
+- `camera_page_prefetch.gd` opt-in `configure_async`; eski sync yol korunur. Yeni `tests/test_async_page_io.gd` generation cancellation, deleted/corrupt region, 32-cell seam bilinear ve worker shutdown.
+- [Godot CI 23/23 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45408761313); **canlı terrain mesh/physics ve Android GPU testi yok**, startup sync. P1.3 sonraki görev: [NEXT_SESSION_IMPLEMENTATION_TR.md](NEXT_SESSION_IMPLEMENTATION_TR.md).

@@ -1,12 +1,12 @@
 # TerraForge Mobile — Tam İlerleme Kaydı, Kanıt Düzeyi ve Sürüm Günlüğü
 
-**Son durum tarihi:** 2026-11-24. **Aktif kod tabanı:** v0.4.2-dev.1, `a214c907b6fba2d3cd7dba32f883ee5fad7ed446` (dokümantasyon öncesi uygulama commit'i). **Dal:** `feat/terraforge-mobile-addon`.  
+**Son durum tarihi:** 2026-11-24. **Aktif kod tabanı:** v0.4.2-dev.2, `4d5ed1bdce11727f5bc129087432198956ff2ce5` (dokümantasyon öncesi uygulama commit'i). **Dal:** `feat/terraforge-mobile-addon`.  
 **Durum anahtarı:** **DONE** = kod commit edildi; **CI PASS** = GitHub Actions Godot Linux headless testleri geçti; **DEVICE PENDING** = Android kullanıcı testinde henüz kanıt yok; **PLAN** = uygulanmadı. GitHub CI sonuçları, “kullanıcının telefonunda sorunsuz” anlamına gelmez.
 
 ## 1. En son kanıt ve geçerlilik
 
-- **GitHub Actions run:** https://github.com/mehmetdem2005/FareOyunu/actions/runs/45404989825  
-  **Sonuç:** 22/22 GDScript regresyonu PASS, Godot 4.7.2 stable, ubuntu-24.04 headless. Son kod SHA `a214c907b6fba2d3cd7dba32f883ee5fad7ed446`.
+- **GitHub Actions run:** https://github.com/mehmetdem2005/FareOyunu/actions/runs/45408761313  
+  **Sonuç:** 23/23 GDScript regresyonu PASS, Godot 4.7.2 stable, ubuntu-24.04 headless. Son kod SHA `4d5ed1bdce11727f5bc129087432198956ff2ce5`.
 - İş akışı kaynağı: `.github/workflows/terraforge-ci.yml`. Eklentiyi geçici `project.godot` ile parse eder, editör eklentisinin başlatılmasını kontrol eder, `tests/run_all.sh` ile tek tek test çalıştırır. Exit code + `PASS:` + istenmeyen Godot ERROR/SCRIPT ERROR denetimi vardır.
 - İstisna: bazı testler **bilerek** salt okunur kaynak-koruma hatası üretir; test çalıştırıcısı yalnız bu beklenen mesajları filtreler.
 - Gerçek **Android 11 Mobile Renderer**, GPU, touch davranışı, uzun stres, VRAM, sıcaklık, 30/60 FPS, görsel doğallık ve Terrain3D karşılaştırması **DEVICE PENDING**.
@@ -34,6 +34,8 @@
 
 | v0.4.2-dev.1 | `d516147` → `a214c907` | İzole `paged_height_source.gd` ile TFM1/TFR1 read-only Float32 ve bilinear LRU; `camera_page_prefetch.gd` ile nearest-first senkron read budget + generation, 2 yeni test | **22/22 CI PASS**; canlı renderer/physics henüz bağlı değil |
 
+| v0.4.2-dev.2 | `f7b3413` → `4d5ed1b` | `async_region_source.gd` düşük öncelikli Godot Thread, bounded job/result+LRU, tek snapshot SHA, `camera_page_prefetch.configure_async()`, stale generation drop ve `test_async_page_io.gd` | **23/23 Godot CI PASS**; full manifest open senkron; canlı mesh bağlı değil |
+
 Not: erken commit prefix'leri tarihsel kayıt amacıyla verilmiştir; yeni dal ilerledikçe tam baş SHA'yı **GitHub'dan yeniden okuyun**. `main`'e merge edilmedi.
 
 ## 3. Güncel özellik envanteri (gerçek / kısmi / plan)
@@ -54,7 +56,8 @@ Not: erken commit prefix'leri tarihsel kayıt amacıyla verilmiştir; yeni dal i
 | Gerçek TFR1 disk sayfaları | DONE / CI PASS **izole** | Canlı scene height kaynağında kullanılmıyor |
 | TFM1 dünya manifesti/export | DONE / CI PASS **izole** | Snapshot, TFL edit katmanlarını düzleştirir; gerçek runtime değil |
 | Kamera yönlü **senkron** bounded prefetch | DONE / CI PASS **izole** | P1.2 |
-| Worker-thread asenkron disk IO | **PLAN** | P1.2b |
+| Worker-thread asenkron disk IO | **DONE / CI PASS (izole)** | P1.2b; tek worker, bounded IO, late cancellation |
+| Async startup manifest verification | **PLAN** | P1.5 / sonraki optimizasyon |
 | Salt okunur paged sampler + LRU | DONE / CI PASS **izole** | P1.2 |
 | Canlı LOD, collision ve sculpt için paged sampler | **PLAN** | P1.3–P1.4 |
 | Multi-page atomik düzenleme ve Undo/Redo | **PLAN** | P1.4 |
@@ -76,7 +79,7 @@ Not: erken commit prefix'leri tarihsel kayıt amacıyla verilmiştir; yeni dal i
 
 ## 5. Şimdiki öncelik / sıradaki değişiklik
 
-**P1.2b:** Asenkron worker-thread-safe, sınırlı inflight page IO. Şu an salt okunur `paged_height_source.gd` ve `camera_page_prefetch.gd` **DONE / 22/22 CI PASS**, ancak `tick()` senkron ve canlı `terra_forge_terrain.gd` bütün heightmap'i RAM'de tutuyor. Sonra P1.3 yalnız opt-in read-only mesh/collision ve P1.4 transaction. [NEXT_SESSION_IMPLEMENTATION_TR.md](NEXT_SESSION_IMPLEMENTATION_TR.md).
+**P1.3:** Mevcut `terrain/terra_forge_terrain.gd` içinde doğrudan `height_data.heights` erişimi envanteri; legacy HeightSource ve TFM1/TFR1 async region read-only adapter; yalnız opt-in TEST sahnesinde mesh/collision. Boya/obje yok. **P1.2b worker IO uygulandı, 23/23 CI PASS** ([run](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45408761313)); fakat `open()` tüm dünya doğrulamasını senkron yapıyor, `close()` in-flight okuma bitene kadar bekleyebilir. Canlı oyun belleği ve FPS henüz değişmedi. Ayrıntı [P1_2_ASYNC_IO_TR.md](P1_2_ASYNC_IO_TR.md).
 
 ## 6. Kanıt ve geçmiş kuralları
 

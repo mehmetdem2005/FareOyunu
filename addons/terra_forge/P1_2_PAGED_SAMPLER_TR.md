@@ -30,7 +30,11 @@
 - `tests/test_camera_page_prefetch.gd` (22. test): yakın sayfa önceliği, 1 read/tick sınırı, camera teleport generation cancellation, 80 farklı kamera odağı, resident raw bytes üst sınırı, bozuk soğuk sayfanın fail-closed hatası.
 - GitHub Actions gerçek sonucu: https://github.com/mehmetdem2005/FareOyunu/actions/runs/45404989825 — **22/22 PASS**, Godot 4.7.2 ubuntu-24.04 headless. Android GPU ve dokunmatik testi değildir.
 
-## 4. Sıradaki zorunlu teknik iş
+## Güncelleme 0.4.2-dev.2 — P1.2b asenkron worker artık UYGULANDI
+
+İlk iki modülün 22/22 testlik tarihsel kaydı bu belgede korunmuştur. Daha sonraki asenkron worker geliştirmesi `core/async_region_source.gd` ve `camera_page_prefetch.configure_async()` ile **tamamlandı**; gerçek Thread/Mutex/Semaphore, bounded job queue, generation result cancellation, tek-buffer SHA. `tests/test_async_page_io.gd` ile [Godot CI 23/23 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45408761313). Bu yeni davranışın otorite belgesi: [P1_2_ASYNC_IO_TR.md](P1_2_ASYNC_IO_TR.md). **Sıradaki aktif iş P1.3 opt-in read-only terrain mesh/collision adaptörü.** Aşağıdaki bölüm artık tarihsel ilk P1.2 planıdır.
+
+## 4. Tarihsel plan — Sıradaki zorunlu teknik iş
 
 **P1.2b: Bounded, thread-safe asynchronous page IO and camera queue.**
 

@@ -7,8 +7,8 @@
 - GitHub repo: https://github.com/mehmetdem2005/FareOyunu
 - Geliştirme dalı: https://github.com/mehmetdem2005/FareOyunu/tree/feat/terraforge-mobile-addon
 - Eklenti klasörü: `addons/terra_forge/`
-- Son doğrulanmış kod commit'i: `a214c907b6fba2d3cd7dba32f883ee5fad7ed446`
-- Son PASS CI: https://github.com/mehmetdem2005/FareOyunu/actions/runs/45404989825 (22/22; Linux Godot 4.7.2)
+- Son doğrulanmış kod commit'i: `4d5ed1bdce11727f5bc129087432198956ff2ce5`
+- Son PASS CI: https://github.com/mehmetdem2005/FareOyunu/actions/runs/45408761313 (23/23; Linux Godot 4.7.2)
 - Son kaynak ZIP örneği: https://github.com/mehmetdem2005/FareOyunu/archive/734c9088d76603279599654d345249b0cc90e321.zip — **tüm repo arşivi**. Kopyalanacak addon yalnız `addons/terra_forge/`.
 - Altında çalışılan sahne ve `terraforge_data/`, TFH/TFL/TFL.bak kaynakları ZIP değiştirirken silinmez.
 - GitHub Actions ekranı: depo > Actions > TerraForge Godot 4.7.2 CI. Yeşil check Linux headless testi ifade eder.
@@ -32,6 +32,12 @@
 - `core/paged_height_source.gd` ile `camera_page_prefetch.gd` kodlandı ve 22/22 GitHub CI geçti. Bunlar **henüz telefonun canlı editor sahnesine bağlı değildir**: ekranda yeni kamera streaming butonu arama.
 - İşlemci ve depolama yükü hâlâ senkron; bu aşamada gerçek RAM/FPS kazanımı beklenmez.
 - Bir sonraki iş P1.2b bounded worker-thread IO, ardından P1.3 opt-in read-only mesh/collision. Bkz. [P1_2_PAGED_SAMPLER_TR.md](P1_2_PAGED_SAMPLER_TR.md).
+
+## 2.2 P1.2b yeni asenkron IO (v0.4.2-dev.2)
+
+- `async_region_source.gd` gerçek Godot Thread ile arka planda disk sayfa okumayı ve SHA doğrulamasını uygular; kamera scheduler bu modu `configure_async` ile kullanabilir.
+- GitHub Linux CI [23/23 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45408761313). Bu **cihazdaki oyuna otomatik bağlanmaz**; ekranda yeni UI yok ve gerçek FPS/RAM artışı iddiası yok. Scene hâlâ eski tam RAM height source'dan çalışır.
+- `open()` full-world doğrulamayı senkron yapar, `close()` bitmeyen IO için join bekleyebilir. Bir sonraki iş P1.3 opt-in read-only mesh/collision bağlantısı, kaynak: [P1_2_ASYNC_IO_TR.md](P1_2_ASYNC_IO_TR.md).
 
 ## 3. Dokuz mevcut şekillendirme aracının kısa kullanımı
 

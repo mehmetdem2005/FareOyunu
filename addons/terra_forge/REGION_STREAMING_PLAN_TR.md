@@ -1,4 +1,4 @@
-# TerraForge P1 — Bölgesel Float32 yükseklik belleği (v0.4.2-dev.1)
+# TerraForge P1 — Bölgesel Float32 yükseklik belleği (v0.4.2-dev.2)
 
 **Durum: API prototipi + regresyon testi; canlı Terrain3D mesh/çarpışma/fırça sistemine henüz entegre değil.**
 
@@ -47,3 +47,10 @@ Mevcut `.tfh`, `.tfl` ve `.tfl.bak` kayıtları **dokunulmadan korunuyor**.
 - **DONE:** `core/camera_page_prefetch.gd` en yakın/yön önceliği, 1–8 synchronous cold page read/tick, eski queued generation iptali; gerçek worker thread, canlı kamera ve mesh bağlantısı **yok**.
 - **CI:** `test_paged_height_source.gd` ve `test_camera_page_prefetch.gd` eklendi, [Godot 4.7.2 22/22 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45404989825).
 - **DEVAM:** Asenkron IO ve immutable buffer, bounded inflight/late cancellation, startup verification budget, opt-in read-only render+collision, ardından çok-bölge transaction. Detay: [P1_2_PAGED_SAMPLER_TR.md](P1_2_PAGED_SAMPLER_TR.md).
+
+## P1.2b v0.4.2-dev.2 — Bounded asenkron disk worker
+
+- Yeni `core/async_region_source.gd` **Thread/Mutex/Semaphore** ile TFR1 disk sayfalarını ana thread dışında okur; tüm dosya/internal SHA ve Float32 metadata kontrolü tek byte buffer üzerinde.
+- `camera_page_prefetch.configure_async(reader)` isteğe bağlı worker modu; eski senkron yol aynen korunur. Queue/finished/inflight max 1–8; stale generation sonuçları kullanılmaz; ana thread yalnız tamamlanan height sayfalarını cache'e alır.
+- `tests/test_async_page_io.gd` dâhil [Godot CI 23/23 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45408761313).
+- **Hâlâ:** full-world `open()` doğrulaması senkron; `close()` worker join sırasında son I/O bitene kadar bloklayabilir; canlı `TerraForgeTerrain` mesh/physics/Brush erişimlerine bağlanmadı, gerçek RAM/FPS değişimi ölçülmedi. Detay [P1_2_ASYNC_IO_TR.md](P1_2_ASYNC_IO_TR.md).
