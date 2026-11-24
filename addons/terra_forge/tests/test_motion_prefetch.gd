@@ -34,7 +34,7 @@ func _run() -> void:
                     order.reverse()
                 var paired: Dictionary={}
                 for predictive in order:
-                    var outcome: Dictionary=await _case(made["directory"],format,mode,4,speed,predictive)
+                    var outcome: Dictionary=await _case(made["directory"],format,mode,4,speed,predictive,true)
                     if outcome.get("error",FAILED)!=OK:
                         _fail(str([format,mode,speed,predictive])+" "+str(outcome))
                         return

@@ -51,7 +51,7 @@ func _run() -> void:
     print("PASS: continuous physics cold seam admission and verified live support transfer, fixed cap and camera departure")
     quit(0)
 
-func _case(directory: String,format: int,mode: int,cap: int,speed: float,predictive: bool=false) -> Dictionary:
+func _case(directory: String,format: int,mode: int,cap: int,speed: float,predictive: bool=false,paired_single_seam: bool=false) -> Dictionary:
     _p=P.new()
     _p.region_index_format=format
     _p.sampling_strategy=mode
@@ -134,6 +134,10 @@ func _case(directory: String,format: int,mode: int,cap: int,speed: float,predict
     var actual_velocity: Vector2=Vector2.ZERO
     var initial_io: Dictionary=_p.stats()["source"]
     var peak_forecast: int=0
+    var admitted_ticks: int=0
+    var demanded_ticks: int=0
+    var goal_x: float=536.0
+    var goal_tick: int=-1
     for tick in range(TICKS):
         await physics_frame
         var before: Vector3=_body.global_position
@@ -144,8 +148,16 @@ func _case(directory: String,format: int,mode: int,cap: int,speed: float,predict
             _p.set_stream_center(Vector3(512,0,512))
         if tick==96:
             _p.set_stream_center(Vector3(100,0,100))
-        var walking: bool=tick<96
-        var intent=Vector2(speed if walking else 0.0,0)
+        # Paired comparison explicitly ends at a shared waypoint before the
+        # second seam (x544). Do not let faster admission silently change
+        # the topology of this single-seam experiment. e3 remains untouched.
+        var walking: bool=tick<96 and (not paired_single_seam or from.x<goal_x-0.02)
+        var commanded: float=speed if walking else 0.0
+        if paired_single_seam and walking:
+            commanded=minf(commanded,maxf(0.0,(goal_x-from.x)/dt))
+        if walking:
+            demanded_ticks+=1
+        var intent=Vector2(commanded,0)
         if predictive and _p.sample_motion_prefetch(from,actual_velocity,intent,RADIUS,session,revision)!=OK:
             return {"error":FAILED,"stage":"motion sample","tick":tick}
         var requested: Vector2=from+intent*dt
@@ -168,11 +180,15 @@ func _case(directory: String,format: int,mode: int,cap: int,speed: float,predict
             if stall>0 and resumed<0:
                 resumed=tick
             stall=0
-        _body.velocity=Vector3(speed if admitted else 0.0,_body.velocity.y-GRAVITY*dt,0)
+        if admitted:
+            admitted_ticks+=1
+        _body.velocity=Vector3(commanded if admitted else 0.0,_body.velocity.y-GRAVITY*dt,0)
         _body.move_and_slide()
         var after: Vector3=_body.global_position
         var actual=Vector2(after.x,after.z)
         actual_velocity=(actual-from)/dt
+        if paired_single_seam and actual.x>=goal_x-0.02 and goal_tick<0:
+            goal_tick=tick
         var hit: Dictionary=_ground(after)
         if not _body.is_on_floor() or not _valid_ground(hit):
             return {"error":FAILED,"stage":"actual ground loss","tick":tick,"admission":admission,"position":str(after)}
@@ -212,11 +228,17 @@ func _case(directory: String,format: int,mode: int,cap: int,speed: float,predict
         max_jobs=maxi(max_jobs,int(stats["geometry_reservations"]))
         if max_tiles>cap or max_pages>16 or max_jobs>2:
             return {"error":FAILED,"stage":"resource caps","tick":tick}
-        for key in _p.support_state()["tiles"]:
+        var post_pump: Dictionary=_p.support_state()
+        if post_pump["tiles"]!=plan["tiles"]:
+            return {"error":FAILED,"stage":"actual footprint lease mismatch after pump","tick":tick}
+        for key in post_pump["tiles"]:
             if not _p._tiles.has(key) or _p._desired_tiles.get(key,-1)!=0:
                 return {"error":FAILED,"stage":"evicted current lease","tick":tick}
-        if new_tick>=0 and not _p._tiles.has(OLD) and old_evicted_tick<0:
-            old_evicted_tick=tick
+        if not _p._tiles.has(OLD):
+            if post_pump["tiles"].has(OLD) or new_tick<0:
+                return {"error":FAILED,"stage":"premature origin eviction","tick":tick,"held":post_pump["tiles"]}
+            if old_evicted_tick<0:
+                old_evicted_tick=tick
     var finish: Vector3=_body.global_position
     var report: Dictionary={"error":OK,"ticks":TICKS,"cold_denied":cold_denied,"denied_ticks":denied,"longest_stall_ticks":longest_stall,"first_resume_tick":resumed,"both_tiles_tick":both_tick,"new_only_tick":new_tick,"old_evicted_tick":old_evicted_tick,"revisions":revision-previous_revision,"finish_x":finish.x,"max_denied_drift":max_denied_drift,"missing_rays":0,"airborne_ticks":0,"total_readiness_rays":total_rays,"peak_readiness_rays":peak_rays,"max_tiles":max_tiles,"max_pages":max_pages,"max_jobs":max_jobs,"denial_reasons":reasons,"guard_ms":guard_hist.report(),"transfer_ms":claim_hist.report(),"pump_ms":pump_hist.report(),"support":_p.support_state()}
     var final_io: Dictionary=_p.stats()["source"]
@@ -225,10 +247,21 @@ func _case(directory: String,format: int,mode: int,cap: int,speed: float,predict
     report["disk_reads_delta"]=int(final_io["disk_reads"])-int(initial_io["disk_reads"])
     report["stale_discarded_delta"]=int(final_io["stale_discarded"])-int(initial_io["stale_discarded"])
     report["mesh_builds"]=_p.stats()["mesh_builds"]
+    report["demanded_ticks"]=demanded_ticks
+    report["admitted_ticks"]=admitted_ticks
+    report["paired_single_seam"]=paired_single_seam
+    report["goal_tick"]=goal_tick
+    report["goal_x"]=goal_x if paired_single_seam else null
     # Predictive path may eliminate all stalls; baseline remains strict.
     if predictive and (peak_forecast==0 or not _p.motion_prefetch_state()["keys"].is_empty()):
         return {"error":FAILED,"stage":"forecast not used or stationary not cleared","detail":report}
-    if (not predictive and (cold_denied<6 or resumed<24)) or both_tick<0 or new_tick<=both_tick or new_tick>=96 or old_evicted_tick<96 or revision-previous_revision!=2 or max_denied_drift>0.05 or finish.x<=512.5 or _p.support_state()["tiles"]!=[NEW]:
+    # The invariant is causal, not a camera timestamp: OLD may disappear
+    # immediately AFTER the actual footprint transfers to NEW. Baseline
+    # still has the original camera-only eviction time assertion.
+    var eviction_valid: bool=old_evicted_tick>=new_tick and new_tick>=0 and not _p._tiles.has(OLD)
+    if not predictive:
+        eviction_valid=eviction_valid and old_evicted_tick>=96
+    if (not predictive and (cold_denied<6 or resumed<24)) or both_tick<0 or new_tick<=both_tick or new_tick>=96 or not eviction_valid or revision-previous_revision!=2 or max_denied_drift>0.05 or finish.x<=512.5 or _p.support_state()["tiles"]!=[NEW] or (paired_single_seam and finish.x>goal_x+0.05) or admitted_ticks+denied!=demanded_ticks:
         report["error"]=FAILED
         report["stage"]="transfer evidence"
         return report
