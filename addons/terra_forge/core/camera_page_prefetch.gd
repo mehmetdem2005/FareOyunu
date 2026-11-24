@@ -14,6 +14,8 @@ var _generation: int = 0
 var _ticks: int = 0
 var _requested: int = 0
 var _completed: int = 0
+var _async_mode: bool = false
+var _reported_complete_generation: int = -1
 var _last_tick_ms: float = 0.0
 var _max_tick_ms: float = 0.0
 
@@ -23,6 +25,8 @@ func configure(reader, max_reads_per_tick: int = 2) -> Error:
     if max_reads_per_tick < 1 or max_reads_per_tick > 8:
         return ERR_INVALID_PARAMETER
     _reader = reader
+    _async_mode = false
+    _reported_complete_generation = -1
     _reads_per_tick = max_reads_per_tick
     _slots.clear()
     _cursor = 0
@@ -32,6 +36,15 @@ func configure(reader, max_reads_per_tick: int = 2) -> Error:
     _completed = 0
     _last_tick_ms = 0.0
     _max_tick_ms = 0.0
+    return OK
+
+## Opt-in mode: schedule full-page disk reads on a worker thread.
+## The original synchronous configure()/tick() remains unchanged by default.
+func configure_async(reader, max_submissions_per_tick: int = 2) -> Error:
+    var error: Error = configure(reader, max_submissions_per_tick)
+    if error != OK:
+        return error
+    _async_mode = true
     return OK
 
 func request_focus(world_x: float, world_z: float, radius_pages: int = 1,
@@ -91,10 +104,16 @@ func request_focus(world_x: float, world_z: float, radius_pages: int = 1,
     _slots = selected
     _cursor = 0
     _generation += 1
+    if _async_mode:
+        var changed: Error = _reader.set_generation(_generation)
+        if changed != OK:
+            return changed
     _requested += 1
     return OK
 
 func tick() -> Dictionary:
+    if _async_mode:
+        return _tick_async()
     if _reader == null or not _reader.is_open():
         return {"error": ERR_UNCONFIGURED}
     var started: int = Time.get_ticks_usec()
@@ -138,6 +157,45 @@ func tick() -> Dictionary:
         "last_tick_ms": _last_tick_ms
     }
 
+func _tick_async() -> Dictionary:
+    if _reader == null or not _reader.is_open():
+        return {"error": ERR_UNCONFIGURED}
+    var started: int = Time.get_ticks_usec()
+    # Nonblocking: worker may still be reading; poll only finished buffers.
+    var polled: Dictionary = _reader.poll_results(_reads_per_tick)
+    if int(polled.get("error", ERR_INVALID_DATA)) != OK:
+        return polled
+    var submitted: int = 0
+    while _cursor < _slots.size() and submitted < _reads_per_tick:
+        var key: Vector2i = _slots[_cursor]
+        var error: Error = _reader.request_page(key)
+        if error == ERR_BUSY:
+            break  # Inflight/result queue at capacity; retry next tick.
+        if error != OK:
+            return {"error": error, "page": key, "generation": _generation}
+        _cursor += 1
+        submitted += 1
+    var ready: int = 0
+    for key in _slots:
+        var state: Error = _reader.page_status(key)
+        if state != OK and state != ERR_BUSY:
+            return {"error": state, "page": key, "generation": _generation}
+        if state == OK:
+            ready += 1
+    var done: bool = _cursor == _slots.size() and ready == _slots.size()
+    if done and _reported_complete_generation != _generation:
+        _completed += 1
+        _reported_complete_generation = _generation
+    _ticks += 1
+    _last_tick_ms = float(Time.get_ticks_usec() - started) / 1000.0
+    _max_tick_ms = maxf(_max_tick_ms, _last_tick_ms)
+    return {
+        "error": OK, "loaded": int(polled["committed"]),
+        "submitted": submitted, "ready": ready,
+        "complete": done, "remaining": _slots.size() - ready,
+        "generation": _generation, "last_tick_ms": _last_tick_ms
+    }
+
 func release_distant() -> Error:
     if _reader == null or not _reader.is_open():
         return ERR_UNCONFIGURED
@@ -154,6 +212,7 @@ func release_distant() -> Error:
 func stats() -> Dictionary:
     return {
         "generation": _generation,
+        "async_mode": _async_mode,
         "pending": _slots.size() - _cursor,
         "selected": _slots.duplicate(),
         "reads_per_tick": _reads_per_tick,
