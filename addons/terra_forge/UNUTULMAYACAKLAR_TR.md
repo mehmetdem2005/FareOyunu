@@ -1,5 +1,8 @@
 # TerraForge — UNUTULMAYACAKLAR / Deney, karar ve doğrulama defteri
 
+> **GÜNCEL DEVİR — P1.5.5e (24 Kasım 2026):** Kod 6051f1aceeefa56542a33a0603c3c614b8b658f1, [43/43 Godot Linux CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45450882358). [P1_5_5E_SCALAR_WORKER_TR.md](P1_5_5E_SCALAR_WORKER_TR.md), [ham JSON](P1_5_5E_SCALAR_WORKER_CI.json). G explicit experimental sampling_strategy=5 (F priority + dense scalar). Exact 14 worker cases and 8 equal-work runs, 256 timed publications. Worker build mean F 1.151 ms vs G 0.809 ms (29.73% less); main/wall no material gain, same cadence F/G coverage identical 32 missing shape steps for both page caps. 16 C/E/F/G fixed 8ms traces. A default unchanged. **NEXT P1.5.6a publication instrumentation and byte/count/time budget design**, no claim of GPU measurement; remaining worker coverage/pending-prune and D live/topology gates stay open. P1.4/P1.4R PARKED per explicit user decision; no painting/objects.
+
+
 > **GÜNCEL DEVİR — P1.5.5d (24 Kasım 2026):** Kod 161346b356abe59a38876fc243ff950b21d0c4a1, [42/42 Godot Linux CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45449446366). [P1_5_5D_PRIORITY_WORKER_TR.md](P1_5_5D_PRIORITY_WORKER_TR.md), [ham JSON](P1_5_5D_PRIORITY_WORKER_CI.json). F=explicit experimental priority worker mode4; A default, E unchanged. 24 C/E/F traces, two cadences, two page caps, both formats. F reduces missing shape steps vs E in all measured groups; cap16 still behind C, modest pump overhead. 8ms target no full-period deadline misses in this run. No actual physics raycast/rendered FPS/Android proof. **USER DECISION: P1.5 first; P1.4/P1.4R PARKED until P1.5 work complete or user changes order.** NEXT P1.5.5e: isolate dense scalar worker compute latency, preserve exact output and compare E/F vs candidate; then P1.5.6. Keep all experiments, no painting/objects.
 
 
@@ -84,6 +87,8 @@ EXPERIMENTAL + CI_VERIFIED + DEVICE_OPEN. [P1.5.5a](P1_5_5A_GEOMETRY_WORKER_TR.m
 
 **24 Kasım P1.5.5d:** [priority worker](P1_5_5D_PRIORITY_WORKER_TR.md), 42/42 CI, F experimental. Fixed cadence E39/37 vs F32/32 missing shape steps at cap9/16; C34/29. Queue priority, finished prune and exact parity tested; queued-prune deterministic coverage and actual raycast/device open. A default. User explicitly requested P1.5 first; P1.4R PARKED, next P1.5.5e.
 
+**24 Kasım P1.5.5e:** [scalar worker](P1_5_5E_SCALAR_WORKER_TR.md), 43/43 CI, G explicit opt-in. Exact parity, 29.73% lower F/G worker build elapsed, same 32 missing steps at both page caps, wall/main no material gain. EXP-08 still open; pending prune deterministic coverage, actual raycast/device and residual collision gap not accepted. NEXT P1.5.6a publication accounting. P1.4R PARKED.
+
 ## 3 — Ertelenen ve sonraki fazlar (sırayı koru)
 | ID | Durum | Kapanış şartı / sonraki çalışma |
 |---|---|---|
@@ -96,7 +101,8 @@ EXPERIMENTAL + CI_VERIFIED + DEVICE_OPEN. [P1.5.5a](P1_5_5A_GEOMETRY_WORKER_TR.m
 | P1.5.5c worker comparison | CI_VERIFIED | 41/41, E main reduction but poorer moving coverage, no acceptance. |
 | P1.4R read-only architecture checkpoint | PARKED | User explicitly chose P1.5 first; retain P1_4_RETURN_CHECKPOINT_TR.md for return after P1.5 or new user decision. |
 | P1.5.5d worker coverage repair | CI_VERIFIED / EXPERIMENTAL | F priority improves E coverage, cap16 behind C; no default change. |
-| P1.5.5e dense scalar worker latency | NEXT | Isolate compute latency, exact parity, same-cadence comparison. |
+| P1.5.5e dense scalar worker latency | CI_VERIFIED / EXPERIMENTAL | G faster worker build but equal sampled coverage and no material wall gain. |
+| P1.5.6a publication accounting | NEXT | Payload/triangle counts, main creation elapsed, per-pump budgets and overshoot; not GPU timing. |
 | P1.5.5 geometry worker | PLANNED | One bounded worker, immutable input and generation/LOD/neighbor identity, stale outputs discarded, pure arrays only; no SceneTree/Mesh/Physics on worker. Main-thread publication. |
 | P1.5.6 GPU publication | PLANNED | Budgeted upload, reusable topology/material only if measured, near priority, bounded VRAM, draw calls/triangles and GPU separately measured. |
 | P1.5.7 physics | PLANNED | Actual physics-tick raycast parity/collision coverage, coherent mesh/shape generation, near priority, last-good, fast crossing/teleport, no flat fallback. |
@@ -128,6 +134,8 @@ EXPERIMENTAL + CI_VERIFIED + DEVICE_OPEN. [P1.5.5a](P1_5_5A_GEOMETRY_WORKER_TR.m
 - 24 Kasım 2026: P1.5.5c comparison 41/41; E coverage regression remains open. P1.4R next design checkpoint, then P1.5.5d; no default changes.
 
 - 24 Kasım 2026: P1.5.5d 42/42, F remains experimental, P1.4R explicitly deferred by user. P1.5.5e next.
+
+- 24 Kasım 2026: P1.5.5e 43/43, G experimental, no coverage/total-time gain. P1.5.6a next. All earlier gates retained.
 
 ### Yeni kayıt şablonu
 ID / tarih / faz:
