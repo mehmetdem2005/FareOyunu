@@ -40,6 +40,7 @@ suite=(
   test_paged_failure_isolation
   test_profile_scene
   test_io_pipeline
+  test_profile_fixture_builder
   test_lod_policy
   test_surface_faces
   test_lod_normals

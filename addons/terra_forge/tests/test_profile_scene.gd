@@ -33,7 +33,11 @@ func _run() -> void:
     var p = SCENE.instantiate()
     root.add_child(p)
     p._make_fixture()
-    if p._path.text.is_empty():
+    var fixture_deadline: int = Time.get_ticks_msec() + 30000
+    while p._fixture != null and Time.get_ticks_msec() < fixture_deadline:
+        await process_frame
+        OS.delay_msec(2)
+    if p._fixture != null or p._path.text.is_empty():
         _fail("Could not prepare isolated fixture", p)
         return
     var manifest: String = p._path.text + "/manifest.tfm"

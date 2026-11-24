@@ -2,8 +2,7 @@ extends Node3D
 ## Isolated opt-in diagnostic scene. Open and run this scene, never the game.
 const PREVIEW = preload("res://addons/terra_forge/terrain/paged_terrain_preview.gd")
 const HIST = preload("res://addons/terra_forge/core/profile_histogram.gd")
-const HEIGHT = preload("res://addons/terra_forge/core/height_store.gd")
-const EXPORT = preload("res://addons/terra_forge/core/region_export.gd")
+const BUILDER = preload("res://addons/terra_forge/core/profile_fixture_builder.gd")
 @export_range(5.0, 1800.0, 1.0) var duration_seconds: float = 20.0
 @export_range(9, 64, 1) var page_limit: int = 16
 @export_range(1, 8, 1) var job_limit: int = 4
@@ -12,6 +11,9 @@ var _camera: Camera3D
 var _path: LineEdit
 var _label: Label
 var _buttons: Array[Button] = []
+var _fixture_size: OptionButton
+var _cancel_button: Button
+var _fixture = null
 var _running: bool = false
 var _started: int = 0
 var _opened: int = 0
@@ -54,7 +56,20 @@ func _ready() -> void:
     _path.placeholder_text = "TFM1 folder (user:// or res://)"
     _path.custom_minimum_size.x = 280.0
     ui.add_child(_path)
-    _button(ui, "Create isolated 256x256 sample", _make_fixture)
+    _fixture_size = OptionButton.new()
+    for size in [256, 512, 1024, 2048]:
+        _fixture_size.add_item("%dx%d cells" % [size, size], size)
+    ui.add_child(_fixture_size)
+    _button(ui, "Create isolated sample", _make_fixture)
+    _cancel_button = Button.new()
+    _cancel_button.text = "Cancel fixture generation"
+    _cancel_button.custom_minimum_size.y = 42.0
+    _cancel_button.disabled = true
+    _cancel_button.pressed.connect(func():
+        if _fixture != null:
+            _fixture.request_cancel()
+    )
+    ui.add_child(_cancel_button)
     _button(ui, "Run strict full verification", func(): _begin(false))
     _button(ui, "Run lazy on-demand", func(): _begin(true))
     _button(ui, "Save / show JSON report", _save_report)
@@ -76,25 +91,38 @@ func _set_busy(busy: bool) -> void:
     for button in _buttons:
         button.disabled = busy
     _path.editable = not busy
+    _fixture_size.disabled = busy
 
 func _make_fixture() -> void:
-    if _running:
+    if _running or _fixture != null:
         return
-    # Explicit user action; never write to a chosen real world directory.
-    var prefix: String = "user://tf_profile_" + str(Time.get_unix_time_from_system()).replace(".", "_") + "_" + str(Time.get_ticks_usec())
-    var source = HEIGHT.new()
-    source.initialize(Vector2i(256, 256), 1.0)
-    for z in range(257):
-        for x in range(257):
-            source.heights[source.index_of(x, z)] = 8.0 + 3.0 * sin(float(x) * 0.04) + 4.0 * cos(float(z) * 0.035)
-    var err: Error = source.save_file(prefix + ".tfh")
-    if err == OK:
-        err = int(EXPORT.export_file(prefix + ".tfh", prefix + "_world", 4).get("error", ERR_FILE_CORRUPT))
+    var size: int = _fixture_size.get_selected_id()
+    _fixture = BUILDER.new()
+    var err: Error = _fixture.start(Vector2i(size, size))
     if err != OK:
-        _label.text = "Fixture failed: " + error_string(err)
+        _fixture = null
+        _label.text = "Fixture refused: " + error_string(err)
         return
-    _path.text = prefix + "_world"
-    _label.text = "Sample ready. Select strict or lazy."
+    _set_busy(true)
+    _cancel_button.disabled = false
+    _label.text = "Generating isolated sample..."
+
+func _poll_fixture() -> void:
+    var progress: Dictionary = _fixture.progress()
+    if not bool(progress["done"]):
+        _label.text = "%s %d/%d" % [progress["phase"], progress["completed"], progress["total"]]
+        return
+    var result: Dictionary = _fixture.take_result()
+    _fixture = null
+    _set_busy(false)
+    _cancel_button.disabled = true
+    if int(result["error"]) != OK:
+        _label.text = "Fixture stopped: " + error_string(int(result["error"]))
+        if int(result.get("cleanup_error", OK)) != OK:
+            _label.text += " | staging retained: " + str(result["remaining_staging"])
+        return
+    _path.text = str(result["directory"])
+    _label.text = "Sample ready (%.1f s). Select strict or lazy." % (float(result["generation_ms"]) / 1000.0)
 
 # Linux/Android process resident memory, NOT system free RAM or Godot static memory.
 # Missing or restricted procfs stays null; only read once per 500 ms.
@@ -132,7 +160,7 @@ func _memory() -> void:
         _static_peak = int(stat) if _static_peak == null else maxi(int(_static_peak), int(stat))
 
 func _begin(lazy: bool) -> void:
-    if _running or _path.text.strip_edges().is_empty():
+    if _running or _fixture != null or _path.text.strip_edges().is_empty():
         return
     _set_busy(true)
     _mode = "on_demand" if lazy else "strict"
@@ -170,6 +198,9 @@ func _begin(lazy: bool) -> void:
     _label.text = _mode + " running..."
 
 func _process(_delta: float) -> void:
+    if _fixture != null:
+        _poll_fixture()
+        return
     if not _running:
         return
     var now: int = Time.get_ticks_usec()
@@ -275,5 +306,8 @@ func _save_report() -> void:
     _label.text = "Saved: " + ProjectSettings.globalize_path(path) if result == OK else "Report write failed."
 
 func _exit_tree() -> void:
+    if _fixture != null:
+        _fixture.close()
+        _fixture = null
     if is_instance_valid(_preview):
         _preview.stop_preview()
