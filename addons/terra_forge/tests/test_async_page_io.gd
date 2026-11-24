@@ -151,6 +151,113 @@ func _initialize() -> void:
         _fail("Async camera grew resident Float32 cache unbounded")
         return
 
+    # Force a real cold request to become obsolete BEFORE polling ANY
+    # result. Regardless of worker scheduling, stale Float32 data must never
+    # be committed into the new generation's main-thread cache.
+    var stale = ASYNC.new()
+    if stale.open(world, 1, 1) != OK:
+        reader.close()
+        _fail("Could not launch isolated generation-race worker")
+        return
+    if stale.request_page(Vector2i.ZERO) != OK:
+        stale.close()
+        reader.close()
+        _fail("Could not enqueue the old camera's cold region")
+        return
+    if stale.set_generation(1) != OK:
+        stale.close()
+        reader.close()
+        _fail("Could not invalidate the old in-flight generation")
+        return
+    var submitted_latest: bool = false
+    for step in range(1500):
+        var issued: Error = stale.request_page(Vector2i(3, 3))
+        if issued == OK:
+            submitted_latest = true
+            break
+        if issued != ERR_BUSY:
+            stale.close()
+            reader.close()
+            _fail("New generation request was rejected rather than queued")
+            return
+        OS.delay_msec(1)
+    if not submitted_latest:
+        stale.close()
+        reader.close()
+        _fail("Old generation blocked replacement job indefinitely")
+        return
+    var new_ready: bool = false
+    for step in range(1500):
+        stale.poll_results(1)
+        if stale.page_status(Vector2i(3, 3)) == OK:
+            new_ready = true
+            break
+        OS.delay_msec(1)
+    if not new_ready or stale.page_status(Vector2i.ZERO) == OK:
+        stale.close()
+        reader.close()
+        _fail("Stale generation populated the new camera's cache")
+        return
+    if stale.stats()["resident"] > 1:
+        stale.close()
+        reader.close()
+        _fail("Stale in-flight completion exceeded resident budget")
+        return
+    stale.close()
+
+    # The world was valid at open, then a region disappeared. The worker
+    # reports the missing file rather than synthesizing a height of zero.
+    var missing_reader = ASYNC.new()
+    if missing_reader.open(world, 1, 1) != OK:
+        reader.close()
+        _fail("Could not open isolated missing-region worker")
+        return
+    var missing_path: String = world + "/r_00002_00002.tfr"
+    var missing_backup: PackedByteArray = FileAccess.get_file_as_bytes(missing_path)
+    if DirAccess.remove_absolute(ProjectSettings.globalize_path(missing_path)) != OK:
+        missing_reader.close()
+        reader.close()
+        _fail("Could not remove disposable region fixture")
+        return
+    if missing_reader.request_page(Vector2i(2, 2)) != OK:
+        missing_reader.close()
+        reader.close()
+        _fail("Failed to request missing region from worker")
+        return
+    var missing_detected: bool = false
+    for step in range(1500):
+        missing_reader.poll_results(1)
+        if missing_reader.page_status(Vector2i(2, 2)) == ERR_FILE_NOT_FOUND:
+            missing_detected = true
+            break
+        OS.delay_msec(1)
+    if not missing_detected or missing_reader.get_height(64, 64).has("height"):
+        missing_reader.close()
+        reader.close()
+        _fail("Deleted region was treated as valid terrain")
+        return
+    missing_reader.close()
+    var replacement: FileAccess = FileAccess.open(missing_path, FileAccess.WRITE)
+    if replacement == null:
+        reader.close()
+        _fail("Could not restore disposable missing-region fixture")
+        return
+    replacement.store_buffer(missing_backup)
+    replacement.close()
+
+    # A pending worker job must be joined without orphaning a Thread.
+    var shutdown = ASYNC.new()
+    if shutdown.open(world, 2, 1) != OK or shutdown.request_page(Vector2i(1, 1)) != OK:
+        shutdown.close()
+        reader.close()
+        _fail("Could not begin worker shutdown regression")
+        return
+    shutdown.close()
+    if shutdown.is_open():
+        reader.close()
+        _fail("Worker remained open after explicit close/join")
+        return
+
     # Corrupt AFTER open; cold verified read must reject the modified page.
     # Explicitly evict page 0 so the next access cannot use cached values.
     reader.release_outside(Vector2i(3, 3), Vector2i(3, 3))
