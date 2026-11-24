@@ -1,4 +1,4 @@
-# TerraForge Mobile — v0.2.1 (surface + compact mobile UI fixes)
+# TerraForge Mobile — v0.2.2 (mobile streaming + clean LOD edges)
 
 Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, native library, or changes to game files. Designed for Android editor testing with Mobile Renderer.
 
@@ -16,9 +16,12 @@ Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, nativ
 
 - **Lossless Float32 height storage** in a versioned `.tfh` height file (little-endian TFH1 header + row-major Float32 samples).
 - **Resident visual tiles**: allocate only camera-near tile nodes, with maximum active tile budget. Drop far mesh/collision nodes on travel.
-- **3 mesh LODs**: tile sampling strides 1, 2 and 4 with descending mesh complexity. Adaptive skirts cover cracks where neighboring levels meet.
+- **3 mesh LODs**: tile sampling strides 1, 2 and 4 with descending mesh complexity. Fine tile edges interpolate onto the coarser neighbor's samples; the old visible gray skirts have been removed.
 - **Top surface fix**: corrected the terrain's triangle winding; previously it was backface-culled and only the grey LOD skirts appeared, creating a fake hollow/checkerboard view.
-- **Compact toolbar UI**: removed the giant bottom dock; one **Terrain** popup button and one **Brush** toggle live in Godot's 3D editor toolbar. Popup settings are hidden while sculpting.
+- **Compact toolbar UI**: removed the giant bottom dock; one **Terrain** popup button and one **Brush** toggle live in Godot's 3D editor toolbar. The popup is clamped to the mobile viewport.
+- **Incremental node allocation**: in v0.2.1 the tile meshes were capped per frame but all tile nodes were created together. v0.2.2 now creates only the permitted number of tile nodes per frame, too.
+- **Centered new terrain**: new flat grids start centered around the scene origin, so the edit camera is less likely to miss them. A new terrain writes its Float32 data immediately (save the scene separately).
+- **Duplicate touch guard**: ignores synthetic mouse taps shortly after Android touch events.
 - **Editor camera following** through `EditorInterface.get_editor_viewport_3d(0).get_camera_3d()`. Scene camera following while running.
 - **Collision only at closest LOD**, with properly uniform scaling and pre-scaled height values.
 - **Per-frame tile rebuild budget**, with edited/dirtied tiles queued rather than regenerating the whole map at once.
@@ -45,10 +48,10 @@ The **full Float32 height field remains in RAM**. This version streams visible *
 
 ## Limitations / pending validation
 
-- **The 0.2.0 UI loaded on the user's Android 11 Godot 4.7.2 editor**, but showed the hollow checkerboard due to backface-culling. Version 0.2.1 corrects the winding and replaces the bottom dock. The revised version itself still requires on-device validation; source tests were added but could not be executed here.
-- Skirts conceal visual cracks, but geometry remains LOD-discontinuous at T-junctions; precise edge stitching will follow.
+- **The 0.2.0 UI loaded on the user's Android 11 Godot 4.7.2 editor**, but showed a hollow checkerboard due to backface-culling. Version 0.2.1 corrected the winding; v0.2.2 removes the visible skirt grid and limits node allocation. The revised versions still require device validation. Tests were authored but could not be executed here.
+- Adjacent mixed-LOD borders use a simpler height interpolation. They should align without gray skirts, but can still show subtle shading differences. Exact topology stitching and geomorphing are future improvements.
 - The full Float32 heightmap is resident even when no mesh tile is loaded. File-backed streaming is not yet implemented.
-- Tile mesh builds happen on the main thread, strictly limited per frame. A later stage can move mesh input preparation to worker threads.
+- Tile mesh builds **and node creation** happen on the main thread, strictly limited per frame. A later stage can move mesh input preparation to worker threads.
 - Collision is disabled for lower-detail tiles and enabled only near the camera. This is for performance; far-away physics interactions require a separate collision strategy.
 - The first generation has no texture painter, terrain stamps, foliage, erosion or 3D assets.
 - The 20 Undo/Redo entries live only in the terrain node's memory; Godot's global editor Undo/Redo integration remains pending.
@@ -62,13 +65,15 @@ From a project containing the addon:
 godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_height_store.gd
 godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_lod_policy.gd
 godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_surface_faces.gd
+godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_lod_seams.gd
+godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_stream_budget.gd
 ```
 
 See [MOBILE_TEST_PLAN.md](MOBILE_TEST_PLAN.md) for hands-on Android checks and acceptance criteria. These tests have **not yet been executed** with the Godot engine here.
 
 ## Next stages
 
-1. Confirm v0.2.1 displays solid terrain on Android 11, and that the compact popup opens/closes without shrinking the viewport.
+1. Confirm v0.2.2 displays solid terrain without gray checkerboard lines on Android 11, and that the compact popup opens/closes within the viewport without shrinking it.
 2. Add progressive mesh generation that prevents frame spikes during initial loading.
 3. Implement true LOD seam stitching + sample-independent camera brush interaction.
 4. Add lightweight tile-based 2–4 material painter and GPU budget presets.

@@ -19,6 +19,7 @@ const MAX_HISTORY: int = 20
 
 var height_data
 var _tile_nodes: Dictionary = {}  # Resident tiles only; not all map tiles.
+var _desired_tiles: Dictionary = {}  # Keys + selected LOD before any node allocation.
 var _dirty_tiles: Dictionary = {}
 var _tile_queue: Dictionary = {}
 var _stream_anchor: Vector3 = Vector3.ZERO
@@ -142,16 +143,29 @@ func _sync_resident_tiles() -> void:
     )
     var desired: Dictionary = {}
     for entry in candidates:
-        var key: Vector2i = entry["key"]
-        var level: int = int(entry["lod"])
-        desired[key] = level
+        desired[entry["key"]] = int(entry["lod"])
+
+    # Leave allocation for _drain_tile_queue(): the per-frame tile budget
+    # must cover creating Nodes *and* mesh/physics work, not just mesh work.
+    var previous: Dictionary = _desired_tiles
+    _desired_tiles = desired
+    for key in desired:
+        var level: int = int(desired[key])
         if not _tile_nodes.has(key):
-            _tile_nodes[key] = _create_tile(key.x, key.y)
             _tile_queue[key] = true
-        var tile: Dictionary = _tile_nodes[key]
-        if int(tile["desired_lod"]) != level:
-            tile["desired_lod"] = level
-            _tile_queue[key] = true
+        else:
+            var tile: Dictionary = _tile_nodes[key]
+            if int(tile["desired_lod"]) != level:
+                tile["desired_lod"] = level
+                _tile_queue[key] = true
+        if int(previous.get(key, -1)) != level:
+            # A changing neighbor LOD changes the seam geometry of the
+            # fine tile, even when that fine tile's own LOD stays the same.
+            for offset in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+                var adjacent: Vector2i = key + offset
+                if _tile_nodes.has(adjacent) and desired.has(adjacent):
+                    _tile_queue[adjacent] = true
+
     # Release all geometry, collision, and CPU meshes outside the resident set.
     for key in _tile_nodes.keys():
         if not desired.has(key):
@@ -160,6 +174,9 @@ func _sync_resident_tiles() -> void:
             if is_instance_valid(root):
                 root.free()
             _tile_nodes.erase(key)
+
+    for key in _tile_queue.keys():
+        if not desired.has(key):
             _tile_queue.erase(key)
     _last_stream_camera = _stream_anchor
 
@@ -177,10 +194,13 @@ func _drain_tile_queue() -> void:
         if budget <= 0:
             break
         _tile_queue.erase(key)
-        if not _tile_nodes.has(key):
+        if not _desired_tiles.has(key):
             continue
+        if not _tile_nodes.has(key):
+            _tile_nodes[key] = _create_tile(key.x, key.y)
         var tile: Dictionary = _tile_nodes[key]
-        var level: int = int(tile["desired_lod"])
+        var level: int = int(_desired_tiles[key])
+        tile["desired_lod"] = level
         _rebuild_tile(key.x, key.y, tile, level)
         tile["lod"] = level
         budget -= 1
@@ -219,6 +239,49 @@ func set_quality_profile(profile: int) -> void:
             tile_updates_per_frame = 3
     _last_stream_sync = -100000
 
+func _seam_height(tx: int, tz: int, sample_x: int, sample_z: int, lod: int) -> float:
+    # Match the coarse neighbor's straight edge exactly, with no protruding
+    # dark/gray skirt geometry. All tiles share the same Float32 source.
+    var gx: int = tx * TILE_CELLS + sample_x
+    var gz: int = tz * TILE_CELLS + sample_z
+    var original: float = height_data.get_height(gx, gz)
+    var neighbor: Vector2i = Vector2i(-1000000, -1000000)
+    var along: int = 0
+    var horizontal: bool = false
+    if sample_x == 0:
+        neighbor = Vector2i(tx - 1, tz)
+        along = sample_z
+    elif sample_x == TILE_CELLS:
+        neighbor = Vector2i(tx + 1, tz)
+        along = sample_z
+    elif sample_z == 0:
+        neighbor = Vector2i(tx, tz - 1)
+        along = sample_x
+        horizontal = true
+    elif sample_z == TILE_CELLS:
+        neighbor = Vector2i(tx, tz + 1)
+        along = sample_x
+        horizontal = true
+    if not _desired_tiles.has(neighbor):
+        return original
+    var neighbor_lod: int = int(_desired_tiles[neighbor])
+    if neighbor_lod <= lod:
+        return original
+    var coarse_step: int = LOD_POLICY.sample_stride(neighbor_lod)
+    var start_along: int = int(along / coarse_step) * coarse_step
+    if start_along == along:
+        return original
+    var end_along: int = mini(TILE_CELLS, start_along + coarse_step)
+    var start_height: float
+    var end_height: float
+    if horizontal:
+        start_height = height_data.get_height(tx * TILE_CELLS + start_along, gz)
+        end_height = height_data.get_height(tx * TILE_CELLS + end_along, gz)
+    else:
+        start_height = height_data.get_height(gx, tz * TILE_CELLS + start_along)
+        end_height = height_data.get_height(gx, tz * TILE_CELLS + end_along)
+    return lerpf(start_height, end_height, float(along - start_along) / float(end_along - start_along))
+
 func _rebuild_tile(tx: int, tz: int, item: Dictionary, lod: int) -> void:
     var stride: int = LOD_POLICY.sample_stride(lod)
     var width: int = int(TILE_CELLS / stride) + 1
@@ -237,7 +300,7 @@ func _rebuild_tile(tx: int, tz: int, item: Dictionary, lod: int) -> void:
             var sz: int = z * stride
             var gx: int = tx * TILE_CELLS + sx
             var gz: int = tz * TILE_CELLS + sz
-            var y: float = height_data.get_height(gx, gz)
+            var y: float = _seam_height(tx, tz, sx, sz, lod)
             minimum_height = minf(minimum_height, y)
             maximum_height = maxf(maximum_height, y)
             var slope_x: float = (
@@ -268,51 +331,8 @@ func _rebuild_tile(tx: int, tz: int, item: Dictionary, lod: int) -> void:
             indices.append(a + 1)
             indices.append(a + width + 1)
             indices.append(a + width)
-    # Skirts hide T-junction cracks between neighboring levels of detail.
-    # Each edge is drawn outward; this doesn't modify the original height data.
-    var skirt_floor: float = minimum_height - maxf(4.0, (maximum_height - minimum_height) * 0.5 + 2.0)
-    for side in range(4):
-        for i in range(width - 1):
-            var ax: int = 0
-            var az: int = 0
-            var bx: int = 0
-            var bz: int = 0
-            var outward: Vector3 = Vector3.ZERO
-            match side:
-                0: # North, +X
-                    ax = i
-                    bx = i + 1
-                    outward = Vector3(0.0, 0.0, -1.0)
-                1: # East, +Z
-                    ax = width - 1
-                    bx = width - 1
-                    az = i
-                    bz = i + 1
-                    outward = Vector3(1.0, 0.0, 0.0)
-                2: # South, -X
-                    ax = width - 1 - i
-                    bx = width - 2 - i
-                    az = width - 1
-                    bz = width - 1
-                    outward = Vector3(0.0, 0.0, 1.0)
-                3: # West, -Z
-                    az = width - 1 - i
-                    bz = width - 2 - i
-                    outward = Vector3(-1.0, 0.0, 0.0)
-            var ha: float = height_data.get_height(tx * TILE_CELLS + ax * stride, tz * TILE_CELLS + az * stride)
-            var hb: float = height_data.get_height(tx * TILE_CELLS + bx * stride, tz * TILE_CELLS + bz * stride)
-            var start: int = vertices.size()
-            for v in [
-                Vector3(float(ax * stride) * step, ha, float(az * stride) * step),
-                Vector3(float(bx * stride) * step, hb, float(bz * stride) * step),
-                Vector3(float(ax * stride) * step, skirt_floor, float(az * stride) * step),
-                Vector3(float(bx * stride) * step, skirt_floor, float(bz * stride) * step)
-            ]:
-                vertices.append(v)
-                normals.append(outward)
-                uv.append(Vector2(v.x, v.z) * 0.125)
-                colors.append(Color(0.33, 0.32, 0.29))
-            indices.append_array(PackedInt32Array([start, start + 1, start + 2, start + 1, start + 3, start + 2]))
+    # No continuous skirts: they were visible as ugly square walls on flat
+    # ground. Edge samples now conform to the neighboring coarser tile.
     var arrays: Array = []
     arrays.resize(Mesh.ARRAY_MAX)
     arrays[Mesh.ARRAY_VERTEX] = vertices

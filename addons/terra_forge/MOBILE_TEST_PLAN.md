@@ -8,7 +8,7 @@ Target editor: Godot **4.7.2**, Android **11**, **Mobile** rendering method.
 2. Enable the plugin from **Project Settings > Plugins**.
 3. Open a saved 3D scene with a Node3D root.
 4. Create a terrain, enable Brush, and sculpt near the center.
-5. Verify the new **solid top surface**, not just the gray edge skirts. Use the compact **Terrain** popup in the 3D toolbar; the old bottom dock must be absent. Move the editor camera to the far corner and confirm resident/pending numbers change when the popup is open.
+5. Verify a **solid top surface with no gray grid-wall skirts**. Use the compact **Terrain** popup in the 3D toolbar; the old bottom dock must be absent. Move the 3D camera to the far corner; resident/pending numbers should change when the popup is open.
 6. Switch to **Mobile - light**; compare resident count, responsiveness and LOD seams.
 7. Disable Brush; confirm normal camera navigation returns. Close the popup and verify the full viewport height remains usable.
 8. Save Float32 data **and the scene**. Close/reopen editor and check heights.
@@ -19,7 +19,7 @@ Target editor: Godot **4.7.2**, Android **11**, **Mobile** rendering method.
 
 - Continuous painting for at least 20 minutes and rapid orbit/pan near world boundaries.
 - Repeated camera teleport between opposite corners; no stale tile load should be visible.
-- Check seams at LOD0/LOD1 and LOD1/LOD2 transitions (including steep slopes).
+- Check seams at LOD0/LOD1, LOD0/LOD2 and LOD1/LOD2 transitions (including steep slopes). No vertical gray walls should appear.\n- On new terrain creation, check the centered flat plane and that the initial .tfh file exists before the first brush stroke.\n- Move camera rapidly after enabling the addon: tile nodes must appear incrementally instead of all at once.
 - Check physics aligns with sculpted mesh under default and 0.5m sample spacing.
 - While saving, abruptly close the editor and reopen the last good file.
 - Try a corrupt `.tfh` file: painting and saving must be blocked.
@@ -34,4 +34,4 @@ Target editor: Godot **4.7.2**, Android **11**, **Mobile** rendering method.
 
 ## Implementation notes
 
-This is a **resident tile streaming prototype**, not asynchronous disk IO or an infinite-world solution. The complete Float32 height array remains in RAM; only visible mesh/collision tile nodes are streamed. LOD skirts conceal cracks; true stitched edge topology remains future work. No claim of performance improvement over Terrain3D is made before profiling on Android.
+This is a **resident tile streaming prototype**, not asynchronous disk IO or an infinite-world solution. The complete Float32 height array remains in RAM; only visible mesh/collision tile nodes are streamed, now created within per-frame budgets. LOD skirts conceal cracks; true stitched edge topology remains future work. No claim of performance improvement over Terrain3D is made before profiling on Android.

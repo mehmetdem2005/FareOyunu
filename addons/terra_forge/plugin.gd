@@ -263,7 +263,7 @@ func _create_terrain() -> void:
     var terrain: TerraForgeTerrain = TERRAIN_SCRIPT.new()
     terrain.name = "TerraForgeTerrain"
     terrain.data_file = "res://terraforge_data/%s_%s.tfh" % [
-        root.name.to_snake_case(), str(Time.get_ticks_msec())
+        root.name.to_snake_case(), Crypto.new().generate_random_bytes(12).hex_encode()
     ]
     root.add_child(terrain)
     terrain.owner = root
