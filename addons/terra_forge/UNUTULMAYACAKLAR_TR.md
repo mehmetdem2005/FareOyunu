@@ -1,5 +1,8 @@
 # TerraForge — UNUTULMAYACAKLAR / Deney, karar ve doğrulama defteri
 
+> **GÜNCEL DEVİR — P1.5.7e1 (24 Kasım 2026):** Kod 4e7dfa8b2a032d6dd9e316c83a071987de600c6d, [52/52 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45470559534), pure selector 21 checks. [Raw JSON](P1_5_7E1_SELECTION_CI.json). NEXT P1.5.7e2 live opt-in support retention implemented, CI PENDING: current verified footprint session/revision, cap rejection, priority, sync neighbor signature check, equal-height shape reuse and changed-height real replacement. 16 controlled 120-tick baseline/held traces planned by test, TFM1/2 A/G cap4/8, two test processes for timeout headroom. No results or production guarantee yet. [Design](P1_5_7E_SUPPORT_RETENTION_TR.md). No default changes; P1.4/P1.4R PARKED; all experimental/device gates remain. User requested deeper engineering; compare metrics and failures, not file/test count.
+
+
 > **GÜNCEL DEVİR — P1.5.7d (24 Kasım 2026):** Kod 674836b995d15f52dbbd12028de526d45d4d16ac, [51/51 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45468357023). [Rapor](P1_5_7D_GUARDED_CAPSULE_TR.md), [ham JSON](P1_5_7D_GUARDED_CAPSULE_CI.json). Four TFM1/2 × A/G diagnostic cases: six denied ticks, zero measured horizontal drift from first denial to resume, peak four readiness rays per observed tick, actual seam traversal after explicit staged pause. Not equal-speed A/G comparison or continuous streaming proof. NEXT P1.5.7e1 pure bounded support selection implemented, CI pending; no live preview changes. P1.5.7e2 only after CI: opt-in session-scoped current-support retention, actual physics checks and camera movement test; no guarantee yet, then P1.5.8. P1.4/P1.4R PARKED; A default and all device/experimental gates preserved.
 
 
@@ -153,8 +156,8 @@ EXPERIMENTAL + CI_VERIFIED + DEVICE_OPEN. [P1.5.5a](P1_5_5A_GEOMETRY_WORKER_TR.m
 | P1.5.7b dynamic capsule and moving ray coverage | CI_VERIFIED | 49/49, warm capsule passes; actual moving rays 35/144 missing. |
 | P1.5.7c collision readiness query | CI_VERIFIED / EXPERIMENTAL | 50/50 Linux CI; bounded local footprint + actual center rays, not movement safety guarantee. |
 | P1.5.7d guarded horizontal capsule experiment | CI_VERIFIED / EXPERIMENTAL | 51/51; four cases, six denied ticks, zero drift to resume, peak four readiness rays. Explicit staging pause. Current-support loss remains abort. |
-| P1.5.7e1 bounded support selector | IMPLEMENTED / CI_PENDING | Pure selection only; max four unique support tiles and total cap <=128; invalid/oversubscribed request rejected without partial selection. No live pin yet. |
-| P1.5.7e2 live retention experiment | PLANNED | Session-scoped verified support, camera movement, shape identity, neighbor changes, release/reopen and fixed cap; no automatic player movement. |
+| P1.5.7e1 bounded support selector | CI_VERIFIED / EXPERIMENTAL | 52/52, 21 pure checks, four support and total cap128; no live proof. |
+| P1.5.7e2 live retention experiment | IMPLEMENTED / CI_PENDING | Opt-in, session/revision and cap rejection; actual stationary capsule controlled comparison, shape changes measured; no movement transfer proof. |
 | P1.5.5 geometry worker | PLANNED | One bounded worker, immutable input and generation/LOD/neighbor identity, stale outputs discarded, pure arrays only; no SceneTree/Mesh/Physics on worker. Main-thread publication. |
 | P1.5.6 GPU publication | PLANNED | Budgeted upload, reusable topology/material only if measured, near priority, bounded VRAM, draw calls/triangles and GPU separately measured. |
 | P1.5.7 physics | PLANNED | Actual physics-tick raycast parity/collision coverage, coherent mesh/shape generation, near priority, last-good, fast crossing/teleport, no flat fallback. |
@@ -200,3 +203,5 @@ Karar ve gerekçe:
 
 ### EXP-10 follow-up — 24 Kasım 2026
 P1.5.7d 51/51 CI; guarded seam diagnostic not real continuous streaming. P1.5.7e1 pure selector, CI pending. [Design/limits](P1_5_7E_SUPPORT_RETENTION_TR.md). Current support can still be evicted by unmodified preview; never label protected until live integration is tested. All other gates retained.
+
+> **GÜNCEL DEVİR — P1.5.7e1 (24 Kasım 2026):** Kod 4e7dfa8b2a032d6dd9e316c83a071987de600c6d, [52/52 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45470559534), pure selector 21 checks. [Raw JSON](P1_5_7E1_SELECTION_CI.json). NEXT P1.5.7e2 live opt-in support retention implemented, CI PENDING: current verified footprint session/revision, cap rejection, priority, sync neighbor signature check, equal-height shape reuse and changed-height real replacement. 16 controlled 120-tick baseline/held traces planned by test, TFM1/2 A/G cap4/8, two test processes for timeout headroom. No results or production guarantee yet. [Design](P1_5_7E_SUPPORT_RETENTION_TR.md). No default changes; P1.4/P1.4R PARKED; all experimental/device gates remain. User requested deeper engineering; compare metrics and failures, not file/test count.

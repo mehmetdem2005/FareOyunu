@@ -10,6 +10,7 @@ const WORKER = preload("res://addons/terra_forge/core/geometry_worker.gd")
 const HIST = preload("res://addons/terra_forge/core/profile_histogram.gd")
 const PUBLICATION = preload("res://addons/terra_forge/core/publication_accounting.gd")
 const FOOTPRINT = preload("res://addons/terra_forge/core/collision_footprint.gd")
+const SUPPORT = preload("res://addons/terra_forge/core/support_tile_selection.gd")
 const TILE_CELLS: int = 32
 
 @export var preview_enabled: bool = false
@@ -47,7 +48,26 @@ var _publication
 @export_range(9, 64, 1) var resident_page_limit: int = 16
 @export_range(1, 8, 1) var max_background_jobs: int = 4
 @export_range(80.0, 640.0, 16.0) var view_distance: float = 160.0
-@export_range(1, 128, 1) var max_visible_tiles: int = 32
+## Experimental, session-pinned, single caller. Never enabled by default.
+@export var enable_support_retention: bool = false
+var _support_active: bool = false
+var _support_keys: Array[Vector2i] = []
+var _support_session: int = 0
+var _support_revision: int = 0
+var _support_cap_rejections: int = 0
+var _support_shape_reuses: int = 0
+var _support_shape_replacements: int = 0
+var _support_selection_hist = HIST.new()
+var _support_claim_hist = HIST.new()
+@export_range(1, 128, 1) var max_visible_tiles: int = 32:
+    set(value):
+        # An impossible runtime reduction must not silently drop live support.
+        if _support_active and (value < maxi(1,_support_keys.size()) or value > SUPPORT.MAX_TOTAL):
+            _support_cap_rejections += 1
+            return
+        max_visible_tiles = value
+        if _support_active:
+            _last_sync_msec = -100000
 @export_range(1, 3, 1) var tile_updates_per_frame: int = 1
 @export_range(1.0, 8.0, 0.5) var max_tile_work_ms: float = 3.0
 @export_range(32.0, 180.0, 8.0) var high_detail_distance: float = 72.0
@@ -121,6 +141,11 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
         _last_error = status
         return status
     _reader = next
+    _support_active = enable_support_retention
+    if _support_active and (max_visible_tiles < 1 or max_visible_tiles > SUPPORT.MAX_TOTAL):
+        stop_preview()
+        _last_error=ERR_INVALID_PARAMETER
+        return _last_error
     if selected>=3:
         _geometry_worker=WORKER.new()
         status=_geometry_worker.start(_reader,geometry_job_limit,selected>=5,selected==6)
@@ -164,6 +189,16 @@ func resolved_sampling_strategy() -> int:
 
 func stop_preview() -> void:
     set_process(false)
+    # Explicit shutdown revokes even a held support lease. Camera epochs do not.
+    _support_active=false
+    _support_keys.clear()
+    _support_session+=1
+    _support_revision=0
+    _support_cap_rejections=0
+    _support_shape_reuses=0
+    _support_shape_replacements=0
+    _support_selection_hist=HIST.new()
+    _support_claim_hist=HIST.new()
     if _geometry_worker!=null:
         _geometry_worker.close()
         _geometry_worker=null
@@ -220,7 +255,7 @@ func pump_stream() -> Dictionary:
     if _publication!=null:
         _publication.begin_pump(tile_updates_per_frame)
     if _geometry_worker!=null:
-        if _active_sampling_strategy>=4 or _publication_budget_active:
+        if _active_sampling_strategy>=4 or _publication_budget_active or _support_active:
             var reconciled: Error=_geometry_worker.reconcile(_reader,_desired_tiles,_priority_ranks())
             if reconciled!=OK:
                 _last_error=reconciled
@@ -280,6 +315,20 @@ func _sync_tiles() -> void:
             float(entry["distance"]), high_detail_distance,
             medium_detail_distance, view_distance, old_lod, 8.0
         )
+    if _support_active:
+        var selection_started: int=Time.get_ticks_usec()
+        var ranked: Array[Dictionary]=[]
+        for entry in found:
+            var key: Vector2i=entry["key"]
+            ranked.append({"key":key,"lod":int(new_desired[key])})
+        var grid=Vector2i(int(_reader.cells.x/TILE_CELLS),int(_reader.cells.y/TILE_CELLS))
+        var chosen: Dictionary=SUPPORT.select(_support_keys,ranked,grid,max_visible_tiles)
+        _support_selection_hist.add(float(Time.get_ticks_usec()-selection_started)/1000.0)
+        if chosen["error"]!=OK:
+            # Never partially apply an invalid support/cap selection.
+            _last_error=int(chosen["error"])
+            return
+        new_desired=chosen["desired"]
     var previous: Dictionary = _desired_tiles
     _desired_tiles = new_desired
     for key in new_desired:
@@ -293,7 +342,9 @@ func _sync_tiles() -> void:
                 if _tiles.has(adjacent) and new_desired.has(adjacent):
                     _pending_tiles[adjacent] = true
                     _blocked_tiles.erase(adjacent)
-    if _geometry_worker!=null:
+    # In support mode detect removed neighbors in synchronous paths too:
+    # changing desired neighbor LOD can change seam heights.
+    if _geometry_worker!=null or _support_active:
         for key in new_desired:
             var lod: int=int(new_desired[key])
             var before: Dictionary=WORKER.signature(key,lod,previous,_reader.cells)
@@ -351,6 +402,8 @@ func _priority_ranks() -> Dictionary:
     for key in keys:
         var has_shape: bool=_tiles.has(key) and _tiles[key]["collision"].shape is HeightMapShape3D
         classes[key]=0 if key==focus and int(_desired_tiles[key])==0 and not has_shape else (1 if int(_desired_tiles[key])==0 and not has_shape else 2)
+        if _support_active and _support_keys.has(key):
+            classes[key]=-1
     keys.sort_custom(func(a: Variant,b: Variant)->bool:
         if classes[a]!=classes[b]:
             return int(classes[a])<int(classes[b])
@@ -371,7 +424,7 @@ func _build_pending_tiles(started: int = -1) -> void:
     var keys: Array = _pending_tiles.keys().filter(func(key: Variant) -> bool:
         return not _blocked_tiles.has(key) and not _geometry_jobs.has(key)
     )
-    if _active_sampling_strategy>=4 or _publication_budget_active:
+    if _active_sampling_strategy>=4 or _publication_budget_active or _support_active:
         var ranks: Dictionary=_priority_ranks()
         keys.sort_custom(func(a: Variant,b: Variant)->bool: return int(ranks[a])<int(ranks[b]))
     else:
@@ -530,18 +583,28 @@ func _publish_geometry(key: Vector2i,lod: int,generated: Dictionary,started: int
     var shape_start: int=Time.get_ticks_usec() if _publication!=null else 0
     var collision: CollisionShape3D = tile["collision"]
     if lod == 0:
-        var shape: HeightMapShape3D = HeightMapShape3D.new()
-        shape.map_width = int(generated["width"])
-        shape.map_depth = int(generated["width"])
-        shape.map_data = generated["collision_heights"]
-        collision.shape = shape
+        var protected: bool=_support_active and _support_keys.has(key)
+        var old_shape: HeightMapShape3D=collision.shape as HeightMapShape3D
+        var width: int=int(generated["width"])
+        # Only reuse when every Float32 height and dimensions match exactly.
+        # Changed seam data still gets a real replacement, never a fake shape.
+        if protected and old_shape!=null and old_shape.map_width==width and old_shape.map_depth==width and old_shape.map_data==generated["collision_heights"]:
+            _support_shape_reuses+=1
+        else:
+            var shape: HeightMapShape3D=HeightMapShape3D.new()
+            shape.map_width=width
+            shape.map_depth=width
+            shape.map_data=generated["collision_heights"]
+            collision.shape=shape
+            if protected:
+                _support_shape_replacements+=1
     else:
         collision.shape = null
     var shape_us: int=Time.get_ticks_usec()-shape_start if _publication!=null else 0
     tile["lod"] = lod
     if _publication!=null:
         tile["publication_info"]=info
-    if _geometry_worker!=null:
+    if _geometry_worker!=null or _support_active:
         tile["levels"]=WORKER.signature(key,lod,_desired_tiles,_reader.cells)["levels"]
     tile["vertex_count"] = int(generated["vertex_count"])
     _tiles[key] = tile
@@ -634,6 +697,52 @@ func inspect_collision_footprint(start: Vector2,finish: Vector2,radius: float,ex
             return {"ready":false,"reason":"physics_unconfirmed","tile":key,"tiles":keys,"ray_count":rays}
     return {"ready":true,"reason":"sampled_ready","tiles":keys,"ray_count":rays}
 
+## Single-caller lease. Session/revision are stale-call guards, not authentication.
+## Acquire or replace only on a verified CURRENT footprint. Caller supplies local
+## coordinates; this does not move the actor, pin disk pages, or prove a sweep.
+## A failed request leaves the prior lease intact. Call after physics movement
+## to transfer support; do not release old support merely on predicted motion.
+func update_support(point: Vector2,radius: float,session: int,revision: int,exclude: Array[RID]=[]) -> Dictionary:
+    var began: int=Time.get_ticks_usec()
+    var result: Dictionary=_update_support(point,radius,session,revision,exclude)
+    if _support_active:
+        _support_claim_hist.add(float(Time.get_ticks_usec()-began)/1000.0)
+    return result
+
+func _update_support(point: Vector2,radius: float,session: int,revision: int,exclude: Array[RID]) -> Dictionary:
+    if not _support_active or _reader==null or not is_inside_tree() or not Engine.is_in_physics_frame():
+        return {"error":ERR_UNCONFIGURED,"reason":"support_context"}
+    if session!=_support_session or revision!=_support_revision:
+        return {"error":ERR_INVALID_PARAMETER,"reason":"stale_lease"}
+    var plan: Dictionary=FOOTPRINT.plan(point,point,radius,world_extent(),float(TILE_CELLS)*_reader.spacing)
+    if not plan["ready"]:
+        return {"error":ERR_INVALID_PARAMETER,"reason":plan["reason"]}
+    var keys: Array[Vector2i]=plan["tiles"]
+    if keys.size()>SUPPORT.MAX_SUPPORT or keys.size()>max_visible_tiles:
+        return {"error":ERR_INVALID_PARAMETER,"reason":"support_cap"}
+    var confirmed: Dictionary=inspect_collision_footprint(point,point,radius,exclude)
+    if not confirmed["ready"]:
+        return {"error":ERR_BUSY,"reason":confirmed["reason"],"ray_count":confirmed.get("ray_count",0)}
+    if keys!=_support_keys:
+        _support_keys=keys.duplicate()
+        _support_revision+=1
+        _last_sync_msec=-100000
+    return {"error":OK,"reason":"held","session":_support_session,"revision":_support_revision,"tiles":_support_keys.duplicate(),"ray_count":confirmed["ray_count"]}
+
+func release_support(session: int,revision: int) -> Error:
+    if not _support_active or not is_inside_tree() or not Engine.is_in_physics_frame():
+        return ERR_UNCONFIGURED
+    if session!=_support_session or revision!=_support_revision:
+        return ERR_INVALID_PARAMETER
+    if not _support_keys.is_empty():
+        _support_keys.clear()
+        _support_revision+=1
+        _last_sync_msec=-100000
+    return OK
+
+func support_state() -> Dictionary:
+    return {"active":_support_active,"session":_support_session,"revision":_support_revision,"tiles":_support_keys.duplicate(),"cap":max_visible_tiles,"cap_rejections":_support_cap_rejections,"shape_reuses":_support_shape_reuses,"shape_replacements":_support_shape_replacements,"selection_ms":_support_selection_hist.report(),"claim_ms":_support_claim_hist.report()}
+
 func stats() -> Dictionary:
     var source: Dictionary = _reader.stats() if _reader != null else {}
     var vertices: int = 0
@@ -670,6 +779,7 @@ func stats() -> Dictionary:
         "focus_page": _queue_focus_page,
         "camera_cancellations": _camera_cancellations,
         "waiting_tile_frames": _waiting_tile_frames,
+        "support": support_state(),
         "writable": false
     }
 

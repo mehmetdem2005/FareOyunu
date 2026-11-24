@@ -1,0 +1,13 @@
+{
+  "commit": "4e7dfa8b2a032d6dd9e316c83a071987de600c6d",
+  "run_id": 45470559534,
+  "job_id": 138717063962,
+  "total": 52,
+  "fails": 0,
+  "selection": {
+    "checks": 21,
+    "pure_only": true,
+    "support_cap": 4,
+    "total_cap": 128
+  }
+}
