@@ -1,5 +1,8 @@
 # TerraForge — CI, Test Matrisi, Android Performans ve Kalite Kapısı
 
+> **GÜNCEL DEVİR — P1.5.6d (24 Kasım 2026):** Kod 9fdbef19e3f6ef02e76fb40e7dfdd841e68126de, [47/47 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45460013242). [Rapor](P1_5_6D_PUBLICATION_COMPARISON_TR.md), [ham JSON](P1_5_6D_PUBLICATION_COMPARISON_CI.json). 16 equal-work +24 trace runs; 64/128KiB reduces per-pump peak source allowance to116052 from up to261368 but slower equal-work wall and fewer trace publications; same sampled collision gaps. 256KiB close to disabled. Keep budget opt-in and A default. Stale deferred result discarded/recovered. P1.5.7a actual physics-space raycast experiment implemented next, CI pending. P1.4/P1.4R PARKED. No GPU/Android proof.
+
+
 > **P1.5.6c CI closure (24 Kasım 2026):** Original run 45458966071 cancelled by docs-only push (workflow cancel-in-progress); identical code in f699c146402228288a4922b7b4a3bbb2996fcc12 passed [46/46 CI](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45459264528). [Raw JSON](P1_5_6C_TOPOLOGY_CI.json). G/H worker means 1.042/0.984ms, 5.53% lower, same coverage 32 missing steps. H experimental, no GPU/Android claim. P1.5.6d benchmark implemented in this commit; pending CI. P1.4/P1.4R PARKED.
 
 
