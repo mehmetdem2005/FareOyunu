@@ -264,6 +264,7 @@ func _begin(lazy: bool) -> void:
     _preview.resident_shard_limit = shard_limit
     _preview.use_tile_read_view = use_tile_read_view
     _preview.sampling_strategy = sampling_strategy
+    _preview.observe_publication = true
     _run_settings = {"page_limit": page_limit, "job_limit": job_limit, "shard_limit": shard_limit if _run_format == "TFM2" else 0, "view_distance": _preview.view_distance, "high_detail_distance": _preview.high_detail_distance, "medium_detail_distance": _preview.medium_detail_distance, "max_visible_tiles": _preview.max_visible_tiles, "tile_updates_per_frame": _preview.tile_updates_per_frame, "max_tile_work_ms": _preview.max_tile_work_ms, "viewport": [get_viewport().size.x, get_viewport().size.y]}
     _run_settings["use_tile_read_view"] = use_tile_read_view
     _run_settings["sampling_strategy"] = _preview.resolved_sampling_strategy()
@@ -357,6 +358,7 @@ func _finish(status: Error) -> void:
         "route": "normalized_sine_v1", "settings": _run_settings,
         "root_index_bytes": src.get("root_index_bytes", 0),
         "dense_payload_peak_bytes": s.get("dense_payload_peak_bytes", 0),
+        "publication": s.get("publication", {}),
         "geometry_worker": s.get("geometry_worker", {}),
         "geometry_copy_ms": s.get("geometry_copy_ms", {}), "geometry_queue_ms": s.get("geometry_queue_ms", {}),
         "geometry_worker_ms": s.get("geometry_worker_ms", {}), "geometry_delivery_ms": s.get("geometry_delivery_ms", {}),

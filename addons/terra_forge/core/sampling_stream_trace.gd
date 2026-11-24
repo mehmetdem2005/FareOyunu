@@ -25,12 +25,13 @@ static func _close(p,result: Dictionary) -> Dictionary:
     p.free()
     return result
 
-static func run(directory: String, format: int, mode: int, cache: int, geometry_cap: int=2, cadence_us: int=0) -> Dictionary:
+static func run(directory: String, format: int, mode: int, cache: int, geometry_cap: int=2, cadence_us: int=0, observe_publication: bool=false) -> Dictionary:
     if format not in [0,1] or mode not in [0,1,2,3,4,5] or cache not in [9,16] or geometry_cap not in [1,2,4] or cadence_us not in [0,8000]:
         return {"error": ERR_INVALID_PARAMETER}
     var p = PREVIEW.new()
     p.region_index_format = format
     p.sampling_strategy = mode
+    p.observe_publication=observe_publication
     p.geometry_job_limit = geometry_cap
     p.resident_shard_limit = 2
     p.view_distance = 96.0
@@ -136,6 +137,7 @@ static func run(directory: String, format: int, mode: int, cache: int, geometry_
         "accepted_page_reads":src["disk_reads"],"unique_accepted_pages":src["pages_verified_on_demand"],"accepted_page_reloads":maxi(0,src["disk_reads"]-src["pages_verified_on_demand"]),"request_cache_hits":src["cache_hits"],"evictions":src["evictions"],"stale_discarded":src["stale_discarded"],"submitted":src["submitted"],"worker_errors":src["worker_errors"],"lru_touches":src["lru_touches"],"direct_reads":src["direct_height_reads"],"view_reads":src["tile_view_reads"],
         "geometry_cap":geometry_cap if mode>=3 else 0,"geometry_peak":geometry_peak,"first_shape_step":first_shape_step,"geometry_worker":s["geometry_worker"],
         "geometry_copy_ms":s["geometry_copy_ms"],"geometry_queue_ms":s["geometry_queue_ms"],"geometry_worker_ms":s["geometry_worker_ms"],"geometry_delivery_ms":s["geometry_delivery_ms"],"geometry_publish_ms":s["geometry_publish_ms"],
+        "publication":s.get("publication",{}),
         "recovery_ok":settled
     }
     return _close(p,report)

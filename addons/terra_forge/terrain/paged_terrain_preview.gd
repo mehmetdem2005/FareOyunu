@@ -8,6 +8,7 @@ const LOD = preload("res://addons/terra_forge/core/lod_policy.gd")
 const GEOMETRY = preload("res://addons/terra_forge/core/paged_tile_geometry.gd")
 const WORKER = preload("res://addons/terra_forge/core/geometry_worker.gd")
 const HIST = preload("res://addons/terra_forge/core/profile_histogram.gd")
+const PUBLICATION = preload("res://addons/terra_forge/core/publication_accounting.gd")
 const TILE_CELLS: int = 32
 
 @export var preview_enabled: bool = false
@@ -35,6 +36,9 @@ var _worker_hist = HIST.new()
 var _delivery_hist = HIST.new()
 var _publish_hist = HIST.new()
 var _publish_peak_per_pump: int = 0
+## Optional observation only; pinned on open. Not a GPU budget.
+@export var observe_publication: bool = false
+var _publication
 @export_range(9, 64, 1) var resident_page_limit: int = 16
 @export_range(1, 8, 1) var max_background_jobs: int = 4
 @export_range(80.0, 640.0, 16.0) var view_distance: float = 160.0
@@ -122,6 +126,7 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
     _delivery_hist=HIST.new()
     _publish_hist=HIST.new()
     _publish_peak_per_pump=0
+    _publication=PUBLICATION.new() if observe_publication else null
     region_directory = directory
     resident_page_limit = cache_pages
     max_background_jobs = max_jobs
@@ -152,6 +157,7 @@ func stop_preview() -> void:
         _geometry_worker.close()
         _geometry_worker=null
     _geometry_jobs.clear()
+    _publication=null
     for item in _tiles.values():
         var root: Node3D = item["root"]
         if is_instance_valid(root):
@@ -199,14 +205,20 @@ func pump_stream() -> Dictionary:
         _sync_tiles()
         _last_sync_msec = current
     var started: int=Time.get_ticks_usec()
+    if _publication!=null:
+        _publication.begin_pump(tile_updates_per_frame)
     if _geometry_worker!=null:
         if _active_sampling_strategy>=4:
             var reconciled: Error=_geometry_worker.reconcile(_reader,_desired_tiles,_priority_ranks())
             if reconciled!=OK:
                 _last_error=reconciled
+                if _publication!=null:
+                    _publication.end_pump(_publication_resident())
                 return {"error":reconciled}
         _publish_worker_results(started)
     _build_pending_tiles(started)
+    if _publication!=null:
+        _publication.end_pump(_publication_resident())
     return {
         "error": _last_error,
         "resident_tiles": _tiles.size(),
@@ -432,7 +444,10 @@ func _build_pending_tiles(started: int = -1) -> void:
                 _block_tile(key, key, error)
                 continue
             break
-        _publish_geometry(key,lod,generated,started)
+        var publication_error: Error=_publish_geometry(key,lod,generated,started)
+        if publication_error!=OK:
+            _block_tile(key,key,publication_error)
+            continue
         max_builds -= 1
 
 ## Poll before submission, share same soft main-thread time budget.
@@ -462,7 +477,10 @@ func _publish_worker_results(started: int) -> void:
         _worker_hist.add(float(result["build_elapsed_us"])/1000.0)
         _delivery_hist.add(float(result["delivery_wait_us"])/1000.0)
         var publish_start: int=Time.get_ticks_usec()
-        _publish_geometry(key,lod,generated,started)
+        var publication_error: Error=_publish_geometry(key,lod,generated,started)
+        if publication_error!=OK:
+            _block_tile(key,key,publication_error)
+            continue
         _publish_hist.add(float(Time.get_ticks_usec()-publish_start)/1000.0)
         count+=1
     _publish_peak_per_pump=maxi(_publish_peak_per_pump,count)
@@ -473,15 +491,24 @@ func _publish_worker_results(started: int) -> void:
         if not active.has(int(_geometry_jobs[key])):
             _geometry_jobs.erase(key)
 
-func _publish_geometry(key: Vector2i,lod: int,generated: Dictionary,started: int) -> void:
+func _publish_geometry(key: Vector2i,lod: int,generated: Dictionary,started: int) -> Error:
+    var info: Dictionary={}
+    if _publication!=null:
+        info=PUBLICATION.describe(generated,lod)
+        if info["error"]!=OK:
+            return int(info["error"])
+    var publish_start: int=Time.get_ticks_usec() if _publication!=null else 0
     # Fail-closed: don't allocate or replace any visible/collision tile
     # until ALL required Float32 data and geometry arrays are valid.
     if not _tiles.has(key):
         _tiles[key] = _create_tile(key.x, key.y)
     var tile: Dictionary = _tiles[key]
+    var mesh_start: int=Time.get_ticks_usec() if _publication!=null else 0
     var mesh: ArrayMesh = ArrayMesh.new()
     mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, generated["arrays"])
     (tile["visual"] as MeshInstance3D).mesh = mesh
+    var mesh_us: int=Time.get_ticks_usec()-mesh_start if _publication!=null else 0
+    var shape_start: int=Time.get_ticks_usec() if _publication!=null else 0
     var collision: CollisionShape3D = tile["collision"]
     if lod == 0:
         var shape: HeightMapShape3D = HeightMapShape3D.new()
@@ -491,7 +518,10 @@ func _publish_geometry(key: Vector2i,lod: int,generated: Dictionary,started: int
         collision.shape = shape
     else:
         collision.shape = null
+    var shape_us: int=Time.get_ticks_usec()-shape_start if _publication!=null else 0
     tile["lod"] = lod
+    if _publication!=null:
+        tile["publication_info"]=info
     if _geometry_worker!=null:
         tile["levels"]=WORKER.signature(key,lod,_desired_tiles,_reader.cells)["levels"]
     tile["vertex_count"] = int(generated["vertex_count"])
@@ -500,6 +530,17 @@ func _publish_geometry(key: Vector2i,lod: int,generated: Dictionary,started: int
     _mesh_builds += 1
     _last_build_ms = float(Time.get_ticks_usec() - started) / 1000.0
     _max_build_ms = maxf(_max_build_ms, _last_build_ms)
+    if _publication!=null:
+        _publication.record(lod,info,mesh_us,shape_us,Time.get_ticks_usec()-publish_start)
+    return OK
+
+func _publication_resident() -> Dictionary:
+    var result: Dictionary={"vertices":0,"triangles":0,"mesh_bytes":0,"shape_bytes":0,"total_bytes":0,"meshes":0,"shapes":0}
+    for tile in _tiles.values():
+        var info: Dictionary=tile.get("publication_info",{})
+        for key in result:
+            result[key]+=int(info.get(key,0))
+    return result
 
 func _block_tile(key: Vector2i, page: Vector2i, error: Error) -> void:
     _blocked_tiles[key] = error
@@ -560,6 +601,7 @@ func stats() -> Dictionary:
         "use_tile_read_view": use_tile_read_view,
         "sampling_strategy": _active_sampling_strategy if _reader != null else resolved_sampling_strategy(),
         "dense_payload_peak_bytes": _dense_payload_peak,
+        "publication": _publication.report(_publication_resident()) if _publication!=null else {},
         "geometry_worker": _geometry_worker.stats() if _geometry_worker!=null else {},
         "geometry_reservations": _geometry_jobs.size(),
         "geometry_copy_ms": _copy_hist.report(), "geometry_queue_ms": _queue_hist.report(),
