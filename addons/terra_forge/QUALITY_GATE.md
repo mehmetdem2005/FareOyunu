@@ -62,3 +62,9 @@
 - Katman çekirdeği tekil Float32 referans veri, seyrek 32×32 delta tile ve sürümlü TFL1 yan dosya olarak hazırlandı; eski TFH verisi dönüştürülmedi.
 - Yeni `tests/test_height_layers.gd` dahil 14 regresyon testi için `tests/run_all.sh` eklendi. Godot 4.7.2 çalıştırması tamamlanmadan tamamlandı işareti verilmez.
 - Katmanların sahne, Undo/Redo ve güvenli tek işlem kaydıyla tam entegrasyonu sonraki P1 kapısıdır. Bakınız `P0_P1_IMPLEMENTATION_TR.md`.
+
+## 0.4.0-dev.3 — Kayıt bütünlüğü kontrolü
+
+- TFL2 SHA-256, .tmp staging, önceki kayıt .bak, salt-okunur bozulma koruması ve açıkça seçilen Restore hazırlandı.
+- Testler: `test_layer_integrity.gd` ve diğer 17 test; GitHub CI doğrulaması sürümün kararlılığı için zorunludur.
+- Cihazda dosya büyüklüğü, uzun kayıt süresi, depolama doluluğu, süreç kapanması ve gerçek Android dosya sistemi davranışı **henüz test edilmedi**.

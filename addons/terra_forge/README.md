@@ -1,4 +1,4 @@
-# TerraForge Mobile — v0.4.0-dev.2 (opt-in live Float32 layers)
+# TerraForge Mobile — v0.4.0-dev.3 (TFL2 integrity and backup recovery)
 
 Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, native library, or changes to game files. Designed for Android editor testing with Mobile Renderer.
 
@@ -38,22 +38,33 @@ Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, nativ
 - **Smooth**: two-pass neighborhood snapshot plus a 55% bilateral blend reduces directional scan artifacts while retaining some high-contrast edges. Ramp/Stamp/Weather controls remain contextual; Undo/Redo and Float32 data format are unchanged.
 - Mobile **Check** button tests Float32 roundtrip, path consistency, local mass balance and reports CPU processing times without changing the user's terrain.
 
+## TFL2 crash-safety and integrity (0.4.0-dev.3)
+
+- Saves now use **TFL2** with a SHA-256 checksum over the entire binary payload, appended as a 64-byte ASCII hexadecimal footer. Loading checks the checksum **before** replacing the live layer data.
+- Writes are staged to `.tmp`, checksum-verified, then atomically renamed to the authoritative `.tfl`. Before replacement, the prior valid `.tfl` is rotated through `.bak.tmp` into a **last-known-good `.bak`**.
+- A corrupt authoritative `.tfl` cannot be overwritten by Save. The terrain remains **read-only** instead of silently falling back to older data.
+- If a valid `.bak` exists, the compact layer toolbar exposes **Restore**. Recovery is deliberate and keeps the damaged original in `.corrupt_<timestamp>`. It restores the **previous save**, so edits since that save may be lost.
+- A brand-new `.tfl` has **no `.bak` until the next successful save**. Keep independent project backups.
+- Existing **TFL1** documents still load. Explicit Save migrates them to TFL2 and preserves the previous TFL1 in `.bak`; the legacy `.tfh` is untouched.
+- `test_layer_integrity.gd` covers payload tampering, verified backup, refusal to overwrite corruption, explicit recovery, TFL1 migration and partial temporary files.
+- A SHA-256 digest detects accidental changes; it is not encryption or authenticated protection against deliberate replacement.
+
 ## P1 opt-in live sculpting (0.4.0-dev.2)
 
 - **Terrain > Enable Layers** creates a separate authoritative `.tfl` from the current `.tfh`, preserving the original byte-for-byte. It refuses to overwrite an existing layer file.
 - After enabling, the same mobile menu offers a compact layer selector, **+** to create a new layer, and **On** to toggle visibility.
 - All existing sculpt tools (Raise/Lower/Smooth/Flatten/Ridge/Valley/Ramp/Stamp/Weather) update only the active layer's Float32 deltas; Undo/Redo restore layer deltas and the visible composite.
-- Once enabled, the TFL1 file contains both base and layers and is the **only authoritative save target**. The legacy TFH is retained as a backup snapshot and never written in layer mode.
-- On reopen, a missing or invalid TFL1 locks the scene read-only. The plugin **never falls back** to the TFH and overwrites new work. Remember to **save the Godot scene** separately after conversion so the new layer path/mode persist.
+- Once enabled, the TFL2 file contains both base and layers and is the **only authoritative save target**. The legacy TFH is retained as a backup snapshot and never written in layer mode.
+- On reopen, a missing or invalid TFL1/TFL2 document locks the scene read-only. The plugin **never falls back** to the TFH and overwrites new work. Remember to **save the Godot scene** separately after conversion so the new layer path/mode persist.
 - The active layer must be enabled at full opacity (100%) to sculpt; hiding a layer recomposes all heights, updates tile meshes/physics and clears stroke undo history to prevent inconsistent cross-layer restoration.
-- This is still **experimental**. Background processing and tested multi-file crash recovery are not implemented. CI covers 17 headless tests (including `test_live_layers.gd` and `test_layer_scene_roundtrip.gd`), not Android UI/FPS.
+- This is still **experimental**. Background processing and tested multi-file crash recovery are not implemented. CI covers 18 headless regression scripts (pending latest confirmation) (including `test_live_layers.gd` and `test_layer_scene_roundtrip.gd`), not Android UI/FPS.
 
 ## P0/P1 initial implementation (0.4.0-dev.1)
 
 - Added `core/height_layers.gd`: experimental **non-destructive additive Float32 height layer stack** with 32×32 sparse delta chunks, enable/disable, opacity, reorder, and composite-on-demand. Base elevations remain unchanged.
-- Added independent `TFL1` versioned serialization to a `.tfl` sidecar with validated dimensions, bounded layer counts, checks for non-finite values and fail-closed corrupted files. Only explicit calls save these files; no existing `.tfh` is migrated.
+- Added independent `TFL1` (now upgradable to `TFL2`) versioned serialization to a `.tfl` sidecar with validated dimensions, bounded layer counts, checks for non-finite values and fail-closed corrupted files. Only explicit calls save these files; no existing `.tfh` is migrated.
 - Added `tests/test_height_layers.gd` for layer fidelity, border samples, toggles, opacity, save/reload, and corrupt file isolation.
-- Added `tests/run_all.sh` to run all 17 Godot regression scripts against a real project and Godot **4.7.2**.
+- Added `tests/run_all.sh` to run all 18 Godot regression scripts against a real project and Godot **4.7.2**.
 - Extended **Terrain > Check** with a non-destructive scratch-layer smoke test, reported as `Layers ... ms`.
 - The underlying P1 prototype began isolated in v0.4.0-dev.1. v0.4.0-dev.2 adds **explicit opt-in live sculpting** and per-layer Undo/Redo, without changing the default legacy behavior. Read [P0_P1_IMPLEMENTATION_TR.md](P0_P1_IMPLEMENTATION_TR.md) before enabling such integration.
 
@@ -123,6 +134,7 @@ godot --headless --path /path/to/project --script res://addons/terra_forge/tests
 godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_height_layers.gd
 godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_live_layers.gd
 godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_layer_scene_roundtrip.gd
+godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_layer_integrity.gd
 ```
 
 See [MOBILE_TEST_PLAN.md](MOBILE_TEST_PLAN.md) for hands-on Android checks and acceptance criteria. These tests have **not yet been executed** with the Godot engine here.
@@ -133,7 +145,7 @@ Read [QUALITY_GATE.md](QUALITY_GATE.md). The addon **is not certified optimized 
 
 ## Next stages
 
-1. Run the complete **17-test** Godot 4.7.2 CLI regression suite (P0) and fix all parse/API/behavior failures.
+1. Run the complete **18-test** Godot 4.7.2 CLI regression suite (P0) and fix all parse/API/behavior failures.
 2. Run **Terrain > Check** on Android 11 and record the new Layers timings (P1 scratch test).
 2. Inspect long ridge/valley shape quality at ground-camera height and fix contour artifacts.
 3. Validate thermal mass-balance, LOD edge normals, seam continuity and collision on-device.

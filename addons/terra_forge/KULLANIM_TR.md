@@ -1,4 +1,4 @@
-# TerraForge Mobile 0.4.0-dev.2 — Türkçe kullanım
+# TerraForge Mobile 0.4.0-dev.3 — Türkçe kullanım
 
 ## Kurulum (telefon / Godot 4.7.2)
 
@@ -49,6 +49,16 @@ Hepsinde **Size** etki alanını, **Power** etki şiddetini belirler. Ramp, Stam
 - Android'in dokunmatik olaylardan türetebildiği sahte fare tıklamaları bir süre yok sayılır.
 - **Yeni:** Fırça artık her dokunma olayı için değil, parmağın katettiği mesafe boyunca sabit aralıklarla etki uygular. Hızlı ve yavaş sürüklemede güç farkı azalır. Parmağı sabit tutmak devamlı kazma/yükseltme yapmaz.
 
+## v0.4.0-dev.3 — Kayıt bütünlüğü ve kurtarma
+
+- Yeni katman dosyaları **TFL2** biçimindedir. Dosyanın tamamı için SHA-256 doğrulama değeri tutulur. Eski **TFL1** dosyaları açılabilir; sonraki kayıtta TFL2'ye yükseltilir.
+- Her başarılı yeni kayıtta, önceki sağlam `.tfl` sürümü `.tfl.bak` dosyasında korunur. **İlk kayıttan hemen sonra henüz yedek yoktur**; ikinci kayıtta oluşur.
+- Yeni veri önce `.tmp` dosyasına yazılır ve doğrulanır; böylece yarım kalan işlem mevcut ana dosyayı değiştirmez.
+- Ana `.tfl` kaydı bozulmuşsa arazi **salt okunur** olur. Eklenti boş veriyle üzerine yazmaz.
+- Geçerli yedek varsa menüde **Restore** belirir. Dokunduğunda önce bozuk dosya `.corrupt_...` olarak korunur, ardından önceki sağlam kaydı geri getirilir. **Son kayıttan sonraki değişiklikler kaybolabilir.** Kurtarma isteğe bağlıdır; otomatik geri dönüş yapılmaz.
+- `.tfh` dosyası katman modunda aynen korunur. Bu bir şifreleme sistemi değildir; yanlışlıkla bozulmayı tespit etmek içindir.
+- GitHub CI'ya bütünlük, kurtarma, eski format ve yarım kalan kayıt için regresyon testi eklendi.
+
 ## v0.4.0-dev.2 — Gerçek düzenlenebilir katmanlar
 
 1. Mevcut arazini yedekle. Godot'ta TerraForge'un üstteki küçük **Terrain** menüsünü aç.
@@ -66,7 +76,7 @@ Hepsinde **Size** etki alanını, **Power** etki şiddetini belirler. Ramp, Stam
 - Yeni `core/height_layers.gd` katman çekirdeği **ayrı** kodlandı. 32×32 seyrek bloklarda Float32 yükseklik farkları tutar; temel arazi dosyasını değiştirmez.
 - Bu **v0.4.0-dev.1** açıklaması, izole ilk prototipin tarihçesidir. **v0.4.0-dev.2** ile katmanları mobil menüden isteğe bağlı açabiliyorsun.
 - **Terrain > Check** düğmesi artık katman kaydet/aç, görünürlük ve birleştirmeyi de kullanıcının arazisinden bağımsız test eder.
-- Bilgisayarda Godot 4.7.2 yüklüyse, tüm 17 regresyonu `bash addons/terra_forge/tests/run_all.sh /proje/yolu /godot/yolu` ile çalıştır.
+- Bilgisayarda Godot 4.7.2 yüklüyse, tüm 18 regresyonu `bash addons/terra_forge/tests/run_all.sh /proje/yolu /godot/yolu` ile çalıştır.
 - Ayrıntılı uygulama ve geriye uyumluluk sınırları: [P0_P1_IMPLEMENTATION_TR.md](P0_P1_IMPLEMENTATION_TR.md).
 
 ## 0.3.3 — Yeni mühendislik düzeltmeleri

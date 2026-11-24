@@ -1,6 +1,6 @@
 # TerraForge — P0 doğrulama ve P1 veri katmanları, ilk uygulama
-Sürüm: 0.4.0-dev.2
-Durum: **Yapılandırıldı ve kodlandı; Godot 4.7.2 / Android 11 üzerinde henüz çalıştırılmadı.**
+Sürüm: 0.4.0-dev.3
+Durum: **Godot 4.7.2 Linux GitHub CI üzerinden test ediliyor; Android 11 GPU ve dokunmatik testleri henüz yapılmadı.**
 
 ## P0 — Güvenlik ve regresyon kapısı
 
@@ -54,3 +54,15 @@ Malzeme boyama, bitki, taş ve obje yerleştirme bu fazın dışındadır.
 - **P0:** Test sayısı artık 17'dir; gerçek Android GPU/ısı ve uzun süreli dokunmatik testleri bekliyor.
 
 - `tests/test_layer_scene_roundtrip.gd`: Godot `.tscn` kaydında katman modu/yolu korunuyor ve `.tfl` ile yeniden açılan sahne aynı yüksekliği geri alıyor (17/17 CI).
+
+
+## P1 kayıt dayanıklılığı (0.4.0-dev.3)
+
+- TFL2: Float32 temel veri ve katmanların tümü tek dosyada; tam payload SHA-256 kontrolü yüklemede zorunlu.
+- Eski TFL1 okunur; kullanıcı Save'e bastığında TFL2 olarak kaydedilir ve eski TFL1'in bir kopyası `.bak` olur.
+- `.tmp` staging + doğrulama + atomik rename, yedek için `.bak.tmp` staging + rename kullanılıyor. `.bak` son **önceki** sağlam kaydı tutuyor.
+- Eksik/bozuk TFL2 otomatik olarak eski TFH veya yedeğe dönmez; salt okunur. Yalnız `Restore` işlemi, doğrulanmış `.bak` dosyasını geri yükler, bozuk asıl dosyayı ayrı `.corrupt_...` kopyasıyla saklar.
+- İlk kayıt sonrası `.bak` yok; iki başarılı kayıt gerekir.
+- `test_layer_integrity.gd` bu durumları ve yarım kalan geçici dosyayı denetler. Godot CI tamamlanana kadar yeni değişiklikler kararlı kabul edilmez.
+- Kontrol amaçlı SHA-256, yetkisiz değişikliklere karşı kriptografik kimlik doğrulama sağlamaz.
+- Performans notu: büyük katman dosyalarının doğrulanması ve yedeklenmesi şimdilik ana thread'de; sonraki optimizasyon adımı kademeli/asenkron güvenli kayıt tasarımıdır.

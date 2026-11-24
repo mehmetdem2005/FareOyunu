@@ -59,7 +59,7 @@ for name in "${suite[@]}"; do
   # one explicit warning while proving that protected data cannot be saved.
   filtered_errors="$LOG_DIR/$name.unexpected-errors.log"
   grep -E '(^ERROR:|^SCRIPT ERROR:|Parse Error:|Parser Error:|Compile Error:|Failed to load script|Failed to parse script)' "$log" >"$filtered_errors" || true
-  if [[ "$name" == "test_live_layers" ]]; then
+  if [[ "$name" == "test_live_layers" || "$name" == "test_layer_integrity" ]]; then
     grep -vF 'TerraForge: Layer file missing/corrupt, terrain locked:' "$filtered_errors" >"$filtered_errors.tmp" || true
     mv "$filtered_errors.tmp" "$filtered_errors"
   fi
