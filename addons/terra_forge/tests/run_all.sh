@@ -43,6 +43,7 @@ suite=(
   test_profile_fixture_builder
   test_region_index_v2
   test_region_fixture_v2
+  test_async_region_v2
   test_lod_policy
   test_surface_faces
   test_lod_normals

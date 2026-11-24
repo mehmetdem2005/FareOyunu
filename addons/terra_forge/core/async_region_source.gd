@@ -5,6 +5,8 @@ extends RefCounted
 ## Mesh, Physics, ResourceLoader or shared mutable heightfield access.
 ## Strict open validates all pages; on-demand open checks only the manifest.
 ## Camera epoch cancellation never changes the pinned manifest.
+const IDX = preload("res://addons/terra_forge/core/region_index_v2.gd")
+const READER_V2 = preload("res://addons/terra_forge/core/region_read_v2.gd")
 const PAGE_CODEC = preload("res://addons/terra_forge/core/region_page_codec.gd")
 const HISTOGRAM = preload("res://addons/terra_forge/core/profile_histogram.gd")
 const MANIFEST = preload("res://addons/terra_forge/core/region_manifest.gd")
@@ -20,6 +22,24 @@ var _opened: bool = false
 var _limit: int = 4
 var _job_limit: int = 3
 var _manifest_hashes: Dictionary = {}
+var _root_v2 = null
+var _snapshot_id: String = ""
+var _shard_limit: int = 4
+var _verified_bits: PackedByteArray = PackedByteArray()
+var _verified_unique: int = 0
+# V2 error status: one byte per page, allocated only on first failure.
+# Error enum values fit in a byte; zero denotes no terminal failure.
+var _error_bytes: PackedByteArray = PackedByteArray()
+var _error_count: int = 0
+# Worker-only cache, read/reset by main only after thread join.
+var _shard_cache: Dictionary = {}
+var _shard_lru: Array[Vector2i] = []
+var _shard_hits: int = 0
+var _shard_misses: int = 0
+var _shard_loads: int = 0
+var _shard_evictions: int = 0
+# Published under mutex; stats never access the live worker cache.
+var _shard_stats: Dictionary = {}
 var _cache: Dictionary = {}
 var _lru: Array[Vector2i] = []
 var _errors: Dictionary = {}
@@ -105,8 +125,35 @@ func open(directory: String, resident_limit: int = 4, max_jobs: int = 3,
         hashes[Vector2i(int(page["x"]), int(page["z"]))] = str(page["sha256"])
     cells = Vector2i(int(doc["cells_x"]), int(doc["cells_z"]))
     spacing = float(doc["spacing"])
-    _directory = directory.trim_suffix("/")
     _manifest_hashes = hashes
+    return _start_worker(directory, resident_limit, max_jobs, verify_all_pages, checked_ms)
+
+## Explicit opt-in; no auto detection or fallback to TFM1.
+func open_v2(directory: String, resident_limit: int = 4, max_jobs: int = 3,
+        verify_all_pages: bool = true, shard_limit: int = 4) -> Error:
+    close()
+    if directory.is_empty() or resident_limit < 1 or resident_limit > 64 or max_jobs < 1 or max_jobs > 8 or shard_limit < 1 or shard_limit > 16:
+        return ERR_INVALID_PARAMETER
+    var started: int = Time.get_ticks_usec()
+    var opened: Dictionary = READER_V2.open_root(directory)
+    if opened["error"] != OK:
+        return int(opened["error"])
+    var root = opened["index"]
+    if verify_all_pages:
+        var checked: Dictionary = READER_V2.verify_all(directory, root)
+        if checked["error"] != OK:
+            return int(checked["error"])
+    _root_v2 = root
+    _snapshot_id = root.snapshot_digest().hex_encode()
+    _shard_limit = shard_limit
+    cells = root.cells()
+    spacing = root.spacing()
+    var pages: Vector2i = root.page_count()
+    _verified_bits.resize((pages.x * pages.y + 7) >> 3)
+    return _start_worker(directory, resident_limit, max_jobs, verify_all_pages, float(Time.get_ticks_usec() - started) / 1000.0)
+
+func _start_worker(directory: String, resident_limit: int, max_jobs: int, verify_all_pages: bool, checked_ms: float) -> Error:
+    _directory = directory.trim_suffix("/")
     _limit = resident_limit
     _job_limit = max_jobs
     _open_verify_ms = checked_ms
@@ -117,7 +164,7 @@ func open(directory: String, resident_limit: int = 4, max_jobs: int = 3,
     _generation = 0
     _mutex.unlock()
     _thread = Thread.new()
-    status = _thread.start(Callable(self, "_worker_loop"), Thread.PRIORITY_LOW)
+    var status: Error = _thread.start(Callable(self, "_worker_loop"), Thread.PRIORITY_LOW)
     if status != OK:
         close()
         return status
@@ -153,17 +200,53 @@ func set_generation(next_id: int) -> Error:
     _mutex.unlock()
     _reserved.clear()
     _errors.clear()
+    _error_bytes.clear()
+    _error_count = 0
     return OK
 
+func _ordinal(key: Vector2i) -> int:
+    return key.y * page_count().x + key.x
+
+func _terminal_error(key: Vector2i) -> Error:
+    if _root_v2 == null:
+        return int(_errors.get(key, OK))
+    if _error_bytes.is_empty():
+        return OK
+    return int(_error_bytes[_ordinal(key)])
+
+func _record_error(key: Vector2i, err: Error) -> void:
+    if _root_v2 == null:
+        _errors[key] = err
+        return
+    if _error_bytes.is_empty():
+        var count: Vector2i = page_count()
+        _error_bytes.resize(count.x * count.y)
+    var index: int = _ordinal(key)
+    if _error_bytes[index] == 0:
+        _error_count += 1
+    _error_bytes[index] = int(err)
+
+func _record_verified(key: Vector2i) -> void:
+    if _root_v2 == null:
+        _verified_once[key] = true
+        return
+    var ordinal: int = _ordinal(key)
+    var byte_index: int = ordinal >> 3
+    var mask: int = 1 << (ordinal & 7)
+    if (_verified_bits[byte_index] & mask) == 0:
+        _verified_bits[byte_index] = _verified_bits[byte_index] | mask
+        _verified_unique += 1
+
 func request_page(key: Vector2i) -> Error:
-    if not _valid_page(key) or not _manifest_hashes.has(key):
+    if not _valid_page(key) or (_root_v2 == null and not _manifest_hashes.has(key)):
         return ERR_INVALID_PARAMETER
     if _cache.has(key):
         _cache_hits += 1
         _touch(key)
         return OK
-    if _errors.has(key):
-        return int(_errors[key])
+    var terminal: Error = _terminal_error(key)
+    if terminal != OK:
+        return terminal
     if _reserved.has(key):
         return OK
     _mutex.lock()
@@ -175,7 +258,8 @@ func request_page(key: Vector2i) -> Error:
     var job: Dictionary = {
         "key": key, "generation": generation,
         "path": "%s/r_%05d_%05d.tfr" % [_directory, key.x, key.y],
-        "sha256": str(_manifest_hashes[key]),
+        "sha256": str(_manifest_hashes.get(key, "")),
+        "snapshot": _snapshot_id,
         "cells": cells, "spacing": spacing,
         "submitted_us": Time.get_ticks_usec(), "profile": collect_io_profile
     }
@@ -190,6 +274,48 @@ func request_page(key: Vector2i) -> Error:
     if notify:
         _wake.post()
     return OK
+
+## Worker-only shard LRU. Verified root is immutable for the entire open session.
+func _read_v2(job: Dictionary) -> Dictionary:
+    var begin: int = Time.get_ticks_usec()
+    var key: Vector2i = job["key"]
+    var sk: Vector2i = _root_v2.shard_for_page(key)
+    var result: Dictionary = {"error": ERR_FILE_CORRUPT}
+    if str(job["snapshot"]) == _snapshot_id and sk.x >= 0:
+        var shard = _shard_cache.get(sk)
+        if shard == null:
+            _shard_misses += 1
+            var loaded: Dictionary = IDX.load_shard(_directory, _root_v2, sk)
+            if loaded["error"] == OK:
+                shard = loaded["index"]
+                _shard_loads += 1
+                if _shard_cache.size() >= _shard_limit:
+                    _shard_cache.erase(_shard_lru.pop_front())
+                    _shard_evictions += 1
+                _shard_cache[sk] = shard
+                _shard_lru.append(sk)
+            else:
+                result = {"error": loaded["error"]}
+        else:
+            _shard_hits += 1
+            _shard_lru.erase(sk)
+            _shard_lru.append(sk)
+        if shard != null:
+            result = READER_V2.read_from_shard(_directory, _root_v2, shard, key)
+    result["key"] = key
+    result["generation"] = int(job["generation"])
+    result["snapshot"] = job["snapshot"]
+    result["io_ms"] = float(Time.get_ticks_usec() - begin) / 1000.0
+    return result
+
+func _publish_shard_stats() -> void:
+    # Called only by worker, under mutex.
+    var bytes: int = 0
+    for shard in _shard_cache.values():
+        bytes += shard.byte_count()
+    _shard_stats = {"resident": _shard_cache.size(), "bytes": bytes,
+        "hits": _shard_hits, "misses": _shard_misses,
+        "loads": _shard_loads, "evictions": _shard_evictions}
 
 func _worker_loop() -> void:
     while true:
@@ -212,13 +338,15 @@ func _worker_loop() -> void:
             _inflight += 1
             _mutex.unlock()
             var started: int = Time.get_ticks_usec()
-            var output: Dictionary = _read_page_file(job)
+            var output: Dictionary = _read_v2(job) if _root_v2 != null else _read_page_file(job)
             if bool(job["profile"]):
                 output["submitted_us"] = job["submitted_us"]
                 output["started_us"] = started
                 output["finished_us"] = Time.get_ticks_usec()
             _mutex.lock()
             _inflight -= 1
+            if _root_v2 != null:
+                _publish_shard_stats()
             if not _stop and int(job["generation"]) == _generation:
                 # Admission already counts pending + inflight + finished.
                 # There is guaranteed room for this result.
@@ -239,7 +367,7 @@ func poll_results(max_results: int = 3) -> Dictionary:
     var committed: int = 0
     var failures: int = 0
     for result in found:
-        if int(result["generation"]) != current:
+        if int(result["generation"]) != current or str(result.get("snapshot", "")) != _snapshot_id:
             _discarded += 1
             continue
         var key: Vector2i = result["key"]
@@ -256,13 +384,13 @@ func poll_results(max_results: int = 3) -> Dictionary:
         _max_io_ms = maxf(_max_io_ms, duration)
         var err: Error = int(result["error"])
         if err != OK:
-            _errors[key] = err
+            _record_error(key, err)
             _worker_errors += 1
             failures += 1
             continue
         var values: PackedFloat32Array = result["values"]
         if values.size() != REGIONS.PAGE_VALUES:
-            _errors[key] = ERR_FILE_CORRUPT
+            _record_error(key, ERR_FILE_CORRUPT)
             failures += 1
             continue
         if _cache.size() >= _limit and not _cache.has(key):
@@ -270,7 +398,7 @@ func poll_results(max_results: int = 3) -> Dictionary:
             _cache.erase(oldest)
             _evictions += 1
         _cache[key] = values
-        _verified_once[key] = true
+        _record_verified(key)
         _touch(key)
         _read_count += 1
         committed += 1
@@ -302,9 +430,8 @@ func page_status(key: Vector2i) -> Error:
         return ERR_INVALID_PARAMETER
     if _cache.has(key):
         return OK
-    if _errors.has(key):
-        return int(_errors[key])
-    return ERR_BUSY
+    var terminal: Error = _terminal_error(key)
+    return terminal if terminal != OK else ERR_BUSY
 
 func get_height(x: int, z: int) -> Dictionary:
     if not _opened:
@@ -381,7 +508,9 @@ func stats() -> Dictionary:
     var cancelled_inflight: int = _cancelled_inflight
     var wake_posts: int = _wake_posts
     var wake_cycles: int = _wake_cycles
+    var shard_stats: Dictionary = _shard_stats.duplicate()
     _mutex.unlock()
+    var total_pages: Vector2i = page_count()
     return {
         "open": _opened,
         "resident": _cache.size(),
@@ -403,9 +532,19 @@ func stats() -> Dictionary:
         "last_io_ms": _last_io_ms,
         "max_io_ms": _max_io_ms,
         "open_verify_ms": _open_verify_ms,
-        "manifest_entries": _manifest_hashes.size(),
+        "manifest_entries": total_pages.x * total_pages.y if _root_v2 != null else _manifest_hashes.size(),
+        "index_format": "TFM2" if _root_v2 != null else "TFM1",
+        "snapshot_id": _snapshot_id,
+        "root_index_bytes": _root_v2.byte_count() if _root_v2 != null else 0,
+        "shard_limit": _shard_limit if _root_v2 != null else 0,
+        "shard_resident": shard_stats.get("resident", 0),
+        "shard_resident_bytes": shard_stats.get("bytes", 0),
+        "shard_hits": shard_stats.get("hits", 0), "shard_misses": shard_stats.get("misses", 0),
+        "shard_loads": shard_stats.get("loads", 0), "shard_evictions": shard_stats.get("evictions", 0),
+        "verification_bitmap_bytes": _verified_bits.size(), "terminal_error_bytes": _error_bytes.size(),
+        "terminal_errors": _error_count if _root_v2 != null else _errors.size(),
         "verified_at_open": _verified_all_at_open,
-        "pages_verified_on_demand": _verified_once.size(),
+        "pages_verified_on_demand": _verified_unique if _root_v2 != null else _verified_once.size(),
         "verification_mode": "strict" if _verified_all_at_open else "on_demand"
     }
 
@@ -426,6 +565,19 @@ func close() -> void:
     spacing = 1.0
     _directory = ""
     _manifest_hashes.clear()
+    _root_v2 = null
+    _snapshot_id = ""
+    _verified_bits.clear()
+    _verified_unique = 0
+    _error_bytes.clear()
+    _error_count = 0
+    _shard_cache.clear()
+    _shard_lru.clear()
+    _shard_stats.clear()
+    _shard_hits = 0
+    _shard_misses = 0
+    _shard_loads = 0
+    _shard_evictions = 0
     _verified_all_at_open = false
     _verified_once.clear()
     _cache.clear()
