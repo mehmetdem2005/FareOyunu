@@ -1,5 +1,8 @@
 # Sıradaki Uygulama İş Emri — P1.3 Sahada Doğrulama ve P1.4 Veri İşlemleri
 
+> **GÜNCEL DEVİR — P1.5.8b1 CI_VERIFIED (24 Kasım 2026):** 65091b3b99271264fcd3d7d5c965229759c6216c, [60/60 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45480640069), [ham JSON](P1_5_8B1_ADAPTIVE_CI.json). 8 pairs fixed/adaptive, 16×150 ticks, disk reads674→546, denied78→66, builds216→168 (warmup included), abandoned8→0, no ground loss. Horizon133–200ms, one observed publication per adaptive case. No equal-work/Android claim. NEXT P1.5.8b2 multi-seam roundtrip, live direction reversal, stop/expiry, verified relocation invalidates old forecast; 16×480 ticks, four test processes, CI_PENDING. Preserve A default and fixed option, P1.4/P1.4R PARKED.
+
+
 > **GÜNCEL DEVİR — P1.5.8a CI_VERIFIED (24 Kasım 2026):** 0a13c04a171d953a785c54ef218a381c73056825, [58/58 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45478566656), [ham JSON](P1_5_8A_PREFETCH_CI.json). 8 pairs, 16×150 ticks, denial 212→54 (-74.5%), longest24–29→2–3, no floor/ray gaps, reads240→452 (+88.3%), builds128→196 (includes warmup), no equal-work or Android claim. 24-speed common goal tick93/94→70/74; 12-speed neither reaches goal. Keep opt-in. NEXT P1.5.8b1 bounded adaptive horizon based on selected-to-first publication latency, CI_PENDING; fixed0.5 vs adaptive0.125–0.5, 16 traces TFM1/2 A/G cache9/16 speed24 cap4. No precise IO attribution, no adaptive default, P1.4/P1.4R PARKED.
 
 

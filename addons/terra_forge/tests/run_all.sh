@@ -71,6 +71,10 @@ suite=(
   test_motion_prefetch_v2
   test_adaptive_motion_horizon
   test_adaptive_motion_horizon_v2
+  test_motion_roundtrip
+  test_motion_roundtrip_g
+  test_motion_roundtrip_v2
+  test_motion_roundtrip_v2_g
   test_lod_policy
   test_surface_faces
   test_lod_normals

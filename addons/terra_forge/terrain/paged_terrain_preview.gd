@@ -69,6 +69,7 @@ var _motion_point: Vector2=Vector2.ZERO
 var _motion_tick: int=-1
 var _motion_changes: int=0
 var _motion_expirations: int=0
+var _motion_relocations: int=0
 var _motion_promotions: int=0
 var _motion_abandoned: int=0
 var _motion_published: int=0
@@ -227,6 +228,7 @@ func stop_preview() -> void:
     _motion_tick=-1
     _motion_changes=0
     _motion_expirations=0
+    _motion_relocations=0
     _motion_promotions=0
     _motion_abandoned=0
     _motion_published=0
@@ -804,6 +806,14 @@ func _update_support(point: Vector2,radius: float,session: int,revision: int,exc
     if not confirmed["ready"]:
         return {"error":ERR_BUSY,"reason":confirmed["reason"],"ray_count":confirmed.get("ray_count",0)}
     if keys!=_support_keys:
+        # A verified large relocation (not an ordinary seam transfer) must
+        # revoke the previous motion forecast BEFORE another stream pump.
+        # Keep learned latency session-scoped; no new generation or IO queue.
+        if _motion_active and _motion_tick>=0 and point.distance_to(_motion_point)>float(TILE_CELLS)*_reader.spacing*0.5:
+            _motion_velocity=Vector2.ZERO
+            _motion_tick=-1
+            _motion_relocations+=1
+            _set_motion_keys([])
         _support_keys=keys.duplicate()
         _support_revision+=1
         _last_sync_msec=-100000
@@ -865,7 +875,7 @@ func _set_motion_keys(keys: Array[Vector2i]) -> void:
         _last_sync_msec=-100000
 
 func motion_prefetch_state() -> Dictionary:
-    return {"active":_motion_active,"keys":_motion_keys.duplicate(),"selected":_motion_selected.duplicate(),"changes":_motion_changes,"expirations":_motion_expirations,"promotions":_motion_promotions,"abandoned_selection":_motion_abandoned,"speculative_publications":_motion_published,"sample_ms":_motion_hist.report(),"adaptive":_motion_adaptive,"latency":_motion_latency.report() if _motion_adaptive else {},"pending_latency_samples":_motion_wait_started.size(),"already_ready_selections":_motion_already_ready,"cancelled_latency_samples":_motion_cancelled_samples}
+    return {"active":_motion_active,"keys":_motion_keys.duplicate(),"selected":_motion_selected.duplicate(),"changes":_motion_changes,"expirations":_motion_expirations,"relocations":_motion_relocations,"promotions":_motion_promotions,"abandoned_selection":_motion_abandoned,"speculative_publications":_motion_published,"sample_ms":_motion_hist.report(),"adaptive":_motion_adaptive,"latency":_motion_latency.report() if _motion_adaptive else {},"pending_latency_samples":_motion_wait_started.size(),"already_ready_selections":_motion_already_ready,"cancelled_latency_samples":_motion_cancelled_samples}
 
 func release_support(session: int,revision: int) -> Error:
     if not _support_active or not is_inside_tree() or not Engine.is_in_physics_frame():
