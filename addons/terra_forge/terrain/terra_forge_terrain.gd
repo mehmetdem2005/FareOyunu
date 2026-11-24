@@ -495,7 +495,14 @@ func paint_at(
     ) -> void:
     if not _stroke_open or _read_only_source or height_data == null:
         return
-    var local_hit: Vector3 = to_local(global_hit)
+    # Unit tests may operate on an off-tree terrain. Node3D.to_local()
+    # uses the global transform and emits engine errors before _enter_tree().
+    # The local transform is mathematically equivalent for a root node.
+    var local_hit: Vector3 = (
+        to_local(global_hit)
+        if is_inside_tree()
+        else transform.affine_inverse() * global_hit
+    )
     if tool == 4 or tool == 5:
         var point: Vector2 = Vector2(local_hit.x, local_hit.z)
         var threshold: float = maxf(0.6, brush_radius * 0.3)

@@ -33,6 +33,7 @@ suite=(
   test_edge_normals
   test_stream_budget
   test_brush_sampling
+  test_offtree_transform
   test_advanced_brushes
   test_geomorphology
   test_shape_quality
@@ -50,9 +51,22 @@ for name in "${suite[@]}"; do
     code=$?
   fi
   cat "$log"
+  # Fail for any Godot ERROR, including engine runtime errors that still
+  # return exit code 0. The missing-file safety test intentionally emits
+  # one explicit warning while proving that protected data cannot be saved.
+  filtered_errors="$LOG_DIR/$name.unexpected-errors.log"
+  grep -E '(^ERROR:|^SCRIPT ERROR:|Parse Error:|Parser Error:|Compile Error:|Failed to load script|Failed to parse script)' "$log" >"$filtered_errors" || true
+  if [[ "$name" == "test_data_safety" ]]; then
+    grep -vF 'TerraForge: Height data is missing or unreadable.' "$filtered_errors" >"$filtered_errors.tmp" || true
+    mv "$filtered_errors.tmp" "$filtered_errors"
+  fi
   if (( code != 0 )) \
-      || grep -Eq 'SCRIPT ERROR:|Parse Error:|Parser Error:|Compile Error:|Failed to load script|Failed to parse script' "$log" \
+      || [[ -s "$filtered_errors" ]] \
       || ! grep -q '^PASS:' "$log"; then
+    if [[ -s "$filtered_errors" ]]; then
+      echo "Unexpected engine errors in $name:" >&2
+      cat "$filtered_errors" >&2
+    fi
     echo "FAIL $name (status=$code; see $log)" >&2
     failures=$((failures + 1))
   else

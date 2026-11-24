@@ -68,6 +68,21 @@ jobs:
             exit 1
           fi
 
+      - name: Verify Godot editor plugin loads in headless editor
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat >>"$TEST_PROJECT/project.godot" <<'GODOTPLUGINS'
+
+          [editor_plugins]
+          enabled=PackedStringArray("res://addons/terra_forge/plugin.cfg")
+          GODOTPLUGINS
+          timeout 90s godot --headless --editor --path "$TEST_PROJECT" --quit-after 20 2>&1 | tee "$RUNNER_TEMP/terraforge-editor.log"
+          if grep -E '^ERROR:|^SCRIPT ERROR:|Parse Error:|Parser Error:|Compile Error:|Failed to load' "$RUNNER_TEMP/terraforge-editor.log"; then
+            echo "::error::Editor plugin produced Godot errors"
+            exit 1
+          fi
+
       - name: Run all TerraForge Godot regression tests
         shell: bash
         run: |
@@ -103,6 +118,7 @@ jobs:
           name: terraforge-godot-4-7-2-logs
           path: |
             ${{ runner.temp }}/terraforge-import.log
+            ${{ runner.temp }}/terraforge-editor.log
             ${{ runner.temp }}/terraforge-test.log
             ${{ runner.temp }}/terraforge-regressions/
           if-no-files-found: warn
