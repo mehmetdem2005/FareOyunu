@@ -1,5 +1,8 @@
 # TerraForge Mobile — YENİ SOHBETTE BURADAN BAŞLA
 
+> **GÜNCEL DEVİR — P1.5.8a CI_VERIFIED (24 Kasım 2026):** 0a13c04a171d953a785c54ef218a381c73056825, [58/58 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45478566656), [ham JSON](P1_5_8A_PREFETCH_CI.json). 8 pairs, 16×150 ticks, denial 212→54 (-74.5%), longest24–29→2–3, no floor/ray gaps, reads240→452 (+88.3%), builds128→196 (includes warmup), no equal-work or Android claim. 24-speed common goal tick93/94→70/74; 12-speed neither reaches goal. Keep opt-in. NEXT P1.5.8b1 bounded adaptive horizon based on selected-to-first publication latency, CI_PENDING; fixed0.5 vs adaptive0.125–0.5, 16 traces TFM1/2 A/G cache9/16 speed24 cap4. No precise IO attribution, no adaptive default, P1.4/P1.4R PARKED.
+
+
 > **P1.5.8a CI FAILURE / RETRY (24 Kasım 2026):** 26ba70f6860fe14e3e546d04346c71bbf68b99d0, [56/58 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45476545781), job 138738162573. Both first predictive A/12 traces had 5 denied ticks vs baseline24, longest2, zero missing/airborne, verified two transfers (both10,new-only13), old eviction13. Test incorrectly required eviction >=96 even after successful early transfer; failed before G/24 cases. Not full acceptance. Fix causal eviction invariant: OLD absent only after actual verified transfer, every post-pump footprint matches held keys, baseline time assertion unchanged. Paired comparison uses shared single-seam waypoint x536 (before next seam544) for both paths; original e3 route unchanged. Record demanded/admitted ticks, goal and actual position; no equal completed work claim. No production code or safety threshold change. Retry CI pending.
 
 

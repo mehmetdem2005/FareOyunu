@@ -9,8 +9,8 @@ const LOOKAHEAD_SECONDS: float=0.5
 const ALPHA: float=0.25
 const DEAD_ZONE: float=0.01
 
-static func predict(point: Vector2,actual: Vector2,intent: Vector2,previous: Vector2,radius: float,extent: Vector2,tile_size: float,support: Array[Vector2i]) -> Dictionary:
-    if not point.is_finite() or not actual.is_finite() or not intent.is_finite() or not previous.is_finite() or not is_finite(tile_size) or tile_size<=0.0:
+static func predict(point: Vector2,actual: Vector2,intent: Vector2,previous: Vector2,radius: float,extent: Vector2,tile_size: float,support: Array[Vector2i],lookahead: float=LOOKAHEAD_SECONDS) -> Dictionary:
+    if not point.is_finite() or not actual.is_finite() or not intent.is_finite() or not previous.is_finite() or not is_finite(tile_size) or tile_size<=0.0 or not is_finite(lookahead) or lookahead<0.125 or lookahead>0.5:
         return {"error":ERR_INVALID_PARAMETER}
     var current: Dictionary=FOOT.plan(point,point,radius,extent,tile_size)
     if not current["ready"] or current["tiles"]!=support:
@@ -27,7 +27,7 @@ static func predict(point: Vector2,actual: Vector2,intent: Vector2,previous: Vec
     # Intent is a bounded hint, not an authority to move. Use actual EWMA
     # only along requested direction; no lateral extrapolation.
     var speed: float=minf(max_speed,maxf(intent.length(),smooth.dot(direction)))
-    var distance: float=minf(tile_size*0.5,speed*LOOKAHEAD_SECONDS)
+    var distance: float=minf(tile_size*0.5,speed*lookahead)
     var corridor: Dictionary=FOOT.plan(point,point+direction*distance,radius,extent,tile_size)
     if not corridor["ready"]:
         return {"error":OK,"keys":result,"velocity":smooth}

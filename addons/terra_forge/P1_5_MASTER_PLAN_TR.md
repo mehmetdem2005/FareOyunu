@@ -1,5 +1,8 @@
 # TerraForge P1.5 — Derin mobil performans mühendisliği ana planı
 
+> **GÜNCEL DEVİR — P1.5.8a CI_VERIFIED (24 Kasım 2026):** 0a13c04a171d953a785c54ef218a381c73056825, [58/58 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45478566656), [ham JSON](P1_5_8A_PREFETCH_CI.json). 8 pairs, 16×150 ticks, denial 212→54 (-74.5%), longest24–29→2–3, no floor/ray gaps, reads240→452 (+88.3%), builds128→196 (includes warmup), no equal-work or Android claim. 24-speed common goal tick93/94→70/74; 12-speed neither reaches goal. Keep opt-in. NEXT P1.5.8b1 bounded adaptive horizon based on selected-to-first publication latency, CI_PENDING; fixed0.5 vs adaptive0.125–0.5, 16 traces TFM1/2 A/G cache9/16 speed24 cap4. No precise IO attribution, no adaptive default, P1.4/P1.4R PARKED.
+
+
 > **GÜNCEL DEVİR — P1.5.7e3 CI_VERIFIED (24 Kasım 2026):** b6610de889dd2bc93ac5c1c85a94990d95da55ae, [56/56 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45474716862), [ham JSON](P1_5_7E3_TRANSFER_CI.json). 16 ×150 actual physics ticks, zero missing ground or airborne, exactly two transfers, old eviction tick96, stalls24–30 ticks, resume32–34, max4 readiness rays/tick. Guard p95 upper0.138–0.248ms, pump A4.932–5ms / G1.432–2ms. Fixed synthetic camera return tick24; no production controller/device proof. NEXT P1.5.8a opt-in player motion corridor integrated, 16 paired traces cap4 and speeds12/24, CI_PENDING; no performance conclusion until logs. P1.4/P1.4R PARKED; A default unchanged.
 
 

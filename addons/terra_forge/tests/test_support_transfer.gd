@@ -51,19 +51,20 @@ func _run() -> void:
     print("PASS: continuous physics cold seam admission and verified live support transfer, fixed cap and camera departure")
     quit(0)
 
-func _case(directory: String,format: int,mode: int,cap: int,speed: float,predictive: bool=false,paired_single_seam: bool=false) -> Dictionary:
+func _case(directory: String,format: int,mode: int,cap: int,speed: float,predictive: bool=false,paired_single_seam: bool=false,adaptive: bool=false,cache_pages: int=16) -> Dictionary:
     _p=P.new()
     _p.region_index_format=format
     _p.sampling_strategy=mode
     _p.enable_support_retention=true
     _p.enable_motion_prefetch=predictive
+    _p.enable_adaptive_motion_horizon=adaptive
     _p.max_visible_tiles=cap
     _p.high_detail_distance=64.0
     _p.medium_detail_distance=80.0
     _p.view_distance=96.0
     _p.max_tile_work_ms=8.0
     root.add_child(_p)
-    if _p.start_preview(directory,16,4)!=OK:
+    if _p.start_preview(directory,cache_pages,4)!=OK:
         return {"error":FAILED,"stage":"open"}
     _p.set_process(false)
     _p.set_stream_center(Vector3(512,0,512))
@@ -221,12 +222,12 @@ func _case(directory: String,format: int,mode: int,cap: int,speed: float,predict
             return {"error":FAILED,"stage":"pump","tick":tick,"detail":pumped}
         var stats: Dictionary=_p.stats()
         peak_forecast=maxi(peak_forecast,stats["motion_prefetch"]["selected"].size())
-        if peak_forecast>2:
+        if peak_forecast>2 or int(stats["motion_prefetch"]["pending_latency_samples"])>2:
             return {"error":FAILED,"stage":"forecast cap"}
         max_tiles=maxi(max_tiles,int(stats["tiles"]))
         max_pages=maxi(max_pages,int(stats["source"]["resident"]))
         max_jobs=maxi(max_jobs,int(stats["geometry_reservations"]))
-        if max_tiles>cap or max_pages>16 or max_jobs>2:
+        if max_tiles>cap or max_pages>cache_pages or max_jobs>2:
             return {"error":FAILED,"stage":"resource caps","tick":tick}
         var post_pump: Dictionary=_p.support_state()
         if post_pump["tiles"]!=plan["tiles"]:
@@ -244,6 +245,12 @@ func _case(directory: String,format: int,mode: int,cap: int,speed: float,predict
     var final_io: Dictionary=_p.stats()["source"]
     report["motion_prefetch"]=_p.motion_prefetch_state()
     report["peak_forecast"]=peak_forecast
+    report["adaptive"]=adaptive
+    report["cache_pages"]=cache_pages
+    if adaptive:
+        var latency: Dictionary=_p.motion_prefetch_state()["latency"]
+        if int(latency["samples"])<1 or float(latency["horizon_seconds"])<0.125 or float(latency["horizon_seconds"])>0.5 or int(_p.motion_prefetch_state()["pending_latency_samples"])!=0:
+            return {"error":FAILED,"stage":"adaptive latency evidence","detail":report}
     report["disk_reads_delta"]=int(final_io["disk_reads"])-int(initial_io["disk_reads"])
     report["stale_discarded_delta"]=int(final_io["stale_discarded"])-int(initial_io["stale_discarded"])
     report["mesh_builds"]=_p.stats()["mesh_builds"]

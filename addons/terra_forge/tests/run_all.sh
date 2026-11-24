@@ -69,6 +69,8 @@ suite=(
   test_support_transfer_v2
   test_motion_prefetch
   test_motion_prefetch_v2
+  test_adaptive_motion_horizon
+  test_adaptive_motion_horizon_v2
   test_lod_policy
   test_surface_faces
   test_lod_normals

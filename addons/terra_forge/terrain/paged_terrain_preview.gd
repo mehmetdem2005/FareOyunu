@@ -12,6 +12,7 @@ const PUBLICATION = preload("res://addons/terra_forge/core/publication_accountin
 const FOOTPRINT = preload("res://addons/terra_forge/core/collision_footprint.gd")
 const SUPPORT = preload("res://addons/terra_forge/core/support_tile_selection.gd")
 const MOTION = preload("res://addons/terra_forge/core/motion_prefetch.gd")
+const MOTION_LATENCY = preload("res://addons/terra_forge/core/motion_latency_window.gd")
 const TILE_CELLS: int = 32
 
 @export var preview_enabled: bool = false
@@ -53,6 +54,13 @@ var _publication
 @export var enable_support_retention: bool = false
 ## P1.5.8a experiment, requires support retention. Pinned on open.
 @export var enable_motion_prefetch: bool = false
+## Independent opt-in, requires motion prefetch. Pinned on open.
+@export var enable_adaptive_motion_horizon: bool = false
+var _motion_adaptive: bool=false
+var _motion_latency=MOTION_LATENCY.new()
+var _motion_wait_started: Dictionary={}
+var _motion_already_ready: int=0
+var _motion_cancelled_samples: int=0
 var _motion_active: bool=false
 var _motion_keys: Array[Vector2i]=[]
 var _motion_selected: Array[Vector2i]=[]
@@ -158,6 +166,7 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
     _reader = next
     _support_active = enable_support_retention
     _motion_active=enable_motion_prefetch and _support_active
+    _motion_adaptive=_motion_active and enable_adaptive_motion_horizon
     if _support_active and (max_visible_tiles < 1 or max_visible_tiles > SUPPORT.MAX_TOTAL):
         stop_preview()
         _last_error=ERR_INVALID_PARAMETER
@@ -207,6 +216,11 @@ func stop_preview() -> void:
     set_process(false)
     # Explicit shutdown revokes even a held support lease. Camera epochs do not.
     _motion_active=false
+    _motion_adaptive=false
+    _motion_latency=MOTION_LATENCY.new()
+    _motion_wait_started.clear()
+    _motion_already_ready=0
+    _motion_cancelled_samples=0
     _motion_keys.clear()
     _motion_selected.clear()
     _motion_velocity=Vector2.ZERO
@@ -375,6 +389,17 @@ func _sync_tiles() -> void:
                         _motion_promotions+=1
                     else:
                         _motion_abandoned+=1
+            if _motion_adaptive:
+                for key in _motion_wait_started.keys():
+                    if not ahead.has(key):
+                        _motion_wait_started.erase(key)
+                        _motion_cancelled_samples+=1
+                for key in ahead:
+                    if not _motion_selected.has(key):
+                        if _tiles.has(key) and int(_tiles[key]["lod"])==0 and not _pending_tiles.has(key) and not _blocked_tiles.has(key):
+                            _motion_already_ready+=1
+                        else:
+                            _motion_wait_started[key]=Engine.get_physics_frames()
             _motion_selected=ahead
     var previous: Dictionary = _desired_tiles
     _desired_tiles = new_desired
@@ -661,6 +686,10 @@ func _publish_geometry(key: Vector2i,lod: int,generated: Dictionary,started: int
     _mesh_builds += 1
     if _motion_active and _motion_selected.has(key) and not _support_keys.has(key):
         _motion_published+=1
+        if _motion_adaptive and _motion_wait_started.has(key) and lod==0:
+            var elapsed_ticks: int=Engine.get_physics_frames()-int(_motion_wait_started[key])
+            _motion_latency.observe(elapsed_ticks,Engine.physics_ticks_per_second)
+            _motion_wait_started.erase(key)
     _last_build_ms = float(Time.get_ticks_usec() - started) / 1000.0
     _max_build_ms = maxf(_max_build_ms, _last_build_ms)
     if _publication!=null:
@@ -818,7 +847,8 @@ func sample_motion_prefetch(point: Vector2,actual: Vector2,intent: Vector2,radiu
     var previous: Vector2=_motion_velocity
     if _motion_tick<0 or tick-_motion_tick>4 or point.distance_to(_motion_point)>size*0.5:
         previous=Vector2.ZERO
-    var predicted: Dictionary=MOTION.predict(point,actual,intent,previous,radius,world_extent(),size,_support_keys)
+    var horizon: float=_motion_latency.horizon if _motion_adaptive else MOTION.LOOKAHEAD_SECONDS
+    var predicted: Dictionary=MOTION.predict(point,actual,intent,previous,radius,world_extent(),size,_support_keys,horizon)
     _motion_hist.add(float(Time.get_ticks_usec()-started)/1000.0)
     if predicted["error"]!=OK:
         return int(predicted["error"])
@@ -835,7 +865,7 @@ func _set_motion_keys(keys: Array[Vector2i]) -> void:
         _last_sync_msec=-100000
 
 func motion_prefetch_state() -> Dictionary:
-    return {"active":_motion_active,"keys":_motion_keys.duplicate(),"selected":_motion_selected.duplicate(),"changes":_motion_changes,"expirations":_motion_expirations,"promotions":_motion_promotions,"abandoned_selection":_motion_abandoned,"speculative_publications":_motion_published,"sample_ms":_motion_hist.report()}
+    return {"active":_motion_active,"keys":_motion_keys.duplicate(),"selected":_motion_selected.duplicate(),"changes":_motion_changes,"expirations":_motion_expirations,"promotions":_motion_promotions,"abandoned_selection":_motion_abandoned,"speculative_publications":_motion_published,"sample_ms":_motion_hist.report(),"adaptive":_motion_adaptive,"latency":_motion_latency.report() if _motion_adaptive else {},"pending_latency_samples":_motion_wait_started.size(),"already_ready_selections":_motion_already_ready,"cancelled_latency_samples":_motion_cancelled_samples}
 
 func release_support(session: int,revision: int) -> Error:
     if not _support_active or not is_inside_tree() or not Engine.is_in_physics_frame():
