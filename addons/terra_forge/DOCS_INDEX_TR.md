@@ -1,5 +1,8 @@
 # TerraForge Mobile — Kalıcı Proje Hafızası ve Teknik Doküman İndeksi
 
+> **P1.5.6b (24 Kasım 2026):** Kod 5e210c2f8f4b2737713bcbc82dba6811f586290c, [45/45 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45455416391). [Rapor](P1_5_6B_PUBLICATION_BUDGET_TR.md), [ham JSON](P1_5_6B_PUBLICATION_BUDGET_CI.json). Opt-in source-byte/count/measured publication time admission; four warm mixed tiles across 3 pumps, two first-item oversized exceptions, zero worker duplicates/drops. No GPU timing. NEXT P1.5.6c topology reuse experiment. P1.4/P1.4R PARKED.
+
+
 > **P1.5.6a (24 Kasım 2026):** Kod 934f68bb0bce7cf43c48adcba191570c3fde5504, [44/44 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45453236978). [Rapor](P1_5_6A_PUBLICATION_TR.md), [ham JSON](P1_5_6A_PUBLICATION_CI.json). Optional observation; source-array allowance only, not GPU bytes/time. Six A/C/G traces at 8ms target, no 128KiB or 1ms publication overshoot with one tile/pump. NEXT P1.5.6b opt-in budget, defer worker result in original bounded queue, single-item progress. P1.4/P1.4R PARKED.
 
 
