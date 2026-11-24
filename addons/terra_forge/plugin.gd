@@ -20,6 +20,7 @@ var _layer_enable: Button
 var _layer_select: OptionButton
 var _layer_add: Button
 var _layer_visible: CheckButton
+var _layer_restore: Button
 var _advanced_row: HBoxContainer
 var _advanced_label: Label
 var _stamp_preset: OptionButton
@@ -201,6 +202,11 @@ func _enter_tree() -> void:
     _layer_visible.tooltip_text = "Show or hide selected layer"
     _layer_visible.toggled.connect(_toggle_layer_visible)
     _layer_row.add_child(_layer_visible)
+    _layer_restore = Button.new()
+    _layer_restore.text = "Restore"
+    _layer_restore.tooltip_text = "Manually restore last verified .tfl.bak. Damaged original is preserved as .corrupt_*."
+    _layer_restore.pressed.connect(_restore_layer_backup)
+    _layer_row.add_child(_layer_restore)
     _refresh_layer_ui()
 
     _stats_label = Label.new()
@@ -316,7 +322,9 @@ func _refresh_layer_ui() -> void:
         return
     var has_terrain: bool = is_instance_valid(_active)
     var enabled: bool = has_terrain and _active.layer_mode and _active._layer_stack != null
-    _layer_enable.visible = not enabled
+    var can_restore: bool = has_terrain and _active.can_restore_layer_backup()
+    _layer_restore.visible = can_restore
+    _layer_enable.visible = not enabled and not can_restore
     _layer_enable.disabled = not has_terrain or (has_terrain and _active._read_only_source)
     _layer_select.visible = enabled
     _layer_add.visible = enabled
@@ -330,6 +338,18 @@ func _refresh_layer_ui() -> void:
     _layer_add.disabled = _active._read_only_source or _active._layer_stack.layers.size() >= 8
     _layer_visible.disabled = _active._read_only_source
     _layer_visible.set_pressed_no_signal(bool(_active._layer_stack.layers[_active._active_layer]["enabled"]))
+
+func _restore_layer_backup() -> void:
+    if not is_instance_valid(_active) or not _active.can_restore_layer_backup():
+        return
+    _finish_stroke()
+    # This is a deliberate action. No automatic rollback occurs on load.
+    var err: Error = _active.restore_layer_backup()
+    if err == OK:
+        _set_status("Recovered last verified backup. Corrupt primary preserved separately; save scene.")
+    else:
+        _set_status("Recovery failed: " + error_string(err))
+    _refresh_layer_ui()
 
 func _enable_layer_mode() -> void:
     if not is_instance_valid(_active):

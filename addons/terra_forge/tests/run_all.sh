@@ -28,6 +28,7 @@ suite=(
   test_height_layers
   test_live_layers
   test_layer_scene_roundtrip
+  test_layer_integrity
   test_lod_policy
   test_surface_faces
   test_lod_normals

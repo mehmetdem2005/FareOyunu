@@ -519,6 +519,50 @@ func enable_layers() -> Error:
     allow_data_creation = false
     return OK
 
+func can_restore_layer_backup() -> bool:
+    return (
+        layer_mode and _read_only_source and not layer_file.is_empty()
+        and FileAccess.file_exists(layer_file + ".bak")
+    )
+
+func restore_layer_backup() -> Error:
+    # Explicit opt-in only: never silently replace a damaged primary with
+    # a potentially older backup. The corrupted file is quarantined first.
+    if not can_restore_layer_backup() or _stroke_open:
+        return ERR_UNAVAILABLE
+    var err: Error = HEIGHT_LAYERS.restore_backup(layer_file)
+    if err != OK:
+        return err
+    var restored = HEIGHT_LAYERS.new()
+    err = restored.load_file(layer_file)
+    if err != OK:
+        return err
+    _layer_stack = restored
+    height_data.initialize(restored.cells, restored.spacing)
+    height_data.heights = restored.compose()
+    cells_x = restored.cells.x
+    cells_z = restored.cells.y
+    sample_spacing = restored.spacing
+    _active_layer = 0
+    _read_only_source = false
+    _source_load_error = OK
+    _history.clear()
+    _redo.clear()
+    _stroke_before.clear()
+    _changed_since_save = false
+    # Reallocate transient visual/physics nodes for the recovered dimensions.
+    for tile in _tile_nodes.values():
+        var tile_root: Node3D = tile["root"]
+        if is_instance_valid(tile_root):
+            tile_root.free()
+    _tile_nodes.clear()
+    _desired_tiles.clear()
+    _tile_queue.clear()
+    _dirty_tiles.clear()
+    _last_stream_sync = -100000
+    _sync_resident_tiles()
+    return OK
+
 func add_edit_layer(name: String) -> int:
     if not layer_mode or _read_only_source or _layer_stack == null:
         return -1

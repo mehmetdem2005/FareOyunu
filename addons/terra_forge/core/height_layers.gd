@@ -3,7 +3,10 @@ extends RefCounted
 ## TerraForge P1: versioned, sparse, additive Float32 height layers.
 ## This core DOES NOT modify existing .tfh files or terrain scenes.
 ## Tiles hold 32x32 independent sample deltas, never duplicated borders.
-const MAGIC: String = "TFL1"
+const MAGIC: String = "TFL2"
+const LEGACY_MAGIC: String = "TFL1"
+const CHECKSUM_BYTES: int = 64
+const HASH_CHUNK_BYTES: int = 65536
 const TILE_SIZE: int = 32
 const TILE_VALUES: int = TILE_SIZE * TILE_SIZE
 const MAX_CELLS: int = 2048
@@ -205,6 +208,20 @@ func save_file(path: String) -> Error:
             file.store_buffer(values.to_byte_array())
     file.flush()
     file.close()
+    # Append a SHA-256 digest over the complete serialized payload.
+    # A streaming read verifies this footer before any loaded layer state
+    # can replace the in-memory document.
+    var checksum: String = FileAccess.get_sha256(temp_path)
+    if checksum.length() != CHECKSUM_BYTES:
+        DirAccess.remove_absolute(ProjectSettings.globalize_path(temp_path))
+        return ERR_FILE_CORRUPT
+    var append_file: FileAccess = FileAccess.open(temp_path, FileAccess.READ_WRITE)
+    if append_file == null:
+        return FileAccess.get_open_error()
+    append_file.seek_end()
+    append_file.store_buffer(checksum.to_ascii_buffer())
+    append_file.flush()
+    append_file.close()
     # Never load the entire serialized file into RAM merely to check size.
     var check: FileAccess = FileAccess.open(temp_path, FileAccess.READ)
     if check == null:
@@ -215,7 +232,101 @@ func save_file(path: String) -> Error:
     if byte_count > MAX_FILE_BYTES:
         DirAccess.remove_absolute(ProjectSettings.globalize_path(temp_path))
         return ERR_OUT_OF_MEMORY
-    return DirAccess.rename_absolute(ProjectSettings.globalize_path(temp_path), ProjectSettings.globalize_path(path))
+    # Re-read the exact candidate bytes before considering them committed.
+    var candidate = get_script().new()
+    var candidate_error: Error = candidate.load_file(temp_path)
+    if candidate_error != OK:
+        DirAccess.remove_absolute(ProjectSettings.globalize_path(temp_path))
+        return candidate_error
+    var absolute_path: String = ProjectSettings.globalize_path(path)
+    var absolute_temp: String = ProjectSettings.globalize_path(temp_path)
+    if FileAccess.file_exists(path):
+        # Never replace an unreadable primary, even when a backup exists.
+        # Recovery must be deliberate; automatic overwrite can hide damage.
+        var previous = get_script().new()
+        var previous_error: Error = previous.load_file(path)
+        if previous_error != OK:
+            DirAccess.remove_absolute(absolute_temp)
+            return previous_error
+        var backup_temp: String = path + ".bak.tmp"
+        var absolute_backup_temp: String = ProjectSettings.globalize_path(backup_temp)
+        var backup_copy: Error = DirAccess.copy_absolute(absolute_path, absolute_backup_temp)
+        if backup_copy != OK:
+            DirAccess.remove_absolute(absolute_temp)
+            return backup_copy
+        var backup_move: Error = DirAccess.rename_absolute(
+            absolute_backup_temp, ProjectSettings.globalize_path(path + ".bak")
+        )
+        if backup_move != OK:
+            DirAccess.remove_absolute(absolute_backup_temp)
+            DirAccess.remove_absolute(absolute_temp)
+            return backup_move
+    # Atomic rename is the only step that replaces authoritative data.
+    # If it fails, the existing primary and .bak remain available.
+    return DirAccess.rename_absolute(absolute_temp, absolute_path)
+
+static func _verified_payload_end(file: FileAccess, length: int) -> int:
+    if length < 20 or length > MAX_FILE_BYTES:
+        return -1
+    file.seek(0)
+    var magic: String = file.get_buffer(4).get_string_from_ascii()
+    if magic == LEGACY_MAGIC:
+        file.seek(4)
+        return length
+    if magic != MAGIC or length < 20 + CHECKSUM_BYTES:
+        return -1
+    var payload_size: int = length - CHECKSUM_BYTES
+    file.seek(payload_size)
+    var expected: String = file.get_buffer(CHECKSUM_BYTES).get_string_from_ascii()
+    var ctx: HashingContext = HashingContext.new()
+    if ctx.start(HashingContext.HASH_SHA256) != OK:
+        return -1
+    file.seek(0)
+    var pending: int = payload_size
+    while pending > 0:
+        var part_size: int = mini(pending, HASH_CHUNK_BYTES)
+        var part: PackedByteArray = file.get_buffer(part_size)
+        if part.size() != part_size or ctx.update(part) != OK:
+            return -1
+        pending -= part_size
+    if ctx.finish().hex_encode() != expected:
+        return -1
+    file.seek(4)
+    return payload_size
+
+## Restore the last verified good save only on explicit user request.
+## A broken primary is copied to a unique .corrupt_* file before overwrite.
+## Both the original .bak and the forensic copy are left intact.
+static func restore_backup(path: String) -> Error:
+    if path.is_empty() or not FileAccess.file_exists(path + ".bak"):
+        return ERR_FILE_NOT_FOUND
+    var loader = load("res://addons/terra_forge/core/height_layers.gd").new()
+    var check_error: Error = loader.load_file(path + ".bak")
+    if check_error != OK:
+        return check_error
+    var recovery_tmp: String = path + ".recover.tmp"
+    var backup_copy: Error = DirAccess.copy_absolute(
+        ProjectSettings.globalize_path(path + ".bak"),
+        ProjectSettings.globalize_path(recovery_tmp)
+    )
+    if backup_copy != OK:
+        return backup_copy
+    if FileAccess.file_exists(path):
+        var quarantine: String = path + ".corrupt_" + str(Time.get_ticks_usec())
+        var preserve_error: Error = DirAccess.copy_absolute(
+            ProjectSettings.globalize_path(path),
+            ProjectSettings.globalize_path(quarantine)
+        )
+        if preserve_error != OK:
+            DirAccess.remove_absolute(ProjectSettings.globalize_path(recovery_tmp))
+            return preserve_error
+    var restore_error: Error = DirAccess.rename_absolute(
+        ProjectSettings.globalize_path(recovery_tmp),
+        ProjectSettings.globalize_path(path)
+    )
+    if restore_error != OK:
+        DirAccess.remove_absolute(ProjectSettings.globalize_path(recovery_tmp))
+    return restore_error
 
 func load_file(path: String) -> Error:
     if path.is_empty() or not FileAccess.file_exists(path):
@@ -224,7 +335,8 @@ func load_file(path: String) -> Error:
     if file == null:
         return FileAccess.get_open_error()
     var length: int = file.get_length()
-    if length < 20 or length > MAX_FILE_BYTES or file.get_buffer(4).get_string_from_ascii() != MAGIC:
+    var payload_end: int = _verified_payload_end(file, length)
+    if payload_end < 0:
         return ERR_FILE_CORRUPT
     var dims: Vector2i = Vector2i(int(file.get_32()), int(file.get_32()))
     var file_spacing: float = file.get_float()
@@ -246,10 +358,10 @@ func load_file(path: String) -> Error:
     var max_tile_z: int = int(dims.y / TILE_SIZE)
     var max_tiles: int = (max_tile_x + 1) * (max_tile_z + 1)
     for layer_idx in range(layer_count):
-        if file.get_position() + 4 > length:
+        if file.get_position() + 4 > payload_end:
             return ERR_FILE_CORRUPT
         var name_length: int = int(file.get_32())
-        if name_length < 1 or name_length > MAX_NAME_BYTES or file.get_position() + name_length + 9 > length:
+        if name_length < 1 or name_length > MAX_NAME_BYTES or file.get_position() + name_length + 9 > payload_end:
             return ERR_INVALID_DATA
         var name: String = file.get_buffer(name_length).get_string_from_utf8()
         var enabled_flag: int = int(file.get_8())
@@ -259,7 +371,7 @@ func load_file(path: String) -> Error:
             return ERR_INVALID_DATA
         var tiles: Dictionary = {}
         for tile_idx in range(tile_count):
-            if file.get_position() + 8 + TILE_VALUES * 4 > length:
+            if file.get_position() + 8 + TILE_VALUES * 4 > payload_end:
                 return ERR_FILE_CORRUPT
             var key: Vector2i = Vector2i(int(file.get_32()), int(file.get_32()))
             if key.x < 0 or key.y < 0 or key.x > max_tile_x or key.y > max_tile_z or tiles.has(key):
@@ -273,7 +385,7 @@ func load_file(path: String) -> Error:
                     return ERR_INVALID_DATA
             tiles[key] = values
         parsed_layers.append({"name": name, "enabled": enabled_flag == 1, "opacity": opacity, "tiles": tiles})
-    if file.get_position() != length:
+    if file.get_position() != payload_end:
         return ERR_FILE_CORRUPT
     # Commit only after complete validation. A corrupt file never replaces a
     # live layer stack or its canonical base data.
