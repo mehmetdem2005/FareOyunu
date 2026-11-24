@@ -11,7 +11,7 @@ const MAX_HISTORY: int = 20
 @export_range(0.25, 4.0, 0.25) var sample_spacing: float = 1.0
 @export_file("*.tfh") var data_file: String = "res://terraforge_data/terrain.tfh"
 
-var height_data: RefCounted
+var height_data
 var _tile_nodes: Dictionary = {}
 var _dirty_tiles: Dictionary = {}
 var _history: Array[Dictionary] = []
@@ -67,8 +67,8 @@ func _build_tiles() -> void:
         if is_instance_valid(old_node):
             old_node.free()
     _tile_nodes.clear()
-    var nx: int = height_data.cells.x / TILE_CELLS
-    var nz: int = height_data.cells.y / TILE_CELLS
+    var nx: int = int(height_data.cells.x / TILE_CELLS)
+    var nz: int = int(height_data.cells.y / TILE_CELLS)
     for tz in range(nz):
         for tx in range(nx):
             var root: Node3D = Node3D.new()
@@ -133,10 +133,12 @@ func _rebuild_tile(tx: int, tz: int, item: Dictionary) -> void:
         for x in range(TILE_CELLS):
             var a: int = z * width + x
             # Upward-facing triangle winding.
-            indices.append_array(PackedInt32Array([
-                a, a + width, a + 1,
-                a + 1, a + width, a + width + 1
-            ]))
+            indices.append(a)
+            indices.append(a + width)
+            indices.append(a + 1)
+            indices.append(a + 1)
+            indices.append(a + width)
+            indices.append(a + width + 1)
     var arrays: Array = []
     arrays.resize(Mesh.ARRAY_MAX)
     arrays[Mesh.ARRAY_VERTEX] = vertices
@@ -160,8 +162,8 @@ func _mark_sample_dirty(x: int, z: int) -> void:
     var tz1: int = floori(float(z) / float(TILE_CELLS))
     var tx0: int = floori(float(x - 1) / float(TILE_CELLS))
     var tz0: int = floori(float(z - 1) / float(TILE_CELLS))
-    var max_x: int = height_data.cells.x / TILE_CELLS
-    var max_z: int = height_data.cells.y / TILE_CELLS
+    var max_x: int = int(height_data.cells.x / TILE_CELLS)
+    var max_z: int = int(height_data.cells.y / TILE_CELLS)
     for tz in range(tz0, tz1 + 1):
         for tx in range(tx0, tx1 + 1):
             if tx >= 0 and tz >= 0 and tx < max_x and tz < max_z:
@@ -260,7 +262,7 @@ func _apply_history(record: Dictionary, use_after: bool) -> void:
     for i in range(indexes.size()):
         var idx: int = indexes[i]
         height_data.heights[idx] = values[i]
-        _mark_sample_dirty(idx % stride, idx / stride)
+        _mark_sample_dirty(idx % stride, int(idx / stride))
     _refresh_dirty_tiles()
     _changed_since_save = true
     _last_edit_time = Time.get_ticks_msec()
