@@ -125,6 +125,7 @@ func _ready() -> void:
     ui.add_child(_cancel_button)
     _button(ui, "Run strict full verification", func(): _begin(false))
     _button(ui, "Run lazy on-demand", func(): _begin(true))
+    _button(ui, "Copy JSON report to clipboard", _copy_report)
     _button(ui, "Save / show JSON report", _save_report)
     _label = Label.new()
     _label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -456,19 +457,31 @@ func report_document() -> Dictionary:
         "runs": _reports.duplicate(true)
     }
 
+func _report_json() -> String:
+    return JSON.stringify(report_document(), "  ")
+
+func _copy_report() -> void:
+    if _running or _reports.is_empty():
+        _label.text = "Finish at least one profile run before copying."
+        return
+    DisplayServer.clipboard_set(_report_json())
+    _label.text = "JSON copied. Paste it into your ChatGPT message."
+
 func _save_report() -> void:
     if _running or _reports.is_empty():
         return
+    var report_text: String = _report_json()
+    DisplayServer.clipboard_set(report_text)
     var path: String = "user://tf_profile_report_" + str(Time.get_unix_time_from_system()).replace(".", "_") + "_" + str(Time.get_ticks_usec()) + ".json"
     var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
     if file == null:
         _label.text = "Could not save report."
         return
-    file.store_string(JSON.stringify(report_document(), "  "))
+    file.store_string(report_text)
     file.flush()
     var result: Error = file.get_error()
     file.close()
-    _label.text = "Saved: " + ProjectSettings.globalize_path(path) if result == OK else "Report write failed."
+    _label.text = ("Saved and copied. Paste JSON into ChatGPT. " + ProjectSettings.globalize_path(path)) if result == OK else "Copied JSON, but report file write failed."
 
 func _exit_tree() -> void:
     if _fixture != null:
