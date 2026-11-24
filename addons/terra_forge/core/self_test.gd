@@ -4,6 +4,8 @@ extends RefCounted
 const STORE = preload("res://addons/terra_forge/core/height_store.gd")
 const PATHS = preload("res://addons/terra_forge/core/landform_paths.gd")
 const THERMAL = preload("res://addons/terra_forge/core/thermal_weathering.gd")
+const LOD = preload("res://addons/terra_forge/core/lod_policy.gd")
+const SHAPES = preload("res://addons/terra_forge/core/brush_shapes.gd")
 
 static func run() -> Dictionary:
     var errors: Array[String] = []
@@ -55,6 +57,21 @@ static func run() -> Dictionary:
         errors.append("Thermal mass balance exceeded 0.01m")
     var weather_ms: float = float(Time.get_ticks_usec() - weather_start) / 1000.0
 
+    var shape_start: int = Time.get_ticks_usec()
+    var noise: FastNoiseLite = FastNoiseLite.new()
+    noise.seed = 137
+    noise.frequency = 1.0 / 26.0
+    var center_pos: Vector2 = Vector2(22, 22)
+    if SHAPES.organic_stamp(0, center_pos, center_pos, 12.0, noise) < 0.99:
+        errors.append("Organic stamp center")
+    if SHAPES.organic_stamp(0, center_pos + Vector2(12, 0), center_pos, 12.0, noise) != 0.0:
+        errors.append("Organic stamp edge")
+    if LOD.choose_stable_lod(76.0, 72.0, 144.0, 224.0, 0, 8.0) != 0:
+        errors.append("LOD hysteresis")
+    if LOD.choose_stable_lod(84.0, 72.0, 144.0, 224.0, 0, 8.0) != 1:
+        errors.append("LOD level transition")
+    var shape_ms: float = float(Time.get_ticks_usec() - shape_start) / 1000.0
+
     var all_passed: bool = errors.is_empty()
     return {
         "ok": all_passed,
@@ -62,9 +79,10 @@ static func run() -> Dictionary:
         "data_ms": data_ms,
         "path_ms": path_ms,
         "weather_ms": weather_ms,
+        "shape_ms": shape_ms,
         "total_ms": float(Time.get_ticks_usec() - start_us) / 1000.0,
         "summary": (
-            "PASS | F32 %.1fms | Path %.1fms | Weather %.1fms" % [data_ms, path_ms, weather_ms]
+            "PASS | F32 %.1fms | Path %.1fms | Weather %.1fms | Shape %.1fms" % [data_ms, path_ms, weather_ms, shape_ms]
             if all_passed
             else "FAIL: " + ", ".join(errors)
         )

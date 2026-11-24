@@ -1,4 +1,4 @@
-# TerraForge Mobile 0.3.1 — Türkçe kullanım
+# TerraForge Mobile 0.3.2 — Türkçe kullanım
 
 ## Kurulum (telefon / Godot 4.7.2)
 
@@ -32,6 +32,14 @@ Hepsinde **Size** etki alanını, **Power** etki şiddetini belirler. Ramp, Stam
 
 **Önemli:** Bu sürüm henüz tam optimize edildi veya profesyonel doğallık kesinleşti diye işaretlenmedi. [QUALITY_GATE.md](QUALITY_GATE.md) geçilmeden malzeme ve obje yerleştirmeye başlanmayacak.
 
+## 0.3.2 — Geometri ve mobil optimizasyon
+
+- **Stamp:** Hazır şekiller artık kusursuz dairesel değil; hafif asimetrik ve dünya koordinatlarına bağlı gürültüyle doğal görünüme yaklaşıyor. Bu gerçek kaya/erozyon simülasyonu değildir.
+- **Smooth:** Sıralı verteks güncellemesinin bir yönde yamulma oluşturmasını engelleyen anlık görüntü kullanıyor; keskin kenarları tamamen yok etmeden yumuşatıyor.
+- **LOD:** Yakın/uzak eşiklerinde titreyen geometri geçişlerini azaltan 8 m histerezis ve görünen yüzeyden hesaplanan eğim normalleri eklendi.
+- **Performans:** Fırça darbesinde binlerce tekrar yerine kare/dikdörtgen tabanlı kirli tile işaretleme; termal aşınmada daha az geçici bellek tahsisi.
+- **Check:** Şekil sınırları ve LOD geçişleri de doğrulama kapsamına eklendi.
+
 ## Değişiklikler
 
 - Tile'lar, 64/96/160 adetlik mobil kalite bütçesiyle aşamalı yüklenir; ilk açılışta bütün mesh düğümleri aynı anda oluşturulmaz.
@@ -45,7 +53,7 @@ Hepsinde **Size** etki alanını, **Power** etki şiddetini belirler. Ramp, Stam
 
 `res://terraforge_data/*.tfh`, 32-bit float yüksekliği içeren projene özel veri dosyasıdır. Bir araziyi başka projeye taşırken sahne dosyasıyla beraber bağlı `.tfh` dosyasını da taşı. Bu sürüm oyun dosyalarını değiştirmez; yalnızca `addons/terra_forge/` eklentisi dağıtılır.
 
-**Test durumu:** v0.3.1 için Godot 4.7.2 Android testleri henüz yapılmadı; yeni Check düğmesinin sonucu da telefonla doğrulanmalı. Arayüz açılmıyorsa veya harita boş kalıyorsa Godot'un **Debugger → Errors** bölümündeki ilk kırmızı hata satırını paylaş.
+**Test durumu:** v0.3.2 için Godot 4.7.2 Android testleri henüz yapılmadı. Check düğmesi gerçek GPU kare süresi testi değildir. Arayüz açılmıyorsa veya harita boş kalıyorsa Godot'un **Debugger → Errors** bölümündeki ilk kırmızı hata satırını paylaş.
 
 ## İlk denemede ne görmelisin?
 
@@ -65,4 +73,5 @@ godot --headless --path /proje/yolu --script res://addons/terra_forge/tests/test
 godot --headless --path /proje/yolu --script res://addons/terra_forge/tests/test_advanced_brushes.gd
 godot --headless --path /proje/yolu --script res://addons/terra_forge/tests/test_geomorphology.gd
 godot --headless --path /proje/yolu --script res://addons/terra_forge/tests/test_lod_normals.gd
+godot --headless --path /proje/yolu --script res://addons/terra_forge/tests/test_shape_quality.gd
 ```

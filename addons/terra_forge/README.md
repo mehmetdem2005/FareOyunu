@@ -1,4 +1,4 @@
-# TerraForge Mobile — v0.3.1 (geology quality and on-device diagnostics)
+# TerraForge Mobile — v0.3.2 (shape quality + stable LOD + fewer CPU allocations)
 
 Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, native library, or changes to game files. Designed for Android editor testing with Mobile Renderer.
 
@@ -16,7 +16,7 @@ Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, nativ
 
 - **Lossless Float32 height storage** in a versioned `.tfh` height file (little-endian TFH1 header + row-major Float32 samples).
 - **Resident visual tiles**: allocate only camera-near tile nodes, with maximum active tile budget. Drop far mesh/collision nodes on travel.
-- **3 mesh LODs**: tile sampling strides 1, 2 and 4 with descending mesh complexity. Fine tile edges interpolate onto the coarser neighbor's samples; the old visible gray skirts have been removed.
+- **3 mesh LODs**: strides 1, 2, 4 with lower-resolution edges conforming to neighboring tiles; an **8-meter distance hysteresis** reduces rapid LOD switching. Surface normals/visual slope colors now derive from the actual seam-adjusted mesh, not stale high-resolution height samples.
 - **Top surface fix**: corrected the terrain's triangle winding; previously it was backface-culled and only the grey LOD skirts appeared, creating a fake hollow/checkerboard view.
 - **Compact toolbar UI**: removed the giant bottom dock; one **Terrain** popup button and one **Brush** toggle live in Godot's 3D editor toolbar. The popup is clamped to the mobile viewport.
 - **Incremental node allocation**: in v0.2.1 the tile meshes were capped per frame but all tile nodes were created together. v0.2.2 now creates only the permitted number of tile nodes per frame, too.
@@ -24,7 +24,7 @@ Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, nativ
 - **Duplicate touch guard**: ignores synthetic mouse taps shortly after Android touch events.
 - **Editor camera following** through `EditorInterface.get_editor_viewport_3d(0).get_camera_3d()`. Scene camera following while running.
 - **Collision only at closest LOD**, with properly uniform scaling and pre-scaled height values.
-- **Per-frame tile rebuild budget**, with edited/dirtied tiles queued rather than regenerating the whole map at once.
+- **Per-frame tile rebuild budget**, with edited/dirtied tiles queued rather than regenerating the whole map at once. Repeated height edits now mark one affected tile rectangle rather than submitting thousands of per-sample dirty notifications.
 - Touch/mouse shaping with **distance-spaced stamps** (one touch-movement path now yields similar heights regardless of event count), 20-step local Undo/Redo, 2.5-second idle autosave, corrupt file write guard.
 - Live resident tile/vertex counts and CPU build/edit timings in the compact Terrain popup, plus a non-destructive **Check** self-test.
 
@@ -33,9 +33,9 @@ Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, nativ
 - **Ridge**: draw a full crest path, **release to apply**. One coherent noise-warped, asymmetric corridor is calculated per path. Heights are not stacked by repeated circular stamps.
 - **Valley**: draw a full drainage-like incision path, **release to apply**. Same coherent corridor approach as Ridge, with a broader cross-section. This is not a true catchment solver.
 - **Ramp**: drag from start to finish and release. The tool makes one sloping corridor whose ending elevation is the existing end-point elevation plus **Rise** (initially +5m); negative Rise creates descending ramps. Nothing changes until release, and one drag is one Undo step. Single ramps are limited to 256m for mobile CPU safety
-- **Stamp**: one touch applies a deterministic analytic **Hill**, **Crater** (bowl + lip) or **Mesa** (flat-topped mound). Moving the same finger does not create more stamps
-- **Weather**: tap a steep area and release to apply 1–6 thermal slope-relaxation passes inside a bounded radius (up to 32m). Material transfers downhill conservatively; **no water flow or sediment simulation is claimed**.
-- Ramp/Stamp/Weather-specific options appear only for those tools. Undo/Redo, Float32 persistence and tile invalidation reuse the original data flow.
+- **Stamp**: one touch applies a deterministic **Hill**, **Crater** (bowl + lip) or **Mesa**. Its once-perfect circular outline uses a bounded world-space noise warp and slight anisotropy, tapering exactly to zero at the brush border. Still a procedural shape, not simulated rock formation.
+- **Weather**: tap a steep area and release for 1–6 bounded thermal passes (up to 32m). It now uses two scans of the four neighbors rather than allocating candidate arrays per sample. Material is transferred conservatively; **no water flow or sediment simulation is claimed**.
+- **Smooth**: two-pass neighborhood snapshot plus a 55% bilateral blend reduces directional scan artifacts while retaining some high-contrast edges. Ramp/Stamp/Weather controls remain contextual; Undo/Redo and Float32 data format are unchanged.
 - Mobile **Check** button tests Float32 roundtrip, path consistency, local mass balance and reports CPU processing times without changing the user's terrain.
 
 ## Mobile streaming budgets (initial estimates; NOT performance measurements)
@@ -83,6 +83,7 @@ godot --headless --path /path/to/project --script res://addons/terra_forge/tests
 godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_advanced_brushes.gd
 godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_geomorphology.gd
 godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_lod_normals.gd
+godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_shape_quality.gd
 ```
 
 See [MOBILE_TEST_PLAN.md](MOBILE_TEST_PLAN.md) for hands-on Android checks and acceptance criteria. These tests have **not yet been executed** with the Godot engine here.
@@ -93,10 +94,10 @@ Read [QUALITY_GATE.md](QUALITY_GATE.md). The addon **is not certified optimized 
 
 ## Next stages
 
-1. Validate v0.3.1 on Android 11 and run **Terrain > Check**, documenting the result and measured times.
+1. Validate v0.3.2 on Android 11 and run **Terrain > Check**, documenting the result and measured times.
 2. Inspect long ridge/valley shape quality at ground-camera height and fix contour artifacts.
 3. Validate thermal mass-balance, LOD edge normals, seam continuity and collision on-device.
-4. Add drainage/catchment-aware erosion and non-destructive processing layers where measured performance permits.
+4. Prototype a catchment-aware drainage solver *after* proving the current path/slope algorithm stays responsive on the phone; simple D8 routing alone creates visibly artificial drainage on flat areas.
 5. Only after the [quality gate](QUALITY_GATE.md) passes, move to materials and object placement.
 
 ## License / origin

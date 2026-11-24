@@ -6,7 +6,7 @@
 
 1. **Makro jeomorfoloji:** Dağ sırtı, havza, eğim ve drenaj birbiriyle uyumlu olmalı. Güncel Ridge/Valley uzun, tutarlı, asimetrik ve hafif domain-warp uygulanmış koridorlar üretir; **gerçek su havzası çözümü yapmaz**.
 2. **Süreç tabanlı detay:** Weather, fazla eğimli komşular arasında 4-yönlü, iki aşamalı tampon üzerinde sınırlı malzeme aktarır. Yaklaşık kütle korur. **Hidrolik erozyon, sediment taşınımı, stratigrafi ve kaya türü modellemesi yoktur**.
-3. **Kesintisiz yüzey:** Dikiş çatlağı, T-junction, keskin LOD parlaması, gövdesi görünmeyen yamaç ve aşırı düzenli dairesel desen bulunmamalı.
+3. **Kesintisiz yüzey:** Dikiş çatlağı, T-junction, keskin LOD parlaması, gövdesi görünmeyen yamaç ve aşırı düzenli dairesel desen bulunmamalı. 0.3.2 LOD histerezisi ve görünen mesh'ten normal hesabını ekler, ancak tam geomorph/edge stitch yerine geçmez.
 4. **Gerçek fizik:** Görsel mesh ile HeightMapShape3D çarpışmasının uyuştuğu, yakın LOD dışı fizik kapsamının bilinçli olduğu doğrulanmalı.
 5. **Tekrarlanabilir iş akışı:** Same seed / same geometry / same stroke inputs → aynı yükseklik. Üretim önce Float32 veri olarak kalmalı; görüntüleme LOD'u ana veriyi değiştirmemeli.
 
@@ -44,6 +44,7 @@
 6. Kamerayı arazinin kenarlarına götür, LOD sınırlarını düşük ışıkta ve farklı açılarda kontrol et. Sürüş ve kamera hareketinde görünür yarık veya belirgin kare desen olmamalı.
 7. Her kalite profilinde 5 dakika gezin, en yüksek Mesh/Sculpt sürelerini kaydet. Godot Debugger / Monitor bölümünde kare sürelerini ve VRAM/CPU kullanımı uygun olduğunda karşılaştır.
 8. Sahneyi kapat/aç. 30 dk sonunda bellek sürekli artıyorsa kararlı etiketi verilmez.
+9. 0.3.2 için Smooth ve Stamp simetrisini, LOD eşik histerezisini ve yükseklik sınırlarının dikiş gölgelerini ayrı test et.
 
 ## Sınırların dürüst dökümü
 

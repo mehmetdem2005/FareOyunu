@@ -170,7 +170,13 @@ func _sync_resident_tiles() -> void:
     )
     var desired: Dictionary = {}
     for entry in candidates:
-        desired[entry["key"]] = int(entry["lod"])
+        var key: Vector2i = entry["key"]
+        var previous_level: int = int(_desired_tiles.get(key, -1))
+        desired[key] = LOD_POLICY.choose_stable_lod(
+            float(entry["distance"]),
+            high_detail_distance, medium_detail_distance, view_distance,
+            previous_level, 8.0
+        )
 
     # Leave allocation for _drain_tile_queue(): the per-frame tile budget
     # must cover creating Nodes *and* mesh/physics work, not just mesh work.
@@ -326,8 +332,6 @@ func _rebuild_tile(tx: int, tz: int, item: Dictionary, lod: int) -> void:
     var build_start_us: int = Time.get_ticks_usec()
     var stride: int = LOD_POLICY.sample_stride(lod)
     var width: int = int(TILE_CELLS / stride) + 1
-    var minimum_height: float = INF
-    var maximum_height: float = -INF
     var vertices: PackedVector3Array = PackedVector3Array()
     var normals: PackedVector3Array = PackedVector3Array()
     var uv: PackedVector2Array = PackedVector2Array()
@@ -342,25 +346,33 @@ func _rebuild_tile(tx: int, tz: int, item: Dictionary, lod: int) -> void:
             var gx: int = tx * TILE_CELLS + sx
             var gz: int = tz * TILE_CELLS + sz
             var y: float = _seam_height(tx, tz, sx, sz, lod)
-            minimum_height = minf(minimum_height, y)
-            maximum_height = maxf(maximum_height, y)
-            var slope_x: float = (
-                height_data.get_height(gx + stride, gz) -
-                height_data.get_height(gx - stride, gz)
-            ) / (2.0 * step * float(stride))
-            var slope_z: float = (
-                height_data.get_height(gx, gz + stride) -
-                height_data.get_height(gx, gz - stride)
-            ) / (2.0 * step * float(stride))
-            var normal: Vector3 = Vector3(-slope_x, 1.0, -slope_z).normalized()
-            var steepness: float = clampf(1.0 - normal.y, 0.0, 1.0)
-            var grass: Color = Color(0.27, 0.39, 0.22)
-            var stone: Color = Color(0.48, 0.46, 0.41)
             vertices.append(Vector3(float(sx) * step, y, float(sz) * step))
-            normals.append(normal)
+            normals.append(Vector3.UP)
             uv.append(Vector2(float(gx), float(gz)) * step * 0.125)
-            colors.append(grass.lerp(stone, clampf(steepness * 3.0, 0.0, 1.0)))
+            colors.append(Color.WHITE)
             height_samples.append(y / step)
+    # Compute normals from the *rendered* edge-adjusted vertex heights.
+    # Using the original Float32 height samples here gave incorrect shading
+    # at mixed-LOD seams whenever the visible edge had been interpolated.
+    var cell_world: float = step * float(stride)
+    var grass: Color = Color(0.27, 0.39, 0.22)
+    var stone: Color = Color(0.48, 0.46, 0.41)
+    for z in range(width):
+        for x in range(width):
+            var i: int = z * width + x
+            var west: int = maxi(0, x - 1)
+            var east: int = mini(width - 1, x + 1)
+            var north: int = maxi(0, z - 1)
+            var south: int = mini(width - 1, z + 1)
+            var dx: float = (
+                vertices[z * width + east].y - vertices[z * width + west].y
+            ) / (float(east - west) * cell_world)
+            var dz: float = (
+                vertices[south * width + x].y - vertices[north * width + x].y
+            ) / (float(south - north) * cell_world)
+            var normal: Vector3 = Vector3(-dx, 1.0, -dz).normalized()
+            normals[i] = normal
+            colors[i] = grass.lerp(stone, clampf((1.0 - normal.y) * 3.0, 0.0, 1.0))
     for z in range(width - 1):
         for x in range(width - 1):
             var a: int = z * width + x
@@ -400,6 +412,19 @@ func _rebuild_tile(tx: int, tz: int, item: Dictionary, lod: int) -> void:
     _tile_builds += 1
     _tile_last_ms = float(Time.get_ticks_usec() - build_start_us) / 1000.0
     _tile_max_ms = maxf(_tile_max_ms, _tile_last_ms)
+
+func _mark_rect_dirty(low_x: int, low_z: int, high_x: int, high_z: int) -> void:
+    # Include a one-sample halo: adjacent mesh normals and tile borders
+    # share height values even when vertices lie just outside the brush.
+    var max_x: int = int(height_data.cells.x / TILE_CELLS) - 1
+    var max_z: int = int(height_data.cells.y / TILE_CELLS) - 1
+    var tx0: int = clampi(floori(float(low_x - 1) / float(TILE_CELLS)), 0, max_x)
+    var tx1: int = clampi(floori(float(high_x) / float(TILE_CELLS)), 0, max_x)
+    var tz0: int = clampi(floori(float(low_z - 1) / float(TILE_CELLS)), 0, max_z)
+    var tz1: int = clampi(floori(float(high_z) / float(TILE_CELLS)), 0, max_z)
+    for tz in range(tz0, tz1 + 1):
+        for tx in range(tx0, tx1 + 1):
+            _dirty_tiles[Vector2i(tx, tz)] = true
 
 func _mark_sample_dirty(x: int, z: int) -> void:
     var tx1: int = floori(float(x) / float(TILE_CELLS))
@@ -521,6 +546,26 @@ func _apply_stamp(local_hit: Vector3, tool: int, brush_radius: float, strength: 
     var high_x: int = clampi(ceili(px + rs), 0, height_data.cells.x)
     var low_z: int = clampi(floori(pz - rs), 0, height_data.cells.y)
     var high_z: int = clampi(ceili(pz + rs), 0, height_data.cells.y)
+    # Smooth uses one immutable neighborhood snapshot per stamp. Updating
+    # neighbors in scan order used to bias smoothing toward +X/+Z.
+    var snapshot: PackedFloat32Array = PackedFloat32Array()
+    var snap_width: int = high_x - low_x + 3
+    var snap_height: int = high_z - low_z + 3
+    if tool == 2:
+        snapshot.resize(snap_width * snap_height)
+        for zz in range(snap_height):
+            for xx in range(snap_width):
+                snapshot[zz * snap_width + xx] = height_data.get_height(
+                    low_x + xx - 1, low_z + zz - 1
+                )
+    var stamp_noise: FastNoiseLite
+    if tool == BRUSH_SHAPES.TOOL_STAMP:
+        stamp_noise = FastNoiseLite.new()
+        stamp_noise.seed = 137
+        stamp_noise.frequency = 1.0 / maxf(12.0, brush_radius * 1.7)
+        stamp_noise.fractal_type = FastNoiseLite.FRACTAL_FBM
+        stamp_noise.fractal_octaves = 2
+    var changed_any: bool = false
     for z in range(low_z, high_z + 1):
         for x in range(low_x, high_x + 1):
             var dist: float = Vector2(float(x) - px, float(z) - pz).length()
@@ -538,17 +583,36 @@ func _apply_stamp(local_hit: Vector3, tool: int, brush_radius: float, strength: 
                 1:
                     result -= factor
                 2:
-                    var average: float = (
-                        height_data.get_height(x - 1, z) +
-                        height_data.get_height(x + 1, z) +
-                        height_data.get_height(x, z - 1) +
-                        height_data.get_height(x, z + 1)
-                    ) * 0.25
-                    result = lerpf(original, average, clampf(factor * 2.0, 0.0, 1.0))
+                    var local_x: int = x - low_x + 1
+                    var local_z: int = z - low_z + 1
+                    var center_old: float = snapshot[local_z * snap_width + local_x]
+                    var samples: Array[float] = [
+                        snapshot[local_z * snap_width + local_x - 1],
+                        snapshot[local_z * snap_width + local_x + 1],
+                        snapshot[(local_z - 1) * snap_width + local_x],
+                        snapshot[(local_z + 1) * snap_width + local_x]
+                    ]
+                    var plain_sum: float = 0.0
+                    var weighted_sum: float = 0.0
+                    var total_weight: float = 0.0
+                    var height_sigma: float = maxf(1.0, strength * 1.1)
+                    for neighbor in samples:
+                        plain_sum += neighbor
+                        var deviation: float = (neighbor - center_old) / height_sigma
+                        var weight: float = exp(-0.5 * deviation * deviation)
+                        weighted_sum += neighbor * weight
+                        total_weight += weight
+                    var plain_average: float = plain_sum * 0.25
+                    var bilateral_average: float = weighted_sum / maxf(0.00001, total_weight)
+                    var target: float = lerpf(plain_average, bilateral_average, 0.55)
+                    result = lerpf(original, target, clampf(factor * 2.0, 0.0, 1.0))
                 3:
                     result = lerpf(original, _flatten_target, clampf(factor, 0.0, 1.0))
-                7: # Procedural Stamp
-                    result += maxf(0.0, strength) * 0.8 * BRUSH_SHAPES.stamp(stamp_preset, normalized_distance)
+                7: # Asymmetric, coherently warped procedural Stamp.
+                    result += maxf(0.0, strength) * 0.8 * BRUSH_SHAPES.organic_stamp(
+                        stamp_preset, Vector2(float(x), float(z)) * height_data.spacing,
+                        Vector2(local_hit.x, local_hit.z), brush_radius, stamp_noise
+                    )
                 _:
                     return
             result = clampf(result, -2000.0, 2000.0)
@@ -557,8 +621,9 @@ func _apply_stamp(local_hit: Vector3, tool: int, brush_radius: float, strength: 
             if not _stroke_before.has(idx):
                 _stroke_before[idx] = original
             height_data.heights[idx] = result
-            _mark_sample_dirty(x, z)
-    if not _stroke_before.is_empty():
+            changed_any = true
+    if changed_any:
+        _mark_rect_dirty(low_x, low_z, high_x, high_z)
         _changed_since_save = true
         _last_edit_time = Time.get_ticks_msec()
 

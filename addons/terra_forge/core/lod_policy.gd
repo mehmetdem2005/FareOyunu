@@ -16,6 +16,33 @@ static func choose_lod(distance: float, near_radius: float, middle_radius: float
         return LOD1
     return LOD2
 
+## Avoid repeatedly switching LOD near distance thresholds.
+## New tiles use the ordinary distance bands; only resident tiles
+## get hysteresis. Large camera jumps may skip levels as intended.
+static func choose_stable_lod(
+        distance: float,
+        near_radius: float,
+        middle_radius: float,
+        view_radius: float,
+        previous_lod: int,
+        hysteresis: float = 8.0
+    ) -> int:
+    var base: int = choose_lod(distance, near_radius, middle_radius, view_radius)
+    if base == HIDDEN or previous_lod < 0 or previous_lod > 2:
+        return base
+    var band: float = maxf(0.0, hysteresis)
+    match previous_lod:
+        LOD0:
+            if distance <= near_radius + band:
+                return LOD0
+        LOD1:
+            if distance >= near_radius - band and distance <= middle_radius + band:
+                return LOD1
+        LOD2:
+            if distance >= middle_radius - band:
+                return LOD2
+    return base
+
 static func sample_stride(lod: int) -> int:
     return 1 << clampi(lod, 0, 2)
 

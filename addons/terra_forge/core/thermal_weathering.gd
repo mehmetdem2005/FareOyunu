@@ -63,8 +63,6 @@ static func build(
                 if weights[idx] <= 0.0:
                     continue
                 var source_height: float = current[idx]
-                var candidate_indices: Array[int] = []
-                var potentials: Array[float] = []
                 var potential_sum: float = 0.0
                 var maximum_potential: float = 0.0
                 for direction in offsets:
@@ -78,22 +76,31 @@ static func build(
                     var excess: float = maxf(0.0, source_height - current[other] - talus)
                     if excess <= 0.0:
                         continue
-                    # Both endpoints use the minimum mask: each pair remains
-                    # mass-conserving even near the falloff zone.
+                    # No per-vertex temporary arrays: two cheap scans over
+                    # four neighbors cost less than thousands of allocations.
                     var edge_weight: float = minf(weights[idx], weights[other])
-                    var potential: float = excess * edge_weight
-                    candidate_indices.append(other)
-                    potentials.append(potential)
-                    potential_sum += potential
+                    potential_sum += excess * edge_weight
                     maximum_potential = maxf(maximum_potential, excess)
                 if potential_sum <= 0.0:
                     continue
-                # Keep flows well below instability in a single simulation step.
+                # All outflows and inflows update a shared delta buffer,
+                # preserving material volume independent of scan order.
                 var outflow: float = minf(maximum_potential * 0.24, potential_sum * 0.22) * mobility
-                for i in range(candidate_indices.size()):
-                    var moved: float = outflow * potentials[i] / potential_sum
+                for direction in offsets:
+                    var nx: int = x + direction.x
+                    var nz: int = z + direction.y
+                    if nx < 0 or nz < 0 or nx >= width or nz >= depth:
+                        continue
+                    var other: int = nz * width + nx
+                    if weights[other] <= 0.0:
+                        continue
+                    var excess: float = maxf(0.0, source_height - current[other] - talus)
+                    if excess <= 0.0:
+                        continue
+                    var potential: float = excess * minf(weights[idx], weights[other])
+                    var moved: float = outflow * potential / potential_sum
                     change[idx] -= moved
-                    change[candidate_indices[i]] += moved
+                    change[other] += moved
         for i in range(count):
             current[i] += change[i]
 

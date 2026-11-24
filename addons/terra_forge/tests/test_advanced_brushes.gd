@@ -68,8 +68,17 @@ func _initialize() -> void:
     if stamp.height_data.get_height(64, 64) >= 0.0:
         _fail("Crater center should be depressed")
         return
-    if stamp.height_data.get_height(73, 64) <= 0.0:
-        _fail("Crater should have a raised rim")
+    # The organic warp makes the rim non-circular, so look for a raised
+    # annulus rather than requiring the original exact +9 pixel offset.
+    var raised_rim: bool = false
+    for radius_offset in range(6, 12):
+        for direction in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+            var gx: int = 64 + direction.x * radius_offset
+            var gz: int = 64 + direction.y * radius_offset
+            if stamp.height_data.get_height(gx, gz) > 0.01:
+                raised_rim = true
+    if not raised_rim:
+        _fail("Crater should have a raised annulus")
         return
     if stamp.height_data.get_height(95, 64) != 0.0:
         _fail("Stamp repeated during drag")

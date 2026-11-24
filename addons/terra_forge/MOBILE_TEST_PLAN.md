@@ -24,6 +24,14 @@ Target editor: Godot **4.7.2**, Android **11**, **Mobile** rendering method.
 - Drag while Stamp is selected: it must stamp only once per touch, not at every drag event
 - Switch tools mid-session without expanding the persistent 3D toolbar
 
+## Shape fidelity and LOD stability (v0.3.2)
+
+- Create one Hill, Mesa and Crater stamp: inspect edge shape from above and at ground level, checking for abrupt square borders or repeated identical circles
+- Smooth an artificial peak from four camera directions; no X/Z directional streak should appear
+- Orbit slowly around LOD transition radii (~72/144m): tile reconstruction should not rapidly alternate every time the camera crosses an exact boundary
+- Verify shading on LOD0/1/2 tile joins: normals are computed from visible geometry, but slight shading differences can still occur
+- On Mobile profile, compare pending tile rebuilds and peak Mesh CPU milliseconds while sculpting at tile borders
+
 ## Geomorphology and profiler checks
 
 - Press **Terrain > Check**. Record PASS/FAIL and Float32/Path/Weather CPU times without modifying the original map
