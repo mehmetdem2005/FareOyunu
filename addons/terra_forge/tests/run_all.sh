@@ -88,6 +88,8 @@ suite=(
   test_geometry_latency_profile
   test_geometry_latency_profile_v2
   test_capacity_wait_profile
+  test_live_queue_diagnostics
+  test_live_queue_diagnostics_v2
   test_lod_policy
   test_surface_faces
   test_lod_normals

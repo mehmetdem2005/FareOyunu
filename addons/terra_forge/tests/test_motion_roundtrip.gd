@@ -57,13 +57,15 @@ func _run() -> void:
     print("PASS: sustained multi-seam roundtrip, reversal, expiry and verified relocation lifecycle")
     quit(0)
 
-func _case(directory: String,format: int,mode: int,cache: int,adaptive: bool) -> Dictionary:
+func _case(directory: String,format: int,mode: int,cache: int,adaptive: bool,diagnostics: bool=false) -> Dictionary:
     _p=P.new()
     _p.region_index_format=format
     _p.sampling_strategy=mode
     _p.enable_support_retention=true
     _p.enable_motion_prefetch=true
     _p.enable_adaptive_motion_horizon=adaptive
+    _p.observe_geometry_latency=diagnostics
+    _p.observe_capacity_wait=diagnostics
     _p.max_visible_tiles=4
     _p.high_detail_distance=64.0
     _p.medium_detail_distance=80.0
@@ -128,6 +130,12 @@ func _case(directory: String,format: int,mode: int,cache: int,adaptive: bool) ->
     var guard_hist=HIST.new()
     var sample_hist=HIST.new()
     var initial: Dictionary=_p.stats()
+    var initial_capacity: Dictionary=_p.capacity_wait_profile()
+    var initial_latency: Dictionary=_p.geometry_latency_profile()
+    if diagnostics and (initial_capacity.is_empty() or initial_latency.is_empty()):
+        return {"error":FAILED,"stage":"diagnostics not enabled"}
+    if not diagnostics and (not initial_capacity.is_empty() or not initial_latency.is_empty()):
+        return {"error":FAILED,"stage":"default diagnostic leak"}
     var reasons: Dictionary={}
     var peak_pages: int=0
     var peak_tiles: int=0
@@ -221,12 +229,32 @@ func _case(directory: String,format: int,mode: int,cache: int,adaptive: bool) ->
             if not _p._tiles.has(key) or _p._desired_tiles.get(key,-1)!=0:
                 return {"error":FAILED,"stage":"support eviction","tick":tick}
     var final: Dictionary=_p.stats()
+    var capacity_report: Dictionary=_p.capacity_wait_profile()
+    var latency_report: Dictionary=_p.geometry_latency_profile()
+    if diagnostics:
+        if int(capacity_report["observations"])-int(initial_capacity["observations"])!=TICKS or int(capacity_report["peak_active"])>4 or int(capacity_report["active"])!=0 or int(capacity_report["epoch"])!=int(final["source"]["generation"]):
+            return {"error":FAILED,"stage":"capacity integration","detail":capacity_report}
+        var ownership: Dictionary=latency_report["ownership"]
+        var delivered_count: int=0
+        for category in ["critical","optional"]:
+            var group: Dictionary=latency_report[category]
+            var count: int=int(group["queue_ms"]["count"])
+            if int(group["build_ms"]["count"])!=count or int(group["delivery_ms"]["count"])!=count or int(group["stage_sum_ms"]["count"])!=count or int(group["delivered_errors"])!=0:
+                return {"error":FAILED,"stage":"latency accounting","category":category,"detail":group}
+            delivered_count+=count
+        if delivered_count!=int(ownership["delivered"]) or int(ownership["submitted"])!=int(ownership["delivered"])+int(ownership["dropped"])+int(ownership["owned"]) or int(ownership["owned"])!=0 or int(latency_report["critical"]["queue_ms"]["count"])<=0:
+            return {"error":FAILED,"stage":"ownership integration","detail":latency_report}
     var motion: Dictionary=final["motion_prefetch"]
     var report: Dictionary={"error":OK,"ticks":TICKS,"outbound_tick":outbound_tick,"reverse_tick":reverse_tick,"return_tick":return_tick,"finish_x":_body.global_position.x,"transfers":transfers,"visited_tiles":visited.size(),"denied_ticks":denied,"longest_stall_ticks":longest_stall,"denial_reasons":reasons,"missing_rays":0,"airborne_ticks":0,"max_denied_drift":max_drift,"peak_rays":peak_rays,"total_rays":total_rays,"peak_pages":peak_pages,"peak_tiles":peak_tiles,"peak_jobs":peak_jobs,"disk_reads":int(final["source"]["disk_reads"])-int(initial["source"]["disk_reads"]),"stale_discarded":int(final["source"]["stale_discarded"])-int(initial["source"]["stale_discarded"]),"builds":int(final["mesh_builds"])-int(initial["mesh_builds"]),"pump_ms":pump_hist.report(),"guard_ms":guard_hist.report(),"sample_ms":sample_hist.report(),"motion":motion}
     if outbound_tick<0 or reverse_tick<=outbound_tick or return_tick<=reverse_tick or return_tick>TICKS-10 or visited.size()!=3 or transfers!=8 or max_drift>0.05 or absf(_body.global_position.x-470.0)>0.05 or not motion["keys"].is_empty() or int(motion["expirations"])<1 or (adaptive and int(motion["latency"]["samples"])<2):
         report["error"]=FAILED
         report["stage"]="roundtrip evidence"
         return report
+    if diagnostics:
+        report["capacity_wait"]=capacity_report
+        report["geometry_latency"]=latency_report
+        report["measured_gate_observations"]=int(capacity_report["observations"])-int(initial_capacity["observations"])
+        report["delivered_delta"]=int(latency_report["ownership"]["delivered"])-int(initial_latency["ownership"]["delivered"])
     # Separate unmeasured lifecycle test: sample near old boundary, then
     # deliberately reassign support to distant VERIFIED terrain. No physics
     # guarantee is implied for arbitrary teleports. No pump before claim.
@@ -251,6 +279,8 @@ func _case(directory: String,format: int,mode: int,cache: int,adaptive: bool) ->
     if _p.sample_motion_prefetch(near,Vector2.ZERO,Vector2(24,0),RADIUS,session,revision)!=ERR_INVALID_PARAMETER or _p.release_support(session,next_revision)!=OK:
         return {"error":FAILED,"stage":"stale or release"}
     _p.stop_preview()
+    if not _p.capacity_wait_profile().is_empty() or not _p.geometry_latency_profile().is_empty():
+        return {"error":FAILED,"stage":"diagnostics stop reset"}
     if _p.motion_prefetch_state()["active"] or not _p.motion_prefetch_state()["keys"].is_empty():
         return {"error":FAILED,"stage":"stop reset"}
     _p.free()

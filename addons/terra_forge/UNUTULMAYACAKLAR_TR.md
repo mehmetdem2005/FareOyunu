@@ -1,5 +1,8 @@
 # TerraForge — UNUTULMAYACAKLAR / Deney, karar ve doğrulama defteri
 
+> **PARALLEL DEVİR — 25 Kasım 2026:** c1 `5e606e841eeef0cb3b034415c387d47c9fd2a81c` [76/76 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45495469967), [ham kayıt](P1_5_9C1_QUEUE_LATENCY_CI.json). c2 `6c24091b78e25f050dd4aec15c35bd1fa36780e1` [CI](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45496484971), PR #10, pending at creation. c3 isolated `experiment/terraforge-p1-5-9c3-live-diagnostics`, live diagnostic integration, CI_PENDING. USER RULE: successful experiments meeting acceptance gates move promptly to `feat/terraforge-mobile-addon` by exact-SHA verified fast-forward; no forgotten experimental branch, no force push, no promotion of failed or unmeasured performance claims. Preserve default-off flags, raw records, record disposition in UNUTULMAYACAKLAR and handoff; integrate c2 only after its CI, c3 only after c2 and c3 green. If base fails, repair and revalidate dependent branch. P1.4/P1.4R PARKED.
+
+
 > **PARALLEL EXPERIMENT — P1.5.9c2:** based on unverified c1 5e606e841eeef0cb3b034415c387d47c9fd2a81c, [c1 CI](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45495469967). Isolated branch `experiment/terraforge-p1-5-9c2-capacity-wait`; never integrate before both exact c1 and experiment CI pass. New bounded full-worker-gate episode diagnostics. No scheduling change, no Android claim. If c1 fails, repair it first and rebase/revalidate c2. P1.4/P1.4R PARKED.
 
 
