@@ -1,5 +1,8 @@
 # TerraForge Mobile — Kalıcı Proje Hafızası ve Teknik Doküman İndeksi
 
+> **ZORUNLU İLK OKUMA — [UNUTULMAYACAKLAR_TR.md](UNUTULMAYACAKLAR_TR.md):** Kullanıcının 24 Kasım 2026 kararı: deneysel yöntemleri, önceki açık ölçüm/cihaz kapılarını ve ertelenen işleri unutma. Her turda bu dosyayı güncelle. P1.5.4b sıradaki iş: A (eski), B (tile view), C (bitişik Float32 tampon) karşılaştırması; varsayılan değişikliği yok. CI kanıtı performans/Android kabulü değildir. Bu güncel talimat tarihsel plan satırlarından önceliklidir.
+
+
 > **GÜNCEL DEVİR — P1.5.4a (24 Kasım 2026):** Kod 285122ecc826616f3c3840a41ad4e34223afc0fa, [35/35 Godot Linux CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45436882446). [P1_5_4A_TILE_VIEW_TR.md](P1_5_4A_TILE_VIEW_TR.md) as-built. Bounded synchronous tile view, exact TFM1/TFM2 geometry parity, deterministic LRU work reduction; experimental opt-in default false. **Sıradaki P1.5.4b:** fixed-workload CPU A/B microbenchmark and profile, reduce dictionary allocation per sample if evidence supports, maintain all-array parity and fail-closed. P1.4 parked; actual large-world and Android proof open; boya/obje yok.
 
 
@@ -55,6 +58,7 @@ Bu dosyalar GitHub dalında saklanır, **sohbet hafızasına bağlı değildir**
 
 | Okuma sırası | MD | İçerik / neden zorunlu |
 |---:|---|---|
+| 0 | [UNUTULMAYACAKLAR_TR.md](UNUTULMAYACAKLAR_TR.md) | Deneyler, varsayılanlar, açık ölçümler, ertelenen işler; her oturum zorunlu |
 | 1 | [HANDOFF_START_HERE_TR.md](HANDOFF_START_HERE_TR.md) | Repo, branch, güncel sürüm, güvenli çalışma, hangi iş sırada, yeni sohbet promptu |
 | 2 | [STATUS_AND_CHANGELOG_TR.md](STATUS_AND_CHANGELOG_TR.md) | Başlangıçtan v0.4.4-dev.1'e kadar tarihçe, commit prefix, DONE/CI/PENDING |
 | 3 | [ROADMAP_MASTER_TR.md](ROADMAP_MASTER_TR.md) | **P0–P7** fazları, alt fazlar, bağımlılıklar, kabul kapıları |
