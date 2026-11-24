@@ -10,6 +10,11 @@ const TILE_CELLS: int = 32
 
 @export var preview_enabled: bool = false
 @export_dir var region_directory: String = ""
+## Faster startup for this read-only opt-in preview: checks the TFM1
+## manifest first and fully hashes each TFR1 on its worker's first read.
+## Bad/missing pages stay ERR_FILE_CORRUPT/ERR_FILE_NOT_FOUND, never flat.
+## Disable for the previous whole-world, strictly checked open behavior.
+@export var verify_pages_on_demand: bool = true
 @export_range(9, 64, 1) var resident_page_limit: int = 16
 @export_range(1, 8, 1) var max_background_jobs: int = 4
 @export_range(80.0, 640.0, 16.0) var view_distance: float = 160.0
@@ -65,7 +70,7 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
         return _last_error
     _ensure_material()
     var next = ASYNC.new()
-    var status: Error = next.open(directory, cache_pages, max_jobs)
+    var status: Error = next.open(directory, cache_pages, max_jobs, not verify_pages_on_demand)
     if status != OK:
         next.close()
         _last_error = status
@@ -324,6 +329,7 @@ func stats() -> Dictionary:
         "last_build_ms": _last_build_ms,
         "max_build_ms": _max_build_ms,
         "source": source,
+        "verify_pages_on_demand": verify_pages_on_demand,
         "last_error": _last_error,
         "last_error_page": _last_error_page,
         "focus_page": _queue_focus_page,

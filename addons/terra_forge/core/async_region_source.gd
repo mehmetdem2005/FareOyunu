@@ -30,6 +30,9 @@ var _worker_errors: int = 0
 var _last_io_ms: float = 0.0
 var _max_io_ms: float = 0.0
 var _open_verify_ms: float = 0.0
+var _verified_all_at_open: bool = false
+var _verified_once: Dictionary = {}  # Main thread; one entry per successfully loaded page.
+
 
 # Shared across main/worker, ALL guarded by _mutex.
 var _mutex: Mutex = Mutex.new()
@@ -93,14 +96,20 @@ static func _read_page_file(job: Dictionary) -> Dictionary:
     result["io_ms"] = float(Time.get_ticks_usec() - begin) / 1000.0
     return result
 
-func open(directory: String, resident_limit: int = 4, max_jobs: int = 3) -> Error:
+## Default mode remains STRICT to avoid changing callers' safety guarantees.
+## verify_all_pages=false validates ONLY the checksummed, schema-checked
+## TFM1 manifest synchronously; each TFR1 page MUST pass full-file SHA-256
+## and internal payload checks on its first and every subsequent disk load.
+## 'open' in this mode means MANIFEST OPEN, not WORLD FULLY VERIFIED.
+func open(directory: String, resident_limit: int = 4, max_jobs: int = 3,
+        verify_all_pages: bool = true) -> Error:
     close()
     if directory.is_empty() or resident_limit < 1 or resident_limit > 64:
         return ERR_INVALID_PARAMETER
     if max_jobs < 1 or max_jobs > 8:
         return ERR_INVALID_PARAMETER
     var started: int = Time.get_ticks_usec()
-    var doc_result: Dictionary = MANIFEST.load(directory, true)
+    var doc_result: Dictionary = MANIFEST.load(directory, verify_all_pages)
     var checked_ms: float = float(Time.get_ticks_usec() - started) / 1000.0
     var status: Error = int(doc_result.get("error", ERR_FILE_CORRUPT))
     if status != OK:
@@ -117,6 +126,8 @@ func open(directory: String, resident_limit: int = 4, max_jobs: int = 3) -> Erro
     _limit = resident_limit
     _job_limit = max_jobs
     _open_verify_ms = checked_ms
+    _verified_all_at_open = verify_all_pages
+    _verified_once.clear()
     _mutex.lock()
     _stop = false
     _generation = 0
@@ -245,6 +256,7 @@ func poll_results(max_results: int = 3) -> Dictionary:
             _cache.erase(oldest)
             _evictions += 1
         _cache[key] = values
+        _verified_once[key] = true
         _touch(key)
         _read_count += 1
         committed += 1
@@ -356,7 +368,11 @@ func stats() -> Dictionary:
         "worker_errors": _worker_errors,
         "last_io_ms": _last_io_ms,
         "max_io_ms": _max_io_ms,
-        "open_verify_ms": _open_verify_ms
+        "open_verify_ms": _open_verify_ms,
+        "manifest_entries": _manifest_hashes.size(),
+        "verified_at_open": _verified_all_at_open,
+        "pages_verified_on_demand": _verified_once.size(),
+        "verification_mode": "strict" if _verified_all_at_open else "on_demand"
     }
 
 func close() -> void:
@@ -376,6 +392,8 @@ func close() -> void:
     spacing = 1.0
     _directory = ""
     _manifest_hashes.clear()
+    _verified_all_at_open = false
+    _verified_once.clear()
     _cache.clear()
     _lru.clear()
     _errors.clear()
