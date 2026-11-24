@@ -1,4 +1,4 @@
-# TerraForge Mobile 0.4.3-dev.1 — Türkçe kullanım
+# TerraForge Mobile 0.4.3-dev.2 — Türkçe kullanım
 > **Yeni sohbette unutulmasın:** Önce [DOCS_INDEX_TR.md](DOCS_INDEX_TR.md) ve [HANDOFF_START_HERE_TR.md](HANDOFF_START_HERE_TR.md) oku. Sürüm geçmişi, P0–P7 tüm fazları, profesyonel terrain araştırması, mimari, CI kanıtları, riskler ve sıradaki uygulanabilir işler bu daldaki yeni MD dosyalarında kalıcı olarak kayıtlı.
 
 
@@ -50,6 +50,13 @@ Hepsinde **Size** etki alanını, **Power** etki şiddetini belirler. Ramp, Stam
 - Küçük ekranlarda açılır menü pencere sınırları içinde tutulmaya çalışılır; alt panel açılmaz.
 - Android'in dokunmatik olaylardan türetebildiği sahte fare tıklamaları bir süre yok sayılır.
 - **Yeni:** Fırça artık her dokunma olayı için değil, parmağın katettiği mesafe boyunca sabit aralıklarla etki uygular. Hızlı ve yavaş sürüklemede güç farkı azalır. Parmağı sabit tutmak devamlı kazma/yükseltme yapmaz.
+
+## v0.4.3-dev.2 — Hızlı kamera hareketi ve cache düzeltmesi
+
+- Yeni opt-in `paged_terrain_preview.gd` test düğümünde kamera uzak bir yere aniden sıçrarsa önceki bölgelere ait henüz bitmemiş **disk taleplerinin sonuçları** iptal edilir; yeni sahnenin önüne geçmez.
+- Komşu tile'ın `height` ve `normal` örnekleri oluşturulurken zaten yüklenmiş gerekli sayfalar LRU'da öne alınır. 9 sayfalık cache limiti **artırılmaz**; aynı sayfaya gereksiz tekrar talebi gönderme de önlenir.
+- Yeni 25. stres testinde 128×128 dünya, 9 region cache, 2 background job, çoklu kamera teleport ve LOD0 collision doğrulandı. [GitHub Godot 4.7.2 CI 25/25 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45415690507).
+- Gerçek telefon FPS, RAM, Android Mobile Renderer görsellik testi henüz **YOK**; mevcut legacy editörün tam-heightarray kaynak yolu değişmedi. Detay: [P1_3_PAGED_RENDER_TR.md](P1_3_PAGED_RENDER_TR.md).
 
 ## v0.4.3-dev.1 — İlk gerçek bölgesel terrain mesh / collision
 

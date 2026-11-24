@@ -1,5 +1,5 @@
-# TerraForge Mobile — v0.4.3-dev.1 (opt-in paged ArrayMesh and collision preview)
-> **NEW CHAT / FULL PROJECT MEMORY (2026-11-24):** Start with [DOCS_INDEX_TR.md](DOCS_INDEX_TR.md) and [HANDOFF_START_HERE_TR.md](HANDOFF_START_HERE_TR.md). The complete P0–P7 plan, actual CI results, full code/data architecture, risks, terrain geology research, mobile workflow, and the next exact GitHub CI implementation tasks are saved as multiple Markdown documents in this addon branch. **These documents do not mean live regional streaming is implemented.**
+# TerraForge Mobile — v0.4.3-dev.2 (camera-aware paged mesh streaming and bounded halo cache)
+> **NEW CHAT / FULL PROJECT MEMORY (2026-11-24):** Start with [DOCS_INDEX_TR.md](DOCS_INDEX_TR.md) and [HANDOFF_START_HERE_TR.md](HANDOFF_START_HERE_TR.md). The complete P0–P7 plan, actual CI results, full code/data architecture, risks, terrain geology research, mobile workflow, and the next exact GitHub CI implementation tasks are saved as multiple Markdown documents in this addon branch. **The opt-in regional preview now streams visible mesh/collision, but the legacy editable terrain has NOT been migrated.**
 
 
 Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, native library, or changes to game files. Designed for Android editor testing with Mobile Renderer.
@@ -39,6 +39,13 @@ Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, nativ
 - **Weather**: tap a steep area and release for 1–6 bounded thermal passes (up to 32m). It now uses two scans of the four neighbors rather than allocating candidate arrays per sample. Material is transferred conservatively; **no water flow or sediment simulation is claimed**.
 - **Smooth**: two-pass neighborhood snapshot plus a 55% bilateral blend reduces directional scan artifacts while retaining some high-contrast edges. Ramp/Stamp/Weather controls remain contextual; Undo/Redo and Float32 data format are unchanged.
 - Mobile **Check** button tests Float32 roundtrip, path consistency, local mass balance and reports CPU processing times without changing the user's terrain.
+
+## P1.3b camera-jump cancellation + minimum-cache halo priority (v0.4.3-dev.2)
+
+- Read-only regional preview now cancels obsolete worker generations when the focus moves at least two region pages from its queued origin. Short camera movements keep useful in-flight work.
+- `async_region_source.gd` now promotes currently resident required tile height/normal halo pages to LRU hot end, and distinguishes existing pending page jobs from new submissions. This reduces redundant reads and cache thrashing **without raising the resident page cap**.
+- New `test_paged_camera_stress.gd` verifies a nine-page cache, a two-job worker, multiple distant camera transitions, actual LOD0 physics collision and unchanged legacy TFH data. [Godot 4.7.2 CI 25/25 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45415690507).
+- **Not a measured Android FPS improvement**. The opt-in read-only preview still does not replace legacy editable terrain, and startup full manifest verification is synchronous. More: [P1_3_PAGED_RENDER_TR.md](P1_3_PAGED_RENDER_TR.md).
 
 ## P1.3 opt-in read-only paged terrain rendering (v0.4.3-dev.1)
 

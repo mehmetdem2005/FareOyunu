@@ -1,5 +1,5 @@
 # TerraForge — P0 doğrulama ve P1 veri katmanları, ilk uygulama
-Sürüm: 0.4.3-dev.1
+Sürüm: 0.4.3-dev.2
 Durum: **Godot 4.7.2 Linux GitHub CI üzerinden test ediliyor; Android 11 GPU ve dokunmatik testleri henüz yapılmadı.**
 
 ## P0 — Güvenlik ve regresyon kapısı
@@ -91,3 +91,9 @@ Malzeme boyama, bitki, taş ve obje yerleştirme bu fazın dışındadır.
 - `core/paged_tile_geometry.gd` ve `terrain/paged_terrain_preview.gd`: read-only async TFR1 Float32 pages → gerçek ArrayMesh, LOD0 HeightMapShape3D, LOD0/1/2 normal/kenar/çarpışma eşitliği.
 - `plugin.gd`: Godot 3D editor kamera konumunu seçilmiş preview node'a iletir, read-only Brush/status. Önceki editable `TerraForgeTerrain` korunur.
 - `test_paged_terrain_preview.gd` ile [Godot CI 24/24 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45413288421); gerçek Android UI/GPU/thermal/RSS ve büyük dünya sync startup riski sürüyor. Ayrıntı: [P1_3_PAGED_RENDER_TR.md](P1_3_PAGED_RENDER_TR.md).
+
+## v0.4.3-dev.2 — Stale camera IO iptali ve cache halo önceliği
+
+- `async_region_source.gd` main-thread `is_requested` / `prioritize_resident`; bounded 1–8 jobs, 1–64 cache sınırları değişmez.
+- `paged_terrain_preview.gd` kamera >=2 page sıçramasında `set_generation` ile eski queued/late worker results iptal; LRU halo priority ve wait-frame counters.
+- `test_paged_camera_stress.gd` ile [Godot 4.7.2 CI 25/25 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45415690507); gerçek Android GPU/RAM/FPS ve büyük dünya startup sync verification hâlâ açık.

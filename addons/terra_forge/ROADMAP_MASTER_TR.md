@@ -14,11 +14,11 @@
 
 ## P0 — Doğrulama, ürün güvenliği ve proje izolasyonu
 
-**Durum:** Linux headless CI ve kod regresyonları **DONE, 24/24 PASS**; Android son kullanıcı onayı **AÇIK**.
+**Durum:** Linux headless CI ve kod regresyonları **DONE, 25/25 PASS**; Android son kullanıcı onayı **AÇIK**.
 
 ### P0.1 — DONE: altyapı
 - İzole `feat/terraforge-mobile-addon` dalı; oyun ve `main` dosyaları korunuyor.
-- Godot 4.7.2 headless CI, geçici test projesi, `bash -n`, script import, eklenti editör yükleme, 24 test.
+- Godot 4.7.2 headless CI, geçici test projesi, `bash -n`, script import, eklenti editör yükleme, 25 test.
 - Mevcut bozuk/eksik TFH/TFL dosyalarında fail-closed read-only ve yedek kurtarma.
 - `QUALITY_GATE.md` ve `MOBILE_TEST_PLAN.md` kabul belgeleri.
 
@@ -74,6 +74,14 @@
 - [ ] P1.4 atomik çok-region writable data transaction henüz **YOK**.
 
 **Kapı:** İlk izole gerçek render/collision CI PASS, **cihaz ve oyun içine migration kapıları AÇIK**. [P1_3_PAGED_RENDER_TR.md](P1_3_PAGED_RENDER_TR.md).
+
+### P1.3b — Kamera sıçraması ve cache halo stresi DONE
+
+- [x] `async_region_source.prioritize_resident(required)`: geçerli tile'ın cache'deki doğrulanmış height/normal sayfalarını LRU'da korumak için öne alır; kapasite 9–64 sınırını aşmaz.
+- [x] `async_region_source.is_requested(page)`: duplicate job submit, background inflight sonuçların gereksiz tekrar sayılmasını engeller.
+- [x] `paged_terrain_preview._sync_tiles`: büyük kamera sıçramasında generation-id değiştirir, eski pending/inflight sonuçlar render cache'e kabul edilmez; normal sınır geçişlerinde gereksiz cancellation yok.
+- [x] `test_paged_camera_stress.gd`: 9 resident page + 2 outstanding worker job, köşe kamera zıplaması, LOD0 real collision, source SHA koruma. [25/25 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45415690507).
+- [ ] Gerçek Android 11 GPU, RSS, p95/p99, 30 dk cihaz sürüşü halen AÇIK; eski editable `TerraForgeTerrain` global height array'ini tutmaya devam ediyor.
 
 ### P1.4 — PLAN: çok-bölge düzenleme / transaction / layer geçişi
 - [ ] Çok sayfalı fırça darbesini tek Undo/Redo kaydı; kaynak ve diff, daha önce kaydedilmiş bölgeler dışında veri değiştirme.

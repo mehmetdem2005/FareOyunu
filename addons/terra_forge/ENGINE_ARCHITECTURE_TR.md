@@ -1,6 +1,6 @@
 # TerraForge — As-Built Mimari, Veri Formatları ve Modül Envanteri
 
-**Kod tabanı:** v0.4.3-dev.1, `286b135dc405ff9727a75de0e89613c882d08688`. **Hedef:** Godot 4.7.2 / Android 11 Mobile. **Kural:** Bu belgeyi kod değiştikçe güncelle; doğrulanmamış bileşenleri CANLI diye sunma.
+**Kod tabanı:** v0.4.3-dev.2, `bf5c1dde57cf4f56a08b606b03c89270d09599c2`. **Hedef:** Godot 4.7.2 / Android 11 Mobile. **Kural:** Bu belgeyi kod değiştikçe güncelle; doğrulanmamış bileşenleri CANLI diye sunma.
 
 ## 1. Modül envanteri
 
@@ -27,7 +27,7 @@
 | `terrain/paged_terrain_preview.gd` | Opt-in @tool Node3D: kamera streaming ile ArrayMesh ve HeightMapShape3D collision; no full height array, no writes | **İSTEĞE BAĞLI PREVIEW / CI PASS** |
 | `tests/*.gd` | 20 Godot headless regresyon | CI PASS |
 | `tests/run_all.sh` | 4.7.2 version, PASS çıktısı, exit code, engine log kontrolleri | CI PASS |
-| `.github/workflows/terraforge-ci.yml` | Ubuntu, geçici Godot projesi, 24 test, log artifacts | CI PASS |
+| `.github/workflows/terraforge-ci.yml` | Ubuntu, geçici Godot projesi, 25 test, log artifacts | CI PASS |
 
 **Kesin ayrım:** `region_store.gd` bulunması, çalışan oyunda RAM tasarruflu streaming yapıldığı anlamına GELMEZ. Canlı terrain hâlâ `height_data.heights` için bütün world Float32 yükseklik dizisini bellekte tutuyor.
 
@@ -122,6 +122,13 @@
 - **CI:** `test_paged_terrain_preview.gd` legacy LOD0/1/2 vertices/normals/collision ve mixed LOD0↔LOD2 seam numerical parity, fail-closed corruption ve source immutability; [Godot 4.7.2 CI 24/24 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45413288421).
 - **AÇIK:** eski `TerraForgeTerrain` hâlâ full-grid Float32, gerçek Android GPU/RSS/p95/p99 yok; sync `open()` ve blocking `close()`, fast camera gaps test edilmeli; çok-region writable transaction olmadan terrain brush kapalı.
 - Ayrıntılı kurulum, API ve riskler [P1_3_PAGED_RENDER_TR.md](P1_3_PAGED_RENDER_TR.md).
+
+## 5.3 P1.3b — Kamera generation ve minimum-cache LRU (DONE / CI)
+
+- `async_region_source.prioritize_resident(Array[Vector2i])` source-cache'deki doğrulanmış sayfaları sıranın sonuna, yani LRU MRU ucuna taşır. **Gerçek sayfa kilidi değil**, kapasite aşılmaz; yeni IO sonucu daha önce sıcak bir sayfayı yine çıkarabilir. `is_requested` yalnız ana thread'de rezervasyonu kontrol ederek aynı pending işin tekrar submit bütçesini doldurmasını engeller.
+- `paged_terrain_preview._sync_tiles`: dünya coordinate ile 32-cell focus sayfasını hesaplar; odak son queue focus'dan >=2 page taşınırsa `source.set_generation(next)` ile henüz başlamayan işleri ve geç tamamlanan eski sonuçları iptal eder. Kamera küçük hareketinde iş iptalinden kaçınır. `stats` camera_cancellations, focus_page, waiting_tile_frames içerir.
+- `test_paged_camera_stress.gd` 25. test: 128×128 test haritası, minimum 9 resident page, 2 outstanding worker, 3 uzun kamera geçişi, LOD0 gerçek collision, TFH checksum. [25/25 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45415690507).
+- **Kalan:** Android GPU/FPS/RSS onayı yok, çok büyük harita açılış `open()` tüm sayfaları senkron hashler; legacy `TerraForgeTerrain` hâlâ tam global Float32 array kullanıyor.
 
 ## 6. Bilinen operasyonel sınırlar
 

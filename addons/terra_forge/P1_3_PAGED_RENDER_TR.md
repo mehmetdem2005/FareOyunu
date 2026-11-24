@@ -1,6 +1,6 @@
 # P1.3 — Gerçek Bölgesel ArrayMesh ve Çarpışma Entegrasyonu (Salt Okunur)
 
-**Durum:** v0.4.3-dev.1 / **izole opt-in prototip UYGULANDI**. **24/24 Godot 4.7.2 CI PASS**: https://github.com/mehmetdem2005/FareOyunu/actions/runs/45413288421  
+**Durum:** v0.4.3-dev.2 / **izole opt-in prototip UYGULANDI**. **25/25 Godot 4.7.2 CI PASS**: https://github.com/mehmetdem2005/FareOyunu/actions/runs/45415690507  
 **Kod commit'leri:** `4422e0b6` (ilk prototip), `c0068833` (adil mesh-normal parity testi), `286b135d` (editör kamerası köprüsü).  
 **Dal:** `feat/terraforge-mobile-addon`. Ana `main`, Fare oyununun mevcut sahneleri ve `terraforge_data` korunmuştur.
 
@@ -29,6 +29,13 @@ Bu, **legacy `TerraForgeTerrain` düğümünün değiştiği anlamına gelmez**;
 4. Düğümü seç; mevcut küçük TerraForge popup'ta **Read-only** ibaresi görülmeli. Godot 3D editör kamerayla gezildiğinde düğüm `set_stream_center` aracılığıyla görünür tile taleplerini günceller.
 5. `stats()`: tiles, pending_tiles, vertices, source.resident/limit, disk_reads, IO max ms, error. Error varsa eksik dosyayı önce kontrol et; source üzerine yazma.
 6. Sahneyi kaydedebilirsin; ama bu düğüm `save_data()` ve `paint_at()` için `ERR_UNAVAILABLE` döndürür. **Burada şekillendirme, boya, obje düzenleme yoktur.**
+
+## P1.3b — Kamera ve minimum-cache stres düzeltmesi (DONE)
+
+- `async_region_source.gd`: `prioritize_resident(required_pages)` mesh oluşturulacak tile'ın hazır Float32 ve normal halo sayfalarını LRU önceliğinde tutar; gerçek page lock değil ve toplam cache limitini yükseltmez. `is_requested(page)` zaten kuyruktaki bir page'yi yeniden submit saymaz.
+- `paged_terrain_preview.gd`: kamera merkezi önceki queue odağından en az 2 region uzaklaşınca worker `generation` değiştirir. Eski queued ve geç tamamlanan disk işleri yeni kamera hedefinin önüne geçemez. Küçük hareketlerde gereksiz cancellation yapılmaz.
+- `test_paged_camera_stress.gd`: 9-page minimum cache, 2 worker job, 128×128 bölgesel dünya, çoklu uzak kamera sıçraması ve gerçek LOD0 HeightMapShape3D collision ile senkron karşılaştırmalı stres. [CI 25/25 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45415690507).
+- **Dikkat:** Bu CI Linux Godot headless testidir; Android 11 RAM/GPU/FPS ve gerçek görüntü deliksizlik testi hâlâ gerekli.
 
 ## Büyük açık sınırlar — bitmiş gibi anlatma
 

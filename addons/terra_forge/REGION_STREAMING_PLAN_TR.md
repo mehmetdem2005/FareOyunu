@@ -1,4 +1,4 @@
-# TerraForge P1 — Bölgesel Float32 yükseklik belleği (v0.4.3-dev.1)
+# TerraForge P1 — Bölgesel Float32 yükseklik belleği (v0.4.3-dev.2)
 
 **Durum: API prototipi + regresyon testi; canlı Terrain3D mesh/çarpışma/fırça sistemine henüz entegre değil.**
 
@@ -61,3 +61,10 @@ Mevcut `.tfh`, `.tfl` ve `.tfl.bak` kayıtları **dokunulmadan korunuyor**.
 - `plugin.gd`: seçilmiş preview node'una editor camera konumunu iletir, read-only durumu ve resident page/IO sayaçları; Brush disabled.
 - `test_paged_terrain_preview.gd`: legacy LOD0/1/2 vertices/normals/collision ile eşitlik ve corrupted page fail-closed; [Godot CI 24/24 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45413288421).
 - **Henüz:** eski `TerraForgeTerrain`'in global height_data yüklemesi değişmedi; Android gerçek GPU/RSS, full-world async open ve multi-page write transaction yok. Açıklama: [P1_3_PAGED_RENDER_TR.md](P1_3_PAGED_RENDER_TR.md).
+
+## P1.3b v0.4.3-dev.2 — Kamera teleport / LRU page halo
+
+- `async_region_source.is_requested` duplicate bounded job talebini ayıklar; `prioritize_resident(required)` hazır ve doğrulanmış halo sayfalarını MRU ucuna taşır.
+- `paged_terrain_preview._sync_tiles`: odak en az 2 sayfa ilerlerse `generation` iptal; küçük hareketlerde mevcut yüklemeler korunur; stats'de `camera_cancellations` ve `waiting_tile_frames`.
+- `test_paged_camera_stress.gd` 9 page cache, 2 background job, çoklu teleport, LOD0 gerçek HeightMapShape3D, source TFH SHA. [GitHub CI 25/25 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45415690507).
+- Bu, **Android 11 Mobile Renderer FPS/RAM testi değildir**; legacy full Float32 height source global kaynak olarak kullanılıyor. Kalan riskler [P1_3_PAGED_RENDER_TR.md](P1_3_PAGED_RENDER_TR.md).

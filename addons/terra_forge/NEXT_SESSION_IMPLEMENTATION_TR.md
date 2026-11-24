@@ -1,13 +1,13 @@
 # Sıradaki Uygulama İş Emri — P1.3 Sahada Doğrulama ve P1.4 Veri İşlemleri
 
-**24 Kasım 2026.** Kod tabanı `286b135dc405ff9727a75de0e89613c882d08688`, dal `feat/terraforge-mobile-addon`. P1.2b worker IO ve P1.3 opt-in read-only preview DONE / 24/24 CI PASS. P1.3 gerçek Android kalite kapısı + P1.4 writable transaction PLAN. Kullanıcı mobil telefon kullanıyor; CI GitHub Actions üzerinde çalışmalı.
+**24 Kasım 2026.** Kod tabanı `bf5c1dde57cf4f56a08b606b03c89270d09599c2`, dal `feat/terraforge-mobile-addon`. P1.2b worker IO ve P1.3 opt-in read-only preview + P1.3b kamera/cache stresi DONE / 25/25 CI PASS. P1.3 gerçek Android kalite kapısı + P1.4 writable transaction PLAN. Kullanıcı mobil telefon kullanıyor; CI GitHub Actions üzerinde çalışmalı.
 
 ## Önce kontrol
 
 - [ ] GitHub'dan **güncel branch head** al. Bu belgede sabit görünen commit dokümantasyon öncesi kodun referansıdır.
 - [ ] `HANDOFF_START_HERE_TR.md`, `ENGINE_ARCHITECTURE_TR.md`, `ROADMAP_MASTER_TR.md`, `RISKS_AND_DECISIONS_TR.md`, `QUALITY_TESTS_AND_BENCHMARKS_TR.md` oku.
 - [ ] `core/region_store.gd`, `core/region_manifest.gd`, `core/region_export.gd`, `terrain/terra_forge_terrain.gd` ve `tests/run_all.sh` dosyalarını gerçekten fetch et.
-- [ ] Son doğrulanan CI run: https://github.com/mehmetdem2005/FareOyunu/actions/runs/45413288421 (24/24 Godot 4.7.2 PASS).
+- [ ] Son doğrulanan CI run: https://github.com/mehmetdem2005/FareOyunu/actions/runs/45415690507 (25/25 Godot 4.7.2 PASS).
 - [ ] Kodlar yalnız `addons/terra_forge/`, gerekli CI değişiklikleri yalnız `.github/workflows/terraforge-ci.yml`. `main`, oyun sahneleri ve `terraforge_data` korunur.
 
 ## PR 1 — DONE: manifest-verified read-only paged source
@@ -46,6 +46,16 @@
 - [ ] Full manifest `open()` sync, `close()` join stall, >9 required page halo, high-speed camera tile gaps ve 30 dk stability açık risk.
 
 **Sıradaki küçük uygulanabilir iş:** Aynı exported snapshot test sahnesi için Android editör camera trace, LOD/mixed-LOD visual seam, collision ve RAM profiler; gerekirse `paged_terrain_preview.gd` tile streaming retry/prefetch/old LOD preserve iyileştirmesi. Detay [P1_3_PAGED_RENDER_TR.md](P1_3_PAGED_RENDER_TR.md).
+
+## PR 3b — DONE: kamera sıçraması + minimum cache LRU önceliği
+
+- [x] `async_region_source.gd`: `prioritize_resident()` tile'ın hazır halo sayfalarını MRU yapar, `is_requested()` duplicate IO çağrılarının tick submit bütçesini tüketmesini önler.
+- [x] `paged_terrain_preview.gd`: büyük kamera sıçramasında worker generation iptali (>=2 tile/world sayfası), stale page işlerini çöpe atar. Küçük kamera hareketinde gereksiz iptal yapmaz.
+- [x] `test_paged_camera_stress.gd` 25. test: **9 sayfa** cache, **2 job** limit, harita köşeleri arasında uzun kamera sıçramaları, LOD0 gerçek collision ve TFH verisi değişmezliği. [25/25 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45415690507).
+- [ ] Gerçek Android GPU/RAM/FPS sayıları ve görsel boşluk/seam testi hâlâ yok.
+- [ ] Büyük world manifest first-open senkron SHA ve worker join beklemesi sürüyor.
+
+**Bundan sonra ilk iş:** gerçek cihaz QA (editor+Mobile Renderer), kısa/yavaş/hızlı kamera trace, eski TFH ile bölgesel snapshot RSS/fps karşılaştırması. Cihaz sınamasını yapmadan başardık deme. Sonra P1.4 veri bütünlüğü tasarım/uygulama.
 
 ## PR 4 — P1.4 edit-mode region transaction (PLAN)
 
