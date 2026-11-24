@@ -1,21 +1,23 @@
 #!/usr/bin/env bash
-# TerraForge P0 regression suite. Needs a REAL Godot 4.7.2 binary.
-# Usage: bash addons/terra_forge/tests/run_all.sh /path/to/your/godot/project [godot_binary]
-# The supplied project must contain project.godot and addons/terra_forge/.
+# TerraForge P0 regression suite for real Godot 4.7.2 (desktop/CI).
+# Usage: bash addons/terra_forge/tests/run_all.sh /project/path [godot_binary]
 set -u
+
 PROJECT_PATH="${1:-}"
 GODOT_BIN="${2:-${GODOT_BIN:-godot}}"
+LOG_DIR="${TERRAFORGE_LOG_DIR:-${RUNNER_TEMP:-${TMPDIR:-/tmp}}/terraforge-regressions}"
+mkdir -p "$LOG_DIR"
 
 if [[ -z "$PROJECT_PATH" || ! -f "$PROJECT_PATH/project.godot" ]]; then
-  echo "ERROR: Give an existing Godot project directory containing project.godot." >&2
+  echo "ERROR: Give a real Godot project path containing project.godot." >&2
   exit 2
 fi
 if ! command -v "$GODOT_BIN" >/dev/null 2>&1; then
   echo "ERROR: Godot binary not found: $GODOT_BIN" >&2
   exit 2
 fi
-if ! "$GODOT_BIN" --version | grep -Eq '^4\.7\.2\.'; then
-  echo "ERROR: Expected Godot 4.7.2; found:" >&2
+if ! "$GODOT_BIN" --version | grep -Eq '^4[.]7[.]2[.]'; then
+  echo "ERROR: Godot 4.7.2 required; found:" >&2
   "$GODOT_BIN" --version >&2
   exit 2
 fi
@@ -39,11 +41,22 @@ suite=(
 failures=0
 for name in "${suite[@]}"; do
   echo "=== $name ==="
-  if "$GODOT_BIN" --headless --path "$PROJECT_PATH" --script "res://addons/terra_forge/tests/$name.gd"; then
-    echo "PASS $name"
+  log="$LOG_DIR/$name.log"
+  # A GDScript parse failure can sometimes exit 0, or hang with a failed
+  # assertion. Require the explicit PASS marker; never trust exit code alone.
+  if timeout 90s "$GODOT_BIN" --headless --path "$PROJECT_PATH" --script "res://addons/terra_forge/tests/$name.gd" >"$log" 2>&1; then
+    code=0
   else
-    echo "FAIL $name" >&2
+    code=$?
+  fi
+  cat "$log"
+  if (( code != 0 )) \
+      || grep -Eq 'SCRIPT ERROR:|Parse Error:|Parser Error:|Compile Error:|Failed to load script|Failed to parse script' "$log" \
+      || ! grep -q '^PASS:' "$log"; then
+    echo "FAIL $name (status=$code; see $log)" >&2
     failures=$((failures + 1))
+  else
+    echo "PASS $name"
   fi
 done
 echo "Total: ${#suite[@]} | Fails: $failures"

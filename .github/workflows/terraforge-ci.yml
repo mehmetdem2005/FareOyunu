@@ -1,0 +1,109 @@
+name: TerraForge Godot 4.7.2 CI
+
+on:
+  push:
+    branches:
+      - feat/terraforge-mobile-addon
+    paths:
+      - "addons/terra_forge/**"
+      - ".github/workflows/terraforge-ci.yml"
+  pull_request:
+    paths:
+      - "addons/terra_forge/**"
+      - ".github/workflows/terraforge-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terraforge-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  godot-regressions:
+    name: Godot 4.7.2 / GDScript regression suite
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout development branch
+        uses: actions/checkout@v4
+
+      - name: Install official Godot 4.7.2 stable
+        uses: solarlabyrinth/action-setup-godot@v3
+        with:
+          version: 4.7.2-stable
+          export-templates: false
+          name: godot
+
+      - name: Create isolated CI-only Godot project
+        shell: bash
+        run: |
+          set -euo pipefail
+          project="$RUNNER_TEMP/terraforge-ci-project"
+          mkdir -p "$project/addons"
+          cp -a "$GITHUB_WORKSPACE/addons/terra_forge" "$project/addons/terra_forge"
+          cat >"$project/project.godot" <<'GODOTPROJECT'
+          config_version=5
+
+          [application]
+          config/name="TerraForge CI Test Project"
+
+          [rendering]
+          renderer/rendering_method="gl_compatibility"
+          renderer/rendering_method.mobile="gl_compatibility"
+          GODOTPROJECT
+          echo "TEST_PROJECT=$project" >>"$GITHUB_ENV"
+          echo "Godot binary:"
+          godot --version
+          echo "CI project: $project"
+
+      - name: Import project and parse addon scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 120s godot --headless --path "$TEST_PROJECT" --editor --import 2>&1 | tee "$RUNNER_TEMP/terraforge-import.log"
+          if grep -E 'SCRIPT ERROR:|Parse Error:|Parser Error:|Compile Error:|Failed to load script' "$RUNNER_TEMP/terraforge-import.log"; then
+            echo "::error::Godot import/parse errors detected"
+            exit 1
+          fi
+
+      - name: Run all TerraForge Godot regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash "$TEST_PROJECT/addons/terra_forge/tests/run_all.sh" "$TEST_PROJECT" godot | tee "$RUNNER_TEMP/terraforge-test.log"
+
+      - name: Publish run summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo '## TerraForge headless regression tests'
+            echo ''
+            echo 'Target: Godot 4.7.2 stable on ubuntu-24.04; isolated temporary project'
+            echo ''
+            echo '```'
+            if test -f "$RUNNER_TEMP/terraforge-test.log"; then
+              tail -n 100 "$RUNNER_TEMP/terraforge-test.log"
+            elif test -f "$RUNNER_TEMP/terraforge-import.log"; then
+              tail -n 100 "$RUNNER_TEMP/terraforge-import.log"
+            else
+              echo 'No execution logs found'
+            fi
+            echo '```'
+            echo ''
+            echo 'Headless CI does not validate Android touch, Mobile Renderer GPU performance or phone thermals.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraforge-godot-4-7-2-logs
+          path: |
+            ${{ runner.temp }}/terraforge-import.log
+            ${{ runner.temp }}/terraforge-test.log
+            ${{ runner.temp }}/terraforge-regressions/
+          if-no-files-found: warn
+          retention-days: 7
