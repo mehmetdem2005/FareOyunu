@@ -1,5 +1,8 @@
 # TerraForge Mobile — YENİ SOHBETTE BURADAN BAŞLA
 
+> **GÜNCEL DEVİR — P1.5.9b2 CI_VERIFIED (25 Kasım 2026 TR):** c1c61eab3e522bb06fdfe9e5bf26b72cd16358d0, [72/72 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45490304525), [ham JSON](P1_5_9B2_RESERVATION_CI.json). Six cap1/2/4 queue cases, four 150-tick paired G traces, denied20/20 reads214/214 builds106/106, zero ground loss, 124 fixed reservation skip checks. Capacity invariant and exact parity proven, no speed win. NEXT P1.5.9b3 optional demand-sensitive lending and lossless recall, cap2/4 queue tests and paired G movement, CI_PENDING. No default change; P1.4/P1.4R PARKED. Device, delayed worker, changed-height seam, exact IO attribution remain open.
+
+
 > **GÜNCEL DEVİR — P1.5.9b1 CI_VERIFIED (24 Kasım 2026):** 062d324bf09188c1ab9c02736664c3d1774d1aa3, [70/70 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45487990585), [ham JSON](P1_5_9B1_WORK_CI.json). Eight 150-tick traces, same completed goal, fixed/adaptive denied34/34, reads440/440, builds212/212, zero ground loss. Governor limits verified but no meaningful performance gain. NEXT P1.5.9b2 opt-in geometry critical reservation (cap>=2, at most cap-1 optional slots across pending/running/finished; cap1 fallback), six queue tests and four live paired G traces, CI_PENDING. No default change, no Android claim. P1.4/P1.4R PARKED; delayed worker, changed-height seams, IO attribution, device gates open.
 
 

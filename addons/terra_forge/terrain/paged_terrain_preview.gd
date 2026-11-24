@@ -64,6 +64,11 @@ var _publication
 @export var enable_adaptive_work_budget: bool=false
 ## Independent experiment: reserve one geometry slot for LOD0 when cap>=2.
 @export var enable_critical_worker_reservation: bool=false
+## Independent opt-in: lend reserved slot only without pending LOD0 demand.
+@export var enable_critical_slot_lending: bool=false
+var _critical_lending_active: bool=false
+var _critical_demand_pumps: int=0
+var _critical_saturated_pumps: int=0
 var _critical_reservation_active: bool=false
 var _critical_reservation_skips: int=0
 var _adaptive_work_active: bool=false
@@ -189,6 +194,7 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
     _adaptive_view_active=enable_adaptive_view_budget and _support_active
     _adaptive_work_active=enable_adaptive_work_budget and _adaptive_view_active
     _critical_reservation_active=enable_critical_worker_reservation and _adaptive_work_active and selected>=3 and geometry_job_limit>=2
+    _critical_lending_active=_critical_reservation_active and enable_critical_slot_lending
     if _adaptive_view_active and _view_budget.configure(adaptive_target_fps)!=OK:
         stop_preview()
         _last_error=ERR_INVALID_PARAMETER
@@ -199,7 +205,7 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
         return _last_error
     if selected>=3:
         _geometry_worker=WORKER.new()
-        status=_geometry_worker.start(_reader,geometry_job_limit,selected>=5,selected==6,_critical_reservation_active)
+        status=_geometry_worker.start(_reader,geometry_job_limit,selected>=5,selected==6,_critical_reservation_active,_critical_lending_active)
         if status!=OK:
             stop_preview()
             _last_error=status
@@ -242,6 +248,9 @@ func stop_preview() -> void:
     set_process(false)
     # Explicit shutdown revokes even a held support lease. Camera epochs do not.
     _critical_reservation_active=false
+    _critical_lending_active=false
+    _critical_demand_pumps=0
+    _critical_saturated_pumps=0
     _critical_reservation_skips=0
     _adaptive_work_active=false
     _work_budget=WORK_BUDGET.new()
@@ -348,6 +357,19 @@ func pump_stream() -> Dictionary:
                 if _publication!=null:
                     _publication.end_pump(_publication_resident())
                 return {"error":reconciled}
+        if _critical_lending_active:
+            var demand: bool=_has_pending_critical()
+            var demand_error: Error=_geometry_worker.set_critical_demand(_reader,demand)
+            if demand_error!=OK:
+                _last_error=demand_error
+                if _publication!=null:
+                    _publication.end_pump(_publication_resident())
+                return {"error":demand_error}
+            if demand:
+                _critical_demand_pumps+=1
+                var capacity: Dictionary=_geometry_worker.stats()
+                if int(capacity["optional_slots"])>=int(capacity["cap"]):
+                    _critical_saturated_pumps+=1
         _publish_worker_results(started)
     _build_pending_tiles(started)
     if _publication!=null:
@@ -554,6 +576,14 @@ func _priority_ranks() -> Dictionary:
         result[keys[i]]=i
     return result
 
+## Includes queued/building/completed LOD0 and cold page dependencies.
+## A terminally blocked key cannot keep idle headroom reserved forever.
+func _has_pending_critical() -> bool:
+    for key in _pending_tiles:
+        if not _blocked_tiles.has(key) and int(_desired_tiles.get(key,-1))==0:
+            return true
+    return false
+
 func _build_pending_tiles(started: int = -1) -> void:
     if _pending_tiles.is_empty():
         return
@@ -579,7 +609,7 @@ func _build_pending_tiles(started: int = -1) -> void:
             var worker_stats: Dictionary=_geometry_worker.stats()
             if worker_stats["slots"]>=worker_stats["cap"]:
                 break
-            if _critical_reservation_active and lod>0 and int(worker_stats["optional_slots"])>=int(worker_stats["cap"])-1:
+            if _critical_reservation_active and bool(worker_stats["reservation_enforced"]) and lod>0 and int(worker_stats["optional_slots"])>=int(worker_stats["cap"])-1:
                 # Do not churn the page cache for an optional job that
                 # cannot be admitted. Other eligible critical keys can run.
                 _critical_reservation_skips+=1
@@ -988,7 +1018,7 @@ func set_adaptive_view_auto(enabled: bool) -> Error:
     return OK
 
 func adaptive_work_state() -> Dictionary:
-    return {"active":_adaptive_work_active,"controller":_work_budget.report() if _adaptive_work_active else {},"critical_reservation_active":_critical_reservation_active,"critical_reservation_skips":_critical_reservation_skips}
+    return {"active":_adaptive_work_active,"controller":_work_budget.report() if _adaptive_work_active else {},"critical_reservation_active":_critical_reservation_active,"critical_reservation_skips":_critical_reservation_skips,"critical_lending_active":_critical_lending_active,"critical_demand_pumps":_critical_demand_pumps,"critical_saturated_pumps":_critical_saturated_pumps}
 
 func adaptive_view_state() -> Dictionary:
     return {"active":_adaptive_view_active,"controller":_view_budget.report() if _adaptive_view_active else {},"far_candidates":_view_far_candidates,"far_admitted_candidates":_view_far_admitted}
