@@ -1,5 +1,8 @@
 # TerraForge P1.5 — Derin mobil performans mühendisliği ana planı
 
+> **GÜNCEL DEVİR — P1.5.9b3 CI_VERIFIED (25 Kasım 2026 TR):** 34598432920e37ccd9017163f99c3280ae3fdd1d, [74/74 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45492549970), [ham JSON](P1_5_9B3_LENDING_CI.json). Four controlled queue cases and four 150-tick G traces, fixed/lending skips124→40, denied20/20 reads214/214 builds106/106, no ground loss. Live trace loan_admissions=0, no performance win. NEXT P1.5.9c1 opt-in class-separated latency and bounded outstanding age snapshots; test-only gated worker, 8 cap2/4 × TFM1/2 × drain/cancel cases, CI_PENDING. No default change, no Android claim. P1.4/P1.4R PARKED.
+
+
 > **GÜNCEL DEVİR — P1.5.9b2 CI_VERIFIED (25 Kasım 2026 TR):** c1c61eab3e522bb06fdfe9e5bf26b72cd16358d0, [72/72 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45490304525), [ham JSON](P1_5_9B2_RESERVATION_CI.json). Six cap1/2/4 queue cases, four 150-tick paired G traces, denied20/20 reads214/214 builds106/106, zero ground loss, 124 fixed reservation skip checks. Capacity invariant and exact parity proven, no speed win. NEXT P1.5.9b3 optional demand-sensitive lending and lossless recall, cap2/4 queue tests and paired G movement, CI_PENDING. No default change; P1.4/P1.4R PARKED. Device, delayed worker, changed-height seam, exact IO attribution remain open.
 
 

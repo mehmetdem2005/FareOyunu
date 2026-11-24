@@ -8,6 +8,7 @@ const PUB = preload("res://addons/terra_forge/core/publication_accounting.gd")
 const TOPOLOGY = preload("res://addons/terra_forge/core/tile_topology_cache.gd")
 const DENSE = preload("res://addons/terra_forge/core/tile_dense_buffer.gd")
 const LOD = preload("res://addons/terra_forge/core/lod_policy.gd")
+const LATENCY=preload("res://addons/terra_forge/core/geometry_latency_profile.gd")
 const INPUT_CAP: int = 4900
 # Conservative payload reservation supports double precision vector builds.
 # Does not include Variant/container overhead or caller-owned results.
@@ -34,6 +35,8 @@ var _finished: Array[Dictionary] = []
 var _inflight: int = 0
 var _running_id: int = 0
 var _running_lod: int=-1
+var _running_since_us: int=0
+var _latency_profile
 var _reserve_critical: bool=false
 var _reservation_deferrals: int=0
 var _lend_critical: bool=false
@@ -48,7 +51,7 @@ var _peak_slots: int = 0
 var _pruned_pending: int = 0
 var _pruned_finished: int = 0
 
-func start(source, cap: int=2, scalar_sampling: bool=false,reuse_topology: bool=false,reserve_critical: bool=false,lend_critical: bool=false) -> Error:
+func start(source, cap: int=2, scalar_sampling: bool=false,reuse_topology: bool=false,reserve_critical: bool=false,lend_critical: bool=false,profile_latency: bool=false) -> Error:
     close()
     if source==null or not source.is_open() or cap<1 or cap>4 or (reuse_topology and not scalar_sampling):
         return ERR_INVALID_PARAMETER
@@ -60,6 +63,7 @@ func start(source, cap: int=2, scalar_sampling: bool=false,reuse_topology: bool=
     _cap=cap
     _reserve_critical=reserve_critical and cap>=2
     _lend_critical=lend_critical and _reserve_critical
+    _latency_profile=LATENCY.new() if profile_latency else null
     _scalar_sampling=scalar_sampling
     if reuse_topology:
         var started: int=Time.get_ticks_usec()
@@ -218,11 +222,11 @@ func _loop() -> void:
             _inflight=1
             _running_id=job["id"]
             _running_lod=int(job["lod"])
+            _running_since_us=Time.get_ticks_usec()
             _mutex.unlock()
-            var key: Vector2i=job["key"]
             var started: int=Time.get_ticks_usec()
             job["queue_wait_us"]=started-int(job["queued_us"])
-            var generated: Dictionary=G.generate_owned_dense_scalar(job["buffer"],key.x,key.y,job["lod"],job["desired"],_topology) if _scalar_sampling else G.generate(job["buffer"],key.x,key.y,job["lod"],job["desired"])
+            var generated: Dictionary=_build_geometry(job)
             var elapsed: int=Time.get_ticks_usec()-started
             var output_bytes: int=0
             if generated["error"]==OK:
@@ -241,6 +245,7 @@ func _loop() -> void:
             _inflight=0
             _running_id=0
             _running_lod=-1
+            _running_since_us=0
             if _stop or job["epoch"]!=_epoch:
                 _dropped+=1
             else:
@@ -249,6 +254,12 @@ func _loop() -> void:
             generated={}
             job={}
             _mutex.unlock()
+
+## Worker-thread pure compute seam. Test subclass can gate this operation
+## without a runtime delay setting or a reference to source/scene objects.
+func _build_geometry(job: Dictionary) -> Dictionary:
+    var key: Vector2i=job["key"]
+    return G.generate_owned_dense_scalar(job["buffer"],key.x,key.y,job["lod"],job["desired"],_topology) if _scalar_sampling else G.generate(job["buffer"],key.x,key.y,job["lod"],job["desired"])
 
 ## Experimental F: main-thread reconciliation of bounded queues.
 ## Never interrupt running computation or mutate its immutable input.
@@ -313,6 +324,8 @@ func poll(source,desired: Dictionary,max_source_bytes: int=-1,critical_only: boo
         result["source_serial"]=_serial
         result["delivery_wait_us"]=Time.get_ticks_usec()-int(result["completed_us"])
         _mutex.unlock()
+        if _latency_profile!=null:
+            _latency_profile.record(result)
         return {"error":OK,"result":result,"deferred_optional":deferred_optional}
     _mutex.unlock()
     return {"error":ERR_BUSY,"deferred_optional":deferred_optional}
@@ -329,6 +342,29 @@ func active_ids() -> Array[int]:
         ids.append(_running_id)
     _mutex.unlock()
     return ids
+
+## Current outstanding ages are censored snapshots, not completed latency.
+## Explicit diagnostic call; avoid constructing histograms in each pump.
+func latency_profile() -> Dictionary:
+    if _latency_profile==null:
+        return {}
+    var now: int=Time.get_ticks_usec()
+    var ages: Dictionary={"critical":{"pending_us":0,"running_us":0,"finished_us":0},"optional":{"pending_us":0,"running_us":0,"finished_us":0}}
+    _mutex.lock()
+    for job in _pending:
+        var group: Dictionary=ages["critical" if int(job["lod"])==0 else "optional"]
+        group["pending_us"]=maxi(int(group["pending_us"]),maxi(0,now-int(job["queued_us"])))
+    for job in _finished:
+        var group: Dictionary=ages["critical" if int(job["lod"])==0 else "optional"]
+        group["finished_us"]=maxi(int(group["finished_us"]),maxi(0,now-int(job["completed_us"])))
+    if _inflight>0:
+        ages["critical" if _running_lod==0 else "optional"]["running_us"]=maxi(0,now-_running_since_us)
+    var counts: Dictionary={"submitted":_submitted,"delivered":_delivered,"dropped":_dropped,"owned":_slots()}
+    _mutex.unlock()
+    var report: Dictionary=_latency_profile.report()
+    report["outstanding_age_us"]=ages
+    report["ownership"]=counts
+    return report
 
 func stats() -> Dictionary:
     _mutex.lock()
@@ -357,6 +393,8 @@ func close() -> void:
     _inflight=0
     _running_id=0
     _running_lod=-1
+    _running_since_us=0
+    _latency_profile=null
     _reserve_critical=false
     _lend_critical=false
     _critical_demand=true

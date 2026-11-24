@@ -85,6 +85,8 @@ suite=(
   test_critical_worker_reservation_v2
   test_critical_slot_lending
   test_critical_slot_lending_v2
+  test_geometry_latency_profile
+  test_geometry_latency_profile_v2
   test_lod_policy
   test_surface_faces
   test_lod_normals

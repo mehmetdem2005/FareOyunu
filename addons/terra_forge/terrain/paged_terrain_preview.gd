@@ -66,6 +66,8 @@ var _publication
 @export var enable_critical_worker_reservation: bool=false
 ## Independent opt-in: lend reserved slot only without pending LOD0 demand.
 @export var enable_critical_slot_lending: bool=false
+## Independent observation flag; no policy change.
+@export var observe_geometry_latency: bool=false
 var _critical_lending_active: bool=false
 var _critical_demand_pumps: int=0
 var _critical_saturated_pumps: int=0
@@ -205,7 +207,7 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
         return _last_error
     if selected>=3:
         _geometry_worker=WORKER.new()
-        status=_geometry_worker.start(_reader,geometry_job_limit,selected>=5,selected==6,_critical_reservation_active,_critical_lending_active)
+        status=_geometry_worker.start(_reader,geometry_job_limit,selected>=5,selected==6,_critical_reservation_active,_critical_lending_active,observe_geometry_latency)
         if status!=OK:
             stop_preview()
             _last_error=status
@@ -1016,6 +1018,9 @@ func set_adaptive_view_auto(enabled: bool) -> Error:
     if _view_budget.set_auto(enabled):
         _last_sync_msec=-100000
     return OK
+
+func geometry_latency_profile() -> Dictionary:
+    return _geometry_worker.latency_profile() if _geometry_worker!=null else {}
 
 func adaptive_work_state() -> Dictionary:
     return {"active":_adaptive_work_active,"controller":_work_budget.report() if _adaptive_work_active else {},"critical_reservation_active":_critical_reservation_active,"critical_reservation_skips":_critical_reservation_skips,"critical_lending_active":_critical_lending_active,"critical_demand_pumps":_critical_demand_pumps,"critical_saturated_pumps":_critical_saturated_pumps}
