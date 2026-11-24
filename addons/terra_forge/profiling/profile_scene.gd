@@ -15,7 +15,8 @@ var _label: Label
 var _buttons: Array[Button] = []
 @export_range(1, 16, 1) var shard_limit: int = 4
 @export var use_tile_read_view: bool = false
-var _view_toggle: CheckButton
+var _sampling_choice: OptionButton
+@export_enum("Legacy flag:-1", "A direct:0", "B tile view:1", "C dense buffer:2") var sampling_strategy: int = -1
 var _format: OptionButton
 var _fixture_size: OptionButton
 var _estimate: Label
@@ -87,11 +88,13 @@ func _ready() -> void:
     _format.item_selected.connect(func(_index): _refresh_sizes())
     _fixture_size.item_selected.connect(func(_index): _refresh_estimate())
     _refresh_sizes()
-    _view_toggle = CheckButton.new()
-    _view_toggle.text = "Tile read view (experimental)"
-    _view_toggle.button_pressed = use_tile_read_view
-    _view_toggle.toggled.connect(func(enabled): use_tile_read_view = enabled)
-    ui.add_child(_view_toggle)
+    _sampling_choice = OptionButton.new()
+    _sampling_choice.add_item("A direct (baseline)", 0)
+    _sampling_choice.add_item("B tile view (experimental)", 1)
+    _sampling_choice.add_item("C dense (experimental)", 2)
+    _sampling_choice.select(clampi((1 if use_tile_read_view else 0) if sampling_strategy == -1 else sampling_strategy, 0, 2))
+    _sampling_choice.item_selected.connect(func(index): sampling_strategy = _sampling_choice.get_item_id(index))
+    ui.add_child(_sampling_choice)
     _button(ui, "Create isolated sample", _make_fixture)
     _cancel_button = Button.new()
     _cancel_button.text = "Cancel fixture generation"
@@ -125,7 +128,7 @@ func _set_busy(busy: bool) -> void:
     _path.editable = not busy
     _fixture_size.disabled = busy
     _format.disabled = busy
-    _view_toggle.disabled = busy
+    _sampling_choice.disabled = busy
 
 func _refresh_sizes() -> void:
     var previous: int = _fixture_size.get_selected_id() if _fixture_size.item_count > 0 else 256
@@ -256,8 +259,10 @@ func _begin(lazy: bool) -> void:
     _preview.region_index_format = _format.get_selected_id()
     _preview.resident_shard_limit = shard_limit
     _preview.use_tile_read_view = use_tile_read_view
+    _preview.sampling_strategy = sampling_strategy
     _run_settings = {"page_limit": page_limit, "job_limit": job_limit, "shard_limit": shard_limit if _run_format == "TFM2" else 0, "view_distance": _preview.view_distance, "high_detail_distance": _preview.high_detail_distance, "medium_detail_distance": _preview.medium_detail_distance, "max_visible_tiles": _preview.max_visible_tiles, "tile_updates_per_frame": _preview.tile_updates_per_frame, "max_tile_work_ms": _preview.max_tile_work_ms, "viewport": [get_viewport().size.x, get_viewport().size.y]}
     _run_settings["use_tile_read_view"] = use_tile_read_view
+    _run_settings["sampling_strategy"] = _preview.resolved_sampling_strategy()
     add_child(_preview)
     _started = Time.get_ticks_usec()
     var status: Error = _preview.start_preview(_run_path, page_limit, job_limit)
@@ -347,6 +352,8 @@ func _finish(status: Error) -> void:
         "snapshot_id": src.get("snapshot_id", "") if _run_format == "TFM2" else null,
         "route": "normalized_sine_v1", "settings": _run_settings,
         "root_index_bytes": src.get("root_index_bytes", 0),
+        "dense_payload_peak_bytes": s.get("dense_payload_peak_bytes", 0),
+        "accepted_page_reloads": maxi(0, int(src.get("disk_reads", 0)) - int(src.get("pages_verified_on_demand", 0))),
         "direct_height_reads": src.get("direct_height_reads", 0), "lru_touches": src.get("lru_touches", 0),
         "tile_view_acquires": src.get("tile_view_acquires", 0), "tile_view_reads": src.get("tile_view_reads", 0),
         "tile_view_page_touches": src.get("tile_view_page_touches", 0), "tile_view_peak_pages": src.get("tile_view_peak_pages", 0),

@@ -20,6 +20,10 @@ const TILE_CELLS: int = 32
 @export var verify_pages_on_demand: bool = true
 ## Experimental A/B CPU sampling path. Default stays baseline until measured.
 @export var use_tile_read_view: bool = false
+## -1 preserves serialized legacy bool. Explicit mode overrides it.
+@export_enum("Legacy flag:-1", "A direct:0", "B tile view:1", "C dense buffer:2") var sampling_strategy: int = -1
+var _active_sampling_strategy: int = 0
+var _dense_payload_peak: int = 0
 @export_range(9, 64, 1) var resident_page_limit: int = 16
 @export_range(1, 8, 1) var max_background_jobs: int = 4
 @export_range(80.0, 640.0, 16.0) var view_distance: float = 160.0
@@ -76,6 +80,12 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
     if directory.is_empty():
         _last_error = ERR_INVALID_PARAMETER
         return _last_error
+    var selected: int = resolved_sampling_strategy()
+    if selected < 0 or selected > 2:
+        _last_error = ERR_INVALID_PARAMETER
+        return _last_error
+    _active_sampling_strategy = selected
+    _dense_payload_peak = 0
     _ensure_material()
     var next = ASYNC.new()
     var status: Error = ERR_INVALID_PARAMETER
@@ -108,6 +118,9 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
     _sync_tiles()
     set_process(true)
     return OK
+
+func resolved_sampling_strategy() -> int:
+    return (1 if use_tile_read_view else 0) if sampling_strategy == -1 else sampling_strategy
 
 func stop_preview() -> void:
     set_process(false)
@@ -315,7 +328,13 @@ func _build_pending_tiles() -> void:
             # Focus only on the nearest pending tile. Otherwise page loads
             # for far tiles can evict this tile's required border samples.
             break
-        var generated: Dictionary = GEOMETRY.generate_with_view(_reader, key.x, key.y, lod, _desired_tiles) if use_tile_read_view else GEOMETRY.generate(_reader, key.x, key.y, lod, _desired_tiles)
+        var generated: Dictionary
+        match _active_sampling_strategy:
+            0: generated = GEOMETRY.generate(_reader, key.x, key.y, lod, _desired_tiles)
+            1: generated = GEOMETRY.generate_with_view(_reader, key.x, key.y, lod, _desired_tiles)
+            2: generated = GEOMETRY.generate_with_dense(_reader, key.x, key.y, lod, _desired_tiles)
+            _: generated = {"error": ERR_INVALID_PARAMETER}
+        _dense_payload_peak = maxi(_dense_payload_peak, int(generated.get("dense_payload_bytes", 0)))
         var error: Error = int(generated.get("error", ERR_FILE_CORRUPT))
         if error != OK:
             if error != ERR_BUSY:
@@ -405,6 +424,8 @@ func stats() -> Dictionary:
         "source": source,
         "verify_pages_on_demand": verify_pages_on_demand,
         "use_tile_read_view": use_tile_read_view,
+        "sampling_strategy": _active_sampling_strategy if _reader != null else resolved_sampling_strategy(),
+        "dense_payload_peak_bytes": _dense_payload_peak,
         "index_format": source.get("index_format", "TFM2" if region_index_format == 1 else "TFM1"),
         "last_error": _last_error,
         "last_error_page": _last_error_page,

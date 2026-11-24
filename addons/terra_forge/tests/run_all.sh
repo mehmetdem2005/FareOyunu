@@ -47,6 +47,7 @@ suite=(
   test_paged_preview_v2
   test_tile_read_view
   test_sampling_benchmark
+  test_sampling_stream_trace
   test_lod_policy
   test_surface_faces
   test_lod_normals
