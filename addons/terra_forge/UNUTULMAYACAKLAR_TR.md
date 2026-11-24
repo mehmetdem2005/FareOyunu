@@ -1,5 +1,8 @@
 # TerraForge — UNUTULMAYACAKLAR / Deney, karar ve doğrulama defteri
 
+> **GÜNCEL DEVİR — P1.5.5a (24 Kasım 2026):** Kod cb63d03b665feccab7aca7d64b56569ea7aed3df, [39/39 Godot Linux CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45443035828). [P1_5_5A_GEOMETRY_WORKER_TR.md](P1_5_5A_GEOMETRY_WORKER_TR.md). Isolated one-worker prototype, 14 exact array parity cases, owned dense input survives page eviction, bounded slots, stale neighbor/epoch/reopen rejection. No live preview integration yet; A default/B+C opt-in/D benchmark-only unchanged. **NEXT P1.5.5b:** audit worker ownership/lifetime, opt-in live integration with bounded publication and no duplicate outstanding tiles, test actual mesh/shape and failure/epoch/LOD isolation. Android/large-world and old EXP gates open. No painting/objects, P1.4 parked.
+
+
 > **GÜNCEL DEVİR — P1.5.4d (24 Kasım 2026):** Kod 8c2f7675a3c78b9356aeb98f3dfbf850727c199f, [38/38 Godot Linux CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45441554202). [P1_5_4D_SCALAR_BENCH_TR.md](P1_5_4D_SCALAR_BENCH_TR.md), [ham JSON](P1_5_4D_SCALAR_CI.json). B/D exact parity and equal work; 14 cases × 32 rounds × 2 methods = 896 timed builds. B 1190.16 us, D 827.09 us equal-weight mean; D 30.51% lower than B, 14/14 mean wins on one runner. 293312 height reads per method; D avoids per-sample result dictionary, not measured allocator bytes. A default, B/C opt-in, D benchmark-only. **NEXT P1.5.5a:** bounded pure-array worker design and ownership prototype; keep D experiment pending live trace and device. No painting/objects, P1.4 parked. Mandatory UNUTULMAYACAKLAR_TR.md.
 
 
@@ -61,6 +64,9 @@ IMPLEMENTED + CI_VERIFIED + DEVICE_OPEN. [TFM1 builder](P1_5_3A_FIXTURE_TR.md) a
 ### EXP-07 — Doğal arazi şekilleri / hassasiyet / görsel kalite
 IMPLEMENTED parts + DEVICE_OPEN. [Geomorphology](TERRAIN_GEOMORPHOLOGY_TR.md), [quality tests](QUALITY_TESTS_AND_BENCHMARKS_TR.md), [risk log](RISKS_AND_DECISIONS_TR.md). Existing erosion/drainage/advanced brushes, shape quality, surface normals, seam regression preserved. User wants believable natural terrain especially microforms, not artificial repetitive noise/hills, no fidelity reduction to optimize. Float32 canonical heights; 8-bit source terracing cannot be recovered by bit-depth conversion; no silent quantization. Actual editor and game visual checks (cliffs, channels, ridges, small banks, mixed LOD transitions, corner normals, lighting, camera at mouse scale) pending. Existing seam interpolation parity isn't proof of universal watertight topology, transient mixed-neighbor publication or collision continuity. Before painting/objects, user quality acceptance plus geometry/device gates. Do not confuse diagnostic synthetic ridges with production art.
 
+### EXP-08 — P1.5.5 geometry worker
+EXPERIMENTAL + CI_VERIFIED + DEVICE_OPEN. [P1.5.5a](P1_5_5A_GEOMETRY_WORKER_TR.md), 39/39 CI. Isolated worker only, default preview unchanged. Single worker, cap1..4 default2, input4900 + output131072 byte conservative payload reservation per slot; not total RAM. Reader instance+session serial+snapshot+epoch and cardinal LOD signature checked, no borrowed lease. Exact 14 cases, cache eviction independence, stale epoch/neighbor/reopen, close. Pending issues: opt-in live integration, duplicate job suppression, publication budgets, consumer-held arrays, main copy cost, queue latency, cold shard/failure, actual Android frames/physics/RSS. NEXT P1.5.5b. Keep all previous experiments and no default change.
+
 ## 3 — Ertelenen ve sonraki fazlar (sırayı koru)
 | ID | Durum | Kapanış şartı / sonraki çalışma |
 |---|---|---|
@@ -68,7 +74,8 @@ IMPLEMENTED parts + DEVICE_OPEN. [Geomorphology](TERRAIN_GEOMORPHOLOGY_TR.md), [
 | P1.5.4b CPU benchmark | CI_VERIFIED | A/B/C resident comparison DONE, decision still experimental. |
 | P1.5.4c streaming trace | CI_VERIFIED | 12 fixed async pump traces; actual frame/Android still open. |
 | P1.5.4d scalar allocation experiment | CI_VERIFIED | B/D resident benchmark; D experimental, live/device gates open. |
-| P1.5.5a worker ownership prototype | NEXT | Bounded pure-array worker, immutable input, identity and stale rejection; no preview default change. |
+| P1.5.5a worker ownership prototype | CI_VERIFIED | Isolated worker; 39/39 CI, no preview integration. |
+| P1.5.5b worker preview integration | NEXT | Opt-in only, dedup, bounded publication, failure and stale rejection. |
 | P1.5.5 geometry worker | PLANNED | One bounded worker, immutable input and generation/LOD/neighbor identity, stale outputs discarded, pure arrays only; no SceneTree/Mesh/Physics on worker. Main-thread publication. |
 | P1.5.6 GPU publication | PLANNED | Budgeted upload, reusable topology/material only if measured, near priority, bounded VRAM, draw calls/triangles and GPU separately measured. |
 | P1.5.7 physics | PLANNED | Actual physics-tick raycast parity/collision coverage, coherent mesh/shape generation, near priority, last-good, fast crossing/teleport, no flat fallback. |
@@ -92,6 +99,8 @@ IMPLEMENTED parts + DEVICE_OPEN. [Geomorphology](TERRAIN_GEOMORPHOLOGY_TR.md), [
 - 24 Kasım 2026: P1.5.4c fixed trace 37/37, B promising, C explicit opt-in, no Android acceptance. P1.5.4d next; all older open gates preserved.
 
 - 24 Kasım 2026: P1.5.4d B/D scalar experiment 38/38, D promising but benchmark-only; P1.5.5a next. Remaining allocation/topology and runtime/device gates retained.
+
+- 24 Kasım 2026: P1.5.5a isolated worker 39/39 CI, EXP-08 added, no integration or performance acceptance. Next P1.5.5b.
 
 ### Yeni kayıt şablonu
 ID / tarih / faz:
