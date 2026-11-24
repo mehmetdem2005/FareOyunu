@@ -61,6 +61,7 @@ var _motion_latency=MOTION_LATENCY.new()
 var _motion_wait_started: Dictionary={}
 var _motion_already_ready: int=0
 var _motion_cancelled_samples: int=0
+var _motion_failed_samples: int=0
 var _motion_active: bool=false
 var _motion_keys: Array[Vector2i]=[]
 var _motion_selected: Array[Vector2i]=[]
@@ -222,6 +223,7 @@ func stop_preview() -> void:
     _motion_wait_started.clear()
     _motion_already_ready=0
     _motion_cancelled_samples=0
+    _motion_failed_samples=0
     _motion_keys.clear()
     _motion_selected.clear()
     _motion_velocity=Vector2.ZERO
@@ -332,6 +334,7 @@ func _sync_tiles() -> void:
     var focus_page: Vector2i = Vector2i(
         floori(_anchor.x / tile_world), floori(_anchor.z / tile_world)
     )
+    var motion_epoch_changed: bool=false
     if _queue_focus_page.x == -999999:
         _queue_focus_page = focus_page
     elif maxi(
@@ -345,6 +348,10 @@ func _sync_tiles() -> void:
             return
         _queue_focus_page = focus_page
         _camera_cancellations += 1
+        if _motion_adaptive:
+            _motion_cancelled_samples+=_motion_wait_started.size()
+            _motion_wait_started.clear()
+            motion_epoch_changed=true
         _blocked_tiles.clear()
         # Page errors from the old camera generation do not describe the
         # current area; if damage persists, the new IO reports it again.
@@ -397,7 +404,7 @@ func _sync_tiles() -> void:
                         _motion_wait_started.erase(key)
                         _motion_cancelled_samples+=1
                 for key in ahead:
-                    if not _motion_selected.has(key):
+                    if motion_epoch_changed or not _motion_selected.has(key):
                         if _tiles.has(key) and int(_tiles[key]["lod"])==0 and not _pending_tiles.has(key) and not _blocked_tiles.has(key):
                             _motion_already_ready+=1
                         else:
@@ -708,6 +715,11 @@ func _publication_resident() -> Dictionary:
 
 func _block_tile(key: Vector2i, page: Vector2i, error: Error) -> void:
     _blocked_tiles[key] = error
+    # A terminal read failure is not a completed latency observation.
+    # End its bounded sample without interpreting failure as fast success.
+    if _motion_adaptive and _motion_wait_started.has(key):
+        _motion_wait_started.erase(key)
+        _motion_failed_samples+=1
     _last_error = error
     _last_error_page = page
     # Do not free or modify an existing mesh/shape on a failed rebuild.
@@ -839,6 +851,12 @@ func inspect_support_step(start: Vector2,finish: Vector2,radius: float,session: 
         return next
     if next["tiles"].size()>SUPPORT.MAX_SUPPORT or next["tiles"].size()>max_visible_tiles:
         return {"ready":false,"reason":"support_cap","ray_count":0}
+    # Terminal tile failures are distinct from ordinary streaming delay.
+    # Keep the old lease; caller can display a blocked-path state without
+    # treating a damaged destination as an indefinitely slow IO request.
+    for key in next["tiles"]:
+        if _blocked_tiles.has(key):
+            return {"ready":false,"reason":"terrain_blocked","tile":key,"tiles":next["tiles"],"tile_error":int(_blocked_tiles[key]),"ray_count":0}
     return inspect_collision_footprint(start,finish,radius,exclude)
 
 ## Call once per physics tick with local XZ position, actual prior velocity,
@@ -875,7 +893,7 @@ func _set_motion_keys(keys: Array[Vector2i]) -> void:
         _last_sync_msec=-100000
 
 func motion_prefetch_state() -> Dictionary:
-    return {"active":_motion_active,"keys":_motion_keys.duplicate(),"selected":_motion_selected.duplicate(),"changes":_motion_changes,"expirations":_motion_expirations,"relocations":_motion_relocations,"promotions":_motion_promotions,"abandoned_selection":_motion_abandoned,"speculative_publications":_motion_published,"sample_ms":_motion_hist.report(),"adaptive":_motion_adaptive,"latency":_motion_latency.report() if _motion_adaptive else {},"pending_latency_samples":_motion_wait_started.size(),"already_ready_selections":_motion_already_ready,"cancelled_latency_samples":_motion_cancelled_samples}
+    return {"active":_motion_active,"keys":_motion_keys.duplicate(),"selected":_motion_selected.duplicate(),"changes":_motion_changes,"expirations":_motion_expirations,"relocations":_motion_relocations,"promotions":_motion_promotions,"abandoned_selection":_motion_abandoned,"speculative_publications":_motion_published,"sample_ms":_motion_hist.report(),"adaptive":_motion_adaptive,"latency":_motion_latency.report() if _motion_adaptive else {},"pending_latency_samples":_motion_wait_started.size(),"already_ready_selections":_motion_already_ready,"cancelled_latency_samples":_motion_cancelled_samples,"failed_latency_samples":_motion_failed_samples}
 
 func release_support(session: int,revision: int) -> Error:
     if not _support_active or not is_inside_tree() or not Engine.is_in_physics_frame():

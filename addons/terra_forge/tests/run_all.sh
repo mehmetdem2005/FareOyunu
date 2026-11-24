@@ -75,6 +75,8 @@ suite=(
   test_motion_roundtrip_g
   test_motion_roundtrip_v2
   test_motion_roundtrip_v2_g
+  test_motion_fault_recovery
+  test_motion_fault_recovery_v2
   test_lod_policy
   test_surface_faces
   test_lod_normals

@@ -1,5 +1,8 @@
 # TerraForge Mobile — Tam İlerleme Kaydı, Kanıt Düzeyi ve Sürüm Günlüğü
 
+> **GÜNCEL DEVİR — P1.5.8b2 CI_VERIFIED (24 Kasım 2026):** 115c81f91f0bd48d08bd7d25bd674f9bbeb8be19, [64/64 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45482102797), [ham JSON](P1_5_8B2_ROUNDTRIP_CI.json). 16×480 real physics ticks, equal completed roundtrip waypoint routes, fixed/adaptive reads1634→1422, builds280→238, denied212→182, zero floor/ray gaps, verified relocation/expiry. Four latency observations per adaptive case, horizon133–200ms; no Android claim. NEXT P1.5.8b3 real missing/corrupt destination page, terminal admission reason and failure/epoch-aware latency accounting, 8×180 physics ticks, CI_PENDING. Keep all opt-in; P1.4/P1.4R PARKED.
+
+
 > **GÜNCEL DEVİR — P1.5.8b1 CI_VERIFIED (24 Kasım 2026):** 65091b3b99271264fcd3d7d5c965229759c6216c, [60/60 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45480640069), [ham JSON](P1_5_8B1_ADAPTIVE_CI.json). 8 pairs fixed/adaptive, 16×150 ticks, disk reads674→546, denied78→66, builds216→168 (warmup included), abandoned8→0, no ground loss. Horizon133–200ms, one observed publication per adaptive case. No equal-work/Android claim. NEXT P1.5.8b2 multi-seam roundtrip, live direction reversal, stop/expiry, verified relocation invalidates old forecast; 16×480 ticks, four test processes, CI_PENDING. Preserve A default and fixed option, P1.4/P1.4R PARKED.
 
 
