@@ -1,4 +1,4 @@
-# TerraForge Mobile — v0.2.0 (resident tile LOD prototype)
+# TerraForge Mobile — v0.2.1 (surface + compact mobile UI fixes)
 
 Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, native library, or changes to game files. Designed for Android editor testing with Mobile Renderer.
 
@@ -6,16 +6,19 @@ Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, nativ
 
 1. Copy **only** `addons/terra_forge/` into the root of any Godot 4.7.2 project.
 2. Open **Project > Project Settings > Plugins**, enable **TerraForge Mobile**.
-3. Open a saved 3D scene (Node3D root). Open the **TerraForge** bottom dock and press **Create Terrain**.
-4. Select the generated terrain node, enable **Brush ON**, choose Raise / Lower / Smooth / Flatten, then drag a finger or left mouse button.
-5. Disable Brush to regain ordinary editor camera navigation. **Save** writes Float32 heights. Save the scene separately.
-6. Use the **Streaming quality** dropdown to select **Mobile - light**, **Balanced**, or **High detail**.
+3. Open a saved 3D scene (Node3D root). In the **3D editor toolbar**, tap **Terrain** (next to **Brush**) to open the compact tools popup.
+4. Tap **+ New** to create an empty, initially flat terrain. The popup closes so the 3D view remains unobstructed.
+5. Tap **Terrain** again to choose Raise / Lower / Smooth / Flatten and adjust Size and Power.
+6. Toggle **Brush** next to the Terrain button, then drag a finger or left mouse button across the surface. Toggle it off to move the editor camera.
+7. In the popup, **Save** writes Float32 heights; separately save the scene with Godot. **Quality** selects Mobile / Balanced / High.
 
 ## Features implemented
 
 - **Lossless Float32 height storage** in a versioned `.tfh` height file (little-endian TFH1 header + row-major Float32 samples).
 - **Resident visual tiles**: allocate only camera-near tile nodes, with maximum active tile budget. Drop far mesh/collision nodes on travel.
 - **3 mesh LODs**: tile sampling strides 1, 2 and 4 with descending mesh complexity. Adaptive skirts cover cracks where neighboring levels meet.
+- **Top surface fix**: corrected the terrain's triangle winding; previously it was backface-culled and only the grey LOD skirts appeared, creating a fake hollow/checkerboard view.
+- **Compact toolbar UI**: removed the giant bottom dock; one **Terrain** popup button and one **Brush** toggle live in Godot's 3D editor toolbar. Popup settings are hidden while sculpting.
 - **Editor camera following** through `EditorInterface.get_editor_viewport_3d(0).get_camera_3d()`. Scene camera following while running.
 - **Collision only at closest LOD**, with properly uniform scaling and pre-scaled height values.
 - **Per-frame tile rebuild budget**, with edited/dirtied tiles queued rather than regenerating the whole map at once.
@@ -42,7 +45,7 @@ The **full Float32 height field remains in RAM**. This version streams visible *
 
 ## Limitations / pending validation
 
-- **Not yet validated on the user's Android 11 Godot 4.7.2 installation.** GDScript parsing, touch gestures and frame-time targets require on-device tests.
+- **The 0.2.0 UI loaded on the user's Android 11 Godot 4.7.2 editor**, but showed the hollow checkerboard due to backface-culling. Version 0.2.1 corrects the winding and replaces the bottom dock. The revised version itself still requires on-device validation; source tests were added but could not be executed here.
 - Skirts conceal visual cracks, but geometry remains LOD-discontinuous at T-junctions; precise edge stitching will follow.
 - The full Float32 heightmap is resident even when no mesh tile is loaded. File-backed streaming is not yet implemented.
 - Tile mesh builds happen on the main thread, strictly limited per frame. A later stage can move mesh input preparation to worker threads.
@@ -58,13 +61,14 @@ From a project containing the addon:
 ```bash
 godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_height_store.gd
 godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_lod_policy.gd
+godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_surface_faces.gd
 ```
 
 See [MOBILE_TEST_PLAN.md](MOBILE_TEST_PLAN.md) for hands-on Android checks and acceptance criteria. These tests have **not yet been executed** with the Godot engine here.
 
 ## Next stages
 
-1. Test v0.2 on Android 11 editor + fix any GDScript/API errors.
+1. Confirm v0.2.1 displays solid terrain on Android 11, and that the compact popup opens/closes without shrinking the viewport.
 2. Add progressive mesh generation that prevents frame spikes during initial loading.
 3. Implement true LOD seam stitching + sample-independent camera brush interaction.
 4. Add lightweight tile-based 2–4 material painter and GPU budget presets.

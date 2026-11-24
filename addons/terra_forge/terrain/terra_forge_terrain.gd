@@ -260,13 +260,14 @@ func _rebuild_tile(tx: int, tz: int, item: Dictionary, lod: int) -> void:
     for z in range(width - 1):
         for x in range(width - 1):
             var a: int = z * width + x
-            # Upward-facing triangle winding.
+            # Godot uses clockwise front faces. Viewed from above,
+            # a -> +X -> +Z faces upward; the old order was backface-culled.
             indices.append(a)
-            indices.append(a + width)
-            indices.append(a + 1)
             indices.append(a + 1)
             indices.append(a + width)
+            indices.append(a + 1)
             indices.append(a + width + 1)
+            indices.append(a + width)
     # Skirts hide T-junction cracks between neighboring levels of detail.
     # Each edge is drawn outward; this doesn't modify the original height data.
     var skirt_floor: float = minimum_height - maxf(4.0, (maximum_height - minimum_height) * 0.5 + 2.0)

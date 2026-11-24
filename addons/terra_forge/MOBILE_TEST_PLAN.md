@@ -8,9 +8,9 @@ Target editor: Godot **4.7.2**, Android **11**, **Mobile** rendering method.
 2. Enable the plugin from **Project Settings > Plugins**.
 3. Open a saved 3D scene with a Node3D root.
 4. Create a terrain, enable Brush, and sculpt near the center.
-5. Move the editor 3D camera to the far corner; confirm resident/pending numbers change.
+5. Verify the new **solid top surface**, not just the gray edge skirts. Use the compact **Terrain** popup in the 3D toolbar; the old bottom dock must be absent. Move the editor camera to the far corner and confirm resident/pending numbers change when the popup is open.
 6. Switch to **Mobile - light**; compare resident count, responsiveness and LOD seams.
-7. Disable Brush; confirm normal camera navigation returns.
+7. Disable Brush; confirm normal camera navigation returns. Close the popup and verify the full viewport height remains usable.
 8. Save Float32 data **and the scene**. Close/reopen editor and check heights.
 9. Undo/redo 20 changes. Verify file bytes remain unchanged when only the camera moves.
 10. Disconnect/re-enable plugin, check no duplicate tile nodes are saved.
