@@ -1,0 +1,471 @@
+{
+  "schema": "TF_SCALAR_BENCH_1",
+  "commit": "8c2f7675a3c78b9356aeb98f3dfbf850727c199f",
+  "ci_run": 45441554202,
+  "environment": {
+    "cpu": "Intel(R) Xeon(R) 6975P-C",
+    "godot": "4.7.2-stable (official)",
+    "headless": true,
+    "os": "Linux",
+    "timing": "calling-thread elapsed us, warm resident, copy included, no GPU/IO, balanced alternating B/D, same lease and topology"
+  },
+  "cases": [
+    {
+      "B_view": {
+        "count": 32,
+        "max_us": 2228,
+        "mean_us": 2179.5,
+        "p50_us": 2173,
+        "p95_us": 2226,
+        "p99_us": 2228
+      },
+      "D_scalar": {
+        "count": 32,
+        "max_us": 1551,
+        "mean_us": 1518.1875,
+        "p50_us": 1516,
+        "p95_us": 1547,
+        "p99_us": 1551
+      },
+      "disk_reads_during_case": 0,
+      "error": 0,
+      "evictions_during_case": 0,
+      "format": "TFM1",
+      "lod": 0,
+      "lru_touches_each": 288,
+      "mixed": false,
+      "rounds": 32,
+      "tile": [
+        15,
+        15
+      ],
+      "vertices": 1089,
+      "view_reads_each": 39072
+    },
+    {
+      "B_view": {
+        "count": 32,
+        "max_us": 666,
+        "mean_us": 631.21875,
+        "p50_us": 628,
+        "p95_us": 651,
+        "p99_us": 666
+      },
+      "D_scalar": {
+        "count": 32,
+        "max_us": 460,
+        "mean_us": 444.96875,
+        "p50_us": 443,
+        "p95_us": 457,
+        "p99_us": 460
+      },
+      "disk_reads_during_case": 0,
+      "error": 0,
+      "evictions_during_case": 0,
+      "format": "TFM1",
+      "lod": 1,
+      "lru_touches_each": 288,
+      "mixed": false,
+      "rounds": 32,
+      "tile": [
+        15,
+        15
+      ],
+      "vertices": 289,
+      "view_reads_each": 11424
+    },
+    {
+      "B_view": {
+        "count": 32,
+        "max_us": 234,
+        "mean_us": 219.125,
+        "p50_us": 218,
+        "p95_us": 231,
+        "p99_us": 234
+      },
+      "D_scalar": {
+        "count": 32,
+        "max_us": 173,
+        "mean_us": 159.34375,
+        "p50_us": 157,
+        "p95_us": 171,
+        "p99_us": 173
+      },
+      "disk_reads_during_case": 0,
+      "error": 0,
+      "evictions_during_case": 0,
+      "format": "TFM1",
+      "lod": 2,
+      "lru_touches_each": 288,
+      "mixed": false,
+      "rounds": 32,
+      "tile": [
+        15,
+        15
+      ],
+      "vertices": 81,
+      "view_reads_each": 3744
+    },
+    {
+      "B_view": {
+        "count": 32,
+        "max_us": 2701,
+        "mean_us": 2318.46875,
+        "p50_us": 2299,
+        "p95_us": 2411,
+        "p99_us": 2701
+      },
+      "D_scalar": {
+        "count": 32,
+        "max_us": 1627,
+        "mean_us": 1573.71875,
+        "p50_us": 1570,
+        "p95_us": 1611,
+        "p99_us": 1627
+      },
+      "disk_reads_during_case": 0,
+      "error": 0,
+      "evictions_during_case": 0,
+      "format": "TFM1",
+      "lod": 0,
+      "lru_touches_each": 288,
+      "mixed": true,
+      "rounds": 32,
+      "tile": [
+        15,
+        15
+      ],
+      "vertices": 1089,
+      "view_reads_each": 40992
+    },
+    {
+      "B_view": {
+        "count": 32,
+        "max_us": 2188,
+        "mean_us": 2116,
+        "p50_us": 2111,
+        "p95_us": 2176,
+        "p99_us": 2188
+      },
+      "D_scalar": {
+        "count": 32,
+        "max_us": 1523,
+        "mean_us": 1483.34375,
+        "p50_us": 1481,
+        "p95_us": 1520,
+        "p99_us": 1523
+      },
+      "disk_reads_during_case": 0,
+      "error": 0,
+      "evictions_during_case": 0,
+      "format": "TFM1",
+      "lod": 0,
+      "lru_touches_each": 128,
+      "mixed": false,
+      "rounds": 32,
+      "tile": [
+        0,
+        0
+      ],
+      "vertices": 1089,
+      "view_reads_each": 36960
+    },
+    {
+      "B_view": {
+        "count": 32,
+        "max_us": 248,
+        "mean_us": 207.375,
+        "p50_us": 204,
+        "p95_us": 228,
+        "p99_us": 248
+      },
+      "D_scalar": {
+        "count": 32,
+        "max_us": 169,
+        "mean_us": 153.40625,
+        "p50_us": 151,
+        "p95_us": 163,
+        "p99_us": 169
+      },
+      "disk_reads_during_case": 0,
+      "error": 0,
+      "evictions_during_case": 0,
+      "format": "TFM1",
+      "lod": 2,
+      "lru_touches_each": 288,
+      "mixed": false,
+      "rounds": 32,
+      "tile": [
+        17,
+        17
+      ],
+      "vertices": 81,
+      "view_reads_each": 3168
+    },
+    {
+      "B_view": {
+        "count": 32,
+        "max_us": 680,
+        "mean_us": 660.84375,
+        "p50_us": 662,
+        "p95_us": 677,
+        "p99_us": 680
+      },
+      "D_scalar": {
+        "count": 32,
+        "max_us": 469,
+        "mean_us": 456.15625,
+        "p50_us": 455,
+        "p95_us": 469,
+        "p99_us": 469
+      },
+      "disk_reads_during_case": 0,
+      "error": 0,
+      "evictions_during_case": 0,
+      "format": "TFM1",
+      "lod": 1,
+      "lru_touches_each": 288,
+      "mixed": true,
+      "rounds": 32,
+      "tile": [
+        16,
+        16
+      ],
+      "vertices": 289,
+      "view_reads_each": 11296
+    },
+    {
+      "B_view": {
+        "count": 32,
+        "max_us": 2239,
+        "mean_us": 2184.5,
+        "p50_us": 2181,
+        "p95_us": 2233,
+        "p99_us": 2239
+      },
+      "D_scalar": {
+        "count": 32,
+        "max_us": 1565,
+        "mean_us": 1515.1875,
+        "p50_us": 1513,
+        "p95_us": 1542,
+        "p99_us": 1565
+      },
+      "disk_reads_during_case": 0,
+      "error": 0,
+      "evictions_during_case": 0,
+      "format": "TFM2",
+      "lod": 0,
+      "lru_touches_each": 288,
+      "mixed": false,
+      "rounds": 32,
+      "tile": [
+        15,
+        15
+      ],
+      "vertices": 1089,
+      "view_reads_each": 39072
+    },
+    {
+      "B_view": {
+        "count": 32,
+        "max_us": 750,
+        "mean_us": 634.15625,
+        "p50_us": 633,
+        "p95_us": 651,
+        "p99_us": 750
+      },
+      "D_scalar": {
+        "count": 32,
+        "max_us": 460,
+        "mean_us": 443.25,
+        "p50_us": 443,
+        "p95_us": 454,
+        "p99_us": 460
+      },
+      "disk_reads_during_case": 0,
+      "error": 0,
+      "evictions_during_case": 0,
+      "format": "TFM2",
+      "lod": 1,
+      "lru_touches_each": 288,
+      "mixed": false,
+      "rounds": 32,
+      "tile": [
+        15,
+        15
+      ],
+      "vertices": 289,
+      "view_reads_each": 11424
+    },
+    {
+      "B_view": {
+        "count": 32,
+        "max_us": 292,
+        "mean_us": 226,
+        "p50_us": 219,
+        "p95_us": 276,
+        "p99_us": 292
+      },
+      "D_scalar": {
+        "count": 32,
+        "max_us": 244,
+        "mean_us": 169.21875,
+        "p50_us": 159,
+        "p95_us": 223,
+        "p99_us": 244
+      },
+      "disk_reads_during_case": 0,
+      "error": 0,
+      "evictions_during_case": 0,
+      "format": "TFM2",
+      "lod": 2,
+      "lru_touches_each": 288,
+      "mixed": false,
+      "rounds": 32,
+      "tile": [
+        15,
+        15
+      ],
+      "vertices": 81,
+      "view_reads_each": 3744
+    },
+    {
+      "B_view": {
+        "count": 32,
+        "max_us": 2346,
+        "mean_us": 2301.03125,
+        "p50_us": 2307,
+        "p95_us": 2342,
+        "p99_us": 2346
+      },
+      "D_scalar": {
+        "count": 32,
+        "max_us": 1611,
+        "mean_us": 1573.375,
+        "p50_us": 1572,
+        "p95_us": 1606,
+        "p99_us": 1611
+      },
+      "disk_reads_during_case": 0,
+      "error": 0,
+      "evictions_during_case": 0,
+      "format": "TFM2",
+      "lod": 0,
+      "lru_touches_each": 288,
+      "mixed": true,
+      "rounds": 32,
+      "tile": [
+        15,
+        15
+      ],
+      "vertices": 1089,
+      "view_reads_each": 40992
+    },
+    {
+      "B_view": {
+        "count": 32,
+        "max_us": 2174,
+        "mean_us": 2115.53125,
+        "p50_us": 2111,
+        "p95_us": 2173,
+        "p99_us": 2174
+      },
+      "D_scalar": {
+        "count": 32,
+        "max_us": 1527,
+        "mean_us": 1478.59375,
+        "p50_us": 1477,
+        "p95_us": 1522,
+        "p99_us": 1527
+      },
+      "disk_reads_during_case": 0,
+      "error": 0,
+      "evictions_during_case": 0,
+      "format": "TFM2",
+      "lod": 0,
+      "lru_touches_each": 128,
+      "mixed": false,
+      "rounds": 32,
+      "tile": [
+        0,
+        0
+      ],
+      "vertices": 1089,
+      "view_reads_each": 36960
+    },
+    {
+      "B_view": {
+        "count": 32,
+        "max_us": 217,
+        "mean_us": 205.4375,
+        "p50_us": 204,
+        "p95_us": 216,
+        "p99_us": 217
+      },
+      "D_scalar": {
+        "count": 32,
+        "max_us": 170,
+        "mean_us": 152.4375,
+        "p50_us": 150,
+        "p95_us": 160,
+        "p99_us": 170
+      },
+      "disk_reads_during_case": 0,
+      "error": 0,
+      "evictions_during_case": 0,
+      "format": "TFM2",
+      "lod": 2,
+      "lru_touches_each": 288,
+      "mixed": false,
+      "rounds": 32,
+      "tile": [
+        17,
+        17
+      ],
+      "vertices": 81,
+      "view_reads_each": 3168
+    },
+    {
+      "B_view": {
+        "count": 32,
+        "max_us": 693,
+        "mean_us": 663.09375,
+        "p50_us": 663,
+        "p95_us": 682,
+        "p99_us": 693
+      },
+      "D_scalar": {
+        "count": 32,
+        "max_us": 475,
+        "mean_us": 458.03125,
+        "p50_us": 457,
+        "p95_us": 473,
+        "p99_us": 475
+      },
+      "disk_reads_during_case": 0,
+      "error": 0,
+      "evictions_during_case": 0,
+      "format": "TFM2",
+      "lod": 1,
+      "lru_touches_each": 288,
+      "mixed": true,
+      "rounds": 32,
+      "tile": [
+        16,
+        16
+      ],
+      "vertices": 289,
+      "view_reads_each": 11296
+    }
+  ],
+  "summary": {
+    "B_mean_us": 1190.1629464285713,
+    "D_mean_us": 827.0870535714286,
+    "D_lower_percent": 30.506401997025467,
+    "D_mean_wins": 14,
+    "timed_builds": 896,
+    "reads_each": 293312
+  },
+  "limitations": "One headless Linux runner, elapsed calling-thread time, no IO/render/device memory or hardware CPU counters; no cross-run combined speedup."
+}

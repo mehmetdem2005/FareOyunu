@@ -1,5 +1,8 @@
 # TerraForge — UNUTULMAYACAKLAR / Deney, karar ve doğrulama defteri
 
+> **GÜNCEL DEVİR — P1.5.4d (24 Kasım 2026):** Kod 8c2f7675a3c78b9356aeb98f3dfbf850727c199f, [38/38 Godot Linux CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45441554202). [P1_5_4D_SCALAR_BENCH_TR.md](P1_5_4D_SCALAR_BENCH_TR.md), [ham JSON](P1_5_4D_SCALAR_CI.json). B/D exact parity and equal work; 14 cases × 32 rounds × 2 methods = 896 timed builds. B 1190.16 us, D 827.09 us equal-weight mean; D 30.51% lower than B, 14/14 mean wins on one runner. 293312 height reads per method; D avoids per-sample result dictionary, not measured allocator bytes. A default, B/C opt-in, D benchmark-only. **NEXT P1.5.5a:** bounded pure-array worker design and ownership prototype; keep D experiment pending live trace and device. No painting/objects, P1.4 parked. Mandatory UNUTULMAYACAKLAR_TR.md.
+
+
 > **GÜNCEL DEVİR — P1.5.4c (24 Kasım 2026):** Kod 94beaeb2cd068e7bf5a09fc9b23b97b98a44d92d, [37/37 Godot Linux CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45440552536). [P1_5_4C_STREAM_TRACE_TR.md](P1_5_4C_STREAM_TRACE_TR.md), [ham JSON](P1_5_4C_STREAM_TRACE_CI.json). 12 fixed 144-pump traces (TFM1/2 × cache9/16 × A/B/C); B lower mean pump in all four groups, equal-weight means A 0.722, B 0.568, C 0.676 ms; 21.26% lower B vs A on one runner, work differs at cap16. Shape-missing steps 34/144 cap9,29/144 cap16 for all methods; no raycast or actual render frames. A default, B/C explicit experiments. **NEXT P1.5.4d:** isolate allocation/topology optimization via fixed resident benchmark; preserve exact geometry and opt-in. Device/long soak and real trace repeats open. P1.4 parked; no painting/objects. Read UNUTULMAYACAKLAR_TR.md.
 
 
@@ -36,6 +39,8 @@ Denetim borçları: B hala her sample Dictionary oluşturuyor; required_pages te
 
 **24 Kasım P1.5.4c:** [stream trace](P1_5_4C_STREAM_TRACE_TR.md), [ham JSON](P1_5_4C_STREAM_TRACE_CI.json), 37/37 CI. A default/B+C explicit experimental choices (legacy bool preserved); B lower mean pump 21.26% across groups, cap16 different work. Cap9 153 reloads/34 missing steps, cap16 73–74 reloads/29 missing steps; sampled RSS same, not memory proof. B/C cold page failure retention and recovery verified, cold shard variant and rendered frames/raycast/device/30min still open. NEXT P1.5.4d isolated allocation/topology experiment, no default change.
 
+**24 Kasım P1.5.4d:** [scalar benchmark](P1_5_4D_SCALAR_BENCH_TR.md), [ham JSON](P1_5_4D_SCALAR_CI.json), 38/38 CI. D = B lease + scalar sample, exact all arrays, 293312 equal reads per method, 30.51% lower equal-weight resident elapsed vs B on one Intel runner. A default, B/C opt-in, D benchmark-only. No cross-run combined speedup or allocator/RSS proof. D live trace/device, reusable topology/preallocation and IO phase timings OPEN; next P1.5.5a immutable worker prototype. All older EXP records remain open.
+
 ### EXP-02 — P1.3b/P1.5.0 strict / lazy açılış
 CI_VERIFIED + DEVICE_OPEN. `async_region_source.open()` strict varsayılan; read-only preview lazy varsayılan (verify_pages_on_demand=true); strict seçeneği korunacak. TFM1 lazy manifest-only, TFM2 lazy root-only; cold shard/page SHA doğrulanır. [26/26 CI](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45420063664), [not](P1_5_LAZY_WORLD_OPEN_TR.md). Strict bütün taramayı senkron yapar; büyük dünyada UI bloklanabilir, lazy tam dünya bütünlük onayı değildir. Uzak bozuk sayfa sonradan hata verir. Açık: aynı fixture/route, cold/warm order farkı, first focus, UI hitch, RSS, disk IO, bozuk uzak page. P1.5.10'da tekrar; strict'i kaldırma.
 
@@ -62,7 +67,8 @@ IMPLEMENTED parts + DEVICE_OPEN. [Geomorphology](TERRAIN_GEOMORPHOLOGY_TR.md), [
 | P1.4 editable disk transactions | PARKED | User decision + immutable generation/COW, atomic manifest publication, layer IDs, rollback/crash recovery, stale reader isolation, no live TFH/TFL overwrite; power-loss separately. Legacy editable terrain still full Float32 RAM. |
 | P1.5.4b CPU benchmark | CI_VERIFIED | A/B/C resident comparison DONE, decision still experimental. |
 | P1.5.4c streaming trace | CI_VERIFIED | 12 fixed async pump traces; actual frame/Android still open. |
-| P1.5.4d allocation/topology experiment | NEXT | Isolate one hot-loop improvement, exact parity and fixed-work benchmark. |
+| P1.5.4d scalar allocation experiment | CI_VERIFIED | B/D resident benchmark; D experimental, live/device gates open. |
+| P1.5.5a worker ownership prototype | NEXT | Bounded pure-array worker, immutable input, identity and stale rejection; no preview default change. |
 | P1.5.5 geometry worker | PLANNED | One bounded worker, immutable input and generation/LOD/neighbor identity, stale outputs discarded, pure arrays only; no SceneTree/Mesh/Physics on worker. Main-thread publication. |
 | P1.5.6 GPU publication | PLANNED | Budgeted upload, reusable topology/material only if measured, near priority, bounded VRAM, draw calls/triangles and GPU separately measured. |
 | P1.5.7 physics | PLANNED | Actual physics-tick raycast parity/collision coverage, coherent mesh/shape generation, near priority, last-good, fast crossing/teleport, no flat fallback. |
@@ -84,6 +90,8 @@ IMPLEMENTED parts + DEVICE_OPEN. [Geomorphology](TERRAIN_GEOMORPHOLOGY_TR.md), [
 - 24 Kasım 2026: P1.5.4b A/B/C resident benchmark 36/36 CI, B promising, no acceptance/default change. Next trace P1.5.4c.
 
 - 24 Kasım 2026: P1.5.4c fixed trace 37/37, B promising, C explicit opt-in, no Android acceptance. P1.5.4d next; all older open gates preserved.
+
+- 24 Kasım 2026: P1.5.4d B/D scalar experiment 38/38, D promising but benchmark-only; P1.5.5a next. Remaining allocation/topology and runtime/device gates retained.
 
 ### Yeni kayıt şablonu
 ID / tarih / faz:
