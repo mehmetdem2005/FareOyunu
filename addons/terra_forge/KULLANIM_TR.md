@@ -1,4 +1,6 @@
 # TerraForge Mobile 0.4.1-dev.2 — Türkçe kullanım
+> **Yeni sohbette unutulmasın:** Önce [DOCS_INDEX_TR.md](DOCS_INDEX_TR.md) ve [HANDOFF_START_HERE_TR.md](HANDOFF_START_HERE_TR.md) oku. Sürüm geçmişi, P0–P7 tüm fazları, profesyonel terrain araştırması, mimari, CI kanıtları, riskler ve sıradaki uygulanabilir işler bu daldaki yeni MD dosyalarında kalıcı olarak kayıtlı.
+
 
 ## Kurulum (telefon / Godot 4.7.2)
 

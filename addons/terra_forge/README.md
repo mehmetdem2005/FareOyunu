@@ -1,4 +1,6 @@
 # TerraForge Mobile — v0.4.1-dev.2 (validated regional world manifests and safe export)
+> **NEW CHAT / FULL PROJECT MEMORY (2026-11-24):** Start with [DOCS_INDEX_TR.md](DOCS_INDEX_TR.md) and [HANDOFF_START_HERE_TR.md](HANDOFF_START_HERE_TR.md). The complete P0–P7 plan, actual CI results, full code/data architecture, risks, terrain geology research, mobile workflow, and the next exact GitHub CI implementation tasks are saved as multiple Markdown documents in this addon branch. **These documents do not mean live regional streaming is implemented.**
+
 
 Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, native library, or changes to game files. Designed for Android editor testing with Mobile Renderer.
 
