@@ -14,6 +14,7 @@ const SUPPORT = preload("res://addons/terra_forge/core/support_tile_selection.gd
 const MOTION = preload("res://addons/terra_forge/core/motion_prefetch.gd")
 const MOTION_LATENCY = preload("res://addons/terra_forge/core/motion_latency_window.gd")
 const VIEW_BUDGET = preload("res://addons/terra_forge/core/adaptive_view_budget.gd")
+const CAPACITY_WAIT=preload("res://addons/terra_forge/core/capacity_wait_profile.gd")
 const WORK_BUDGET = preload("res://addons/terra_forge/core/adaptive_work_budget.gd")
 const TILE_CELLS: int = 32
 
@@ -68,6 +69,9 @@ var _publication
 @export var enable_critical_slot_lending: bool=false
 ## Independent observation flag; no policy change.
 @export var observe_geometry_latency: bool=false
+## Independent diagnostic; no scheduler changes.
+@export var observe_capacity_wait: bool=false
+var _capacity_wait
 var _critical_lending_active: bool=false
 var _critical_demand_pumps: int=0
 var _critical_saturated_pumps: int=0
@@ -206,6 +210,7 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
         _last_error=ERR_INVALID_PARAMETER
         return _last_error
     if selected>=3:
+        _capacity_wait=CAPACITY_WAIT.new() if observe_capacity_wait else null
         _geometry_worker=WORKER.new()
         status=_geometry_worker.start(_reader,geometry_job_limit,selected>=5,selected==6,_critical_reservation_active,_critical_lending_active,observe_geometry_latency)
         if status!=OK:
@@ -249,6 +254,7 @@ func resolved_sampling_strategy() -> int:
 func stop_preview() -> void:
     set_process(false)
     # Explicit shutdown revokes even a held support lease. Camera epochs do not.
+    _capacity_wait=null
     _critical_reservation_active=false
     _critical_lending_active=false
     _critical_demand_pumps=0
@@ -373,6 +379,7 @@ func pump_stream() -> Dictionary:
                 if int(capacity["optional_slots"])>=int(capacity["cap"]):
                     _critical_saturated_pumps+=1
         _publish_worker_results(started)
+        _observe_capacity_gate()
     _build_pending_tiles(started)
     if _publication!=null:
         _publication.end_pump(_publication_resident())
@@ -580,6 +587,20 @@ func _priority_ranks() -> Dictionary:
 
 ## Includes queued/building/completed LOD0 and cold page dependencies.
 ## A terminally blocked key cannot keep idle headroom reserved forever.
+func _observe_capacity_gate() -> void:
+    if _capacity_wait==null or _geometry_worker==null:
+        return
+    var capacity:Dictionary=_geometry_worker.stats()
+    var eligible:Dictionary={}
+    for key in _pending_tiles:
+        if not _blocked_tiles.has(key) and not _geometry_jobs.has(key) and _desired_tiles.has(key):
+            eligible[key]=int(_desired_tiles[key])
+    # Snapshot after polling, before submission; no extra page IO.
+    _capacity_wait.observe(int(capacity["epoch"]),eligible,int(capacity["slots"])>=int(capacity["cap"]),Time.get_ticks_usec())
+
+func capacity_wait_profile() -> Dictionary:
+    return _capacity_wait.report(Time.get_ticks_usec()) if _capacity_wait!=null else {}
+
 func _has_pending_critical() -> bool:
     for key in _pending_tiles:
         if not _blocked_tiles.has(key) and int(_desired_tiles.get(key,-1))==0:

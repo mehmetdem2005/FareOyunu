@@ -1,5 +1,8 @@
 # TerraForge — UNUTULMAYACAKLAR / Deney, karar ve doğrulama defteri
 
+> **PARALLEL EXPERIMENT — P1.5.9c2:** based on unverified c1 5e606e841eeef0cb3b034415c387d47c9fd2a81c, [c1 CI](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45495469967). Isolated branch `experiment/terraforge-p1-5-9c2-capacity-wait`; never integrate before both exact c1 and experiment CI pass. New bounded full-worker-gate episode diagnostics. No scheduling change, no Android claim. If c1 fails, repair it first and rebase/revalidate c2. P1.4/P1.4R PARKED.
+
+
 > **GÜNCEL DEVİR — P1.5.9b3 CI_VERIFIED (25 Kasım 2026 TR):** 34598432920e37ccd9017163f99c3280ae3fdd1d, [74/74 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45492549970), [ham JSON](P1_5_9B3_LENDING_CI.json). Four controlled queue cases and four 150-tick G traces, fixed/lending skips124→40, denied20/20 reads214/214 builds106/106, no ground loss. Live trace loan_admissions=0, no performance win. NEXT P1.5.9c1 opt-in class-separated latency and bounded outstanding age snapshots; test-only gated worker, 8 cap2/4 × TFM1/2 × drain/cancel cases, CI_PENDING. No default change, no Android claim. P1.4/P1.4R PARKED.
 
 

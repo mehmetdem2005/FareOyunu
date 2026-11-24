@@ -87,6 +87,7 @@ suite=(
   test_critical_slot_lending_v2
   test_geometry_latency_profile
   test_geometry_latency_profile_v2
+  test_capacity_wait_profile
   test_lod_policy
   test_surface_faces
   test_lod_normals
