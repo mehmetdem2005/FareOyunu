@@ -17,6 +17,8 @@ Target editor: Godot **4.7.2**, Android **11**, **Mobile** rendering method.
 
 ## Stress tests
 
+- Draw the same path once slowly and once quickly, with the same Brush Size/Power on clean areas; compare sculpt depths. A stroke should not become stronger just because Android sends more drag events.
+- Verify Undo/Redo after a long continuous touch stroke, and verify a tap creates just one stamp.
 - Continuous painting for at least 20 minutes and rapid orbit/pan near world boundaries.
 - Repeated camera teleport between opposite corners; no stale tile load should be visible.
 - Check seams at LOD0/LOD1, LOD0/LOD2 and LOD1/LOD2 transitions (including steep slopes). No vertical gray walls should appear.\n- On new terrain creation, check the centered flat plane and that the initial .tfh file exists before the first brush stroke.\n- Move camera rapidly after enabling the addon: tile nodes must appear incrementally instead of all at once.

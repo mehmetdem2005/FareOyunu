@@ -1,4 +1,4 @@
-# TerraForge Mobile 0.2.2 — Türkçe kullanım
+# TerraForge Mobile 0.2.3 — Türkçe kullanım
 
 ## Kurulum (telefon / Godot 4.7.2)
 
@@ -19,6 +19,7 @@
 - Yeni arazi sahne merkezinde açılır. Yeni veri dosyası ilk fırça darbesinden önce oluşturulur.
 - Küçük ekranlarda açılır menü pencere sınırları içinde tutulmaya çalışılır; alt panel açılmaz.
 - Android'in dokunmatik olaylardan türetebildiği sahte fare tıklamaları bir süre yok sayılır.
+- **Yeni:** Fırça artık her dokunma olayı için değil, parmağın katettiği mesafe boyunca sabit aralıklarla etki uygular. Hızlı ve yavaş sürüklemede güç farkı azalır. Parmağı sabit tutmak devamlı kazma/yükseltme yapmaz.
 
 ## Dosyalar ve güvenlik
 
@@ -40,4 +41,5 @@ godot --headless --path /proje/yolu --script res://addons/terra_forge/tests/test
 godot --headless --path /proje/yolu --script res://addons/terra_forge/tests/test_surface_faces.gd
 godot --headless --path /proje/yolu --script res://addons/terra_forge/tests/test_lod_seams.gd
 godot --headless --path /proje/yolu --script res://addons/terra_forge/tests/test_stream_budget.gd
+godot --headless --path /proje/yolu --script res://addons/terra_forge/tests/test_brush_sampling.gd
 ```

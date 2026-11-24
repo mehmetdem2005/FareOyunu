@@ -31,6 +31,8 @@ var _history: Array[Dictionary] = []
 var _redo: Array[Dictionary] = []
 var _stroke_before: Dictionary = {}
 var _stroke_open: bool = false
+var _stroke_has_sample: bool = false
+var _stroke_last_local: Vector3 = Vector3.ZERO
 var _flatten_target: float = 0.0
 var _flatten_target_set: bool = false
 var _changed_since_save: bool = false
@@ -379,12 +381,38 @@ func begin_stroke() -> void:
         end_stroke()
     _stroke_open = true
     _stroke_before.clear()
+    _stroke_has_sample = false
+    _stroke_last_local = Vector3.ZERO
     _flatten_target_set = false
 
 func paint_at(global_hit: Vector3, tool: int, brush_radius: float, strength: float) -> void:
-    if not _stroke_open or _read_only_source:
+    if not _stroke_open or _read_only_source or height_data == null:
         return
     var local_hit: Vector3 = to_local(global_hit)
+    var grid_position: Vector2 = Vector2(local_hit.x, local_hit.z)
+    if not _stroke_has_sample:
+        _stroke_last_local = local_hit
+        _stroke_has_sample = true
+        _apply_stamp(local_hit, tool, brush_radius, strength)
+        return
+    # Input events arrive at wildly different rates on Android devices.
+    # Stamp at fixed *world distance* so the same stroke produces nearly
+    # identical geometry even if only a few touch-drag events are delivered.
+    var step_size: float = maxf(0.25, brush_radius * 0.2)
+    var previous: Vector2 = Vector2(_stroke_last_local.x, _stroke_last_local.z)
+    var distance: float = previous.distance_to(grid_position)
+    if distance < step_size:
+        return
+    var direction: Vector2 = (grid_position - previous) / distance
+    # A bound protects the editor from a huge stall after a touch jump.
+    var count: int = mini(96, floori(distance / step_size))
+    for i in range(count):
+        var p: Vector2 = previous + direction * step_size * float(i + 1)
+        var stamp: Vector3 = Vector3(p.x, local_hit.y, p.y)
+        _apply_stamp(stamp, tool, brush_radius, strength)
+        _stroke_last_local = stamp
+
+func _apply_stamp(local_hit: Vector3, tool: int, brush_radius: float, strength: float) -> void:
     var px: float = local_hit.x / height_data.spacing
     var pz: float = local_hit.z / height_data.spacing
     var rs: float = maxf(0.5, brush_radius / height_data.spacing)
@@ -437,6 +465,8 @@ func end_stroke() -> void:
     if not _stroke_open:
         return
     _stroke_open = false
+    _stroke_has_sample = false
+    _stroke_last_local = Vector3.ZERO
     if not _stroke_before.is_empty():
         var indexes: PackedInt32Array = PackedInt32Array()
         var before: PackedFloat32Array = PackedFloat32Array()

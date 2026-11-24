@@ -1,4 +1,4 @@
-# TerraForge Mobile — v0.2.2 (mobile streaming + clean LOD edges)
+# TerraForge Mobile — v0.2.3 (consistent mobile brush strokes)
 
 Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, native library, or changes to game files. Designed for Android editor testing with Mobile Renderer.
 
@@ -25,7 +25,7 @@ Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, nativ
 - **Editor camera following** through `EditorInterface.get_editor_viewport_3d(0).get_camera_3d()`. Scene camera following while running.
 - **Collision only at closest LOD**, with properly uniform scaling and pre-scaled height values.
 - **Per-frame tile rebuild budget**, with edited/dirtied tiles queued rather than regenerating the whole map at once.
-- Touch/mouse shaping, 20-step local Undo/Redo, 2.5-second idle autosave, corrupt file write guard.
+- Touch/mouse shaping with **distance-spaced stamps** (one touch-movement path now yields similar heights regardless of event count), 20-step local Undo/Redo, 2.5-second idle autosave, corrupt file write guard.
 - Live tile stats in the editor dock.
 
 ## Mobile streaming budgets (initial estimates; NOT performance measurements)
@@ -55,7 +55,7 @@ The **full Float32 height field remains in RAM**. This version streams visible *
 - Collision is disabled for lower-detail tiles and enabled only near the camera. This is for performance; far-away physics interactions require a separate collision strategy.
 - The first generation has no texture painter, terrain stamps, foliage, erosion or 3D assets.
 - The 20 Undo/Redo entries live only in the terrain node's memory; Godot's global editor Undo/Redo integration remains pending.
-- Brush strength depends on how many input events arrive (future update: fixed-distance or time-normalized stamping).
+- Brush stamps are spaced by traveled **world distance**, preventing changes in the number of touch events from changing results. Holding the finger still does **not** continue to sculpt; pressure-sensitive, time-normalized holding is future work.
 
 ## Automated tests
 
@@ -67,13 +67,15 @@ godot --headless --path /path/to/project --script res://addons/terra_forge/tests
 godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_surface_faces.gd
 godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_lod_seams.gd
 godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_stream_budget.gd
+godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_brush_sampling.gd
 ```
 
 See [MOBILE_TEST_PLAN.md](MOBILE_TEST_PLAN.md) for hands-on Android checks and acceptance criteria. These tests have **not yet been executed** with the Godot engine here.
 
 ## Next stages
 
-1. Confirm v0.2.2 displays solid terrain without gray checkerboard lines on Android 11, and that the compact popup opens/closes within the viewport without shrinking it.
+1. Confirm v0.2.3 loads on Android 11, displays solid terrain, and the compact popup fits within the viewport.
+2. With Brush ON, draw equally long strokes slowly and quickly at the same Power; verify similar height changes (new distance-sampling logic).
 2. Add progressive mesh generation that prevents frame spikes during initial loading.
 3. Implement true LOD seam stitching + sample-independent camera brush interaction.
 4. Add lightweight tile-based 2–4 material painter and GPU budget presets.
