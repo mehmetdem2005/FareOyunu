@@ -62,6 +62,7 @@ suite=(
   test_dynamic_terrain_physics
   test_collision_footprint
   test_guarded_capsule
+  test_support_tile_selection
   test_lod_policy
   test_surface_faces
   test_lod_normals

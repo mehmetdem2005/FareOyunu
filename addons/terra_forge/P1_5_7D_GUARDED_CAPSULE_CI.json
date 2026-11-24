@@ -1,0 +1,66 @@
+{
+  "commit": "674836b995d15f52dbbd12028de526d45d4d16ac",
+  "run_id": 45468357023,
+  "job_id": 138709241877,
+  "engine": "4.7.2.stable.official.ed1daf0bf",
+  "total": 51,
+  "fails": 0,
+  "cases": [
+    {
+      "format": 1,
+      "mode": 0,
+      "outcome": {
+        "denied_ticks": 6,
+        "error": 0,
+        "finish_x": 517.589233398438,
+        "first_denial_x": 511.595245361328,
+        "peak_readiness_rays_per_tick": 4,
+        "resume_x": 511.595245361328,
+        "speed": 12,
+        "staging_pauses_motion": true
+      }
+    },
+    {
+      "format": 1,
+      "mode": 5,
+      "outcome": {
+        "denied_ticks": 6,
+        "error": 0,
+        "finish_x": 523.582092285156,
+        "first_denial_x": 511.595123291016,
+        "peak_readiness_rays_per_tick": 4,
+        "resume_x": 511.595123291016,
+        "speed": 24,
+        "staging_pauses_motion": true
+      }
+    },
+    {
+      "format": 2,
+      "mode": 0,
+      "outcome": {
+        "denied_ticks": 6,
+        "error": 0,
+        "finish_x": 517.589233398438,
+        "first_denial_x": 511.595245361328,
+        "peak_readiness_rays_per_tick": 4,
+        "resume_x": 511.595245361328,
+        "speed": 12,
+        "staging_pauses_motion": true
+      }
+    },
+    {
+      "format": 2,
+      "mode": 5,
+      "outcome": {
+        "denied_ticks": 6,
+        "error": 0,
+        "finish_x": 523.582092285156,
+        "first_denial_x": 511.595123291016,
+        "peak_readiness_rays_per_tick": 4,
+        "resume_x": 511.595123291016,
+        "speed": 24,
+        "staging_pauses_motion": true
+      }
+    }
+  ]
+}

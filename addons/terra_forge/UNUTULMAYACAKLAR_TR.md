@@ -1,5 +1,8 @@
 # TerraForge — UNUTULMAYACAKLAR / Deney, karar ve doğrulama defteri
 
+> **GÜNCEL DEVİR — P1.5.7d (24 Kasım 2026):** Kod 674836b995d15f52dbbd12028de526d45d4d16ac, [51/51 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45468357023). [Rapor](P1_5_7D_GUARDED_CAPSULE_TR.md), [ham JSON](P1_5_7D_GUARDED_CAPSULE_CI.json). Four TFM1/2 × A/G diagnostic cases: six denied ticks, zero measured horizontal drift from first denial to resume, peak four readiness rays per observed tick, actual seam traversal after explicit staged pause. Not equal-speed A/G comparison or continuous streaming proof. NEXT P1.5.7e1 pure bounded support selection implemented, CI pending; no live preview changes. P1.5.7e2 only after CI: opt-in session-scoped current-support retention, actual physics checks and camera movement test; no guarantee yet, then P1.5.8. P1.4/P1.4R PARKED; A default and all device/experimental gates preserved.
+
+
 > **GÜNCEL DEVİR — P1.5.7c (24 Kasım 2026):** Kod c29d538ef220c68ac735a31b692d7c6189787239, [50/50 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45463462975). [Rapor](P1_5_7C_COLLISION_READINESS_TR.md), [ham JSON](P1_5_7C_COLLISION_READINESS_CI.json). TFM1/2 × A/G four cases, cold and boundary missing_lod0, four center rays confirmed, pending/excluded/outside/stop rejected. Query only, not continuous sweep or movement guarantee. P1.5.7d isolated actual capsule horizontal admission experiment added next; CI PENDING. Explicit staging/settle is diagnostic only, no production controller, no predictive prefetch yet. P1.4/P1.4R PARKED, all device and experimental gates open.
 
 
@@ -149,7 +152,9 @@ EXPERIMENTAL + CI_VERIFIED + DEVICE_OPEN. [P1.5.5a](P1_5_5A_GEOMETRY_WORKER_TR.m
 | P1.5.7a physics-space rays | CI_VERIFIED | 48/48, 648 rays, zero measured mesh mismatches, spacing1 synthetic Linux. |
 | P1.5.7b dynamic capsule and moving ray coverage | CI_VERIFIED | 49/49, warm capsule passes; actual moving rays 35/144 missing. |
 | P1.5.7c collision readiness query | CI_VERIFIED / EXPERIMENTAL | 50/50 Linux CI; bounded local footprint + actual center rays, not movement safety guarantee. |
-| P1.5.7d guarded horizontal capsule experiment | IMPLEMENTED / CI_PENDING | Diagnostic only; hold on verified current footprint, explicitly stage destination, recheck and resume. Current-footprint loss is abort, not solved. |
+| P1.5.7d guarded horizontal capsule experiment | CI_VERIFIED / EXPERIMENTAL | 51/51; four cases, six denied ticks, zero drift to resume, peak four readiness rays. Explicit staging pause. Current-support loss remains abort. |
+| P1.5.7e1 bounded support selector | IMPLEMENTED / CI_PENDING | Pure selection only; max four unique support tiles and total cap <=128; invalid/oversubscribed request rejected without partial selection. No live pin yet. |
+| P1.5.7e2 live retention experiment | PLANNED | Session-scoped verified support, camera movement, shape identity, neighbor changes, release/reopen and fixed cap; no automatic player movement. |
 | P1.5.5 geometry worker | PLANNED | One bounded worker, immutable input and generation/LOD/neighbor identity, stale outputs discarded, pure arrays only; no SceneTree/Mesh/Physics on worker. Main-thread publication. |
 | P1.5.6 GPU publication | PLANNED | Budgeted upload, reusable topology/material only if measured, near priority, bounded VRAM, draw calls/triangles and GPU separately measured. |
 | P1.5.7 physics | PLANNED | Actual physics-tick raycast parity/collision coverage, coherent mesh/shape generation, near priority, last-good, fast crossing/teleport, no flat fallback. |
@@ -192,3 +197,6 @@ Kod ve test kanıtı (commit + run + cihaz/ortam):
 Risk / açık borç:
 Tekrar ele alınacağı faz ve kabul şartı:
 Karar ve gerekçe:
+
+### EXP-10 follow-up — 24 Kasım 2026
+P1.5.7d 51/51 CI; guarded seam diagnostic not real continuous streaming. P1.5.7e1 pure selector, CI pending. [Design/limits](P1_5_7E_SUPPORT_RETENTION_TR.md). Current support can still be evicted by unmodified preview; never label protected until live integration is tested. All other gates retained.

@@ -1,5 +1,8 @@
 # TerraForge Mobile — YENİ SOHBETTE BURADAN BAŞLA
 
+> **GÜNCEL DEVİR — P1.5.7d (24 Kasım 2026):** Kod 674836b995d15f52dbbd12028de526d45d4d16ac, [51/51 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45468357023). [Rapor](P1_5_7D_GUARDED_CAPSULE_TR.md), [ham JSON](P1_5_7D_GUARDED_CAPSULE_CI.json). Four TFM1/2 × A/G diagnostic cases: six denied ticks, zero measured horizontal drift from first denial to resume, peak four readiness rays per observed tick, actual seam traversal after explicit staged pause. Not equal-speed A/G comparison or continuous streaming proof. NEXT P1.5.7e1 pure bounded support selection implemented, CI pending; no live preview changes. P1.5.7e2 only after CI: opt-in session-scoped current-support retention, actual physics checks and camera movement test; no guarantee yet, then P1.5.8. P1.4/P1.4R PARKED; A default and all device/experimental gates preserved.
+
+
 > **GÜNCEL DEVİR — P1.5.7c (24 Kasım 2026):** Kod c29d538ef220c68ac735a31b692d7c6189787239, [50/50 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45463462975). [Rapor](P1_5_7C_COLLISION_READINESS_TR.md), [ham JSON](P1_5_7C_COLLISION_READINESS_CI.json). TFM1/2 × A/G four cases, cold and boundary missing_lod0, four center rays confirmed, pending/excluded/outside/stop rejected. Query only, not continuous sweep or movement guarantee. P1.5.7d isolated actual capsule horizontal admission experiment added next; CI PENDING. Explicit staging/settle is diagnostic only, no production controller, no predictive prefetch yet. P1.4/P1.4R PARKED, all device and experimental gates open.
 
 
