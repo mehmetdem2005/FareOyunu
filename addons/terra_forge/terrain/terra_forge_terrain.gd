@@ -93,6 +93,7 @@ func _build_tiles() -> void:
                 0.0,
                 float(TILE_CELLS) * height_data.spacing * 0.5
             )
+            collision.scale = Vector3(height_data.spacing, 1.0, height_data.spacing)
             physics.add_child(collision)
             var item: Dictionary = {"root": root, "visual": visual, "collision": collision}
             _tile_nodes[_tile_key(tx, tz)] = item
