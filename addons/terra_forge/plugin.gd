@@ -3,6 +3,7 @@ extends EditorPlugin
 ## Mobile-first editor controls: only a tiny button remains in the 3D toolbar.
 ## Settings appear in a dismissible popup rather than a permanent bottom panel.
 const TERRAIN_SCRIPT = preload("res://addons/terra_forge/terrain/terra_forge_terrain.gd")
+const PAGED_PREVIEW = preload("res://addons/terra_forge/terrain/paged_terrain_preview.gd")
 const SELF_TEST = preload("res://addons/terra_forge/core/self_test.gd")
 
 var _toolbar: HBoxContainer
@@ -31,6 +32,7 @@ var _weather_setting: float = 3.0
 var _radius_display: Label
 var _strength_display: Label
 var _active: TerraForgeTerrain
+var _active_preview: Node3D
 var _stroke_active: bool = false
 var _touch_session: bool = false
 var _last_touch_ms: int = -100000
@@ -235,6 +237,7 @@ func _exit_tree() -> void:
         remove_control_from_container(EditorPlugin.CONTAINER_SPATIAL_EDITOR_MENU, _toolbar)
         _toolbar.queue_free()
     _active = null
+    _active_preview = null
 
 func _toggle_popup() -> void:
     if _popup.visible:
@@ -259,7 +262,9 @@ func _strength_changed(value: float) -> void:
     _strength_display.text = "%.1f" % value
 
 func _process(_delta: float) -> void:
-    if not is_instance_valid(_active):
+    var legacy: bool = is_instance_valid(_active)
+    var paged: bool = is_instance_valid(_active_preview)
+    if not legacy and not paged:
         return
     var now: int = Time.get_ticks_msec()
     if now - _last_stats_update_ms < 200:
@@ -269,8 +274,22 @@ func _process(_delta: float) -> void:
     if view != null:
         var camera: Camera3D = view.get_camera_3d()
         if camera != null:
-            _active.set_stream_center(camera.global_position)
-    if _popup.visible:
+            if legacy:
+                _active.set_stream_center(camera.global_position)
+            elif paged:
+                _active_preview.set_stream_center(camera.global_position)
+    if not _popup.visible:
+        return
+    if paged:
+        var preview_stats: Dictionary = _active_preview.stats()
+        var source: Dictionary = preview_stats.get("source", {})
+        _stats_label.text = "PAGED READ-ONLY | Tiles %d / Pending %d / Vertices %d\nRAM pages %d/%d | Disk reads %d | IO max %.1fms" % [
+            int(preview_stats["tiles"]), int(preview_stats["pending_tiles"]),
+            int(preview_stats["vertices"]), int(source.get("resident", 0)),
+            int(source.get("limit", 0)), int(source.get("disk_reads", 0)),
+            float(source.get("max_io_ms", 0.0))
+        ]
+    elif legacy:
         var stats: Dictionary = _active.get_stream_stats()
         _stats_label.text = "Tiles %d / Pending %d / Vertices %d\nMesh %.1fms (max %.1f) | Sculpt %.1fms (max %.1f)" % [
             stats["resident"], stats["pending"], stats["vertices"],
@@ -413,11 +432,13 @@ func _quality_changed(profile: int) -> void:
         _set_status("Quality updated.")
 
 func _handles(object: Object) -> bool:
-    return object is TerraForgeTerrain
+    return object is TerraForgeTerrain or (object is Node3D and object.get_script() == PAGED_PREVIEW)
 
 func _edit(object: Object) -> void:
     if object is TerraForgeTerrain:
         _set_active(object as TerraForgeTerrain)
+    elif object is Node3D and object.get_script() == PAGED_PREVIEW:
+        _set_active_preview(object as Node3D)
 
 func _find_terrain(node: Node) -> TerraForgeTerrain:
     if node is TerraForgeTerrain:
@@ -428,8 +449,18 @@ func _find_terrain(node: Node) -> TerraForgeTerrain:
             return found
     return null
 
+func _find_preview(node: Node) -> Node3D:
+    if node is Node3D and node.get_script() == PAGED_PREVIEW:
+        return node as Node3D
+    for child in node.get_children():
+        var found: Node3D = _find_preview(child)
+        if found != null:
+            return found
+    return null
+
 func _on_scene_changed(_root: Node) -> void:
     _finish_stroke()
+    _active_preview = null
     _active = null
     _brush_button.set_pressed_no_signal(false)
     _brush_button.text = "Brush"
@@ -441,18 +472,31 @@ func _on_selection_changed() -> void:
         if node is TerraForgeTerrain:
             _set_active(node as TerraForgeTerrain)
             return
-    if is_instance_valid(_active):
+        if node is Node3D and node.get_script() == PAGED_PREVIEW:
+            _set_active_preview(node as Node3D)
+            return
+    if is_instance_valid(_active) or is_instance_valid(_active_preview):
         return  # Keep working even if user selects another node.
     var scene_root: Node = get_editor_interface().get_edited_scene_root()
     if scene_root != null:
-        _set_active(_find_terrain(scene_root))
+        var legacy: TerraForgeTerrain = _find_terrain(scene_root)
+        if legacy != null:
+            _set_active(legacy)
+        else:
+            var paged: Node3D = _find_preview(scene_root)
+            if paged != null:
+                _set_active_preview(paged)
+            else:
+                _set_active(null)
 
 func _set_active(terrain: TerraForgeTerrain) -> void:
-    if _active == terrain:
+    if _active == terrain and not is_instance_valid(_active_preview):
         return
     _finish_stroke()
+    _active_preview = null
     _active = terrain
     _refresh_layer_ui()
+    _brush_button.disabled = false
     _brush_button.set_pressed_no_signal(false)
     _brush_button.text = "Brush"
     if terrain == null:
@@ -463,6 +507,19 @@ func _set_active(terrain: TerraForgeTerrain) -> void:
         else:
             _set_status("Editing: %s" % terrain.name)
         terrain.set_quality_profile(_profile_select.selected)
+
+func _set_active_preview(paged: Node3D) -> void:
+    if _active_preview == paged and not is_instance_valid(_active):
+        return
+    _finish_stroke()
+    _active = null
+    _active_preview = paged
+    _refresh_layer_ui()
+    _brush_button.set_pressed_no_signal(false)
+    _brush_button.disabled = true
+    _brush_button.text = "Read-only"
+    _set_status("Paged height preview is read-only. Camera streams regions; brush/save/Undo are disabled.")
+
 
 func _set_status(message: String) -> void:
     if _status != null:
@@ -520,6 +577,9 @@ func _toggle_popup_if_closed() -> void:
         _toggle_popup()
 
 func _save_active() -> void:
+    if is_instance_valid(_active_preview):
+        _set_status("Paged preview is read-only. Original TFH/TFL data is unchanged.")
+        return
     if not is_instance_valid(_active):
         _set_status("No terrain found.")
         return
