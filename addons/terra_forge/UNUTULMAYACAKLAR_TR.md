@@ -1,5 +1,8 @@
 # TerraForge — UNUTULMAYACAKLAR / Deney, karar ve doğrulama defteri
 
+> **GÜNCEL DEVİR — P1.5.4b (24 Kasım 2026):** Kod da123dca5be609cc67c6b18f181b91abdc962404, [36/36 Godot Linux CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45439854530). [P1_5_4B_SAMPLING_BENCH_TR.md](P1_5_4B_SAMPLING_BENCH_TR.md), [ham ölçüm](P1_5_4B_SAMPLING_CI.json). A/B/C exact array parity, 14 warm-resident cases × 24 rounds × 3 methods = 1008 timed builds. Equal-weight mean A 1869.22 us, B 1390.05 us, C 1791.09 us; B 25.63% lower than A, wins 14/14 means on one Linux runner. Not mobile FPS or isolated CPU time. A default, B opt-in, C benchmark-only. **NEXT P1.5.4c:** fixed camera trace A/B/C, page/job/cache/RSS/reload and frame/pump comparison; device gates still open. [UNUTULMAYACAKLAR_TR.md](UNUTULMAYACAKLAR_TR.md) mandatory every turn. No painting/objects or P1.4 writes.
+
+
 **24 Kasım 2026 | Zorunlu ilk okuma | Sahibi: sonraki oturumda projeyi sürdüren geliştirici/AI.**
 
 Repo: `mehmetdem2005/FareOyunu`, dal: `feat/terraforge-mobile-addon`. Bu kayıt oluşturulurken son doğrulanmış kod commit'i `285122ecc826616f3c3840a41ad4e34223afc0fa`, [35/35 Godot 4.7.2 Linux headless CI](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45436882446); önceki doküman HEAD `7496246e71469adfb9f54e4f3e3588c8d5afb832`. Yeni oturumda gerçek HEAD'i tekrar sorgula. Bu dosya tek başına as-built teknik belgelerin yerine geçmez; açık borçların unutulmasını önler. Eski planların tarihsel ifadeleriyle çelişirse en yeni doğrulanmış kanıtı kullan.
@@ -22,9 +25,11 @@ Her kayıt ID, kaynak, mevcut varsayılan, kanıt, eksik kanıt, sonraki işlem 
 
 ### EXP-01 — P1.5.4a tile read view (EN ÖNCELİKLİ)
 Durum EXPERIMENTAL + CI_VERIFIED + DEVICE_OPEN. `use_tile_read_view=false` (preview ve profile varsayılanı). [Teknik kayıt](P1_5_4A_TILE_VIEW_TR.md). `core/tile_read_view.gd`, `core/async_region_source.gd`, `core/paged_tile_geometry.gd`.
-A: mevcut get_height + her örnekte LRU; B: 3x3, en fazla 9 resident sayfa referansı, tek senkron main-thread lease; C: henüz uygulanmamış bitişik Float32 karo + halo tamponu (LOD0 35x35 = 1225 örnek, 4900 bayt; world edge clamp/stride ve mixed seam için doğru kapsam kanıtlanmalı). C gerçek veriyi kopyalar; daha hızlı olduğu varsayılmayacak. Tüm yöntemler aynı Float32 yükseklik/normal/UV/renk/index/collision sonucu vermeli.
+A: mevcut get_height + her örnekte LRU; B: 3x3, en fazla 9 resident sayfa referansı, tek senkron main-thread lease; C: benchmark-only uygulanmış bitişik Float32 karo + halo tamponu (LOD0 35x35 = 1225 örnek, 4900 bayt; world edge clamp/stride ve mixed seam için doğru kapsam kanıtlanmalı). C gerçek veriyi kopyalar; daha hızlı olduğu varsayılmayacak. Tüm yöntemler aynı Float32 yükseklik/normal/UV/renk/index/collision sonucu vermeli.
 Kanıt: [35/35 CI](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45436882446), her formatta 4 LOD senaryosu, A 2944 sample LRU touch, B 36 lease page touch (%98,78 yalnız bu işlem türünde). Testler eksik, duplicate, exclusive, out-of-view, generation/poll/eviction/close revocation ve gerçek mesh/shape. Bu FPS veya CPU yüzdesi değil. B 9x4096=36864 bayt mevcut resident payload'a referans; yeni tam dünya buffer yok, toplam RSS kazancı kanıtlanmadı.
-Denetim borçları: B hala her sample Dictionary oluşturuyor; required_pages tekrar hesaplanıyor; A/B LRU sırası farklı, sonraki cold reads/eviction davranışı değişebilir. Lease sadece main thread; worker ile paylaşma, cache mutation öncesi revoke. Internal mutability convention güvenlik sınırı değil. P1.5.4b önce A/B/C aynı resident veri, LOD0/1/2/mixed, world edge ve TFM2 interior shard seam, prewarm, ABBA veya dengeli rotasyon, sabit iterasyon, p50/p95/p99 CPU, sample/alloc/bytes/eviction/reload counts. Sonra gerçek kamera trace ve cihaz. C kopya maliyeti dahil; IO, array generation ve GPU upload ayrı. No flaky CI wall-time gate. Gerekirse scalar access/preallocation/topology ancak parity sonrası. Sonuç çıkmadan varsayılanı değiştirme. P1.5.5'te worker-owned immutable input ayrı tasarlanacak.
+Denetim borçları: B hala her sample Dictionary oluşturuyor; required_pages tekrar hesaplanıyor; A/B LRU sırası farklı, sonraki cold reads/eviction davranışı değişebilir. Lease sadece main thread; worker ile paylaşma, cache mutation öncesi revoke. Internal mutability convention güvenlik sınırı değil. P1.5.4b resident ölçüm tamamlandı; tarihsel kabul planı: önce A/B/C aynı resident veri, LOD0/1/2/mixed, world edge ve TFM2 interior shard seam, prewarm, ABBA veya dengeli rotasyon, sabit iterasyon, p50/p95/p99 CPU, sample/alloc/bytes/eviction/reload counts. Sonra gerçek kamera trace ve cihaz. C kopya maliyeti dahil; IO, array generation ve GPU upload ayrı. No flaky CI wall-time gate. Gerekirse scalar access/preallocation/topology ancak parity sonrası. Sonuç çıkmadan varsayılanı değiştirme. P1.5.5'te worker-owned immutable input ayrı tasarlanacak.
+
+**24 Kasım B4b ölçüm güncellemesi:** [P1_5_4B_SAMPLING_BENCH_TR.md](P1_5_4B_SAMPLING_BENCH_TR.md), [ham JSON](P1_5_4B_SAMPLING_CI.json), 36/36 CI. B 25.63% daha düşük equal-weight resident build elapsed vs A, 14/14 mean wins; C copy included slower than B. A default/B opt-in/C benchmark-only. No device acceptance. NEXT P1.5.4c trace; see detail. Other EXP records remain OPEN.
 
 ### EXP-02 — P1.3b/P1.5.0 strict / lazy açılış
 CI_VERIFIED + DEVICE_OPEN. `async_region_source.open()` strict varsayılan; read-only preview lazy varsayılan (verify_pages_on_demand=true); strict seçeneği korunacak. TFM1 lazy manifest-only, TFM2 lazy root-only; cold shard/page SHA doğrulanır. [26/26 CI](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45420063664), [not](P1_5_LAZY_WORLD_OPEN_TR.md). Strict bütün taramayı senkron yapar; büyük dünyada UI bloklanabilir, lazy tam dünya bütünlük onayı değildir. Uzak bozuk sayfa sonradan hata verir. Açık: aynı fixture/route, cold/warm order farkı, first focus, UI hitch, RSS, disk IO, bozuk uzak page. P1.5.10'da tekrar; strict'i kaldırma.
@@ -50,7 +55,8 @@ IMPLEMENTED parts + DEVICE_OPEN. [Geomorphology](TERRAIN_GEOMORPHOLOGY_TR.md), [
 | ID | Durum | Kapanış şartı / sonraki çalışma |
 |---|---|---|
 | P1.4 editable disk transactions | PARKED | User decision + immutable generation/COW, atomic manifest publication, layer IDs, rollback/crash recovery, stale reader isolation, no live TFH/TFL overwrite; power-loss separately. Legacy editable terrain still full Float32 RAM. |
-| P1.5.4b CPU benchmark | NEXT | EXP-01 A/B/C comparison; cache/RSS/pending/mesh byte accounting; lossless compression candidate only if measured; no SHA removal. |
+| P1.5.4b CPU benchmark | CI_VERIFIED | A/B/C resident comparison DONE, decision still experimental. |
+| P1.5.4c streaming trace | NEXT | A/B/C actual trace, cache/RSS/reload/frame/coverage; no default change. |
 | P1.5.5 geometry worker | PLANNED | One bounded worker, immutable input and generation/LOD/neighbor identity, stale outputs discarded, pure arrays only; no SceneTree/Mesh/Physics on worker. Main-thread publication. |
 | P1.5.6 GPU publication | PLANNED | Budgeted upload, reusable topology/material only if measured, near priority, bounded VRAM, draw calls/triangles and GPU separately measured. |
 | P1.5.7 physics | PLANNED | Actual physics-tick raycast parity/collision coverage, coherent mesh/shape generation, near priority, last-good, fast crossing/teleport, no flat fallback. |
@@ -69,6 +75,8 @@ IMPLEMENTED parts + DEVICE_OPEN. [Geomorphology](TERRAIN_GEOMORPHOLOGY_TR.md), [
 ## 5 — Karar tarihçesi (append-only)
 - 24 Kasım 2026: Kullanıcı deneysel optimizasyonları ve önceki geliştirmeleri unutmayacak ayrı MD kayıt istedi. EXP-01 opt-in kaldı, A/B/C kıyaslaması next; EXP-02..07 ve P1.4/P1.5.5..10 açık. Bu commit doküman-only; yeni test/benchmark çalıştırılmadı.
  
+- 24 Kasım 2026: P1.5.4b A/B/C resident benchmark 36/36 CI, B promising, no acceptance/default change. Next trace P1.5.4c.
+
 ### Yeni kayıt şablonu
 ID / tarih / faz:
 Durum / varsayılan / geri dönüş:

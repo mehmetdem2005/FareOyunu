@@ -1,0 +1,936 @@
+{
+  "schema": "TF_SAMPLING_BENCHMARK_1",
+  "commit": "da123dca5be609cc67c6b18f181b91abdc962404",
+  "ci_run": 45439854530,
+  "environment": {
+    "cpu": "AMD EPYC 9V74 80-Core Processor",
+    "godot": "4.7.2-stable (official)",
+    "headless": true,
+    "os": "Linux",
+    "timing": "calling-thread elapsed us, warm resident, copy included, no GPU/IO, balanced six permutations"
+  },
+  "cases": [
+    {
+      "disk_reads_during_case": 0,
+      "error": 0,
+      "evictions_during_case": 0,
+      "format": "TFM1",
+      "lod": 0,
+      "mixed": false,
+      "modes": {
+        "A_direct": {
+          "timing": {
+            "count": 24,
+            "max_us": 3473,
+            "mean_us": 3428.5,
+            "p50_us": 3437,
+            "p95_us": 3463,
+            "p99_us": 3473
+          },
+          "work": {
+            "dense_payload_peak": 0,
+            "direct_reads": 29304,
+            "lru_touches": 29304,
+            "view_reads": 0
+          }
+        },
+        "B_view": {
+          "timing": {
+            "count": 24,
+            "max_us": 2588,
+            "mean_us": 2515.66666666667,
+            "p50_us": 2521,
+            "p95_us": 2588,
+            "p99_us": 2588
+          },
+          "work": {
+            "dense_payload_peak": 0,
+            "direct_reads": 0,
+            "lru_touches": 216,
+            "view_reads": 29304
+          }
+        },
+        "C_dense": {
+          "timing": {
+            "count": 24,
+            "max_us": 3360,
+            "mean_us": 3268.875,
+            "p50_us": 3276,
+            "p95_us": 3350,
+            "p99_us": 3360
+          },
+          "work": {
+            "dense_payload_peak": 4900,
+            "direct_reads": 0,
+            "lru_touches": 216,
+            "view_reads": 29400
+          }
+        }
+      },
+      "pages": 9,
+      "rounds": 24,
+      "tile": [
+        15,
+        15
+      ],
+      "vertices_per_build": 1089
+    },
+    {
+      "disk_reads_during_case": 0,
+      "error": 0,
+      "evictions_during_case": 0,
+      "format": "TFM1",
+      "lod": 1,
+      "mixed": false,
+      "modes": {
+        "A_direct": {
+          "timing": {
+            "count": 24,
+            "max_us": 1047,
+            "mean_us": 989.25,
+            "p50_us": 988,
+            "p95_us": 1009,
+            "p99_us": 1047
+          },
+          "work": {
+            "dense_payload_peak": 0,
+            "direct_reads": 8568,
+            "lru_touches": 8568,
+            "view_reads": 0
+          }
+        },
+        "B_view": {
+          "timing": {
+            "count": 24,
+            "max_us": 741,
+            "mean_us": 728.5,
+            "p50_us": 729,
+            "p95_us": 738,
+            "p99_us": 741
+          },
+          "work": {
+            "dense_payload_peak": 0,
+            "direct_reads": 0,
+            "lru_touches": 216,
+            "view_reads": 8568
+          }
+        },
+        "C_dense": {
+          "timing": {
+            "count": 24,
+            "max_us": 972,
+            "mean_us": 959.75,
+            "p50_us": 959,
+            "p95_us": 970,
+            "p99_us": 972
+          },
+          "work": {
+            "dense_payload_peak": 1444,
+            "direct_reads": 0,
+            "lru_touches": 216,
+            "view_reads": 8664
+          }
+        }
+      },
+      "pages": 9,
+      "rounds": 24,
+      "tile": [
+        15,
+        15
+      ],
+      "vertices_per_build": 289
+    },
+    {
+      "disk_reads_during_case": 0,
+      "error": 0,
+      "evictions_during_case": 0,
+      "format": "TFM1",
+      "lod": 2,
+      "mixed": false,
+      "modes": {
+        "A_direct": {
+          "timing": {
+            "count": 24,
+            "max_us": 325,
+            "mean_us": 316.291666666667,
+            "p50_us": 314,
+            "p95_us": 325,
+            "p99_us": 325
+          },
+          "work": {
+            "dense_payload_peak": 0,
+            "direct_reads": 2808,
+            "lru_touches": 2808,
+            "view_reads": 0
+          }
+        },
+        "B_view": {
+          "timing": {
+            "count": 24,
+            "max_us": 260,
+            "mean_us": 244.291666666667,
+            "p50_us": 243,
+            "p95_us": 254,
+            "p99_us": 260
+          },
+          "work": {
+            "dense_payload_peak": 0,
+            "direct_reads": 0,
+            "lru_touches": 216,
+            "view_reads": 2808
+          }
+        },
+        "C_dense": {
+          "timing": {
+            "count": 24,
+            "max_us": 334,
+            "mean_us": 325.875,
+            "p50_us": 324,
+            "p95_us": 334,
+            "p99_us": 334
+          },
+          "work": {
+            "dense_payload_peak": 484,
+            "direct_reads": 0,
+            "lru_touches": 216,
+            "view_reads": 2904
+          }
+        }
+      },
+      "pages": 9,
+      "rounds": 24,
+      "tile": [
+        15,
+        15
+      ],
+      "vertices_per_build": 81
+    },
+    {
+      "disk_reads_during_case": 0,
+      "error": 0,
+      "evictions_during_case": 0,
+      "format": "TFM1",
+      "lod": 0,
+      "mixed": true,
+      "modes": {
+        "A_direct": {
+          "timing": {
+            "count": 24,
+            "max_us": 3726,
+            "mean_us": 3647.5,
+            "p50_us": 3649,
+            "p95_us": 3700,
+            "p99_us": 3726
+          },
+          "work": {
+            "dense_payload_peak": 0,
+            "direct_reads": 30744,
+            "lru_touches": 30744,
+            "view_reads": 0
+          }
+        },
+        "B_view": {
+          "timing": {
+            "count": 24,
+            "max_us": 2907,
+            "mean_us": 2687.41666666667,
+            "p50_us": 2673,
+            "p95_us": 2764,
+            "p99_us": 2907
+          },
+          "work": {
+            "dense_payload_peak": 0,
+            "direct_reads": 0,
+            "lru_touches": 216,
+            "view_reads": 30744
+          }
+        },
+        "C_dense": {
+          "timing": {
+            "count": 24,
+            "max_us": 3474,
+            "mean_us": 3434.125,
+            "p50_us": 3436,
+            "p95_us": 3468,
+            "p99_us": 3474
+          },
+          "work": {
+            "dense_payload_peak": 4900,
+            "direct_reads": 0,
+            "lru_touches": 216,
+            "view_reads": 29400
+          }
+        }
+      },
+      "pages": 9,
+      "rounds": 24,
+      "tile": [
+        15,
+        15
+      ],
+      "vertices_per_build": 1089
+    },
+    {
+      "disk_reads_during_case": 0,
+      "error": 0,
+      "evictions_during_case": 0,
+      "format": "TFM1",
+      "lod": 0,
+      "mixed": false,
+      "modes": {
+        "A_direct": {
+          "timing": {
+            "count": 24,
+            "max_us": 3426,
+            "mean_us": 3360.04166666667,
+            "p50_us": 3357,
+            "p95_us": 3395,
+            "p99_us": 3426
+          },
+          "work": {
+            "dense_payload_peak": 0,
+            "direct_reads": 27720,
+            "lru_touches": 27720,
+            "view_reads": 0
+          }
+        },
+        "B_view": {
+          "timing": {
+            "count": 24,
+            "max_us": 3451,
+            "mean_us": 2521.33333333333,
+            "p50_us": 2475,
+            "p95_us": 2548,
+            "p99_us": 3451
+          },
+          "work": {
+            "dense_payload_peak": 0,
+            "direct_reads": 0,
+            "lru_touches": 96,
+            "view_reads": 27720
+          }
+        },
+        "C_dense": {
+          "timing": {
+            "count": 24,
+            "max_us": 3431,
+            "mean_us": 3209.45833333333,
+            "p50_us": 3189,
+            "p95_us": 3280,
+            "p99_us": 3431
+          },
+          "work": {
+            "dense_payload_peak": 4624,
+            "direct_reads": 0,
+            "lru_touches": 96,
+            "view_reads": 27744
+          }
+        }
+      },
+      "pages": 4,
+      "rounds": 24,
+      "tile": [
+        0,
+        0
+      ],
+      "vertices_per_build": 1089
+    },
+    {
+      "disk_reads_during_case": 0,
+      "error": 0,
+      "evictions_during_case": 0,
+      "format": "TFM1",
+      "lod": 2,
+      "mixed": false,
+      "modes": {
+        "A_direct": {
+          "timing": {
+            "count": 24,
+            "max_us": 295,
+            "mean_us": 285.416666666667,
+            "p50_us": 283,
+            "p95_us": 293,
+            "p99_us": 295
+          },
+          "work": {
+            "dense_payload_peak": 0,
+            "direct_reads": 2376,
+            "lru_touches": 2376,
+            "view_reads": 0
+          }
+        },
+        "B_view": {
+          "timing": {
+            "count": 24,
+            "max_us": 249,
+            "mean_us": 230.708333333333,
+            "p50_us": 228,
+            "p95_us": 242,
+            "p99_us": 249
+          },
+          "work": {
+            "dense_payload_peak": 0,
+            "direct_reads": 0,
+            "lru_touches": 216,
+            "view_reads": 2376
+          }
+        },
+        "C_dense": {
+          "timing": {
+            "count": 24,
+            "max_us": 316,
+            "mean_us": 298.583333333333,
+            "p50_us": 297,
+            "p95_us": 306,
+            "p99_us": 316
+          },
+          "work": {
+            "dense_payload_peak": 400,
+            "direct_reads": 0,
+            "lru_touches": 216,
+            "view_reads": 2400
+          }
+        }
+      },
+      "pages": 9,
+      "rounds": 24,
+      "tile": [
+        17,
+        17
+      ],
+      "vertices_per_build": 81
+    },
+    {
+      "disk_reads_during_case": 0,
+      "error": 0,
+      "evictions_during_case": 0,
+      "format": "TFM1",
+      "lod": 1,
+      "mixed": true,
+      "modes": {
+        "A_direct": {
+          "timing": {
+            "count": 24,
+            "max_us": 1085,
+            "mean_us": 1013.375,
+            "p50_us": 1011,
+            "p95_us": 1020,
+            "p99_us": 1085
+          },
+          "work": {
+            "dense_payload_peak": 0,
+            "direct_reads": 8472,
+            "lru_touches": 8472,
+            "view_reads": 0
+          }
+        },
+        "B_view": {
+          "timing": {
+            "count": 24,
+            "max_us": 791,
+            "mean_us": 758.875,
+            "p50_us": 757,
+            "p95_us": 765,
+            "p99_us": 791
+          },
+          "work": {
+            "dense_payload_peak": 0,
+            "direct_reads": 0,
+            "lru_touches": 216,
+            "view_reads": 8472
+          }
+        },
+        "C_dense": {
+          "timing": {
+            "count": 24,
+            "max_us": 1006,
+            "mean_us": 991.458333333333,
+            "p50_us": 991,
+            "p95_us": 998,
+            "p99_us": 1006
+          },
+          "work": {
+            "dense_payload_peak": 1444,
+            "direct_reads": 0,
+            "lru_touches": 216,
+            "view_reads": 8664
+          }
+        }
+      },
+      "pages": 9,
+      "rounds": 24,
+      "tile": [
+        16,
+        16
+      ],
+      "vertices_per_build": 289
+    },
+    {
+      "disk_reads_during_case": 0,
+      "error": 0,
+      "evictions_during_case": 0,
+      "format": "TFM2",
+      "lod": 0,
+      "mixed": false,
+      "modes": {
+        "A_direct": {
+          "timing": {
+            "count": 24,
+            "max_us": 4268,
+            "mean_us": 3518.25,
+            "p50_us": 3483,
+            "p95_us": 3591,
+            "p99_us": 4268
+          },
+          "work": {
+            "dense_payload_peak": 0,
+            "direct_reads": 29304,
+            "lru_touches": 29304,
+            "view_reads": 0
+          }
+        },
+        "B_view": {
+          "timing": {
+            "count": 24,
+            "max_us": 2708,
+            "mean_us": 2545.33333333333,
+            "p50_us": 2539,
+            "p95_us": 2571,
+            "p99_us": 2708
+          },
+          "work": {
+            "dense_payload_peak": 0,
+            "direct_reads": 0,
+            "lru_touches": 216,
+            "view_reads": 29304
+          }
+        },
+        "C_dense": {
+          "timing": {
+            "count": 24,
+            "max_us": 3427,
+            "mean_us": 3321.58333333333,
+            "p50_us": 3307,
+            "p95_us": 3392,
+            "p99_us": 3427
+          },
+          "work": {
+            "dense_payload_peak": 4900,
+            "direct_reads": 0,
+            "lru_touches": 216,
+            "view_reads": 29400
+          }
+        }
+      },
+      "pages": 9,
+      "rounds": 24,
+      "tile": [
+        15,
+        15
+      ],
+      "vertices_per_build": 1089
+    },
+    {
+      "disk_reads_during_case": 0,
+      "error": 0,
+      "evictions_during_case": 0,
+      "format": "TFM2",
+      "lod": 1,
+      "mixed": false,
+      "modes": {
+        "A_direct": {
+          "timing": {
+            "count": 24,
+            "max_us": 1026,
+            "mean_us": 991.958333333333,
+            "p50_us": 988,
+            "p95_us": 1021,
+            "p99_us": 1026
+          },
+          "work": {
+            "dense_payload_peak": 0,
+            "direct_reads": 8568,
+            "lru_touches": 8568,
+            "view_reads": 0
+          }
+        },
+        "B_view": {
+          "timing": {
+            "count": 24,
+            "max_us": 1193,
+            "mean_us": 751.625,
+            "p50_us": 731,
+            "p95_us": 750,
+            "p99_us": 1193
+          },
+          "work": {
+            "dense_payload_peak": 0,
+            "direct_reads": 0,
+            "lru_touches": 216,
+            "view_reads": 8568
+          }
+        },
+        "C_dense": {
+          "timing": {
+            "count": 24,
+            "max_us": 1011,
+            "mean_us": 967.75,
+            "p50_us": 966,
+            "p95_us": 993,
+            "p99_us": 1011
+          },
+          "work": {
+            "dense_payload_peak": 1444,
+            "direct_reads": 0,
+            "lru_touches": 216,
+            "view_reads": 8664
+          }
+        }
+      },
+      "pages": 9,
+      "rounds": 24,
+      "tile": [
+        15,
+        15
+      ],
+      "vertices_per_build": 289
+    },
+    {
+      "disk_reads_during_case": 0,
+      "error": 0,
+      "evictions_during_case": 0,
+      "format": "TFM2",
+      "lod": 2,
+      "mixed": false,
+      "modes": {
+        "A_direct": {
+          "timing": {
+            "count": 24,
+            "max_us": 330,
+            "mean_us": 318.666666666667,
+            "p50_us": 316,
+            "p95_us": 327,
+            "p99_us": 330
+          },
+          "work": {
+            "dense_payload_peak": 0,
+            "direct_reads": 2808,
+            "lru_touches": 2808,
+            "view_reads": 0
+          }
+        },
+        "B_view": {
+          "timing": {
+            "count": 24,
+            "max_us": 257,
+            "mean_us": 248.25,
+            "p50_us": 247,
+            "p95_us": 255,
+            "p99_us": 257
+          },
+          "work": {
+            "dense_payload_peak": 0,
+            "direct_reads": 0,
+            "lru_touches": 216,
+            "view_reads": 2808
+          }
+        },
+        "C_dense": {
+          "timing": {
+            "count": 24,
+            "max_us": 344,
+            "mean_us": 330.625,
+            "p50_us": 328,
+            "p95_us": 340,
+            "p99_us": 344
+          },
+          "work": {
+            "dense_payload_peak": 484,
+            "direct_reads": 0,
+            "lru_touches": 216,
+            "view_reads": 2904
+          }
+        }
+      },
+      "pages": 9,
+      "rounds": 24,
+      "tile": [
+        15,
+        15
+      ],
+      "vertices_per_build": 81
+    },
+    {
+      "disk_reads_during_case": 0,
+      "error": 0,
+      "evictions_during_case": 0,
+      "format": "TFM2",
+      "lod": 0,
+      "mixed": true,
+      "modes": {
+        "A_direct": {
+          "timing": {
+            "count": 24,
+            "max_us": 3710,
+            "mean_us": 3646.58333333333,
+            "p50_us": 3640,
+            "p95_us": 3688,
+            "p99_us": 3710
+          },
+          "work": {
+            "dense_payload_peak": 0,
+            "direct_reads": 30744,
+            "lru_touches": 30744,
+            "view_reads": 0
+          }
+        },
+        "B_view": {
+          "timing": {
+            "count": 24,
+            "max_us": 2803,
+            "mean_us": 2699.75,
+            "p50_us": 2686,
+            "p95_us": 2783,
+            "p99_us": 2803
+          },
+          "work": {
+            "dense_payload_peak": 0,
+            "direct_reads": 0,
+            "lru_touches": 216,
+            "view_reads": 30744
+          }
+        },
+        "C_dense": {
+          "timing": {
+            "count": 24,
+            "max_us": 3597,
+            "mean_us": 3453.625,
+            "p50_us": 3443,
+            "p95_us": 3574,
+            "p99_us": 3597
+          },
+          "work": {
+            "dense_payload_peak": 4900,
+            "direct_reads": 0,
+            "lru_touches": 216,
+            "view_reads": 29400
+          }
+        }
+      },
+      "pages": 9,
+      "rounds": 24,
+      "tile": [
+        15,
+        15
+      ],
+      "vertices_per_build": 1089
+    },
+    {
+      "disk_reads_during_case": 0,
+      "error": 0,
+      "evictions_during_case": 0,
+      "format": "TFM2",
+      "lod": 0,
+      "mixed": false,
+      "modes": {
+        "A_direct": {
+          "timing": {
+            "count": 24,
+            "max_us": 3388,
+            "mean_us": 3345,
+            "p50_us": 3336,
+            "p95_us": 3379,
+            "p99_us": 3388
+          },
+          "work": {
+            "dense_payload_peak": 0,
+            "direct_reads": 27720,
+            "lru_touches": 27720,
+            "view_reads": 0
+          }
+        },
+        "B_view": {
+          "timing": {
+            "count": 24,
+            "max_us": 3592,
+            "mean_us": 2529.91666666667,
+            "p50_us": 2477,
+            "p95_us": 2568,
+            "p99_us": 3592
+          },
+          "work": {
+            "dense_payload_peak": 0,
+            "direct_reads": 0,
+            "lru_touches": 96,
+            "view_reads": 27720
+          }
+        },
+        "C_dense": {
+          "timing": {
+            "count": 24,
+            "max_us": 3289,
+            "mean_us": 3198,
+            "p50_us": 3193,
+            "p95_us": 3242,
+            "p99_us": 3289
+          },
+          "work": {
+            "dense_payload_peak": 4624,
+            "direct_reads": 0,
+            "lru_touches": 96,
+            "view_reads": 27744
+          }
+        }
+      },
+      "pages": 4,
+      "rounds": 24,
+      "tile": [
+        0,
+        0
+      ],
+      "vertices_per_build": 1089
+    },
+    {
+      "disk_reads_during_case": 0,
+      "error": 0,
+      "evictions_during_case": 0,
+      "format": "TFM2",
+      "lod": 2,
+      "mixed": false,
+      "modes": {
+        "A_direct": {
+          "timing": {
+            "count": 24,
+            "max_us": 296,
+            "mean_us": 287.5,
+            "p50_us": 285,
+            "p95_us": 295,
+            "p99_us": 296
+          },
+          "work": {
+            "dense_payload_peak": 0,
+            "direct_reads": 2376,
+            "lru_touches": 2376,
+            "view_reads": 0
+          }
+        },
+        "B_view": {
+          "timing": {
+            "count": 24,
+            "max_us": 242,
+            "mean_us": 232.166666666667,
+            "p50_us": 230,
+            "p95_us": 242,
+            "p99_us": 242
+          },
+          "work": {
+            "dense_payload_peak": 0,
+            "direct_reads": 0,
+            "lru_touches": 216,
+            "view_reads": 2376
+          }
+        },
+        "C_dense": {
+          "timing": {
+            "count": 24,
+            "max_us": 312,
+            "mean_us": 303.708333333333,
+            "p50_us": 302,
+            "p95_us": 312,
+            "p99_us": 312
+          },
+          "work": {
+            "dense_payload_peak": 400,
+            "direct_reads": 0,
+            "lru_touches": 216,
+            "view_reads": 2400
+          }
+        }
+      },
+      "pages": 9,
+      "rounds": 24,
+      "tile": [
+        17,
+        17
+      ],
+      "vertices_per_build": 81
+    },
+    {
+      "disk_reads_during_case": 0,
+      "error": 0,
+      "evictions_during_case": 0,
+      "format": "TFM2",
+      "lod": 1,
+      "mixed": true,
+      "modes": {
+        "A_direct": {
+          "timing": {
+            "count": 24,
+            "max_us": 1043,
+            "mean_us": 1020.70833333333,
+            "p50_us": 1019,
+            "p95_us": 1038,
+            "p99_us": 1043
+          },
+          "work": {
+            "dense_payload_peak": 0,
+            "direct_reads": 8472,
+            "lru_touches": 8472,
+            "view_reads": 0
+          }
+        },
+        "B_view": {
+          "timing": {
+            "count": 24,
+            "max_us": 784,
+            "mean_us": 766.875,
+            "p50_us": 767,
+            "p95_us": 775,
+            "p99_us": 784
+          },
+          "work": {
+            "dense_payload_peak": 0,
+            "direct_reads": 0,
+            "lru_touches": 216,
+            "view_reads": 8472
+          }
+        },
+        "C_dense": {
+          "timing": {
+            "count": 24,
+            "max_us": 1048,
+            "mean_us": 1011.875,
+            "p50_us": 1009,
+            "p95_us": 1044,
+            "p99_us": 1048
+          },
+          "work": {
+            "dense_payload_peak": 1444,
+            "direct_reads": 0,
+            "lru_touches": 216,
+            "view_reads": 8664
+          }
+        }
+      },
+      "pages": 9,
+      "rounds": 24,
+      "tile": [
+        16,
+        16
+      ],
+      "vertices_per_build": 289
+    }
+  ],
+  "summary": {
+    "equal_weight_mean_us": {
+      "A_direct": 1869.2172619047617,
+      "B_view": 1390.0505952380956,
+      "C_dense": 1791.0922619047615
+    },
+    "b_mean_wins": 14,
+    "b_lower_than_a_percent": 25.634615966385187,
+    "c_lower_than_a_percent": 4.179556951041086,
+    "timed_builds": 1008
+  },
+  "limitations": "One headless Linux runner; warm resident elapsed time, no disk, no GPU, no actual device RSS or frame timing; p99 is max for n=24."
+}

@@ -1,5 +1,8 @@
 # Sıradaki Uygulama İş Emri — P1.3 Sahada Doğrulama ve P1.4 Veri İşlemleri
 
+> **GÜNCEL DEVİR — P1.5.4b (24 Kasım 2026):** Kod da123dca5be609cc67c6b18f181b91abdc962404, [36/36 Godot Linux CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45439854530). [P1_5_4B_SAMPLING_BENCH_TR.md](P1_5_4B_SAMPLING_BENCH_TR.md), [ham ölçüm](P1_5_4B_SAMPLING_CI.json). A/B/C exact array parity, 14 warm-resident cases × 24 rounds × 3 methods = 1008 timed builds. Equal-weight mean A 1869.22 us, B 1390.05 us, C 1791.09 us; B 25.63% lower than A, wins 14/14 means on one Linux runner. Not mobile FPS or isolated CPU time. A default, B opt-in, C benchmark-only. **NEXT P1.5.4c:** fixed camera trace A/B/C, page/job/cache/RSS/reload and frame/pump comparison; device gates still open. [UNUTULMAYACAKLAR_TR.md](UNUTULMAYACAKLAR_TR.md) mandatory every turn. No painting/objects or P1.4 writes.
+
+
 > **ZORUNLU İLK OKUMA — [UNUTULMAYACAKLAR_TR.md](UNUTULMAYACAKLAR_TR.md):** Kullanıcının 24 Kasım 2026 kararı: deneysel yöntemleri, önceki açık ölçüm/cihaz kapılarını ve ertelenen işleri unutma. Her turda bu dosyayı güncelle. P1.5.4b sıradaki iş: A (eski), B (tile view), C (bitişik Float32 tampon) karşılaştırması; varsayılan değişikliği yok. CI kanıtı performans/Android kabulü değildir. Bu güncel talimat tarihsel plan satırlarından önceliklidir.
 
 
