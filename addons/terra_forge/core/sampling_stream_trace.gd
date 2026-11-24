@@ -25,20 +25,25 @@ static func _close(p,result: Dictionary) -> Dictionary:
     p.free()
     return result
 
-static func run(directory: String, format: int, mode: int, cache: int, geometry_cap: int=2, cadence_us: int=0, observe_publication: bool=false) -> Dictionary:
-    if format not in [0,1] or mode not in [0,1,2,3,4,5,6] or cache not in [9,16] or geometry_cap not in [1,2,4] or cadence_us not in [0,8000]:
+static func run(directory: String, format: int, mode: int, cache: int, geometry_cap: int=2, cadence_us: int=0, observe_publication: bool=false, publication_options: Dictionary={}) -> Dictionary:
+    if format not in [0,1] or mode not in [0,1,2,3,4,5,6] or cache not in [9,16] or geometry_cap not in [1,2,4] or cadence_us not in [0,4000,8000]:
         return {"error": ERR_INVALID_PARAMETER}
     var p = PREVIEW.new()
     p.region_index_format = format
     p.sampling_strategy = mode
     p.observe_publication=observe_publication
+    p.enforce_publication_budget=bool(publication_options.get("enabled",false))
+    p.publication_byte_target=int(publication_options.get("bytes",131072))
+    p.publication_time_target_us=int(publication_options.get("time_us",1000))
     p.geometry_job_limit = geometry_cap
     p.resident_shard_limit = 2
     p.view_distance = 96.0
     p.high_detail_distance = 40.0
     p.medium_detail_distance = 80.0
     p.max_visible_tiles = 8
-    p.tile_updates_per_frame = 1
+    p.tile_updates_per_frame = int(publication_options.get("updates",1))
+    if p.tile_updates_per_frame not in [1,2,3]:
+        return _close(p,{"error":ERR_INVALID_PARAMETER,"stage":"updates"})
     p.max_tile_work_ms = 8.0
     var baseline: Variant = PROFILE._rss()
     var peak: Variant = baseline
@@ -93,7 +98,7 @@ static func run(directory: String, format: int, mode: int, cache: int, geometry_
             return _close(p,{"error":ERR_BUG,"stage":"budget or IO","step":step,"stats":s})
         var worker: Dictionary=s["geometry_worker"]
         if mode>=3:
-            if worker["slots"]>geometry_cap or s["geometry_reservations"]>geometry_cap or s["geometry_publish_peak_per_pump"]>1:
+            if worker["slots"]>geometry_cap or s["geometry_reservations"]>geometry_cap or s["geometry_publish_peak_per_pump"]>p.tile_updates_per_frame:
                 return _close(p,{"error":ERR_BUG,"stage":"geometry cap","step":step,"stats":s})
             geometry_peak=maxi(geometry_peak,int(worker["slots"]))
         page_peak=maxi(page_peak,src["resident"])
@@ -137,7 +142,7 @@ static func run(directory: String, format: int, mode: int, cache: int, geometry_
         "accepted_page_reads":src["disk_reads"],"unique_accepted_pages":src["pages_verified_on_demand"],"accepted_page_reloads":maxi(0,src["disk_reads"]-src["pages_verified_on_demand"]),"request_cache_hits":src["cache_hits"],"evictions":src["evictions"],"stale_discarded":src["stale_discarded"],"submitted":src["submitted"],"worker_errors":src["worker_errors"],"lru_touches":src["lru_touches"],"direct_reads":src["direct_height_reads"],"view_reads":src["tile_view_reads"],
         "geometry_cap":geometry_cap if mode>=3 else 0,"geometry_peak":geometry_peak,"first_shape_step":first_shape_step,"geometry_worker":s["geometry_worker"],
         "geometry_copy_ms":s["geometry_copy_ms"],"geometry_queue_ms":s["geometry_queue_ms"],"geometry_worker_ms":s["geometry_worker_ms"],"geometry_delivery_ms":s["geometry_delivery_ms"],"geometry_publish_ms":s["geometry_publish_ms"],
-        "publication":s.get("publication",{}),
+        "publication":s.get("publication",{}),"publication_options":publication_options.duplicate(),
         "recovery_ok":settled
     }
     return _close(p,report)

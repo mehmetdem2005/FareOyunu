@@ -51,14 +51,20 @@ static func _fingerprints(p) -> Dictionary:
         result[str(key)]=hash.finish().hex_encode()
     return result
 
-static func run(directory: String,format: int,mode: int,cap: int) -> Dictionary:
+static func run(directory: String,format: int,mode: int,cap: int,publication_options: Dictionary={}) -> Dictionary:
     if mode not in [2,3,4,5,6] or cap not in [1,2,4] or format not in [0,1]:
         return {"error":ERR_INVALID_PARAMETER}
     var p=P.new()
     p.region_index_format=format
     p.sampling_strategy=mode
     p.geometry_job_limit=cap
-    p.tile_updates_per_frame=2
+    p.tile_updates_per_frame=int(publication_options.get("updates",2))
+    p.observe_publication=not publication_options.is_empty()
+    p.enforce_publication_budget=bool(publication_options.get("enabled",false))
+    p.publication_byte_target=int(publication_options.get("bytes",131072))
+    p.publication_time_target_us=int(publication_options.get("time_us",1000))
+    if p.tile_updates_per_frame not in [1,2,3]:
+        return _close(p,{"error":ERR_INVALID_PARAMETER,"stage":"updates"})
     p.max_tile_work_ms=8.0
     if p.start_preview(directory,16,4)!=OK:
         return _close(p,{"error":FAILED,"stage":"open"})
@@ -86,12 +92,19 @@ static func run(directory: String,format: int,mode: int,cap: int) -> Dictionary:
         var batch_main: int=0
         for step in range(3000):
             var started: int=Time.get_ticks_usec()
-            if mode>=4:
-                if p._geometry_worker.reconcile(p._reader,p._desired_tiles,p._priority_ranks())!=OK:
-                    return _close(p,{"error":ERR_BUG,"stage":"reconcile"})
-            if mode>=3:
-                p._publish_worker_results(started)
-            p._build_pending_tiles(started)
+            if not publication_options.is_empty():
+                # Run real admission and accounting boundary, without camera sync.
+                p._last_sync_msec=Time.get_ticks_msec()
+                var progress: Dictionary=p.pump_stream()
+                if progress["error"]!=OK:
+                    return _close(p,{"error":progress["error"],"stage":"publication pump"})
+            else:
+                if mode>=4:
+                    if p._geometry_worker.reconcile(p._reader,p._desired_tiles,p._priority_ranks())!=OK:
+                        return _close(p,{"error":ERR_BUG,"stage":"reconcile"})
+                if mode>=3:
+                    p._publish_worker_results(started)
+                p._build_pending_tiles(started)
             var elapsed: int=Time.get_ticks_usec()-started
             batch_main+=elapsed
             if batch>0:
@@ -121,6 +134,8 @@ static func run(directory: String,format: int,mode: int,cap: int) -> Dictionary:
     if before["disk_reads"]!=after["disk_reads"] or before["evictions"]!=after["evictions"] or before["submitted"]!=after["submitted"]:
         return _close(p,{"error":ERR_BUG,"stage":"unexpected IO"})
     var result: Dictionary={"error":OK,"format":format+1,"mode":mode,"cap":cap if mode>=3 else 0,"completed":BATCHES*4,"warmup_builds":4,"pages":pages.size(),"main_total_us":total_main_us,"wall_total_us":total_wall_us,"main_us_per_tile":float(total_main_us)/(BATCHES*4),"wall_us_per_tile":float(total_wall_us)/(BATCHES*4),"pumps":pump_count,"main_ms":main.report(),"batch_wall_ms":batch_wall.report(),"fingerprints":reference,"worker":s["geometry_worker"],"copy_ms_including_warmup":s["geometry_copy_ms"],"queue_ms_including_warmup":s["geometry_queue_ms"],"build_ms_including_warmup":s["geometry_worker_ms"],"delivery_ms_including_warmup":s["geometry_delivery_ms"],"publish_ms_including_warmup":s["geometry_publish_ms"]}
+    result["publication"]=s.get("publication",{})
+    result["publication_options"]=publication_options.duplicate()
     # Teardown with outstanding work: submit then close immediately.
     if mode>=3:
         var accepted: Dictionary=p._geometry_worker.submit(p._reader,Vector2i(15,15),0,DESIRED)

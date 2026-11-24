@@ -1,5 +1,8 @@
 # TerraForge — UNUTULMAYACAKLAR / Deney, karar ve doğrulama defteri
 
+> **P1.5.6c CI closure (24 Kasım 2026):** Original run 45458966071 cancelled by docs-only push (workflow cancel-in-progress); identical code in f699c146402228288a4922b7b4a3bbb2996fcc12 passed [46/46 CI](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45459264528). [Raw JSON](P1_5_6C_TOPOLOGY_CI.json). G/H worker means 1.042/0.984ms, 5.53% lower, same coverage 32 missing steps. H experimental, no GPU/Android claim. P1.5.6d benchmark implemented in this commit; pending CI. P1.4/P1.4R PARKED.
+
+
 > **GÜNCEL DEVİR — P1.5.6c (24 Kasım 2026):** Kod 2c34c8057b10a090b374974ac6d23daadf67b082, [CI](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45458966071). [P1_5_6C_TOPOLOGY_TR.md](P1_5_6C_TOPOLOGY_TR.md). Code pushed; CI in_progress/pending. Import and editor activation passed, full suite not yet verified. Do not claim 46/46 or benchmark result; FIRST retrieve CI logs and complete evidence. H mode6 opt-in, G unchanged; three per-session immutable-by-contract templates, 32256 bytes, independent copied output indices; no shared GPU buffers, no memory reduction claim. P1.5.6b 45/45 and report recorded. **NEXT verify P1.5.6c CI and save raw results, then P1.5.6d publication-budget comparison**. P1.4/P1.4R PARKED; all earlier experiments and unresolved device/physics gates retained.
 
 
@@ -105,6 +108,8 @@ EXPERIMENTAL + CI_VERIFIED + DEVICE_OPEN. [P1.5.5a](P1_5_5A_GEOMETRY_WORKER_TR.m
 
 > **GÜNCEL DEVİR — P1.5.6c (24 Kasım 2026):** Kod 2c34c8057b10a090b374974ac6d23daadf67b082, [CI](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45458966071). [P1_5_6C_TOPOLOGY_TR.md](P1_5_6C_TOPOLOGY_TR.md). Code pushed; CI in_progress/pending. Import and editor activation passed, full suite not yet verified. Do not claim 46/46 or benchmark result; FIRST retrieve CI logs and complete evidence. H mode6 opt-in, G unchanged; three per-session immutable-by-contract templates, 32256 bytes, independent copied output indices; no shared GPU buffers, no memory reduction claim. P1.5.6b 45/45 and report recorded. **NEXT verify P1.5.6c CI and save raw results, then P1.5.6d publication-budget comparison**. P1.4/P1.4R PARKED; all earlier experiments and unresolved device/physics gates retained.
 
+> **P1.5.6c CI closure (24 Kasım 2026):** Original run 45458966071 cancelled by docs-only push (workflow cancel-in-progress); identical code in f699c146402228288a4922b7b4a3bbb2996fcc12 passed [46/46 CI](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45459264528). [Raw JSON](P1_5_6C_TOPOLOGY_CI.json). G/H worker means 1.042/0.984ms, 5.53% lower, same coverage 32 missing steps. H experimental, no GPU/Android claim. P1.5.6d benchmark implemented in this commit; pending CI. P1.4/P1.4R PARKED.
+
 ## 3 — Ertelenen ve sonraki fazlar (sırayı koru)
 | ID | Durum | Kapanış şartı / sonraki çalışma |
 |---|---|---|
@@ -120,8 +125,8 @@ EXPERIMENTAL + CI_VERIFIED + DEVICE_OPEN. [P1.5.5a](P1_5_5A_GEOMETRY_WORKER_TR.m
 | P1.5.5e dense scalar worker latency | CI_VERIFIED / EXPERIMENTAL | G faster worker build but equal sampled coverage and no material wall gain. |
 | P1.5.6a publication accounting | CI_VERIFIED | 44/44, source allowance and main resource timing, not GPU. |
 | P1.5.6b publication budget | CI_VERIFIED / EXPERIMENTAL | 45/45, warm mixed tiles, retained queue, no GPU proof. |
-| P1.5.6c topology reuse | IMPLEMENTED / CI_PENDING | H private templates, exact output copy; verify CI before further changes. |
-| P1.5.6d publication budget comparison | PLANNED | Same-work and fixed-cadence comparison, no GPU proof. |
+| P1.5.6c topology reuse | CI_VERIFIED / EXPERIMENTAL | 46/46; modest worker reduction, no coverage gain, no GPU proof. |
+| P1.5.6d publication budget comparison | IMPLEMENTED / CI_PENDING | 16 equal-work and 24 trace cases planned, stale deferred test; check CI first. |
 | P1.5.5 geometry worker | PLANNED | One bounded worker, immutable input and generation/LOD/neighbor identity, stale outputs discarded, pure arrays only; no SceneTree/Mesh/Physics on worker. Main-thread publication. |
 | P1.5.6 GPU publication | PLANNED | Budgeted upload, reusable topology/material only if measured, near priority, bounded VRAM, draw calls/triangles and GPU separately measured. |
 | P1.5.7 physics | PLANNED | Actual physics-tick raycast parity/collision coverage, coherent mesh/shape generation, near priority, last-good, fast crossing/teleport, no flat fallback. |
