@@ -1,5 +1,8 @@
 # TerraForge — CI, Test Matrisi, Android Performans ve Kalite Kapısı
 
+> **GÜNCEL DEVİR — P1.5.9b1 CI_VERIFIED (24 Kasım 2026):** 062d324bf09188c1ab9c02736664c3d1774d1aa3, [70/70 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45487990585), [ham JSON](P1_5_9B1_WORK_CI.json). Eight 150-tick traces, same completed goal, fixed/adaptive denied34/34, reads440/440, builds212/212, zero ground loss. Governor limits verified but no meaningful performance gain. NEXT P1.5.9b2 opt-in geometry critical reservation (cap>=2, at most cap-1 optional slots across pending/running/finished; cap1 fallback), six queue tests and four live paired G traces, CI_PENDING. No default change, no Android claim. P1.4/P1.4R PARKED; delayed worker, changed-height seams, IO attribution, device gates open.
+
+
 > **GÜNCEL DEVİR — P1.5.9a CI_VERIFIED (24 Kasım 2026):** cbcbab7ef2c49f8f8566327c41834c8e839ec118, [68/68 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45485999769), [ham JSON](P1_5_9A_VIEW_CI.json). Four 340-tick real stationary physics traces, injected pressure, far6→2→6, near6 unchanged, total12→8→12, zero ground gaps, four transitions; 30/60 policy tests/manual override pass. Not actual device FPS. NEXT P1.5.9b1 optional geometry work budget, shared tier, LOD0 bypass of extra governor, 8 paired single-seam movement traces, CI_PENDING. P1.4/P1.4R PARKED, A default unchanged, device and failure gates open.
 
 

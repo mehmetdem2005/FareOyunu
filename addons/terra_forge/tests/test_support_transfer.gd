@@ -65,7 +65,8 @@ func _case(directory: String,format: int,mode: int,cap: int,speed: float,predict
     _p.max_tile_work_ms=8.0
     if work_trial>=0:
         _p.enable_adaptive_view_budget=true
-        _p.enable_adaptive_work_budget=work_trial==1
+        _p.enable_adaptive_work_budget=work_trial>=1
+        _p.enable_critical_worker_reservation=work_trial==2
         _p.high_detail_distance=32.0
         _p.view_distance=160.0
         _p.tile_updates_per_frame=3
@@ -238,6 +239,8 @@ func _case(directory: String,format: int,mode: int,cap: int,speed: float,predict
         max_tiles=maxi(max_tiles,int(stats["tiles"]))
         max_pages=maxi(max_pages,int(stats["source"]["resident"]))
         max_jobs=maxi(max_jobs,int(stats["geometry_reservations"]))
+        if work_trial==2 and (not stats["adaptive_work"]["critical_reservation_active"] or int(stats["geometry_worker"]["optional_slots"])>1):
+            return {"error":FAILED,"stage":"reserved slot invariant","tick":tick}
         if max_tiles>cap or max_pages>cache_pages or max_jobs>2:
             return {"error":FAILED,"stage":"resource caps","tick":tick}
         var post_pump: Dictionary=_p.support_state()
@@ -262,7 +265,7 @@ func _case(directory: String,format: int,mode: int,cap: int,speed: float,predict
         report["work_trial"]=work_trial
         report["adaptive_work"]=_p.adaptive_work_state()
         report["adaptive_view"]=_p.adaptive_view_state()
-        if work_trial==1:
+        if work_trial>=1:
             var work: Dictionary=report["adaptive_work"]["controller"]
             if int(work["restricted_pumps"])<=0 or int(work["critical_attempts"])<=0 or int(work["optional_attempts"])<=0 or int(work["restricted_peak_optional"])>2 or int(work["tier2_peak_optional"])>1:
                 return {"error":FAILED,"stage":"adaptive work evidence","detail":report}

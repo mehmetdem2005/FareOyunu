@@ -62,6 +62,10 @@ var _publication
 @export var enable_adaptive_view_budget: bool=false
 ## Independent opt-in; shares adaptive view pressure tier, not its tile cap.
 @export var enable_adaptive_work_budget: bool=false
+## Independent experiment: reserve one geometry slot for LOD0 when cap>=2.
+@export var enable_critical_worker_reservation: bool=false
+var _critical_reservation_active: bool=false
+var _critical_reservation_skips: int=0
 var _adaptive_work_active: bool=false
 var _work_budget=WORK_BUDGET.new()
 @export_enum("30 FPS:30","60 FPS:60") var adaptive_target_fps: int=30
@@ -184,6 +188,7 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
     _motion_adaptive=_motion_active and enable_adaptive_motion_horizon
     _adaptive_view_active=enable_adaptive_view_budget and _support_active
     _adaptive_work_active=enable_adaptive_work_budget and _adaptive_view_active
+    _critical_reservation_active=enable_critical_worker_reservation and _adaptive_work_active and selected>=3 and geometry_job_limit>=2
     if _adaptive_view_active and _view_budget.configure(adaptive_target_fps)!=OK:
         stop_preview()
         _last_error=ERR_INVALID_PARAMETER
@@ -194,7 +199,7 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
         return _last_error
     if selected>=3:
         _geometry_worker=WORKER.new()
-        status=_geometry_worker.start(_reader,geometry_job_limit,selected>=5,selected==6)
+        status=_geometry_worker.start(_reader,geometry_job_limit,selected>=5,selected==6,_critical_reservation_active)
         if status!=OK:
             stop_preview()
             _last_error=status
@@ -236,6 +241,8 @@ func resolved_sampling_strategy() -> int:
 func stop_preview() -> void:
     set_process(false)
     # Explicit shutdown revokes even a held support lease. Camera epochs do not.
+    _critical_reservation_active=false
+    _critical_reservation_skips=0
     _adaptive_work_active=false
     _work_budget=WORK_BUDGET.new()
     _adaptive_view_active=false
@@ -567,11 +574,16 @@ func _build_pending_tiles(started: int = -1) -> void:
     for key in keys:
         if max_builds <= 0 or float(Time.get_ticks_usec() - started) >= max_tile_work_ms * 1000.0:
             break
+        var lod: int = int(_desired_tiles[key])
         if _geometry_worker!=null:
             var worker_stats: Dictionary=_geometry_worker.stats()
             if worker_stats["slots"]>=worker_stats["cap"]:
                 break
-        var lod: int = int(_desired_tiles[key])
+            if _critical_reservation_active and lod>0 and int(worker_stats["optional_slots"])>=int(worker_stats["cap"])-1:
+                # Do not churn the page cache for an optional job that
+                # cannot be admitted. Other eligible critical keys can run.
+                _critical_reservation_skips+=1
+                continue
         if _adaptive_work_active and lod>0 and not _work_budget.allows_optional(Time.get_ticks_usec()-started):
             _work_budget.note_deferral()
             continue
@@ -633,6 +645,9 @@ func _build_pending_tiles(started: int = -1) -> void:
                 _dense_payload_peak=maxi(_dense_payload_peak,int(accepted["input_bytes"]))
                 max_builds-=1
             elif status==ERR_BUSY:
+                if accepted.get("reserved_critical",false):
+                    _critical_reservation_skips+=1
+                    continue
                 break
             else:
                 _block_tile(key,key,status)
@@ -973,7 +988,7 @@ func set_adaptive_view_auto(enabled: bool) -> Error:
     return OK
 
 func adaptive_work_state() -> Dictionary:
-    return {"active":_adaptive_work_active,"controller":_work_budget.report() if _adaptive_work_active else {}}
+    return {"active":_adaptive_work_active,"controller":_work_budget.report() if _adaptive_work_active else {},"critical_reservation_active":_critical_reservation_active,"critical_reservation_skips":_critical_reservation_skips}
 
 func adaptive_view_state() -> Dictionary:
     return {"active":_adaptive_view_active,"controller":_view_budget.report() if _adaptive_view_active else {},"far_candidates":_view_far_candidates,"far_admitted_candidates":_view_far_admitted}

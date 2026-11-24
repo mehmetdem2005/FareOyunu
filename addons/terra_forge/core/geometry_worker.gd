@@ -33,6 +33,9 @@ var _pending: Array[Dictionary] = []
 var _finished: Array[Dictionary] = []
 var _inflight: int = 0
 var _running_id: int = 0
+var _running_lod: int=-1
+var _reserve_critical: bool=false
+var _reservation_deferrals: int=0
 var _submitted: int = 0
 var _delivered: int = 0
 var _dropped: int = 0
@@ -40,7 +43,7 @@ var _peak_slots: int = 0
 var _pruned_pending: int = 0
 var _pruned_finished: int = 0
 
-func start(source, cap: int=2, scalar_sampling: bool=false,reuse_topology: bool=false) -> Error:
+func start(source, cap: int=2, scalar_sampling: bool=false,reuse_topology: bool=false,reserve_critical: bool=false) -> Error:
     close()
     if source==null or not source.is_open() or cap<1 or cap>4 or (reuse_topology and not scalar_sampling):
         return ERR_INVALID_PARAMETER
@@ -50,6 +53,7 @@ func start(source, cap: int=2, scalar_sampling: bool=false,reuse_topology: bool=
     _snapshot=stats["snapshot_id"]
     _epoch=stats["generation"]
     _cap=cap
+    _reserve_critical=reserve_critical and cap>=2
     _scalar_sampling=scalar_sampling
     if reuse_topology:
         var started: int=Time.get_ticks_usec()
@@ -107,6 +111,18 @@ static func signature(key: Vector2i,lod: int,desired: Dictionary,cells: Vector2i
 func _slots() -> int:
     return _pending.size()+_finished.size()+_inflight
 
+## Called with mutex held. Count all three ownership stages, including
+## the running job; the worker only moves jobs between these stages.
+func _optional_slots() -> int:
+    var count: int=1 if _inflight>0 and _running_lod>0 else 0
+    for job in _pending:
+        if int(job["lod"])>0:
+            count+=1
+    for job in _finished:
+        if int(job["lod"])>0:
+            count+=1
+    return count
+
 ## Copy under a short main-thread lease, then release before enqueue.
 ## No caller receives the input object or can mutate worker-owned data.
 func submit(source,key: Vector2i,lod: int,desired: Dictionary) -> Dictionary:
@@ -118,9 +134,12 @@ func submit(source,key: Vector2i,lod: int,desired: Dictionary) -> Dictionary:
         return sig
     _mutex.lock()
     var full: bool=_slots()>=_cap
+    var reserved: bool=_reserve_critical and lod>0 and _optional_slots()>=_cap-1
+    if reserved:
+        _reservation_deferrals+=1
     _mutex.unlock()
-    if full:
-        return {"error":ERR_BUSY}
+    if full or reserved:
+        return {"error":ERR_BUSY,"reserved_critical":reserved}
     var copy_started: int=Time.get_ticks_usec()
     var acquired: Dictionary=source.acquire_tile_view(G.required_pages(source,key.x,key.y,lod))
     if acquired["error"]!=OK:
@@ -138,7 +157,14 @@ func submit(source,key: Vector2i,lod: int,desired: Dictionary) -> Dictionary:
     _mutex.lock()
     _next_id+=1
     var id: int=_next_id
-    _pending.append({"id":id,"epoch":_epoch,"key":key,"lod":lod,"levels":sig["levels"],"desired":sig["desired"],"buffer":buffer,"input_bytes":buffer.payload_bytes(),"copy_elapsed_us":copy_elapsed,"queued_us":Time.get_ticks_usec()})
+    var job: Dictionary={"id":id,"epoch":_epoch,"key":key,"lod":lod,"levels":sig["levels"],"desired":sig["desired"],"buffer":buffer,"input_bytes":buffer.payload_bytes(),"copy_elapsed_us":copy_elapsed,"queued_us":Time.get_ticks_usec()}
+    if _reserve_critical and lod==0:
+        var index: int=0
+        while index<_pending.size() and int(_pending[index]["lod"])==0:
+            index+=1
+        _pending.insert(index,job)
+    else:
+        _pending.append(job)
     _submitted+=1
     _peak_slots=maxi(_peak_slots,_slots())
     var wake: bool=not _armed
@@ -163,6 +189,7 @@ func _loop() -> void:
             var job: Dictionary=_pending.pop_front()
             _inflight=1
             _running_id=job["id"]
+            _running_lod=int(job["lod"])
             _mutex.unlock()
             var key: Vector2i=job["key"]
             var started: int=Time.get_ticks_usec()
@@ -185,6 +212,7 @@ func _loop() -> void:
             _mutex.lock()
             _inflight=0
             _running_id=0
+            _running_lod=-1
             if _stop or job["epoch"]!=_epoch:
                 _dropped+=1
             else:
@@ -276,7 +304,7 @@ func active_ids() -> Array[int]:
 
 func stats() -> Dictionary:
     _mutex.lock()
-    var result: Dictionary={"open":_open,"scalar_sampling":_scalar_sampling,"topology_cache_bytes":_topology_payload,"topology_setup_us":_topology_setup_us,"total_worker_payload_allowance_bytes":_cap*SLOT_BYTES+_topology_payload,"pending":_pending.size(),"inflight":_inflight,"finished":_finished.size(),"slots":_slots(),"cap":_cap,"reserved_payload_bytes":_slots()*SLOT_BYTES,"payload_cap_bytes":_cap*SLOT_BYTES,"peak_slots":_peak_slots,"pruned_pending":_pruned_pending,"pruned_finished":_pruned_finished,"submitted":_submitted,"delivered":_delivered,"dropped":_dropped,"epoch":_epoch}
+    var result: Dictionary={"open":_open,"scalar_sampling":_scalar_sampling,"topology_cache_bytes":_topology_payload,"topology_setup_us":_topology_setup_us,"total_worker_payload_allowance_bytes":_cap*SLOT_BYTES+_topology_payload,"pending":_pending.size(),"inflight":_inflight,"finished":_finished.size(),"slots":_slots(),"cap":_cap,"critical_reservation":_reserve_critical,"optional_slots":_optional_slots(),"reservation_deferrals":_reservation_deferrals,"reserved_payload_bytes":_slots()*SLOT_BYTES,"payload_cap_bytes":_cap*SLOT_BYTES,"peak_slots":_peak_slots,"pruned_pending":_pruned_pending,"pruned_finished":_pruned_finished,"submitted":_submitted,"delivered":_delivered,"dropped":_dropped,"epoch":_epoch}
     _mutex.unlock()
     return result
 
@@ -300,6 +328,9 @@ func close() -> void:
     _wake=Semaphore.new()
     _inflight=0
     _running_id=0
+    _running_lod=-1
+    _reserve_critical=false
+    _reservation_deferrals=0
     _submitted=0
     _delivered=0
     _dropped=0

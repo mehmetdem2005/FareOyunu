@@ -81,6 +81,8 @@ suite=(
   test_adaptive_view_budget_v2
   test_adaptive_work_budget
   test_adaptive_work_budget_v2
+  test_critical_worker_reservation
+  test_critical_worker_reservation_v2
   test_lod_policy
   test_surface_faces
   test_lod_normals
