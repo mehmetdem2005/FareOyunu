@@ -345,6 +345,31 @@ func _block_tile(key: Vector2i, page: Vector2i, error: Error) -> void:
     # Do not free or modify an existing mesh/shape on a failed rebuild.
     # A never-loaded tile remains absent; never fabricate collision.
 
+## Public read-only diagnostic hooks. No data mutation or synthetic collision.
+func enable_io_profile() -> void:
+    if _reader != null:
+        _reader.collect_io_profile = true
+
+func io_profile() -> Dictionary:
+    return _reader.io_profile() if _reader != null else {}
+
+func world_extent() -> Vector2:
+    return Vector2(_reader.cells) * _reader.spacing if _reader != null else Vector2.ZERO
+
+func has_collision_at(global_position: Vector3) -> bool:
+    if _reader == null:
+        return false
+    var local: Vector3 = to_local(global_position) if is_inside_tree() else transform.affine_inverse() * global_position
+    var extent: Vector2 = world_extent()
+    if local.x < 0.0 or local.z < 0.0 or local.x >= extent.x or local.z >= extent.y:
+        return false
+    var size: float = float(TILE_CELLS) * _reader.spacing
+    var key: Vector2i = Vector2i(floori(local.x / size), floori(local.z / size))
+    if not _tiles.has(key):
+        return false
+    var collision: CollisionShape3D = _tiles[key]["collision"]
+    return collision.shape is HeightMapShape3D and not collision.disabled
+
 func stats() -> Dictionary:
     var source: Dictionary = _reader.stats() if _reader != null else {}
     var vertices: int = 0

@@ -5,6 +5,7 @@ extends RefCounted
 ## Mesh, Physics, ResourceLoader or shared mutable heightfield access.
 ## open() still validates the ENTIRE TFM1 world synchronously: this is a
 ## safety-first prototype, not a startup-latency solution.
+const HISTOGRAM = preload("res://addons/terra_forge/core/profile_histogram.gd")
 const MANIFEST = preload("res://addons/terra_forge/core/region_manifest.gd")
 const REGIONS = preload("res://addons/terra_forge/core/region_store.gd")
 const PAGE_WIDTH: int = REGIONS.PAGE_WIDTH
@@ -28,6 +29,8 @@ var _evictions: int = 0
 var _discarded: int = 0
 var _worker_errors: int = 0
 var _last_io_ms: float = 0.0
+var _io_histogram = HISTOGRAM.new()
+var collect_io_profile: bool = false
 var _max_io_ms: float = 0.0
 var _open_verify_ms: float = 0.0
 var _verified_all_at_open: bool = false
@@ -238,6 +241,8 @@ func poll_results(max_results: int = 3) -> Dictionary:
         var key: Vector2i = result["key"]
         _reserved.erase(key)
         var duration: float = float(result["io_ms"])
+        if collect_io_profile:
+            _io_histogram.add(duration)
         _last_io_ms = duration
         _max_io_ms = maxf(_max_io_ms, duration)
         var err: Error = int(result["error"])
@@ -344,6 +349,9 @@ func release_outside(first: Vector2i, last: Vector2i) -> Error:
             _evictions += 1
     return OK
 
+func io_profile() -> Dictionary:
+    return _io_histogram.report()
+
 func stats() -> Dictionary:
     _mutex.lock()
     var outstanding: int = _pending.size()
@@ -407,6 +415,7 @@ func close() -> void:
     _evictions = 0
     _discarded = 0
     _worker_errors = 0
+    _io_histogram = HISTOGRAM.new()
     _last_io_ms = 0.0
     _max_io_ms = 0.0
     _open_verify_ms = 0.0
