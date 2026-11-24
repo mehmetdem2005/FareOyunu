@@ -3,8 +3,8 @@ extends RefCounted
 ## P1.2b: ONE background IO worker, bounded jobs/results, main-thread cache.
 ## The worker uses only file bytes / SHA / Float32 decode; no SceneTree,
 ## Mesh, Physics, ResourceLoader or shared mutable heightfield access.
-## open() still validates the ENTIRE TFM1 world synchronously: this is a
-## safety-first prototype, not a startup-latency solution.
+## Strict open validates all pages; on-demand open checks only the manifest.
+## Camera epoch cancellation never changes the pinned manifest.
 const HISTOGRAM = preload("res://addons/terra_forge/core/profile_histogram.gd")
 const MANIFEST = preload("res://addons/terra_forge/core/region_manifest.gd")
 const REGIONS = preload("res://addons/terra_forge/core/region_store.gd")
@@ -30,6 +30,10 @@ var _discarded: int = 0
 var _worker_errors: int = 0
 var _last_io_ms: float = 0.0
 var _io_histogram = HISTOGRAM.new()
+var _queue_histogram = HISTOGRAM.new()
+var _delivery_histogram = HISTOGRAM.new()
+var _total_histogram = HISTOGRAM.new()
+var _accepted_results: int = 0
 var collect_io_profile: bool = false
 var _max_io_ms: float = 0.0
 var _open_verify_ms: float = 0.0
@@ -47,6 +51,15 @@ var _generation: int = 0
 var _pending: Array[Dictionary] = []
 var _finished: Array[Dictionary] = []
 var _inflight: int = 0
+# Binary wake ownership: true while a wake is pending OR the worker drains.
+# All counters below are protected by _mutex.
+var _wake_armed: bool = false
+var _wake_posts: int = 0
+var _wake_cycles: int = 0
+var _submitted: int = 0
+var _cancelled_pending: int = 0
+var _cancelled_finished: int = 0
+var _cancelled_inflight: int = 0
 
 static func _sha(data: PackedByteArray) -> String:
     var ctx: HashingContext = HashingContext.new()
@@ -165,6 +178,8 @@ func set_generation(next_id: int) -> Error:
         return ERR_INVALID_PARAMETER
     _generation = next_id
     # Already-started reads may finish; worker discards their result.
+    _cancelled_pending += _pending.size()
+    _cancelled_finished += _finished.size()
     _pending.clear()
     _finished.clear()
     _mutex.unlock()
@@ -193,35 +208,56 @@ func request_page(key: Vector2i) -> Error:
         "key": key, "generation": generation,
         "path": "%s/r_%05d_%05d.tfr" % [_directory, key.x, key.y],
         "sha256": str(_manifest_hashes[key]),
-        "cells": cells, "spacing": spacing
+        "cells": cells, "spacing": spacing,
+        "submitted_us": Time.get_ticks_usec(), "profile": collect_io_profile
     }
     _pending.append(job)
+    _submitted += 1
+    var notify: bool = not _wake_armed
+    if notify:
+        _wake_armed = true
+        _wake_posts += 1
     _mutex.unlock()
     _reserved[key] = generation
-    _wake.post()
+    if notify:
+        _wake.post()
     return OK
 
 func _worker_loop() -> void:
     while true:
         _wake.wait()
         _mutex.lock()
-        if _stop:
-            _mutex.unlock()
-            return
-        if _pending.is_empty():
-            _mutex.unlock()
-            continue
-        var job: Dictionary = _pending.pop_front()
-        _inflight += 1
+        _wake_cycles += 1
         _mutex.unlock()
-        var output: Dictionary = _read_page_file(job)
-        _mutex.lock()
-        _inflight -= 1
-        if not _stop and int(job["generation"]) == _generation:
-            # Bounded result storage, never unbounded PackedFloat32 buildup.
-            if _finished.size() < _job_limit:
+        # Drain available work with a single wake. Camera cancellations can
+        # remove pending jobs but cannot create a semaphore-token backlog.
+        while true:
+            _mutex.lock()
+            if _stop:
+                _mutex.unlock()
+                return
+            if _pending.is_empty():
+                _wake_armed = false
+                _mutex.unlock()
+                break
+            var job: Dictionary = _pending.pop_front()
+            _inflight += 1
+            _mutex.unlock()
+            var started: int = Time.get_ticks_usec()
+            var output: Dictionary = _read_page_file(job)
+            if bool(job["profile"]):
+                output["submitted_us"] = job["submitted_us"]
+                output["started_us"] = started
+                output["finished_us"] = Time.get_ticks_usec()
+            _mutex.lock()
+            _inflight -= 1
+            if not _stop and int(job["generation"]) == _generation:
+                # Admission already counts pending + inflight + finished.
+                # There is guaranteed room for this result.
                 _finished.append(output)
-        _mutex.unlock()
+            else:
+                _cancelled_inflight += 1
+            _mutex.unlock()
 
 func poll_results(max_results: int = 3) -> Dictionary:
     if not _opened or max_results < 1 or max_results > 8:
@@ -241,8 +277,13 @@ func poll_results(max_results: int = 3) -> Dictionary:
         var key: Vector2i = result["key"]
         _reserved.erase(key)
         var duration: float = float(result["io_ms"])
-        if collect_io_profile:
+        _accepted_results += 1
+        if result.has("submitted_us"):
+            var accepted: int = Time.get_ticks_usec()
             _io_histogram.add(duration)
+            _queue_histogram.add(float(int(result["started_us"]) - int(result["submitted_us"])) / 1000.0)
+            _delivery_histogram.add(float(accepted - int(result["finished_us"])) / 1000.0)
+            _total_histogram.add(float(accepted - int(result["submitted_us"])) / 1000.0)
         _last_io_ms = duration
         _max_io_ms = maxf(_max_io_ms, duration)
         var err: Error = int(result["error"])
@@ -352,12 +393,26 @@ func release_outside(first: Vector2i, last: Vector2i) -> Error:
 func io_profile() -> Dictionary:
     return _io_histogram.report()
 
+func pipeline_profile() -> Dictionary:
+    return {
+        "queue_wait_ms": _queue_histogram.report(),
+        "worker_service_ms": _io_histogram.report(),
+        "delivery_wait_ms": _delivery_histogram.report(),
+        "request_to_accept_ms": _total_histogram.report()
+    }
+
 func stats() -> Dictionary:
     _mutex.lock()
     var outstanding: int = _pending.size()
     var inflight: int = _inflight
     var finished: int = _finished.size()
     var generation: int = _generation
+    var submitted: int = _submitted
+    var cancelled_pending: int = _cancelled_pending
+    var cancelled_finished: int = _cancelled_finished
+    var cancelled_inflight: int = _cancelled_inflight
+    var wake_posts: int = _wake_posts
+    var wake_cycles: int = _wake_cycles
     _mutex.unlock()
     return {
         "open": _opened,
@@ -372,7 +427,10 @@ func stats() -> Dictionary:
         "disk_reads": _read_count,
         "cache_hits": _cache_hits,
         "evictions": _evictions,
-        "stale_discarded": _discarded,
+        "stale_discarded": _discarded + cancelled_pending + cancelled_finished + cancelled_inflight,
+        "submitted": submitted, "accepted_results": _accepted_results,
+        "cancelled_pending": cancelled_pending, "cancelled_finished": cancelled_finished,
+        "cancelled_inflight": cancelled_inflight, "wake_posts": wake_posts, "wake_cycles": wake_cycles,
         "worker_errors": _worker_errors,
         "last_io_ms": _last_io_ms,
         "max_io_ms": _max_io_ms,
@@ -409,13 +467,27 @@ func close() -> void:
     _mutex.lock()
     _inflight = 0
     _generation = 0
+    _wake_armed = false
+    _wake_posts = 0
+    _wake_cycles = 0
+    _submitted = 0
+    _cancelled_pending = 0
+    _cancelled_finished = 0
+    _cancelled_inflight = 0
     _mutex.unlock()
+    # Only replace after join: no stale wake tokens survive reopen.
+    _wake = Semaphore.new()
+    _accepted_results = 0
     _read_count = 0
     _cache_hits = 0
     _evictions = 0
     _discarded = 0
     _worker_errors = 0
     _io_histogram = HISTOGRAM.new()
+    _queue_histogram = HISTOGRAM.new()
+    _delivery_histogram = HISTOGRAM.new()
+    _total_histogram = HISTOGRAM.new()
+    collect_io_profile = false
     _last_io_ms = 0.0
     _max_io_ms = 0.0
     _open_verify_ms = 0.0

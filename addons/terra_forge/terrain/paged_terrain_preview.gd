@@ -353,6 +353,9 @@ func enable_io_profile() -> void:
 func io_profile() -> Dictionary:
     return _reader.io_profile() if _reader != null else {}
 
+func pipeline_profile() -> Dictionary:
+    return _reader.pipeline_profile() if _reader != null else {}
+
 func world_extent() -> Vector2:
     return Vector2(_reader.cells) * _reader.spacing if _reader != null else Vector2.ZERO
 

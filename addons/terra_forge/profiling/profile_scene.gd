@@ -141,6 +141,7 @@ func _begin(lazy: bool) -> void:
     _frame_hist = HIST.new()
     _pump_hist = HIST.new()
     _first_collision = null
+    _extent = Vector2.ZERO
     _rss_baseline = _rss()
     _rss_peak = _rss_baseline
     _static_peak = null
@@ -211,6 +212,7 @@ func _finish(status: Error) -> void:
     var s: Dictionary = _preview.stats()
     var src: Dictionary = s.get("source", {})
     var io: Dictionary = _preview.io_profile()
+    var pipeline: Dictionary = _preview.pipeline_profile()
     var end: int = Time.get_ticks_usec()
     _preview.stop_preview()
     var shutdown_ms: float = float(Time.get_ticks_usec() - end) / 1000.0
@@ -224,6 +226,11 @@ func _finish(status: Error) -> void:
         "first_focus_collision_ms_from_open_start": _first_collision,
         "shutdown_ms": shutdown_ms, "frame_interval_ms": _frame_hist.report(),
         "main_thread_pump_ms": _pump_hist.report(), "accepted_worker_io_ms": io,
+        "io_pipeline": pipeline,
+        "io_submitted": src.get("submitted", 0), "io_accepted": src.get("accepted_results", 0),
+        "io_cancelled_pending": src.get("cancelled_pending", 0), "io_cancelled_finished": src.get("cancelled_finished", 0),
+        "io_cancelled_inflight": src.get("cancelled_inflight", 0), "io_pending_at_stop": int(src.get("outstanding", 0)) + int(src.get("inflight", 0)) + int(src.get("finished", 0)),
+        "worker_wake_posts": src.get("wake_posts", 0), "worker_wake_cycles": src.get("wake_cycles", 0),
         "rss_baseline_bytes": _rss_baseline, "rss_peak_sampled_bytes": _rss_peak,
         "godot_static_peak_sampled_bytes": _static_peak,
         "resident_pages_peak": _page_peak, "resident_tiles_peak": _tile_peak,
@@ -245,11 +252,11 @@ func _finish(status: Error) -> void:
 
 func report_document() -> Dictionary:
     return {
-        "schema": "TF_PROFILE_1", "os": OS.get_name(), "os_version": OS.get_version(),
+        "schema": "TF_PROFILE_2", "os": OS.get_name(), "os_version": OS.get_version(),
         "device_model": OS.get_model_name(), "godot": Engine.get_version_info().get("string", ""),
         "display": DisplayServer.get_name(), "renderer": RenderingServer.get_current_rendering_method(),
         "headless": DisplayServer.get_name() == "headless",
-        "notes": "Frame intervals include scheduler/render waits; not GPU timings. RSS is sampled process-wide; static memory is separate. Worker IO includes accepted success/failure results only, excludes strict scan and canceled jobs. First focus collision means shape attached, not a raycast. No OS cache flush; repeat in opposite order. Fixture generation excluded.",
+        "notes": "Frame intervals include scheduler/render waits; not GPU timings. RSS is sampled process-wide; static memory is separate. Worker IO includes accepted success/failure results only, excludes strict scan and canceled jobs. Pipeline splits queue wait, worker service and result delivery; counts include canceled jobs separately. First focus collision means shape attached, not a raycast. No OS cache flush; repeat in opposite order. Fixture generation excluded.",
         "runs": _reports.duplicate(true)
     }
 
