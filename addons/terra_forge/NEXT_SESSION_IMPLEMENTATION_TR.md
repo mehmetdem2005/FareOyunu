@@ -1,5 +1,8 @@
 # Sıradaki Uygulama İş Emri — P1.3 Sahada Doğrulama ve P1.4 Veri İşlemleri
 
+> **P1.5.6a (24 Kasım 2026):** Kod 934f68bb0bce7cf43c48adcba191570c3fde5504, [44/44 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45453236978). [Rapor](P1_5_6A_PUBLICATION_TR.md), [ham JSON](P1_5_6A_PUBLICATION_CI.json). Optional observation; source-array allowance only, not GPU bytes/time. Six A/C/G traces at 8ms target, no 128KiB or 1ms publication overshoot with one tile/pump. NEXT P1.5.6b opt-in budget, defer worker result in original bounded queue, single-item progress. P1.4/P1.4R PARKED.
+
+
 > **GÜNCEL DEVİR — P1.5.5e (24 Kasım 2026):** Kod 6051f1aceeefa56542a33a0603c3c614b8b658f1, [43/43 Godot Linux CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45450882358). [P1_5_5E_SCALAR_WORKER_TR.md](P1_5_5E_SCALAR_WORKER_TR.md), [ham JSON](P1_5_5E_SCALAR_WORKER_CI.json). G explicit experimental sampling_strategy=5 (F priority + dense scalar). Exact 14 worker cases and 8 equal-work runs, 256 timed publications. Worker build mean F 1.151 ms vs G 0.809 ms (29.73% less); main/wall no material gain, same cadence F/G coverage identical 32 missing shape steps for both page caps. 16 C/E/F/G fixed 8ms traces. A default unchanged. **NEXT P1.5.6a publication instrumentation and byte/count/time budget design**, no claim of GPU measurement; remaining worker coverage/pending-prune and D live/topology gates stay open. P1.4/P1.4R PARKED per explicit user decision; no painting/objects.
 
 
