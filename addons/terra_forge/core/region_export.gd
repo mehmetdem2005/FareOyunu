@@ -118,6 +118,10 @@ static func export_file(source_path: String, output_dir: String, cache_pages: in
     var checked: Dictionary = MANIFEST.load(staging, true)
     if int(checked.get("error", ERR_FILE_CORRUPT)) != OK:
         return _fail(int(checked["error"]), staging)
+    # A source could change while the converter is computing thousands of
+    # pages. Never publish a manifest claiming the wrong source snapshot.
+    if FileAccess.get_sha256(source_path) != source_sha:
+        return _fail(ERR_FILE_CORRUPT, staging)
     # Filesystem staging: source unchanged, target absent until this point.
     # A rename makes the whole verified snapshot visible in one step.
     var publish_error: Error = DirAccess.rename_absolute(staging_abs, output_abs)

@@ -107,6 +107,35 @@ func _initialize() -> void:
         _fail("Flattening modified the editable TFL2 original")
         return
 
+    # Legacy TFL1 is supported without mutating the original source.
+    var legacy_path: String = "user://tf_export_" + suffix + "_legacy.tfl"
+    var legacy_dir: String = "user://tf_export_" + suffix + "_legacy_world"
+    var legacy_bytes: PackedByteArray = layered_bytes.slice(0, layered_bytes.size() - LAYERS.CHECKSUM_BYTES)
+    legacy_bytes[3] = 49  # "TFL1"
+    var legacy_writer: FileAccess = FileAccess.open(legacy_path, FileAccess.WRITE)
+    if legacy_writer == null:
+        _fail("TFL1 fixture creation failed")
+        return
+    legacy_writer.store_buffer(legacy_bytes)
+    legacy_writer.close()
+    var legacy_result: Dictionary = EXPORT.export_file(legacy_path, legacy_dir, 1)
+    if int(legacy_result.get("error", ERR_FILE_CORRUPT)) != OK:
+        _fail("TFL1 export failed")
+        return
+    if not _verify_samples(legacy_dir, snapshot, original.cells):
+        _fail("Legacy TFL1 composite changed during regional export")
+        return
+    var legacy_manifest: Dictionary = MANIFEST.load(legacy_dir, true)
+    if int(legacy_manifest.get("error", ERR_FILE_CORRUPT)) != OK:
+        _fail("Legacy TFL1 manifest invalid")
+        return
+    if str(legacy_manifest["document"]["source_format"]) != "TFL1":
+        _fail("Legacy TFL1 provenance lost")
+        return
+    if FileAccess.get_file_as_bytes(legacy_path) != legacy_bytes:
+        _fail("TFL1 export silently modified original layer document")
+        return
+
     # Mismatched or deleted region data must block world verification.
     var missing_page: String = layered_dir + "/r_00000_00000.tfr"
     var delete_error: Error = DirAccess.remove_absolute(ProjectSettings.globalize_path(missing_page))
