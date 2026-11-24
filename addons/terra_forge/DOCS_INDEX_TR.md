@@ -1,5 +1,8 @@
 # TerraForge Mobile — Kalıcı Proje Hafızası ve Teknik Doküman İndeksi
 
+> **GÜNCEL DEVİR — P1.5.6c (24 Kasım 2026):** Kod 2c34c8057b10a090b374974ac6d23daadf67b082, [CI](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45458966071). [P1_5_6C_TOPOLOGY_TR.md](P1_5_6C_TOPOLOGY_TR.md). Code pushed; CI in_progress/pending. Import and editor activation passed, full suite not yet verified. Do not claim 46/46 or benchmark result; FIRST retrieve CI logs and complete evidence. H mode6 opt-in, G unchanged; three per-session immutable-by-contract templates, 32256 bytes, independent copied output indices; no shared GPU buffers, no memory reduction claim. P1.5.6b 45/45 and report recorded. **NEXT verify P1.5.6c CI and save raw results, then P1.5.6d publication-budget comparison**. P1.4/P1.4R PARKED; all earlier experiments and unresolved device/physics gates retained.
+
+
 > **P1.5.6b (24 Kasım 2026):** Kod 5e210c2f8f4b2737713bcbc82dba6811f586290c, [45/45 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45455416391). [Rapor](P1_5_6B_PUBLICATION_BUDGET_TR.md), [ham JSON](P1_5_6B_PUBLICATION_BUDGET_CI.json). Opt-in source-byte/count/measured publication time admission; four warm mixed tiles across 3 pumps, two first-item oversized exceptions, zero worker duplicates/drops. No GPU timing. NEXT P1.5.6c topology reuse experiment. P1.4/P1.4R PARKED.
 
 
