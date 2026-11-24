@@ -1,5 +1,8 @@
 # TerraForge — CI, Test Matrisi, Android Performans ve Kalite Kapısı
 
+> **GÜNCEL DEVİR — P1.5.7a (24 Kasım 2026):** Kod fe9cefc11d05c5dc2546d4db2caff58ff97d7af8, [48/48 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45460991716). [Rapor](P1_5_7A_PHYSICS_RAYCAST_TR.md), [ham JSON](P1_5_7A_PHYSICS_RAYCAST_CI.json). 648 actual in-tree successful ray probes, zero mesh diagonal mismatches, max delta 0.000009536743 world units, TFM1/2 A/G, spacing1 translation+yaw. Eviction, last-good after scratch missing page, recovery, stop no hit. Default physics setting on Linux, not Android or general all terrains. P1.5.7b dynamic capsule crossing + actual moving ray coverage implemented next, CI pending. P1.4/P1.4R PARKED.
+
+
 > **GÜNCEL DEVİR — P1.5.6d (24 Kasım 2026):** Kod 9fdbef19e3f6ef02e76fb40e7dfdd841e68126de, [47/47 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45460013242). [Rapor](P1_5_6D_PUBLICATION_COMPARISON_TR.md), [ham JSON](P1_5_6D_PUBLICATION_COMPARISON_CI.json). 16 equal-work +24 trace runs; 64/128KiB reduces per-pump peak source allowance to116052 from up to261368 but slower equal-work wall and fewer trace publications; same sampled collision gaps. 256KiB close to disabled. Keep budget opt-in and A default. Stale deferred result discarded/recovered. P1.5.7a actual physics-space raycast experiment implemented next, CI pending. P1.4/P1.4R PARKED. No GPU/Android proof.
 
 

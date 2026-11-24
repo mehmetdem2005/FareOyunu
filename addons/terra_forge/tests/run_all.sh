@@ -59,6 +59,7 @@ suite=(
   test_topology_worker
   test_publication_comparison
   test_physics_raycast
+  test_dynamic_terrain_physics
   test_lod_policy
   test_surface_faces
   test_lod_normals

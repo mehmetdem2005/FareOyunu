@@ -1,0 +1,61 @@
+{
+  "schema": "TF_PHYSICS_RAYCAST_1",
+  "commit": "fe9cefc11d05c5dc2546d4db2caff58ff97d7af8",
+  "ci_run": 45460991716,
+  "environment": {
+    "godot": "4.7.2-stable (official)",
+    "notes": "in-tree direct-space rays after physics frames; synthetic spacing1, translated and yaw-rotated preview, not Android",
+    "physics_engine_setting": "DEFAULT",
+    "ticks_per_second": 60
+  },
+  "cases": [
+    {
+      "format": 1,
+      "initial_rays": 159,
+      "last_good_ray": true,
+      "max_error_to_either_diagonal": 0.0000095367431640625,
+      "max_mesh_height_delta": 0.0000095367431640625,
+      "mesh_diagonal_mismatch_count": 0,
+      "mode": 0,
+      "rays_verified": 162,
+      "stop_no_hit": true,
+      "teleport_eviction": true
+    },
+    {
+      "format": 1,
+      "initial_rays": 159,
+      "last_good_ray": true,
+      "max_error_to_either_diagonal": 0.0000095367431640625,
+      "max_mesh_height_delta": 0.0000095367431640625,
+      "mesh_diagonal_mismatch_count": 0,
+      "mode": 5,
+      "rays_verified": 162,
+      "stop_no_hit": true,
+      "teleport_eviction": true
+    },
+    {
+      "format": 2,
+      "initial_rays": 159,
+      "last_good_ray": true,
+      "max_error_to_either_diagonal": 0.0000095367431640625,
+      "max_mesh_height_delta": 0.0000095367431640625,
+      "mesh_diagonal_mismatch_count": 0,
+      "mode": 0,
+      "rays_verified": 162,
+      "stop_no_hit": true,
+      "teleport_eviction": true
+    },
+    {
+      "format": 2,
+      "initial_rays": 159,
+      "last_good_ray": true,
+      "max_error_to_either_diagonal": 0.0000095367431640625,
+      "max_mesh_height_delta": 0.0000095367431640625,
+      "mesh_diagonal_mismatch_count": 0,
+      "mode": 5,
+      "rays_verified": 162,
+      "stop_no_hit": true,
+      "teleport_eviction": true
+    }
+  ]
+}

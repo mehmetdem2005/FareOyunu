@@ -1,5 +1,8 @@
 # TerraForge — UNUTULMAYACAKLAR / Deney, karar ve doğrulama defteri
 
+> **GÜNCEL DEVİR — P1.5.7a (24 Kasım 2026):** Kod fe9cefc11d05c5dc2546d4db2caff58ff97d7af8, [48/48 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45460991716). [Rapor](P1_5_7A_PHYSICS_RAYCAST_TR.md), [ham JSON](P1_5_7A_PHYSICS_RAYCAST_CI.json). 648 actual in-tree successful ray probes, zero mesh diagonal mismatches, max delta 0.000009536743 world units, TFM1/2 A/G, spacing1 translation+yaw. Eviction, last-good after scratch missing page, recovery, stop no hit. Default physics setting on Linux, not Android or general all terrains. P1.5.7b dynamic capsule crossing + actual moving ray coverage implemented next, CI pending. P1.4/P1.4R PARKED.
+
+
 > **GÜNCEL DEVİR — P1.5.6d (24 Kasım 2026):** Kod 9fdbef19e3f6ef02e76fb40e7dfdd841e68126de, [47/47 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45460013242). [Rapor](P1_5_6D_PUBLICATION_COMPARISON_TR.md), [ham JSON](P1_5_6D_PUBLICATION_COMPARISON_CI.json). 16 equal-work +24 trace runs; 64/128KiB reduces per-pump peak source allowance to116052 from up to261368 but slower equal-work wall and fewer trace publications; same sampled collision gaps. 256KiB close to disabled. Keep budget opt-in and A default. Stale deferred result discarded/recovered. P1.5.7a actual physics-space raycast experiment implemented next, CI pending. P1.4/P1.4R PARKED. No GPU/Android proof.
 
 
@@ -115,6 +118,9 @@ EXPERIMENTAL + CI_VERIFIED + DEVICE_OPEN. [P1.5.5a](P1_5_5A_GEOMETRY_WORKER_TR.m
 
 > **GÜNCEL DEVİR — P1.5.6d (24 Kasım 2026):** Kod 9fdbef19e3f6ef02e76fb40e7dfdd841e68126de, [47/47 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45460013242). [Rapor](P1_5_6D_PUBLICATION_COMPARISON_TR.md), [ham JSON](P1_5_6D_PUBLICATION_COMPARISON_CI.json). 16 equal-work +24 trace runs; 64/128KiB reduces per-pump peak source allowance to116052 from up to261368 but slower equal-work wall and fewer trace publications; same sampled collision gaps. 256KiB close to disabled. Keep budget opt-in and A default. Stale deferred result discarded/recovered. P1.5.7a actual physics-space raycast experiment implemented next, CI pending. P1.4/P1.4R PARKED. No GPU/Android proof.
 
+### EXP-10 — Real physics coverage
+> **GÜNCEL DEVİR — P1.5.7a (24 Kasım 2026):** Kod fe9cefc11d05c5dc2546d4db2caff58ff97d7af8, [48/48 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45460991716). [Rapor](P1_5_7A_PHYSICS_RAYCAST_TR.md), [ham JSON](P1_5_7A_PHYSICS_RAYCAST_CI.json). 648 actual in-tree successful ray probes, zero mesh diagonal mismatches, max delta 0.000009536743 world units, TFM1/2 A/G, spacing1 translation+yaw. Eviction, last-good after scratch missing page, recovery, stop no hit. Default physics setting on Linux, not Android or general all terrains. P1.5.7b dynamic capsule crossing + actual moving ray coverage implemented next, CI pending. P1.4/P1.4R PARKED.
+
 ## 3 — Ertelenen ve sonraki fazlar (sırayı koru)
 | ID | Durum | Kapanış şartı / sonraki çalışma |
 |---|---|---|
@@ -132,7 +138,8 @@ EXPERIMENTAL + CI_VERIFIED + DEVICE_OPEN. [P1.5.5a](P1_5_5A_GEOMETRY_WORKER_TR.m
 | P1.5.6b publication budget | CI_VERIFIED / EXPERIMENTAL | 45/45, warm mixed tiles, retained queue, no GPU proof. |
 | P1.5.6c topology reuse | CI_VERIFIED / EXPERIMENTAL | 46/46; modest worker reduction, no coverage gain, no GPU proof. |
 | P1.5.6d publication budget comparison | CI_VERIFIED / EXPERIMENTAL | 47/47, capped bursts but slower equal work and same shape coverage. |
-| P1.5.7a physics-space rays | IMPLEMENTED / CI_PENDING | In-tree actual rays, transforms, seams, eviction and last-good; check CI first. |
+| P1.5.7a physics-space rays | CI_VERIFIED | 48/48, 648 rays, zero measured mesh mismatches, spacing1 synthetic Linux. |
+| P1.5.7b dynamic capsule and moving ray coverage | IMPLEMENTED / CI_PENDING | Warm crossings and separate streaming ray trace; check CI first. |
 | P1.5.5 geometry worker | PLANNED | One bounded worker, immutable input and generation/LOD/neighbor identity, stale outputs discarded, pure arrays only; no SceneTree/Mesh/Physics on worker. Main-thread publication. |
 | P1.5.6 GPU publication | PLANNED | Budgeted upload, reusable topology/material only if measured, near priority, bounded VRAM, draw calls/triangles and GPU separately measured. |
 | P1.5.7 physics | PLANNED | Actual physics-tick raycast parity/collision coverage, coherent mesh/shape generation, near priority, last-good, fast crossing/teleport, no flat fallback. |
