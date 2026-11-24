@@ -1,5 +1,8 @@
 # Sıradaki Uygulama İş Emri — P1.3 Sahada Doğrulama ve P1.4 Veri İşlemleri
 
+> **GÜNCEL DEVİR — P1.5.7c (24 Kasım 2026):** Kod c29d538ef220c68ac735a31b692d7c6189787239, [50/50 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45463462975). [Rapor](P1_5_7C_COLLISION_READINESS_TR.md), [ham JSON](P1_5_7C_COLLISION_READINESS_CI.json). TFM1/2 × A/G four cases, cold and boundary missing_lod0, four center rays confirmed, pending/excluded/outside/stop rejected. Query only, not continuous sweep or movement guarantee. P1.5.7d isolated actual capsule horizontal admission experiment added next; CI PENDING. Explicit staging/settle is diagnostic only, no production controller, no predictive prefetch yet. P1.4/P1.4R PARKED, all device and experimental gates open.
+
+
 > **GÜNCEL DEVİR — P1.5.7b (24 Kasım 2026):** Kod 1da154b8c98472cdbf2239c4bbd3dcce4039ee96, [49/49 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45462434054). [Rapor](P1_5_7B_DYNAMIC_PHYSICS_TR.md), [ham JSON](P1_5_7B_DYNAMIC_PHYSICS_CI.json). Eight warm actual capsule runs: zero airborne ticks/missed rays/penetration, both seams crossed at12/24 units/s. Separate 144-tick streaming route each 35 missing actual ray steps, longest A24/G25, metadata agrees at sampled points; includes teleport, not continuous player walking. P1.5.7c bounded collision readiness query implemented next, CI pending. No safety guarantee; no production movement change. P1.4/P1.4R PARKED.
 
 

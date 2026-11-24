@@ -1,0 +1,51 @@
+{
+  "commit": "c29d538ef220c68ac735a31b692d7c6189787239",
+  "run_id": 45463462975,
+  "job_id": 138691999963,
+  "engine": "4.7.2.stable.official.ed1daf0bf",
+  "total": 50,
+  "fails": 0,
+  "artifact_id": 14953821977,
+  "cases": [
+    {
+      "boundary_reason": "missing_lod0",
+      "cold_reason": "missing_lod0",
+      "confirmed_tiles": 4,
+      "excluded_reason": "physics_unconfirmed",
+      "format": 1,
+      "mode": 0,
+      "pending_reason": "unsettled",
+      "stopped_denied": true
+    },
+    {
+      "boundary_reason": "missing_lod0",
+      "cold_reason": "missing_lod0",
+      "confirmed_tiles": 4,
+      "excluded_reason": "physics_unconfirmed",
+      "format": 1,
+      "mode": 5,
+      "pending_reason": "unsettled",
+      "stopped_denied": true
+    },
+    {
+      "boundary_reason": "missing_lod0",
+      "cold_reason": "missing_lod0",
+      "confirmed_tiles": 4,
+      "excluded_reason": "physics_unconfirmed",
+      "format": 2,
+      "mode": 0,
+      "pending_reason": "unsettled",
+      "stopped_denied": true
+    },
+    {
+      "boundary_reason": "missing_lod0",
+      "cold_reason": "missing_lod0",
+      "confirmed_tiles": 4,
+      "excluded_reason": "physics_unconfirmed",
+      "format": 2,
+      "mode": 5,
+      "pending_reason": "unsettled",
+      "stopped_denied": true
+    }
+  ]
+}

@@ -1,5 +1,8 @@
 # TerraForge — UNUTULMAYACAKLAR / Deney, karar ve doğrulama defteri
 
+> **GÜNCEL DEVİR — P1.5.7c (24 Kasım 2026):** Kod c29d538ef220c68ac735a31b692d7c6189787239, [50/50 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45463462975). [Rapor](P1_5_7C_COLLISION_READINESS_TR.md), [ham JSON](P1_5_7C_COLLISION_READINESS_CI.json). TFM1/2 × A/G four cases, cold and boundary missing_lod0, four center rays confirmed, pending/excluded/outside/stop rejected. Query only, not continuous sweep or movement guarantee. P1.5.7d isolated actual capsule horizontal admission experiment added next; CI PENDING. Explicit staging/settle is diagnostic only, no production controller, no predictive prefetch yet. P1.4/P1.4R PARKED, all device and experimental gates open.
+
+
 > **GÜNCEL DEVİR — P1.5.7b (24 Kasım 2026):** Kod 1da154b8c98472cdbf2239c4bbd3dcce4039ee96, [49/49 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45462434054). [Rapor](P1_5_7B_DYNAMIC_PHYSICS_TR.md), [ham JSON](P1_5_7B_DYNAMIC_PHYSICS_CI.json). Eight warm actual capsule runs: zero airborne ticks/missed rays/penetration, both seams crossed at12/24 units/s. Separate 144-tick streaming route each 35 missing actual ray steps, longest A24/G25, metadata agrees at sampled points; includes teleport, not continuous player walking. P1.5.7c bounded collision readiness query implemented next, CI pending. No safety guarantee; no production movement change. P1.4/P1.4R PARKED.
 
 
@@ -145,7 +148,8 @@ EXPERIMENTAL + CI_VERIFIED + DEVICE_OPEN. [P1.5.5a](P1_5_5A_GEOMETRY_WORKER_TR.m
 | P1.5.6d publication budget comparison | CI_VERIFIED / EXPERIMENTAL | 47/47, capped bursts but slower equal work and same shape coverage. |
 | P1.5.7a physics-space rays | CI_VERIFIED | 48/48, 648 rays, zero measured mesh mismatches, spacing1 synthetic Linux. |
 | P1.5.7b dynamic capsule and moving ray coverage | CI_VERIFIED | 49/49, warm capsule passes; actual moving rays 35/144 missing. |
-| P1.5.7c collision readiness query | IMPLEMENTED / CI_PENDING | Bounded local footprint + actual center rays, not movement safety guarantee; check CI. |
+| P1.5.7c collision readiness query | CI_VERIFIED / EXPERIMENTAL | 50/50 Linux CI; bounded local footprint + actual center rays, not movement safety guarantee. |
+| P1.5.7d guarded horizontal capsule experiment | IMPLEMENTED / CI_PENDING | Diagnostic only; hold on verified current footprint, explicitly stage destination, recheck and resume. Current-footprint loss is abort, not solved. |
 | P1.5.5 geometry worker | PLANNED | One bounded worker, immutable input and generation/LOD/neighbor identity, stale outputs discarded, pure arrays only; no SceneTree/Mesh/Physics on worker. Main-thread publication. |
 | P1.5.6 GPU publication | PLANNED | Budgeted upload, reusable topology/material only if measured, near priority, bounded VRAM, draw calls/triangles and GPU separately measured. |
 | P1.5.7 physics | PLANNED | Actual physics-tick raycast parity/collision coverage, coherent mesh/shape generation, near priority, last-good, fast crossing/teleport, no flat fallback. |
