@@ -1,5 +1,8 @@
 # TerraForge — UNUTULMAYACAKLAR / Deney, karar ve doğrulama defteri
 
+> **GÜNCEL DEVİR — P1.5.5c (24 Kasım 2026):** Kod 8479fdc8f8f6dd94db7b8816042d69e91859045a, [41/41 Godot Linux CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45448297981). [P1_5_5C_WORKER_COMPARISON_TR.md](P1_5_5C_WORKER_COMPARISON_TR.md), [ham JSON](P1_5_5C_WORKER_COMPARISON_CI.json). 24 equal-work runs (768 timed tile publications, 96 warmup), 48 fixed 144-pump traces (6912 pumps). E reduces equal-work main elapsed but moving trace builds fewer tiles and has more missing collision-shape steps; keep E opt-in, A default. **NEXT: P1.4R read-only design checkpoint** (user explicitly asked whether P1.4 forgotten), [P1_4_RETURN_CHECKPOINT_TR.md](P1_4_RETURN_CHECKPOINT_TR.md). P1.4 writable implementation remains PARKED until design decision/authorization. Resume P1.5.5d worker coverage fix after checkpoint; P1.5.6+ remain open. No painting/objects; no Android/GPU/raycast proof.
+
+
 > **GÜNCEL DEVİR — P1.5.5b (24 Kasım 2026):** Kod 16731d424112edda219355436a04b7337f631e8b, [40/40 Godot Linux CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45446183057). [P1_5_5B_WORKER_PREVIEW_TR.md](P1_5_5B_WORKER_PREVIEW_TR.md), [ham JSON](P1_5_5B_WORKER_PREVIEW_CI.json). E worker explicit experimental sampling_strategy=3, A default unchanged; unique outstanding tile reservations, current epoch/LOD/neighbor validation, bounded synchronous publication, TFM1/2 real mesh/shape, missing-page retention and TFM2 cold missing shard recovery. 19 published, 2 discarded per format. **NEXT P1.5.5c:** controlled sync C vs worker E same fixed completed workload and separate moving trace; quantify main-thread copy/publish/pump, queue/delivery, coverage, wasted work; cap1/2/4 and repeat orders. No Android FPS/GPU proof. All EXP gates remain open, P1.4 parked, no painting/objects.
 
 
@@ -72,6 +75,10 @@ EXPERIMENTAL + CI_VERIFIED + DEVICE_OPEN. [P1.5.5a](P1_5_5A_GEOMETRY_WORKER_TR.m
 
 **24 Kasım P1.5.5b:** [worker preview](P1_5_5B_WORKER_PREVIEW_TR.md), [ham JSON](P1_5_5B_WORKER_PREVIEW_CI.json), 40/40 CI. E explicit opt-in, A default unchanged. Unique reservations and bounded publication; stale signature/epoch and missing page/shard recovery tested. Per format 21 submitted,19 published,2 dropped. Stage metrics descriptive; no speedup comparison. Soft time cap may overshoot a single operation, separate submit/publish count limits. NEXT P1.5.5c controlled C/E comparison and cap/trace stress. Device, GPU, actual raycast, D live and all previous open gates retained.
 
+**24 Kasım P1.5.5c:** [C/E comparison](P1_5_5C_WORKER_COMPARISON_TR.md), 41/41 CI; 24 equal-work and 48 moving traces. E lower main time but more missing shape steps; not accepted. Keep default A. EXP-08 open; P1.5.5d coverage correction after P1.4R.
+
+**P1.4 dönüş kaydı:** Kullanıcı P1.4'ü sordu. [P1_4_RETURN_CHECKPOINT_TR.md](P1_4_RETURN_CHECKPOINT_TR.md) next mandatory design review; P1.4 implementation still PARKED pending design/authorization. No user TFH/TFL changes.
+
 ## 3 — Ertelenen ve sonraki fazlar (sırayı koru)
 | ID | Durum | Kapanış şartı / sonraki çalışma |
 |---|---|---|
@@ -81,7 +88,9 @@ EXPERIMENTAL + CI_VERIFIED + DEVICE_OPEN. [P1.5.5a](P1_5_5A_GEOMETRY_WORKER_TR.m
 | P1.5.4d scalar allocation experiment | CI_VERIFIED | B/D resident benchmark; D experimental, live/device gates open. |
 | P1.5.5a worker ownership prototype | CI_VERIFIED | Isolated worker; 39/39 CI, no preview integration. |
 | P1.5.5b worker preview integration | CI_VERIFIED | E opt-in live preview, 40/40, no device acceptance. |
-| P1.5.5c worker comparison | NEXT | Equal completed work C/E and fixed trace, cap variants, stage metrics. |
+| P1.5.5c worker comparison | CI_VERIFIED | 41/41, E main reduction but poorer moving coverage, no acceptance. |
+| P1.4R read-only architecture checkpoint | NEXT | User asked about parked P1.4; review before authorizing scratch writes. See P1_4_RETURN_CHECKPOINT_TR.md. |
+| P1.5.5d worker coverage repair | PLANNED | Resume after P1.4R checkpoint; isolate latency/near priority, equal-work + fixed wall trace. |
 | P1.5.5 geometry worker | PLANNED | One bounded worker, immutable input and generation/LOD/neighbor identity, stale outputs discarded, pure arrays only; no SceneTree/Mesh/Physics on worker. Main-thread publication. |
 | P1.5.6 GPU publication | PLANNED | Budgeted upload, reusable topology/material only if measured, near priority, bounded VRAM, draw calls/triangles and GPU separately measured. |
 | P1.5.7 physics | PLANNED | Actual physics-tick raycast parity/collision coverage, coherent mesh/shape generation, near priority, last-good, fast crossing/teleport, no flat fallback. |
@@ -109,6 +118,8 @@ EXPERIMENTAL + CI_VERIFIED + DEVICE_OPEN. [P1.5.5a](P1_5_5A_GEOMETRY_WORKER_TR.m
 - 24 Kasım 2026: P1.5.5a isolated worker 39/39 CI, EXP-08 added, no integration or performance acceptance. Next P1.5.5b.
 
 - 24 Kasım 2026: P1.5.5b opt-in E live worker 40/40, EXP-08 remains experimental. Next P1.5.5c controlled comparison; no performance acceptance.
+
+- 24 Kasım 2026: P1.5.5c comparison 41/41; E coverage regression remains open. P1.4R next design checkpoint, then P1.5.5d; no default changes.
 
 ### Yeni kayıt şablonu
 ID / tarih / faz:
