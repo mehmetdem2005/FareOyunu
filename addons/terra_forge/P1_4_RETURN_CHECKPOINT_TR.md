@@ -1,4 +1,7 @@
 # P1.4R — Ertelenen yazılabilir bölgesel veri mimarisine dönüş kapısı
+
+> **GÜNCEL DEVİR — P1.5.5d (24 Kasım 2026):** Kod 161346b356abe59a38876fc243ff950b21d0c4a1, [42/42 Godot Linux CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45449446366). [P1_5_5D_PRIORITY_WORKER_TR.md](P1_5_5D_PRIORITY_WORKER_TR.md), [ham JSON](P1_5_5D_PRIORITY_WORKER_CI.json). F=explicit experimental priority worker mode4; A default, E unchanged. 24 C/E/F traces, two cadences, two page caps, both formats. F reduces missing shape steps vs E in all measured groups; cap16 still behind C, modest pump overhead. 8ms target no full-period deadline misses in this run. No actual physics raycast/rendered FPS/Android proof. **USER DECISION: P1.5 first; P1.4/P1.4R PARKED until P1.5 work complete or user changes order.** NEXT P1.5.5e: isolate dense scalar worker compute latency, preserve exact output and compare E/F vs candidate; then P1.5.6. Keep all experiments, no painting/objects.
+
 24 Kasım 2026 — Kullanıcı P1.4'ün unutulup unutulmadığını sordu. P1.4 PARKED; P1.5.5c sonrasında **NEXT tasarım değerlendirmesi**, sonsuza dek P1.5.10 bekleme yok. Bu belge plan ve dönüş koşulu, kod uygulanmış veya kullanıcı gerçek veri yazımını onaylamış değildir.
 
 ## Mevcut kök sorun

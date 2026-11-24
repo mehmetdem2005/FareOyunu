@@ -1,5 +1,8 @@
 # TerraForge — UNUTULMAYACAKLAR / Deney, karar ve doğrulama defteri
 
+> **GÜNCEL DEVİR — P1.5.5d (24 Kasım 2026):** Kod 161346b356abe59a38876fc243ff950b21d0c4a1, [42/42 Godot Linux CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45449446366). [P1_5_5D_PRIORITY_WORKER_TR.md](P1_5_5D_PRIORITY_WORKER_TR.md), [ham JSON](P1_5_5D_PRIORITY_WORKER_CI.json). F=explicit experimental priority worker mode4; A default, E unchanged. 24 C/E/F traces, two cadences, two page caps, both formats. F reduces missing shape steps vs E in all measured groups; cap16 still behind C, modest pump overhead. 8ms target no full-period deadline misses in this run. No actual physics raycast/rendered FPS/Android proof. **USER DECISION: P1.5 first; P1.4/P1.4R PARKED until P1.5 work complete or user changes order.** NEXT P1.5.5e: isolate dense scalar worker compute latency, preserve exact output and compare E/F vs candidate; then P1.5.6. Keep all experiments, no painting/objects.
+
+
 > **GÜNCEL DEVİR — P1.5.5c (24 Kasım 2026):** Kod 8479fdc8f8f6dd94db7b8816042d69e91859045a, [41/41 Godot Linux CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45448297981). [P1_5_5C_WORKER_COMPARISON_TR.md](P1_5_5C_WORKER_COMPARISON_TR.md), [ham JSON](P1_5_5C_WORKER_COMPARISON_CI.json). 24 equal-work runs (768 timed tile publications, 96 warmup), 48 fixed 144-pump traces (6912 pumps). E reduces equal-work main elapsed but moving trace builds fewer tiles and has more missing collision-shape steps; keep E opt-in, A default. **NEXT: P1.4R read-only design checkpoint** (user explicitly asked whether P1.4 forgotten), [P1_4_RETURN_CHECKPOINT_TR.md](P1_4_RETURN_CHECKPOINT_TR.md). P1.4 writable implementation remains PARKED until design decision/authorization. Resume P1.5.5d worker coverage fix after checkpoint; P1.5.6+ remain open. No painting/objects; no Android/GPU/raycast proof.
 
 
@@ -79,6 +82,8 @@ EXPERIMENTAL + CI_VERIFIED + DEVICE_OPEN. [P1.5.5a](P1_5_5A_GEOMETRY_WORKER_TR.m
 
 **P1.4 dönüş kaydı:** Kullanıcı P1.4'ü sordu. [P1_4_RETURN_CHECKPOINT_TR.md](P1_4_RETURN_CHECKPOINT_TR.md) next mandatory design review; P1.4 implementation still PARKED pending design/authorization. No user TFH/TFL changes.
 
+**24 Kasım P1.5.5d:** [priority worker](P1_5_5D_PRIORITY_WORKER_TR.md), 42/42 CI, F experimental. Fixed cadence E39/37 vs F32/32 missing shape steps at cap9/16; C34/29. Queue priority, finished prune and exact parity tested; queued-prune deterministic coverage and actual raycast/device open. A default. User explicitly requested P1.5 first; P1.4R PARKED, next P1.5.5e.
+
 ## 3 — Ertelenen ve sonraki fazlar (sırayı koru)
 | ID | Durum | Kapanış şartı / sonraki çalışma |
 |---|---|---|
@@ -89,8 +94,9 @@ EXPERIMENTAL + CI_VERIFIED + DEVICE_OPEN. [P1.5.5a](P1_5_5A_GEOMETRY_WORKER_TR.m
 | P1.5.5a worker ownership prototype | CI_VERIFIED | Isolated worker; 39/39 CI, no preview integration. |
 | P1.5.5b worker preview integration | CI_VERIFIED | E opt-in live preview, 40/40, no device acceptance. |
 | P1.5.5c worker comparison | CI_VERIFIED | 41/41, E main reduction but poorer moving coverage, no acceptance. |
-| P1.4R read-only architecture checkpoint | NEXT | User asked about parked P1.4; review before authorizing scratch writes. See P1_4_RETURN_CHECKPOINT_TR.md. |
-| P1.5.5d worker coverage repair | PLANNED | Resume after P1.4R checkpoint; isolate latency/near priority, equal-work + fixed wall trace. |
+| P1.4R read-only architecture checkpoint | PARKED | User explicitly chose P1.5 first; retain P1_4_RETURN_CHECKPOINT_TR.md for return after P1.5 or new user decision. |
+| P1.5.5d worker coverage repair | CI_VERIFIED / EXPERIMENTAL | F priority improves E coverage, cap16 behind C; no default change. |
+| P1.5.5e dense scalar worker latency | NEXT | Isolate compute latency, exact parity, same-cadence comparison. |
 | P1.5.5 geometry worker | PLANNED | One bounded worker, immutable input and generation/LOD/neighbor identity, stale outputs discarded, pure arrays only; no SceneTree/Mesh/Physics on worker. Main-thread publication. |
 | P1.5.6 GPU publication | PLANNED | Budgeted upload, reusable topology/material only if measured, near priority, bounded VRAM, draw calls/triangles and GPU separately measured. |
 | P1.5.7 physics | PLANNED | Actual physics-tick raycast parity/collision coverage, coherent mesh/shape generation, near priority, last-good, fast crossing/teleport, no flat fallback. |
@@ -120,6 +126,8 @@ EXPERIMENTAL + CI_VERIFIED + DEVICE_OPEN. [P1.5.5a](P1_5_5A_GEOMETRY_WORKER_TR.m
 - 24 Kasım 2026: P1.5.5b opt-in E live worker 40/40, EXP-08 remains experimental. Next P1.5.5c controlled comparison; no performance acceptance.
 
 - 24 Kasım 2026: P1.5.5c comparison 41/41; E coverage regression remains open. P1.4R next design checkpoint, then P1.5.5d; no default changes.
+
+- 24 Kasım 2026: P1.5.5d 42/42, F remains experimental, P1.4R explicitly deferred by user. P1.5.5e next.
 
 ### Yeni kayıt şablonu
 ID / tarih / faz:
