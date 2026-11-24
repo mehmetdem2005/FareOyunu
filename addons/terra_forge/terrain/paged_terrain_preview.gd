@@ -13,6 +13,7 @@ const FOOTPRINT = preload("res://addons/terra_forge/core/collision_footprint.gd"
 const SUPPORT = preload("res://addons/terra_forge/core/support_tile_selection.gd")
 const MOTION = preload("res://addons/terra_forge/core/motion_prefetch.gd")
 const MOTION_LATENCY = preload("res://addons/terra_forge/core/motion_latency_window.gd")
+const VIEW_BUDGET = preload("res://addons/terra_forge/core/adaptive_view_budget.gd")
 const TILE_CELLS: int = 32
 
 @export var preview_enabled: bool = false
@@ -56,6 +57,13 @@ var _publication
 @export var enable_motion_prefetch: bool = false
 ## Independent opt-in, requires motion prefetch. Pinned on open.
 @export var enable_adaptive_motion_horizon: bool = false
+## P1.5.9a experimental far-view pressure controller, requires support mode.
+@export var enable_adaptive_view_budget: bool=false
+@export_enum("30 FPS:30","60 FPS:60") var adaptive_target_fps: int=30
+var _adaptive_view_active: bool=false
+var _view_budget=VIEW_BUDGET.new()
+var _view_far_candidates: int=0
+var _view_far_admitted: int=0
 var _motion_adaptive: bool=false
 var _motion_latency=MOTION_LATENCY.new()
 var _motion_wait_started: Dictionary={}
@@ -169,6 +177,11 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
     _support_active = enable_support_retention
     _motion_active=enable_motion_prefetch and _support_active
     _motion_adaptive=_motion_active and enable_adaptive_motion_horizon
+    _adaptive_view_active=enable_adaptive_view_budget and _support_active
+    if _adaptive_view_active and _view_budget.configure(adaptive_target_fps)!=OK:
+        stop_preview()
+        _last_error=ERR_INVALID_PARAMETER
+        return _last_error
     if _support_active and (max_visible_tiles < 1 or max_visible_tiles > SUPPORT.MAX_TOTAL):
         stop_preview()
         _last_error=ERR_INVALID_PARAMETER
@@ -217,6 +230,10 @@ func resolved_sampling_strategy() -> int:
 func stop_preview() -> void:
     set_process(false)
     # Explicit shutdown revokes even a held support lease. Camera epochs do not.
+    _adaptive_view_active=false
+    _view_budget=VIEW_BUDGET.new()
+    _view_far_candidates=0
+    _view_far_admitted=0
     _motion_active=false
     _motion_adaptive=false
     _motion_latency=MOTION_LATENCY.new()
@@ -283,6 +300,8 @@ func _process(_delta: float) -> void:
         var cam: Camera3D = get_viewport().get_camera_3d()
         if cam != null:
             set_stream_center(cam.global_position)
+        if _adaptive_view_active:
+            sample_view_pressure(_delta*1000.0)
     pump_stream()
 
 ## Public for reproducible headless tests, without relying on idle frames.
@@ -379,10 +398,27 @@ func _sync_tiles() -> void:
                 if not _support_keys.has(key) and ahead.size()<max_visible_tiles-_support_keys.size():
                     ahead.append(key)
                     ranked.append({"key":key,"lod":0})
+        var far_count: int=0
+        if _adaptive_view_active:
+            for entry in found:
+                var key: Vector2i=entry["key"]
+                if int(new_desired[key])>0 and not ahead.has(key) and not _support_keys.has(key):
+                    far_count+=1
+        var far_limit: int=_view_budget.far_limit(far_count) if _adaptive_view_active else SUPPORT.MAX_TOTAL
+        var far_admitted: int=0
         for entry in found:
             var key: Vector2i=entry["key"]
-            if not ahead.has(key) and ranked.size()<SUPPORT.MAX_TOTAL:
-                ranked.append({"key":key,"lod":int(new_desired[key])})
+            if ahead.has(key) or ranked.size()>=SUPPORT.MAX_TOTAL:
+                continue
+            var lod: int=int(new_desired[key])
+            if _adaptive_view_active and lod>0 and not _support_keys.has(key):
+                if far_admitted>=far_limit:
+                    continue
+                far_admitted+=1
+            ranked.append({"key":key,"lod":lod})
+        if _adaptive_view_active:
+            _view_far_candidates=far_count
+            _view_far_admitted=far_admitted
         var grid=Vector2i(int(_reader.cells.x/TILE_CELLS),int(_reader.cells.y/TILE_CELLS))
         var chosen: Dictionary=SUPPORT.select(_support_keys,ranked,grid,max_visible_tiles)
         _support_selection_hist.add(float(Time.get_ticks_usec()-selection_started)/1000.0)
@@ -892,6 +928,28 @@ func _set_motion_keys(keys: Array[Vector2i]) -> void:
         _motion_changes+=1
         _last_sync_msec=-100000
 
+## Explicit sample API for deterministic CI or host-owned frame telemetry.
+## The normal runtime path samples process delta once before the pump.
+func sample_view_pressure(frame_ms: float) -> Error:
+    if not _adaptive_view_active or _reader==null:
+        return ERR_UNCONFIGURED
+    var before: int=_view_budget.tier
+    var status: Error=_view_budget.observe(frame_ms)
+    if status==OK and before!=_view_budget.tier:
+        _last_sync_msec=-100000
+    return status
+
+## Manual full-view override. Does not change user-specified hard caps.
+func set_adaptive_view_auto(enabled: bool) -> Error:
+    if not _adaptive_view_active or _reader==null:
+        return ERR_UNCONFIGURED
+    if _view_budget.set_auto(enabled):
+        _last_sync_msec=-100000
+    return OK
+
+func adaptive_view_state() -> Dictionary:
+    return {"active":_adaptive_view_active,"controller":_view_budget.report() if _adaptive_view_active else {},"far_candidates":_view_far_candidates,"far_admitted_candidates":_view_far_admitted}
+
 func motion_prefetch_state() -> Dictionary:
     return {"active":_motion_active,"keys":_motion_keys.duplicate(),"selected":_motion_selected.duplicate(),"changes":_motion_changes,"expirations":_motion_expirations,"relocations":_motion_relocations,"promotions":_motion_promotions,"abandoned_selection":_motion_abandoned,"speculative_publications":_motion_published,"sample_ms":_motion_hist.report(),"adaptive":_motion_adaptive,"latency":_motion_latency.report() if _motion_adaptive else {},"pending_latency_samples":_motion_wait_started.size(),"already_ready_selections":_motion_already_ready,"cancelled_latency_samples":_motion_cancelled_samples,"failed_latency_samples":_motion_failed_samples}
 
@@ -950,6 +1008,7 @@ func stats() -> Dictionary:
         "waiting_tile_frames": _waiting_tile_frames,
         "support": support_state(),
         "motion_prefetch": motion_prefetch_state(),
+        "adaptive_view": adaptive_view_state(),
         "writable": false
     }
 

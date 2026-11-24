@@ -1,5 +1,8 @@
 # Sıradaki Uygulama İş Emri — P1.3 Sahada Doğrulama ve P1.4 Veri İşlemleri
 
+> **GÜNCEL DEVİR — P1.5.8b3 CI_VERIFIED (24 Kasım 2026):** f10a34d31c8081247e560c7c6728d2690ee00923, [66/66 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45484068904), [ham JSON](P1_5_8B3_FAULT_CI.json). Eight missing/corrupt cases, 1440 actual physics ticks, no floor/ray gaps, one worker error/case, repair60, explicit reset90, resume94/95, failed latency correctly excluded. NEXT P1.5.9a opt-in far-view pressure controller, 30/60 presets, EWMA+hysteresis/cooldown, real stationary physics and synthetic pressure input, 4×340 ticks, CI_PENDING. No device FPS/GPU claim, no default change, P1.4/P1.4R PARKED. Delayed worker, changed-height seams, precise IO attribution remain open.
+
+
 > **GÜNCEL DEVİR — P1.5.8b2 CI_VERIFIED (24 Kasım 2026):** 115c81f91f0bd48d08bd7d25bd674f9bbeb8be19, [64/64 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45482102797), [ham JSON](P1_5_8B2_ROUNDTRIP_CI.json). 16×480 real physics ticks, equal completed roundtrip waypoint routes, fixed/adaptive reads1634→1422, builds280→238, denied212→182, zero floor/ray gaps, verified relocation/expiry. Four latency observations per adaptive case, horizon133–200ms; no Android claim. NEXT P1.5.8b3 real missing/corrupt destination page, terminal admission reason and failure/epoch-aware latency accounting, 8×180 physics ticks, CI_PENDING. Keep all opt-in; P1.4/P1.4R PARKED.
 
 
