@@ -14,11 +14,11 @@
 
 ## P0 — Doğrulama, ürün güvenliği ve proje izolasyonu
 
-**Durum:** Linux headless CI ve kod regresyonları **DONE, 23/23 PASS**; Android son kullanıcı onayı **AÇIK**.
+**Durum:** Linux headless CI ve kod regresyonları **DONE, 24/24 PASS**; Android son kullanıcı onayı **AÇIK**.
 
 ### P0.1 — DONE: altyapı
 - İzole `feat/terraforge-mobile-addon` dalı; oyun ve `main` dosyaları korunuyor.
-- Godot 4.7.2 headless CI, geçici test projesi, `bash -n`, script import, eklenti editör yükleme, 23 test.
+- Godot 4.7.2 headless CI, geçici test projesi, `bash -n`, script import, eklenti editör yükleme, 24 test.
 - Mevcut bozuk/eksik TFH/TFL dosyalarında fail-closed read-only ve yedek kurtarma.
 - `QUALITY_GATE.md` ve `MOBILE_TEST_PLAN.md` kabul belgeleri.
 
@@ -61,14 +61,19 @@
 
 **Kapı:** İZOLE async altyapı/test geçti, **gerçek canlı terrain ve Android cihaz kapısı AÇIK**. [P1_2_ASYNC_IO_TR.md](P1_2_ASYNC_IO_TR.md).
 
-### P1.3 — PLAN: opt-in region üzerinden mesh/LOD/collision
-- [ ] `HeightStore`'a doğrudan dizin erişimi kullanan renderer bağımlılıklarını `HeightSource` soyutlamasına geçir; legacy in-memory kaynak korunur.
-- [ ] Yalnız bir **test scene** üzerinde region-backed read-only mode; toggle varsayılan KAPALI, eski kullanıcı sahneleri otomatik migrasyonsuz.
-- [ ] 32×32 mesh için komşu sayfalardan “halo” örnekleri, seam, normals ve physics heightmap; görünür tile sayısı CPU ve GPU bütçesine bağlı.
-- [ ] Kamera hızına göre prefetch mesafesi/öncelik, generation ID/cancellation (eski istek geç geldiyse kullanma), gerçek frame-time budget.
-- [ ] Stale/missing page üzerinde boş arazi üretme; önce görünür veriyi muhafaza et veya okunamadı işaretle.
-- [ ] CI: legacy vs region-backed mesh yüksekliği, normals, fizik, LOD, başarısız IO ve hızlı kamera geçişi.
-- **Kapı:** Aynı Float32 örnekler, aynı görsel geometriler; CPU frame spike, resident RAM gözlemi; Android minimal sahnede doğrulama.
+### P1.3 — Read-only mesh/collision preview DONE; cihaz kabulü AÇIK
+
+- [x] Gerçek paged `ArrayMesh` + LOD0 `HeightMapShape3D` üretimi; 32×32 tile, LOD0/1/2, normal halo ve mixed LOD kenar eşleme.
+- [x] Yalnız yeni `paged_terrain_preview.gd` `Node3D` üzerinde opt-in; normal `TerraForgeTerrain` veya kullanıcının oyunu otomatik dönüştürülmedi.
+- [x] Kamera öncelikli async disk page isteği → main-thread node, mesh ve collision update; bozuk sayfadan sahte düz tile yok.
+- [x] `plugin.gd` editör 3D kamerayı aktarıyor, read-only info ve disabled Brush.
+- [x] `test_paged_terrain_preview.gd` 24. test, legacy parity + corruption + source immutability, [24/24 Godot CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45413288421).
+- [ ] Godot Android 11 gerçek Mobile Renderer görsel seam, 30 dk memory/CPU/GPU, p95/p99 ve fizik traversal onayı.
+- [ ] Çok büyük dünya `open()` sync SHA, LRU halo thrash, hızlı kamera tile gap ve stale collision politikası için profiling/iyileştirme.
+- [ ] Eski live `TerraForgeTerrain`'i ortak `HeightSource` adapter'a geçirmek henüz **PLAN**. Yeni preview farklı opt-in node.
+- [ ] P1.4 atomik çok-region writable data transaction henüz **YOK**.
+
+**Kapı:** İlk izole gerçek render/collision CI PASS, **cihaz ve oyun içine migration kapıları AÇIK**. [P1_3_PAGED_RENDER_TR.md](P1_3_PAGED_RENDER_TR.md).
 
 ### P1.4 — PLAN: çok-bölge düzenleme / transaction / layer geçişi
 - [ ] Çok sayfalı fırça darbesini tek Undo/Redo kaydı; kaynak ve diff, daha önce kaydedilmiş bölgeler dışında veri değiştirme.

@@ -1,6 +1,6 @@
 # TerraForge — CI, Test Matrisi, Android Performans ve Kalite Kapısı
 
-**Tarih:** 2026-11-24. **Baz kod:** v0.4.2-dev.2, `4d5ed1bdce11727f5bc129087432198956ff2ce5`. **Son doğrulanmış run:** [GitHub Actions 45408761313, 23/23 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45408761313).
+**Tarih:** 2026-11-24. **Baz kod:** v0.4.3-dev.1, `286b135dc405ff9727a75de0e89613c882d08688`. **Son doğrulanmış run:** [GitHub Actions 45413288421, 24/24 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45413288421).
 
 ## A. GitHub CI gerçek kapsamı
 
@@ -8,7 +8,7 @@ Workflow: `.github/workflows/terraforge-ci.yml`. Sadece `feat/terraforge-mobile-
 
 Test çalıştırıcı: `addons/terra_forge/tests/run_all.sh`. Her test logu, exit code + explicit `PASS:` + Godot engine Error/Parse Error analizi; beklenen özel veri koruma hata satırları kontrollü olarak filtrelenir. Özet ve log artifact Actions içinde. Bu **Android build, Vulkan/OpenGL sürücü testi, gerçek GPU p95 FPS testi** değildir.
 
-### Mevcut 23 test ve neyi kanıtladıkları
+### Mevcut 24 test ve neyi kanıtladıkları
 
 | # | Dosya | Kapsanan davranış |
 |---:|---|---|
@@ -37,7 +37,9 @@ Test çalıştırıcı: `addons/terra_forge/tests/run_all.sh`. Her test logu, ex
 
 | 23 | `test_async_page_io.gd` | Gerçek Thread/Mutex/Semaphore, bounded jobs, Float32 cross-page, stale generation drop, missing/corrupt page, close/join ve source immutability |
 
-**Doğrulanmış:** 23 testin hepsi `4d5ed1bd` uygulama commit'i için geçti. [GitHub Actions](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45408761313). Yeni dokümantasyon commit'i kod değişikliği yapmazsa 23 testlik kod sonucu aynı referans kalır; Actions otomatik yeni run başlatmışsa ayrı kaydedilmelidir.
+| 24 | `test_paged_terrain_preview.gd` | Gerçek opt-in TFR1 → ArrayMesh + HeightMapShape3D; legacy LOD0/1/2 vertices/normals/collision parity, mixed LOD seam, bozuk sayfa fail-closed, kaynak dokunulmazlığı |
+
+**Doğrulanmış:** 24 testin tümü `286b135d` uygulama commit'i için geçti. [GitHub Actions](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45413288421). Yeni dokümantasyon commit'i kod değişikliği yapmazsa 24 testlik kod sonucu aynı referans kalır; Actions otomatik yeni run başlatmışsa ayrı kaydedilmelidir.
 
 **CI'da YOK / GERÇEK CİHAZ BEKLİYOR:** 3D editörde gerçek Android finger/tap, Mobile renderer görüntüsü, telefon GPU driver, shader upload, uzun süreli RAM/VRAM leak, fizik adımı, termal throttling, kalıcı depolama izinleri ve kullanıcı ekranı.
 
@@ -48,7 +50,7 @@ Test çalıştırıcı: `addons/terra_forge/tests/run_all.sh`. Her test logu, ex
 - `.github/workflows/terraforge-ci.yml` script import/EditorPlugin startup testini kaldırma.
 - CI run job logunu aç, **total fails 0** görmeden başarılı deme. Beklenen hata mesajını sadece ilgili testte filtrele; bütün `ERROR:` satırlarını globally gizleme.
 - SHA, run URL, test sayısı, yeni risk ve rollback'i `STATUS_AND_CHANGELOG_TR.md` dosyasına kaydet.
-- P1.2b yeni worker regression ile toplam **23 test**. P1.3 ilk canlı read-only adapter testinde en az 24 test ve gerçek yeni CI run gereklidir.
+- P1.3 opt-in regional ArrayMesh+collision ile toplam **24 test**. Android gerçek render/performans ayrı zorunlu doğrulama; sonraki kod değişikliği 24 testin hepsini koruyacak.
 
 ## C. Teknik doğruluk kabul kapıları
 
@@ -59,7 +61,8 @@ Test çalıştırıcı: `addons/terra_forge/tests/run_all.sh`. Her test logu, ex
 | TFR1 world snapshot | Sınır örneği = tek sahip, tüm dosya/manifest SHA, output-overwrite reddi | CI PASS / canlı yok |
 | Paged sampler | Bilinear cross-page, cache limit, bozuk page fail closed, 1–64 limit | **İZOLE CI PASS** / canlıya bağlı değil |
 | Worker-thread IO | Mutex/Semaphore, job cap 1–8, stale generation, SHA buffer, join/close | **İZOLE CI PASS** / Android profili yok |
-| Live region mesh | Legacy ile aynı vertex, normals/seam/height, missing-page doğru fallback veya kilit | **PLAN** |
+| Opt-in ayrı regional mesh + collision preview | Legacy parity LOD0/1/2, mixed LOD, fail-closed corruption | **İZOLE CI PASS** / Android onayı yok |
+| Legacy live node'un gerçek regional HeightSource'a geçirilmesi | Varsayılan eski yol, opt-in migration, page halo, main-thread mesh commit | **PLAN** |
 | Live collision | Görsel height ile yüzey hata toleransı altında eşit, boş collision yok | **PLAN** |
 | LOD0↔LOD1↔LOD2 | Görünür yarık, gap, checkerboard skirt, yanlış normal, popping yok | Headless kısmi / Android QA bekliyor |
 | Sculpt sampling | Slow vs fast drag aynı fiziksel yol üzerinde tutarlı derinlik, crash/undo yok | Headless kısmi / Android QA bekliyor |

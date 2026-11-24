@@ -48,7 +48,11 @@ Eski P1.2 prototipinde kamera her yeni arazi parçasını diskten **ana thread'd
 - **En önemlisi:** Canlı `terrain/terra_forge_terrain.gd` hâlâ `height_data.heights` global Float32 dizisini kullanıyor. Yeni modüller **izole**; oyun sahnesi RAM/FPS hâlâ eski şekilde.
 - TFR1/TFM1 immutable snapshot; **çok-sayfalı atomic write transaction henüz YOK**. Region sculpt/Undo/Redo açma. Eksik sayfayı 0 yüksekliğe dönüştürme.
 
-## Sıradaki iş — P1.3 (PLAN)
+## P1.3 ilerleme güncellemesi (v0.4.3-dev.1, tarihsel planı geçersiz kılar)
+
+Aşağıdaki P1.3 ilk planındaki **izole mesh/normal/collision + editör kamera entegrasyonu UYGULANDI**: `paged_tile_geometry.gd`, `paged_terrain_preview.gd` ve `plugin.gd`; Godot CI [24/24 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45413288421). Eski `TerraForgeTerrain` otomatik değişmedi, P1.3 Android kalite kapısı açık. Güncel kaynak: [P1_3_PAGED_RENDER_TR.md](P1_3_PAGED_RENDER_TR.md).
+
+## Sıradaki iş — P1.3 (TARİHSEL PLAN)
 
 1. `terrain/terra_forge_terrain.gd` içinde height_data.heights/read doğrudan erişim envanteri.
 2. Varsayılan eski TFH/TFL kaynağını koruyarak yeni `HeightSource` read-only adapter prototipi.

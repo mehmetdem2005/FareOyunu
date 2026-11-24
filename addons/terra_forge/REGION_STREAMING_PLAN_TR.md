@@ -1,4 +1,4 @@
-# TerraForge P1 — Bölgesel Float32 yükseklik belleği (v0.4.2-dev.2)
+# TerraForge P1 — Bölgesel Float32 yükseklik belleği (v0.4.3-dev.1)
 
 **Durum: API prototipi + regresyon testi; canlı Terrain3D mesh/çarpışma/fırça sistemine henüz entegre değil.**
 
@@ -54,3 +54,10 @@ Mevcut `.tfh`, `.tfl` ve `.tfl.bak` kayıtları **dokunulmadan korunuyor**.
 - `camera_page_prefetch.configure_async(reader)` isteğe bağlı worker modu; eski senkron yol aynen korunur. Queue/finished/inflight max 1–8; stale generation sonuçları kullanılmaz; ana thread yalnız tamamlanan height sayfalarını cache'e alır.
 - `tests/test_async_page_io.gd` dâhil [Godot CI 23/23 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45408761313).
 - **Hâlâ:** full-world `open()` doğrulaması senkron; `close()` worker join sırasında son I/O bitene kadar bloklayabilir; canlı `TerraForgeTerrain` mesh/physics/Brush erişimlerine bağlanmadı, gerçek RAM/FPS değişimi ölçülmedi. Detay [P1_2_ASYNC_IO_TR.md](P1_2_ASYNC_IO_TR.md).
+
+## P1.3 v0.4.3-dev.1 — İsteğe bağlı gerçek mesh / collision (24/24 CI)
+
+- `core/paged_tile_geometry.gd` + `terrain/paged_terrain_preview.gd`: TFM1/TFR1 snapshot üzerinden arka plan yüklemeli read-only ArrayMesh ve LOD0 HeightMapShape3D, 3×3 page halo, 1–64 resident limit (preview minimum 9, varsayılan 16), camera priority.
+- `plugin.gd`: seçilmiş preview node'una editor camera konumunu iletir, read-only durumu ve resident page/IO sayaçları; Brush disabled.
+- `test_paged_terrain_preview.gd`: legacy LOD0/1/2 vertices/normals/collision ile eşitlik ve corrupted page fail-closed; [Godot CI 24/24 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45413288421).
+- **Henüz:** eski `TerraForgeTerrain`'in global height_data yüklemesi değişmedi; Android gerçek GPU/RSS, full-world async open ve multi-page write transaction yok. Açıklama: [P1_3_PAGED_RENDER_TR.md](P1_3_PAGED_RENDER_TR.md).

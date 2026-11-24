@@ -1,4 +1,4 @@
-# TerraForge Mobile — v0.4.2-dev.2 (bounded background region page IO)
+# TerraForge Mobile — v0.4.3-dev.1 (opt-in paged ArrayMesh and collision preview)
 > **NEW CHAT / FULL PROJECT MEMORY (2026-11-24):** Start with [DOCS_INDEX_TR.md](DOCS_INDEX_TR.md) and [HANDOFF_START_HERE_TR.md](HANDOFF_START_HERE_TR.md). The complete P0–P7 plan, actual CI results, full code/data architecture, risks, terrain geology research, mobile workflow, and the next exact GitHub CI implementation tasks are saved as multiple Markdown documents in this addon branch. **These documents do not mean live regional streaming is implemented.**
 
 
@@ -39,6 +39,14 @@ Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, nativ
 - **Weather**: tap a steep area and release for 1–6 bounded thermal passes (up to 32m). It now uses two scans of the four neighbors rather than allocating candidate arrays per sample. Material is transferred conservatively; **no water flow or sediment simulation is claimed**.
 - **Smooth**: two-pass neighborhood snapshot plus a 55% bilateral blend reduces directional scan artifacts while retaining some high-contrast edges. Ramp/Stamp/Weather controls remain contextual; Undo/Redo and Float32 data format are unchanged.
 - Mobile **Check** button tests Float32 roundtrip, path consistency, local mass balance and reports CPU processing times without changing the user's terrain.
+
+## P1.3 opt-in read-only paged terrain rendering (v0.4.3-dev.1)
+
+- Added `core/paged_tile_geometry.gd`: build exact 32-cell tile vertex, normal, mixed-LOD seam, indices and LOD0 HeightMapShape3D arrays from **verified resident TFR1 Float32 pages**. Missing/corrupt pages fail closed; no fake flat terrain.
+- Added `terrain/paged_terrain_preview.gd`: separate @tool Node3D test-only regional terrain. Default **OFF**. Set `region_directory` to a verified TFM1 export and `preview_enabled=true` in a separate test scene. Background worker loads only required page halo (1–64 cache; preview min=9, default=16); only main thread creates ArrayMesh/collision. Legacy TerraForgeTerrain and TFH/TFL files are untouched.
+- Existing `plugin.gd` recognizes a selected preview Node3D, forwards editor camera position to paged tile streaming, displays read-only tile/page/IO counters and disables Brush. No painting, saving, or Undo.
+- New 24th regression `test_paged_terrain_preview.gd` compares old and new **actual ArrayMesh** vertices/normals/indices and collision heights at LOD0/1/2, mixed LOD edges, source immutability, corrupt file refusal. [Godot 4.7.2 CI 24/24 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45413288421).
+- **Not yet legacy migration or Android performance proof.** Opening a world still verifies every TFR1 file synchronously, and the page worker join can block; actual mobile GPU/FPS/RAM and fast-camera tile-hole tests remain open. See [P1_3_PAGED_RENDER_TR.md](P1_3_PAGED_RENDER_TR.md).
 
 ## P1.2b actual background region IO (v0.4.2-dev.2)
 

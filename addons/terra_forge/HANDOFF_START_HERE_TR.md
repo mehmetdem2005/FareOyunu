@@ -2,13 +2,13 @@
 
 **Güncelleme tarihi:** 24 Kasım 2026  
 **Belge amacı:** Bağlam kaybolduğunda tek başına yeterli proje devri. Bu dosyayı ve bağlantılı diğer MD'leri okuyup çalışmaya kaldığı yerden devam et.  
-**Güncel geliştirme sürümü:** `0.4.2-dev.2`  
-**Kaynak doğrulama tabanı:** `4d5ed1bdce11727f5bc129087432198956ff2ce5` (belge güncellemesinden önceki uygulama commit'i).  
+**Güncel geliştirme sürümü:** `0.4.3-dev.1`  
+**Kaynak doğrulama tabanı:** `286b135dc405ff9727a75de0e89613c882d08688` (dokümantasyon commit'inden önceki uygulama commit'i).  
 **Depo:** `mehmetdem2005/FareOyunu` — **geliştirme dalı:** `feat/terraforge-mobile-addon`  
 **Korunacak dal:** `main`; hiçbir kullanıcı talebi olmadan değiştirilmeyecek.  
 **Eklenti dizini:** `addons/terra_forge/`  
 **CI:** `.github/workflows/terraforge-ci.yml`  
-**En son çalıştırılmış ve doğrulanmış CI:** [23/23 PASS, run 45408761313](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45408761313) — Godot 4.7.2 stable, Linux headless. Bu sonuç Android testlerinin yerine geçmez.
+**En son çalıştırılmış ve doğrulanmış CI:** [24/24 PASS, run 45413288421](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45413288421) — Godot 4.7.2 stable, Linux headless. Bu sonuç Android testlerinin yerine geçmez.
 
 > **ÇOK ÖNEMLİ:** Kullanıcı Android telefon üzerinden çalışıyor. Kod geliştirme, derleme/parse ve regresyon testleri için GitHub dalı + Actions CI tercih edilecek. Kullanıcıya Termux/PC kurulumu veya uzun manuel adımlar yüklemeye çalışma. Her değişiklikten sonra gerçekten GitHub'a push et, Actions sonucunu izle, başarısızsa düzelt. Başarılı olmayan CI'ı başarılı diye bildirme.
 
@@ -29,8 +29,9 @@ Kullanıcının açık ve yinelenen kararı: **Malzeme/texture boyama ve obje, b
 - Ayrı P1 disk veri prototipi: `TFR1` 32×32 Float32 sayfa, LRU örnek önbellek, SHA-256; `TFM1` dünya manifesti; `region_export.gd` ile `TFH1`/`TFL1`/`TFL2` kaynaklardan **ayrı, doğrulanmış bölgesel snapshot** dışa aktarma.
 - **P1.2 read-only sampler DONE:** `core/paged_height_source.gd` (TFM1/TFR1 checksum, Float32 bilinear, 1–64 LRU) ve `core/camera_page_prefetch.gd` (kamera önceliği, 1–8 senkron read/tick, pending generation reset) **22/22 CI PASS**. Bu **izole prototip**, gerçek sahneye bağlı değil.
 - **P1.2b gerçek worker-thread IO DONE / CI PASS:** `core/async_region_source.gd`, `camera_page_prefetch.configure_async()` ve `tests/test_async_page_io.gd`; `Thread` + `Mutex` + `Semaphore`, bounded 1–8 job/1–64 page, tek-buffer SHA, geç gelen kamera sonucu iptali, güvenli join. [23/23 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45408761313). **Henüz canlı terrain'e bağlı değil**; `open()` tüm world doğrulamasını hâlâ senkron yapar.
+- **P1.3 ilk opt-in geometri/fizik entegrasyonu DONE / CI PASS:** `core/paged_tile_geometry.gd`, `terrain/paged_terrain_preview.gd` ve `test_paged_terrain_preview.gd` ile gerçek `ArrayMesh`, LOD0 `HeightMapShape3D`, kamera streaming ve eski vertex/normal/collision parity testi. `plugin.gd` editör kamera forwarding ve read-only status ekledi. [24/24 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45413288421). Bu ayrı preview node'udur, eski TerraForgeTerrain değiştirilmedi.
 - En kritik **henüz yapılmayan entegrasyon**: `region_store.gd` ve `region_manifest.gd` **canlı `terra_forge_terrain.gd` render, collision, sculpt, Undo/Redo yollarına bağlı değil**. Şu an canlı haritanın bütün Float32 yüksekliği RAM'de. Yeni bölgesel API tek başına oyun RAM'ini azaltmıyor.
-- Son başarılı CI: toplam 23 test; kodun Linux headless Godot sürümünde açıldığını ve algoritmaların regresyonlarını kapsıyor. Android 11 dokunmatik, GPU, bellek/FPS/p95/p99, ısınma, uzun dayanıklılık henüz ölçülmedi.
+- Son başarılı CI: toplam 24 test; kodun Linux headless Godot sürümünde açıldığını ve algoritmaların regresyonlarını kapsıyor. Android 11 dokunmatik, GPU, bellek/FPS/p95/p99, ısınma, uzun dayanıklılık henüz ölçülmedi.
 
 ## 3. Belgeler — hangisini ne için oku?
 
@@ -38,7 +39,7 @@ Kullanıcının açık ve yinelenen kararı: **Malzeme/texture boyama ve obje, b
 2. [ROADMAP_MASTER_TR.md](ROADMAP_MASTER_TR.md): **P0–P7** fazları, alt işler, bağımlılıklar, kabul kapıları, uzun dönem terrain hedefleri.
 3. [ENGINE_ARCHITECTURE_TR.md](ENGINE_ARCHITECTURE_TR.md): gerçek kod haritası, API'ler, `TFH1/TFL1/TFL2/TFR1/TFM1` formatları, render/physics ve veri akışı.
 4. [NEXT_SESSION_IMPLEMENTATION_TR.md](NEXT_SESSION_IMPLEMENTATION_TR.md): **hemen başlanacak ilk görev**, dosya bazında yapılacak değişiklikler, adım adım GitHub CI kabul testleri.
-5. [QUALITY_TESTS_AND_BENCHMARKS_TR.md](QUALITY_TESTS_AND_BENCHMARKS_TR.md): tüm 23 test, GitHub Actions, telefon gerçek dünya QA planı, hedef ölçümler.
+5. [QUALITY_TESTS_AND_BENCHMARKS_TR.md](QUALITY_TESTS_AND_BENCHMARKS_TR.md): tüm 24 test, GitHub Actions, telefon gerçek dünya QA planı, hedef ölçümler.
 6. [RISKS_AND_DECISIONS_TR.md](RISKS_AND_DECISIONS_TR.md): değiştirilmeyecek sözleşmeler, açık riskler, veri kaybı önleme, teknik kararların gerekçeleri.
 7. [TERRAIN_GEOMORPHOLOGY_TR.md](TERRAIN_GEOMORPHOLOGY_TR.md): jeoloji, hidrolik aşınma, mikro/makro detay, LOD algoritmaları, teknik kaynaklar.
 8. [MOBILE_WORKFLOW_TR.md](MOBILE_WORKFLOW_TR.md): telefon için kullanım ve sınama, ZIP/klasör korunumu, cihaz üzerinde QA.
@@ -47,13 +48,13 @@ Kullanıcının açık ve yinelenen kararı: **Malzeme/texture boyama ve obje, b
 
 **Çelişki kuralı:** Kod ve başarılı CI gerçek davranış konusunda otoritedir. Bu belge bugünkü durumu özetler; eski MD dosyalarının tarihsel “henüz yapılmadı” açıklamaları daha sonra tamamlanmış olabilir. Bir sonraki sohbette ilgili `.gd` dosyalarını da açıp kontrol et.
 
-## 4. Hemen sıradaki teknik iş: P1.3 opt-in salt okunur terrain mesh/fizik adaptörü
+## 4. Hemen sıradaki teknik iş: P1.3 kalite/doğrulama ve P1.4 transaction hazırlığı
 
-P1.2b arka plan IO sistemi **uygulandı ve [23/23 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45408761313)**. Godot Thread/Mtx/Semaphore altyapısı, tek buffer SHA doğrulama, bounded request/result ve generation cancellation hazır. **Ama gerçek oyun hâlâ tüm heightmap'i RAM'de tutuyor ve yeni API'yi kullanmıyor.**
+**Uygulanan:** Ayrı `@tool Node3D` test preview, `TFM1/TFR1` arka plan IO'sundan `ArrayMesh` ve `HeightMapShape3D` üretir. Editör kamerası yönlendirmesiyle yeni tile bölgeleri yüklenir, Brush kapalı. LOD0/1/2 ve mixed seam legacy parity sayısal olarak test edildi, [24/24 Godot CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45413288421). [P1_3_PAGED_RENDER_TR.md](P1_3_PAGED_RENDER_TR.md) ayrıntılı teknik/saha test kaydıdır.
 
-**Sıradaki uygulanabilir iş (PLAN):** `terrain/terra_forge_terrain.gd` içindeki tüm doğrudan `height_data.heights` erişimlerini envanterle. Eski sahneyi kırmadan önce **ayrı, opt-in, read-only** test terrain için paged kaynak üzerinden mesh + normal + collision çizimi planla/uygula. Bozuk ya da henüz yüklenmemiş sayfayı 0 yükseklik gibi gösterme; önceki sağlam tile'ı tut veya error olarak işaretle. Fırçalar ve Undo/Redo region mode'da **P1.4 atomik multi-page transaction** bitmeden kapalı kalmalı.
+**Sıradaki:** Gerçek Android cihazda Mobile Renderer, collision, LOD seam/görsel kalite, hızlı kamerayla tile hole, 30 dk RAM/RSS/GPU p95/p99 ölçümü. Aynı zamanda P1.3'te opt-in read-only source adapter'ın **eski TerraForgeTerrain'in gerçek koduna** güvenli aktarımı için analiz; eski fırça/katman değişmiyor. Daha sonra **P1.4 multi-page manifest-atomic transaction** (henüz YOK). Async source `open()` bütün dünya kontrolünü senkron yapıyor; büyük dünya startup riski açık.
 
-**Kalan önemli teknik risk:** `open()` full-world senkron doğrulama ve `close()` aktif okumanın bitmesini bekleme; Android gerçek FPS, storage ve thread stresi hâlâ ölçülmedi. Bunların çözümü P1.3/P1.5 kalite kapısında takip ediliyor. Teknik durum: [P1_2_ASYNC_IO_TR.md](P1_2_ASYNC_IO_TR.md); iş listesi: [NEXT_SESSION_IMPLEMENTATION_TR.md](NEXT_SESSION_IMPLEMENTATION_TR.md).
+**Korunacaklar:** `main`, oyun dosyaları, TFH/TFL, mevcut legacy node ve eklenti toolbar; boya/obje yok. 
 
 ## 5. Çalışma ve GitHub kuralları
 
@@ -68,7 +69,7 @@ P1.2b arka plan IO sistemi **uygulandı ve [23/23 CI PASS](https://github.com/me
 
 ## 6. Yeni sohbet için hazır devam komutu
 
-> `mehmetdem2005/FareOyunu` deposunda `feat/terraforge-mobile-addon` dalında TerraForge Mobile açık dünya terrain eklentisini geliştiriyoruz. Önce `addons/terra_forge/HANDOFF_START_HERE_TR.md` ve oradaki tüm bağlı proje Markdown belgelerini, sonra güncel ilgili `.gd` kodlarını oku. Son durum v0.4.2-dev.2; GitHub Actions Godot 4.7.2 CI 23/23 başarılı. Sadece terrain geometri/veri/LOD/fizik; boya ve obje yok. Telefon kullanıyorum, testleri GitHub CI'da yap. Şimdi `NEXT_SESSION_IMPLEMENTATION_TR.md` dosyasındaki ilk tamamlanmamış P1.3 opt-in read-only terrain adaptörünü uygula; branch'i koru, regresyon ekle, CI çalıştır, sonucu ve MD notlarını güncelle.`
+> `mehmetdem2005/FareOyunu` deposunda `feat/terraforge-mobile-addon` dalında TerraForge Mobile açık dünya terrain eklentisini geliştiriyoruz. Önce `addons/terra_forge/HANDOFF_START_HERE_TR.md` ve oradaki tüm bağlı proje Markdown belgelerini, sonra güncel ilgili `.gd` kodlarını oku. Son durum v0.4.3-dev.1; GitHub Actions Godot 4.7.2 CI 24/24 başarılı. Sadece terrain geometri/veri/LOD/fizik; boya ve obje yok. Telefon kullanıyorum, testleri GitHub CI'da yap. Şimdi `NEXT_SESSION_IMPLEMENTATION_TR.md` dosyasındaki P1.3 önizleme entegrasyonunun kalan Android kalite kapısını ve ardından ilk açık P1.4 transaction tasarım işini uygula; branch'i koru, regresyon ekle, CI çalıştır, sonucu ve MD notlarını güncelle.`
 
 ## 7. Dokümantasyon bakım sözleşmesi
 

@@ -1,13 +1,13 @@
-# Sıradaki Uygulama İş Emri — P1.3 Canlı Terrain Read-only Entegrasyonu
+# Sıradaki Uygulama İş Emri — P1.3 Sahada Doğrulama ve P1.4 Veri İşlemleri
 
-**24 Kasım 2026.** Kod tabanı `4d5ed1bdce11727f5bc129087432198956ff2ce5`, dal `feat/terraforge-mobile-addon`. P1.2b worker-thread IO dâhil üç çekirdek parça DONE / 23/23 CI PASS. P1.3/P1.4 işleri PLAN. Kullanıcı mobil telefon kullanıyor; CI GitHub Actions üzerinde çalışmalı.
+**24 Kasım 2026.** Kod tabanı `286b135dc405ff9727a75de0e89613c882d08688`, dal `feat/terraforge-mobile-addon`. P1.2b worker IO ve P1.3 opt-in read-only preview DONE / 24/24 CI PASS. P1.3 gerçek Android kalite kapısı + P1.4 writable transaction PLAN. Kullanıcı mobil telefon kullanıyor; CI GitHub Actions üzerinde çalışmalı.
 
 ## Önce kontrol
 
 - [ ] GitHub'dan **güncel branch head** al. Bu belgede sabit görünen commit dokümantasyon öncesi kodun referansıdır.
 - [ ] `HANDOFF_START_HERE_TR.md`, `ENGINE_ARCHITECTURE_TR.md`, `ROADMAP_MASTER_TR.md`, `RISKS_AND_DECISIONS_TR.md`, `QUALITY_TESTS_AND_BENCHMARKS_TR.md` oku.
 - [ ] `core/region_store.gd`, `core/region_manifest.gd`, `core/region_export.gd`, `terrain/terra_forge_terrain.gd` ve `tests/run_all.sh` dosyalarını gerçekten fetch et.
-- [ ] Son doğrulanan CI run: https://github.com/mehmetdem2005/FareOyunu/actions/runs/45408761313 (23/23 Godot 4.7.2 PASS).
+- [ ] Son doğrulanan CI run: https://github.com/mehmetdem2005/FareOyunu/actions/runs/45413288421 (24/24 Godot 4.7.2 PASS).
 - [ ] Kodlar yalnız `addons/terra_forge/`, gerekli CI değişiklikleri yalnız `.github/workflows/terraforge-ci.yml`. `main`, oyun sahneleri ve `terraforge_data` korunur.
 
 ## PR 1 — DONE: manifest-verified read-only paged source
@@ -35,16 +35,17 @@
 - [ ] `close()` aktif tek IO okuması bitene kadar engelleyebilir; gerçek Android stres testi yok.
 - [ ] Bu read-only worker **henüz canlı terrain'e bağlanmadı**; yeni FPS/RAM kazancı ölçülmedi. [P1_2_ASYNC_IO_TR.md](P1_2_ASYNC_IO_TR.md).
 
-## PR 3 — ŞİMDİ SIRADAKİ: P1.3 opt-in read-only render + collision (PLAN)
+## PR 3 — DONE: ilk opt-in read-only ArrayMesh + collision bağlama
 
-- [ ] Önce `terrain/terra_forge_terrain.gd` içindeki tüm `height_data.heights` doğrudan erişimlerini envanterle.
-- [ ] Yeni `HeightSource` abstraction ile legacy in-memory yol ve region read-only yol yan yana çalışabilsin.
-- [ ] **Varsayılan legacy**, yeni mod yalnız açıkça seçilen TEST sahnesinde. Regional mod açıkken Brush kapalı.
-- [ ] Tile mesh/slope normal/collision halo border read; LOD 0/1/2 legacy birebir yükseklik ve normal testi.
-- [ ] CPU frame, resident RAM, page IO, display seams ile gerçek cihaz kıyası; tam height array yanlışlıkla RAM'de kaldıysa “streaming başarılı” sayılmaz.
-- [ ] CI + Android kontrol onayından önce normal kullanıcı sahnelerini migrate etme.
+- [x] `core/paged_tile_geometry.gd` yazıldı: read-only paged Float32 üzerinden 32×32 tile LOD0/1/2 mesh, normals ve HeightMapShape3D samples.
+- [x] `terrain/paged_terrain_preview.gd`: test için ayrı Node3D; default OFF, `region_directory`, resident cache 9–64 page, worker IO, nearest tile prioritization, no global heights dizisi, no writes.
+- [x] `plugin.gd`: editör viewport kamera position forwarding, küçük popup'ta read-only status/page + IO sayacı, Brush disabled.
+- [x] `tests/test_paged_terrain_preview.gd`: 24. regression; legacy ile LOD0/1/2 vertex/normal/collision, LOD0/2 seam, cold corrupt page, source file safety; [CI 24/24 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45413288421).
+- [ ] **Gerçek Android 11 cihaz kalite/profil testi yok**. Mobil UI, shader, memory RSS, GPU frame, collision traversability, değişen kamera bölgelerinde delik olmadığı test edilmeli.
+- [ ] Bu **ayrı preview node**; legacy `TerraForgeTerrain` varsayılan tam heightmap tutmaya devam ediyor, tam oyun RAM optimizasyonu tamam değil.
+- [ ] Full manifest `open()` sync, `close()` join stall, >9 required page halo, high-speed camera tile gaps ve 30 dk stability açık risk.
 
-**P1.3 ilk küçük commit kabulü:** `height_data.heights` bağımlılık envanteri + `HeightSource` adapter/test; eski TFH/TFL ve normal sahne varsayılan kalsın. Sonraki commit'de opt-in read-only render/collision; CI en az 24 test. Güncel kaynak API'leri [P1_2_ASYNC_IO_TR.md](P1_2_ASYNC_IO_TR.md).
+**Sıradaki küçük uygulanabilir iş:** Aynı exported snapshot test sahnesi için Android editör camera trace, LOD/mixed-LOD visual seam, collision ve RAM profiler; gerekirse `paged_terrain_preview.gd` tile streaming retry/prefetch/old LOD preserve iyileştirmesi. Detay [P1_3_PAGED_RENDER_TR.md](P1_3_PAGED_RENDER_TR.md).
 
 ## PR 4 — P1.4 edit-mode region transaction (PLAN)
 

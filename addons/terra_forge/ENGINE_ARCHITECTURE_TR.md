@@ -1,6 +1,6 @@
 # TerraForge — As-Built Mimari, Veri Formatları ve Modül Envanteri
 
-**Kod tabanı:** v0.4.2-dev.2, `4d5ed1bdce11727f5bc129087432198956ff2ce5`. **Hedef:** Godot 4.7.2 / Android 11 Mobile. **Kural:** Bu belgeyi kod değiştikçe güncelle; doğrulanmamış bileşenleri CANLI diye sunma.
+**Kod tabanı:** v0.4.3-dev.1, `286b135dc405ff9727a75de0e89613c882d08688`. **Hedef:** Godot 4.7.2 / Android 11 Mobile. **Kural:** Bu belgeyi kod değiştikçe güncelle; doğrulanmamış bileşenleri CANLI diye sunma.
 
 ## 1. Modül envanteri
 
@@ -23,9 +23,11 @@
 | `core/paged_height_source.gd` | TFM1/TFR1 read-only verified Float32 cache, cross-page bilinear, 1–64 LRU | İZOLE / CI PASS |
 | `core/camera_page_prefetch.gd` | Kamera yakın/yön priority, opsiyonel configure_async ile worker scheduler | İZOLE / CI PASS |
 | `core/async_region_source.gd` | Thread/Mutex/Semaphore bounded TFR1 IO, tek-buffer SHA, ana-thread Float32 cache | İZOLE / CI PASS |
+| `core/paged_tile_geometry.gd` | Read-only Float32 TFR1 get_height, 32-cell ArrayMesh vertex/normal/color/LOD0 collision arrays, region halo | İZOLE / CI PASS |
+| `terrain/paged_terrain_preview.gd` | Opt-in @tool Node3D: kamera streaming ile ArrayMesh ve HeightMapShape3D collision; no full height array, no writes | **İSTEĞE BAĞLI PREVIEW / CI PASS** |
 | `tests/*.gd` | 20 Godot headless regresyon | CI PASS |
 | `tests/run_all.sh` | 4.7.2 version, PASS çıktısı, exit code, engine log kontrolleri | CI PASS |
-| `.github/workflows/terraforge-ci.yml` | Ubuntu, geçici Godot projesi, 23 test, log artifacts | CI PASS |
+| `.github/workflows/terraforge-ci.yml` | Ubuntu, geçici Godot projesi, 24 test, log artifacts | CI PASS |
 
 **Kesin ayrım:** `region_store.gd` bulunması, çalışan oyunda RAM tasarruflu streaming yapıldığı anlamına GELMEZ. Canlı terrain hâlâ `height_data.heights` için bütün world Float32 yükseklik dizisini bellekte tutuyor.
 
@@ -111,6 +113,15 @@
 - `close()` worker shutdown ve `Thread.wait_to_finish()` ile explicit join yapar; aktif IO bitene kadar bloklayabilir. Android GPU/RAM/FPS ölçümü henüz yapılmadı.
 - Güncel kanıt: [Godot 4.7.2 CI 23/23 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45408761313). **Canlı `TerraForgeTerrain` hâlâ global `height_data.heights` kullanıyor**; RAM/FPS artışı iddia edilmez.
 - Tüm teknik sözleşme ve sıradaki P1.3 işleri: [P1_2_ASYNC_IO_TR.md](P1_2_ASYNC_IO_TR.md).
+
+## 5.2 P1.3 — Opt-in paged ArrayMesh + HeightMapShape3D
+
+- **UYGULANDI:** `paged_tile_geometry.gd` `TFR1` resident Float32 sayfalarını, 3×3'e kadar komşu page halo ile 32-cell tile'lara çevirir. LOD stride 1/2/4, aynı LOD komşu merkezî normal ve mixed LOD kenar interpolasyonu, legacy'nin collision sample ölçekleme semantiği.
+- **UYGULANDI:** `paged_terrain_preview.gd` `@tool Node3D` varsayılan `preview_enabled=false`; `start_preview` bütün world manifestini hash doğrular, worker başlatır, camera-nearest tile için async sayfaları ister; `pump_stream()` main thread mesh/shape yaratır. Cache limit 9–64 page (varsayılan 16), background job 1–8.
+- **UYGULANDI:** `plugin.gd` seçilmiş preview scene düğümüne editör camera global_position forward eder, küçük popup read-only sayfa/mesh/IO sayacı gösterir; brush disabled. Legacy sculpt UI yolunu değiştirmez.
+- **CI:** `test_paged_terrain_preview.gd` legacy LOD0/1/2 vertices/normals/collision ve mixed LOD0↔LOD2 seam numerical parity, fail-closed corruption ve source immutability; [Godot 4.7.2 CI 24/24 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45413288421).
+- **AÇIK:** eski `TerraForgeTerrain` hâlâ full-grid Float32, gerçek Android GPU/RSS/p95/p99 yok; sync `open()` ve blocking `close()`, fast camera gaps test edilmeli; çok-region writable transaction olmadan terrain brush kapalı.
+- Ayrıntılı kurulum, API ve riskler [P1_3_PAGED_RENDER_TR.md](P1_3_PAGED_RENDER_TR.md).
 
 ## 6. Bilinen operasyonel sınırlar
 

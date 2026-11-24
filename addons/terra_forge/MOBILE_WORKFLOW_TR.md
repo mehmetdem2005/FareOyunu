@@ -7,8 +7,8 @@
 - GitHub repo: https://github.com/mehmetdem2005/FareOyunu
 - Geliştirme dalı: https://github.com/mehmetdem2005/FareOyunu/tree/feat/terraforge-mobile-addon
 - Eklenti klasörü: `addons/terra_forge/`
-- Son doğrulanmış kod commit'i: `4d5ed1bdce11727f5bc129087432198956ff2ce5`
-- Son PASS CI: https://github.com/mehmetdem2005/FareOyunu/actions/runs/45408761313 (23/23; Linux Godot 4.7.2)
+- Son doğrulanmış kod commit'i: `286b135dc405ff9727a75de0e89613c882d08688`
+- Son PASS CI: https://github.com/mehmetdem2005/FareOyunu/actions/runs/45413288421 (24/24; Linux Godot 4.7.2)
 - Son kaynak ZIP örneği: https://github.com/mehmetdem2005/FareOyunu/archive/734c9088d76603279599654d345249b0cc90e321.zip — **tüm repo arşivi**. Kopyalanacak addon yalnız `addons/terra_forge/`.
 - Altında çalışılan sahne ve `terraforge_data/`, TFH/TFL/TFL.bak kaynakları ZIP değiştirirken silinmez.
 - GitHub Actions ekranı: depo > Actions > TerraForge Godot 4.7.2 CI. Yeşil check Linux headless testi ifade eder.
@@ -38,6 +38,13 @@
 - `async_region_source.gd` gerçek Godot Thread ile arka planda disk sayfa okumayı ve SHA doğrulamasını uygular; kamera scheduler bu modu `configure_async` ile kullanabilir.
 - GitHub Linux CI [23/23 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45408761313). Bu **cihazdaki oyuna otomatik bağlanmaz**; ekranda yeni UI yok ve gerçek FPS/RAM artışı iddiası yok. Scene hâlâ eski tam RAM height source'dan çalışır.
 - `open()` full-world doğrulamayı senkron yapar, `close()` bitmeyen IO için join bekleyebilir. Bir sonraki iş P1.3 opt-in read-only mesh/collision bağlantısı, kaynak: [P1_2_ASYNC_IO_TR.md](P1_2_ASYNC_IO_TR.md).
+
+## 2.3 P1.3 ayrı salt okunur bölgesel önizleme
+
+- Godot test sahnesine ayrı Node3D ekle, `res://addons/terra_forge/terrain/paged_terrain_preview.gd` script'ini bağla; geçerli TFM1/TFR1 klasörünü `region_directory` alanına yaz, `preview_enabled=true` işaretle.
+- Preview seçilince editör kamera hareketi mesh streaming'e yönlendirilir. Büyük alt panel yok, kompakt popup'ta `READ-ONLY` ve RAM sayfa/IO counters var; Brush kapalı, dosyayı yazma yok.
+- TFR1 üzerinden gerçek ArrayMesh + LOD0 HeightMapShape3D oluşması ve eski mesh LOD0/1/2 parity [Godot CI 24/24 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45413288421); gerçek Android 11 GPU/ekran/termal ve RSS benchmark henüz yok.
+- **Eski sahneyi otomatik migrate etme.** Orijinal TFH/TFL dosyaları ve game character/scene korunur. Full world startup SHA senkron, hızlı kamera tile-gap ve collision coverage cihazda test bekliyor. [P1_3_PAGED_RENDER_TR.md](P1_3_PAGED_RENDER_TR.md).
 
 ## 3. Dokuz mevcut şekillendirme aracının kısa kullanımı
 

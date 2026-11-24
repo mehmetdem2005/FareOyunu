@@ -1,4 +1,4 @@
-# TerraForge Mobile 0.4.2-dev.2 — Türkçe kullanım
+# TerraForge Mobile 0.4.3-dev.1 — Türkçe kullanım
 > **Yeni sohbette unutulmasın:** Önce [DOCS_INDEX_TR.md](DOCS_INDEX_TR.md) ve [HANDOFF_START_HERE_TR.md](HANDOFF_START_HERE_TR.md) oku. Sürüm geçmişi, P0–P7 tüm fazları, profesyonel terrain araştırması, mimari, CI kanıtları, riskler ve sıradaki uygulanabilir işler bu daldaki yeni MD dosyalarında kalıcı olarak kayıtlı.
 
 
@@ -50,6 +50,15 @@ Hepsinde **Size** etki alanını, **Power** etki şiddetini belirler. Ramp, Stam
 - Küçük ekranlarda açılır menü pencere sınırları içinde tutulmaya çalışılır; alt panel açılmaz.
 - Android'in dokunmatik olaylardan türetebildiği sahte fare tıklamaları bir süre yok sayılır.
 - **Yeni:** Fırça artık her dokunma olayı için değil, parmağın katettiği mesafe boyunca sabit aralıklarla etki uygular. Hızlı ve yavaş sürüklemede güç farkı azalır. Parmağı sabit tutmak devamlı kazma/yükseltme yapmaz.
+
+## v0.4.3-dev.1 — İlk gerçek bölgesel terrain mesh / collision
+
+- Yeni `terrain/paged_terrain_preview.gd`: ayrı test sahnesinde `Node3D`'ye script bağla, önceden doğrulanmış TFM1 + TFR1 klasörünü `region_directory` alanına yaz, `preview_enabled` işaretle. **Eski TerraForgeTerrain sahnenin yerine otomatik geçmez.**
+- Arka planda yüklenen Float32 bölge verileri artık gerçek `ArrayMesh` ve LOD0 `HeightMapShape3D` çarpışması oluşturur. 3 LOD'daki normal/sınır değerleri eski renderer ile karşılaştırıldı.
+- Godot editöründe preview düğümünü seçince kompakt TerraForge popup **READ-ONLY** olur, Brush kapanır. Editör kamerası konumu 3D streaming'e aktarılır; sayfa/mesh/IO göstergeleri belirir.
+- Eksik/bozuk bölgeden sahte düz arazi oluşmaz. `save_data()`, `paint_at()` ile bölgesel düzenleme kapalı. Kaynak TFH/TFL korunur.
+- [Godot 4.7.2 CI 24/24 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45413288421). **Android 11 telefon FPS/GPU/RAM/görsel ekran doğrulaması henüz yapılmadı**. Büyük dünya ilk yükleme SHA senkron ve aktif worker stop işleminde join bekleyebilir.
+- Telefon kullanım ve bütün teknik sınırlar: [P1_3_PAGED_RENDER_TR.md](P1_3_PAGED_RENDER_TR.md).
 
 ## v0.4.2-dev.2 — Gerçek arka plan arazi dosyası yükleme
 
