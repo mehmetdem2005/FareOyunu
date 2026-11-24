@@ -45,7 +45,12 @@ func _check_geometry(ref_terrain, source, tx: int, tz: int, lod: int,
     var base_tile: Dictionary = ref_terrain._create_tile(tx, tz)
     ref_terrain._rebuild_tile(tx, tz, base_tile, lod)
     var old_arrays: Array = (base_tile["visual"] as MeshInstance3D).mesh.surface_get_arrays(0)
-    var regional_arrays: Array = built["arrays"]
+    # ArrayMesh surface round-trip packs/quantizes vertex attributes.
+    # Compare the SAME representation, not packed legacy normals against
+    # uncompressed regional normal vectors (which differ by ~2e-5).
+    var normalized_mesh: ArrayMesh = ArrayMesh.new()
+    normalized_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, built["arrays"])
+    var regional_arrays: Array = normalized_mesh.surface_get_arrays(0)
     var old_vertices: PackedVector3Array = old_arrays[Mesh.ARRAY_VERTEX]
     var new_vertices: PackedVector3Array = regional_arrays[Mesh.ARRAY_VERTEX]
     var old_normals: PackedVector3Array = old_arrays[Mesh.ARRAY_NORMAL]
