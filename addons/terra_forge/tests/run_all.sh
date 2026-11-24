@@ -51,6 +51,7 @@ suite=(
   test_scalar_sampling_benchmark
   test_geometry_worker
   test_geometry_worker_preview
+  test_geometry_worker_comparison
   test_lod_policy
   test_surface_faces
   test_lod_normals

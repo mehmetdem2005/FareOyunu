@@ -25,12 +25,13 @@ static func _close(p,result: Dictionary) -> Dictionary:
     p.free()
     return result
 
-static func run(directory: String, format: int, mode: int, cache: int) -> Dictionary:
-    if format not in [0,1] or mode not in [0,1,2] or cache not in [9,16]:
+static func run(directory: String, format: int, mode: int, cache: int, geometry_cap: int=2) -> Dictionary:
+    if format not in [0,1] or mode not in [0,1,2,3] or cache not in [9,16] or geometry_cap not in [1,2,4]:
         return {"error": ERR_INVALID_PARAMETER}
     var p = PREVIEW.new()
     p.region_index_format = format
     p.sampling_strategy = mode
+    p.geometry_job_limit = geometry_cap
     p.resident_shard_limit = 2
     p.view_distance = 96.0
     p.high_detail_distance = 40.0
@@ -50,6 +51,8 @@ static func run(directory: String, format: int, mode: int, cache: int) -> Dictio
     var intervals = HIST.new()
     var previous: int = 0
     var missing: int = 0
+    var first_shape_step: int = -1
+    var geometry_peak: int = 0
     var gap: int = 0
     var gap_max: int = 0
     var page_peak: int = 0
@@ -76,12 +79,19 @@ static func run(directory: String, format: int, mode: int, cache: int) -> Dictio
         var jobs: int = int(src["outstanding"])+int(src["inflight"])+int(src["finished"])
         if progress["error"]!=OK or src["resident"]>cache or src["resident_float_bytes"]>cache*4096 or jobs>4 or s["tiles"]>8 or s["pending_tiles"]>8 or src["shard_resident"]>2 or src["tile_view_active_pages"]!=0 or s["dense_payload_peak_bytes"]>4900:
             return _close(p,{"error":ERR_BUG,"stage":"budget or IO","step":step,"stats":s})
+        var worker: Dictionary=s["geometry_worker"]
+        if mode==3:
+            if worker["slots"]>geometry_cap or s["geometry_reservations"]>geometry_cap or s["geometry_publish_peak_per_pump"]>1:
+                return _close(p,{"error":ERR_BUG,"stage":"geometry cap","step":step,"stats":s})
+            geometry_peak=maxi(geometry_peak,int(worker["slots"]))
         page_peak=maxi(page_peak,src["resident"])
         tile_peak=maxi(tile_peak,s["tiles"])
         job_peak=maxi(job_peak,jobs)
         shard_peak=maxi(shard_peak,src["shard_resident"])
         vertex_peak=maxi(vertex_peak,s["vertices"])
         if p.has_collision_at(focus):
+            if first_shape_step<0:
+                first_shape_step=step
             gap=0
         else:
             missing+=1
@@ -112,6 +122,8 @@ static func run(directory: String, format: int, mode: int, cache: int) -> Dictio
         "rss_baseline_bytes":baseline,"rss_peak_sampled_bytes":peak,"page_peak":page_peak,"page_payload_peak_bytes":page_peak*4096,"tile_peak":tile_peak,"job_peak":job_peak,"shard_peak":shard_peak,"vertex_peak":vertex_peak,
         "mesh_builds":s["mesh_builds"],"camera_cancellations":s["camera_cancellations"],"waiting_tile_frames":s["waiting_tile_frames"],"dense_payload_peak_bytes":s["dense_payload_peak_bytes"],
         "accepted_page_reads":src["disk_reads"],"unique_accepted_pages":src["pages_verified_on_demand"],"accepted_page_reloads":maxi(0,src["disk_reads"]-src["pages_verified_on_demand"]),"request_cache_hits":src["cache_hits"],"evictions":src["evictions"],"stale_discarded":src["stale_discarded"],"submitted":src["submitted"],"worker_errors":src["worker_errors"],"lru_touches":src["lru_touches"],"direct_reads":src["direct_height_reads"],"view_reads":src["tile_view_reads"],
+        "geometry_cap":geometry_cap if mode==3 else 0,"geometry_peak":geometry_peak,"first_shape_step":first_shape_step,"geometry_worker":s["geometry_worker"],
+        "geometry_copy_ms":s["geometry_copy_ms"],"geometry_queue_ms":s["geometry_queue_ms"],"geometry_worker_ms":s["geometry_worker_ms"],"geometry_delivery_ms":s["geometry_delivery_ms"],"geometry_publish_ms":s["geometry_publish_ms"],
         "recovery_ok":settled
     }
     return _close(p,report)
