@@ -1,5 +1,5 @@
 # TerraForge — P0 doğrulama ve P1 veri katmanları, ilk uygulama
-Sürüm: 0.4.0-dev.3
+Sürüm: 0.4.1-dev.1
 Durum: **Godot 4.7.2 Linux GitHub CI üzerinden test ediliyor; Android 11 GPU ve dokunmatik testleri henüz yapılmadı.**
 
 ## P0 — Güvenlik ve regresyon kapısı
@@ -66,3 +66,10 @@ Malzeme boyama, bitki, taş ve obje yerleştirme bu fazın dışındadır.
 - `test_layer_integrity.gd` bu durumları ve yarım kalan geçici dosyayı denetler. Godot CI tamamlanana kadar yeni değişiklikler kararlı kabul edilmez.
 - Kontrol amaçlı SHA-256, yetkisiz değişikliklere karşı kriptografik kimlik doğrulama sağlamaz.
 - Performans notu: büyük katman dosyalarının doğrulanması ve yedeklenmesi şimdilik ana thread'de; sonraki optimizasyon adımı kademeli/asenkron güvenli kayıt tasarımıdır.
+
+## P1 bölge store prototipi (0.4.1-dev.1)
+
+- `core/region_store.gd`: 32×32 tek-sahipli sample sayfaları, checksum doğrulaması, .tmp / .bak kayıt ve sabit LRU limit.
+- `tests/test_region_store.gd`: 19. regresyon olarak eklenmiştir.
+- Bu sürüm **canlı arazi RAM kullanımını azaltmaz**. `terra_forge_terrain.gd` eski bütünü RAM'de tutan API'yi kullanmaya devam eder.
+- Sonraki zorunlu adım, dünya manifesti + bağımsız doğrulama + kayıpsız dönüşüm ve katmanlı taşınma için testlerdir. Detay: `REGION_STREAMING_PLAN_TR.md`.

@@ -1,4 +1,4 @@
-# TerraForge Mobile — v0.4.0-dev.3 (TFL2 integrity and backup recovery)
+# TerraForge Mobile — v0.4.1-dev.1 (bounded disk-backed region prototype)
 
 Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, native library, or changes to game files. Designed for Android editor testing with Mobile Renderer.
 
@@ -38,6 +38,15 @@ Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, nativ
 - **Smooth**: two-pass neighborhood snapshot plus a 55% bilateral blend reduces directional scan artifacts while retaining some high-contrast edges. Ramp/Stamp/Weather controls remain contextual; Undo/Redo and Float32 data format are unchanged.
 - Mobile **Check** button tests Float32 roundtrip, path consistency, local mass balance and reports CPU processing times without changing the user's terrain.
 
+## Experimental regional height streaming prototype (0.4.1-dev.1)
+
+- Added `core/region_store.gd`: disk-backed **Float32 32×32 sample pages** with a bounded LRU resident cache, strict read errors for missing pages, dirty writeback, and checksummed `TFR1` region files.
+- Every sample has one owner: border x=32 belongs only to region 1. This prevents duplicate height values on neighbor seams.
+- Each page saves via a staged `.tmp`, SHA-256 verification and the previous verified `.bak`. A corrupt primary is never silently replaced with zero heights.
+- Added `tests/test_region_store.gd`: cache residency, border samples, writeback, reload, backups, corrupted data, incomplete temporary files and wrong-world rejection.
+- **IMPORTANT:** This is a **standalone, opt-in-free core experiment**; it is **NOT wired into TerraForgeTerrain** yet. The existing live terrain still loads the entire height map and has **no measured RAM reduction** from this work. Old `.tfh` and `.tfl` are preserved.
+- Read [REGION_STREAMING_PLAN_TR.md](REGION_STREAMING_PLAN_TR.md) for the staged integration plan and limitations.
+
 ## TFL2 crash-safety and integrity (0.4.0-dev.3)
 
 - Saves now use **TFL2** with a SHA-256 checksum over the entire binary payload, appended as a 64-byte ASCII hexadecimal footer. Loading checks the checksum **before** replacing the live layer data.
@@ -64,7 +73,7 @@ Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, nativ
 - Added `core/height_layers.gd`: experimental **non-destructive additive Float32 height layer stack** with 32×32 sparse delta chunks, enable/disable, opacity, reorder, and composite-on-demand. Base elevations remain unchanged.
 - Added independent `TFL1` (now upgradable to `TFL2`) versioned serialization to a `.tfl` sidecar with validated dimensions, bounded layer counts, checks for non-finite values and fail-closed corrupted files. Only explicit calls save these files; no existing `.tfh` is migrated.
 - Added `tests/test_height_layers.gd` for layer fidelity, border samples, toggles, opacity, save/reload, and corrupt file isolation.
-- Added `tests/run_all.sh` to run all 18 Godot regression scripts against a real project and Godot **4.7.2**.
+- Added `tests/run_all.sh` to run all 19 Godot regression scripts against a real project and Godot **4.7.2**.
 - Extended **Terrain > Check** with a non-destructive scratch-layer smoke test, reported as `Layers ... ms`.
 - The underlying P1 prototype began isolated in v0.4.0-dev.1. v0.4.0-dev.2 adds **explicit opt-in live sculpting** and per-layer Undo/Redo, without changing the default legacy behavior. Read [P0_P1_IMPLEMENTATION_TR.md](P0_P1_IMPLEMENTATION_TR.md) before enabling such integration.
 
@@ -135,6 +144,7 @@ godot --headless --path /path/to/project --script res://addons/terra_forge/tests
 godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_live_layers.gd
 godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_layer_scene_roundtrip.gd
 godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_layer_integrity.gd
+godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_region_store.gd
 ```
 
 See [MOBILE_TEST_PLAN.md](MOBILE_TEST_PLAN.md) for hands-on Android checks and acceptance criteria. These tests have **not yet been executed** with the Godot engine here.
@@ -145,7 +155,7 @@ Read [QUALITY_GATE.md](QUALITY_GATE.md). The addon **is not certified optimized 
 
 ## Next stages
 
-1. Run the complete **18-test** Godot 4.7.2 CLI regression suite (P0) and fix all parse/API/behavior failures.
+1. Run the complete **19-test** Godot 4.7.2 CLI regression suite (P0) and fix all parse/API/behavior failures.
 2. Run **Terrain > Check** on Android 11 and record the new Layers timings (P1 scratch test).
 2. Inspect long ridge/valley shape quality at ground-camera height and fix contour artifacts.
 3. Validate thermal mass-balance, LOD edge normals, seam continuity and collision on-device.
