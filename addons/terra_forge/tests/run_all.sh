@@ -37,6 +37,7 @@ suite=(
   test_paged_terrain_preview
   test_paged_camera_stress
   test_lazy_world_open
+  test_paged_failure_isolation
   test_lod_policy
   test_surface_faces
   test_lod_normals
