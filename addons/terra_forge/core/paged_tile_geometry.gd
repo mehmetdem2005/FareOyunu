@@ -78,6 +78,68 @@ static func _seam(source, tx: int, tz: int, x: int, z: int, lod: int,
         )
     }
 
+static func _seam_scalar(source, tx: int, tz: int, x: int, z: int, lod: int,
+        desired: Dictionary) -> float:
+    var gx: int = tx * TILE_CELLS + x
+    var gz: int = tz * TILE_CELLS + z
+    var sample: float = source.read_finite_or_nan(gx, gz)
+    if not is_finite(sample):
+        return NAN
+    var neighbor: Vector2i = Vector2i(-100000, -100000)
+    var along: int = 0
+    var horizontal: bool = false
+    if x == 0:
+        neighbor = Vector2i(tx - 1, tz)
+        along = z
+    elif x == TILE_CELLS:
+        neighbor = Vector2i(tx + 1, tz)
+        along = z
+    elif z == 0:
+        neighbor = Vector2i(tx, tz - 1)
+        along = x
+        horizontal = true
+    elif z == TILE_CELLS:
+        neighbor = Vector2i(tx, tz + 1)
+        along = x
+        horizontal = true
+    if not desired.has(neighbor):
+        return sample
+    var neighbor_lod: int = int(desired[neighbor])
+    if neighbor_lod <= lod:
+        return sample
+    var coarse_step: int = LOD_POLICY.sample_stride(neighbor_lod)
+    var start_along: int = int(along / coarse_step) * coarse_step
+    if start_along == along:
+        return sample
+    var end_along: int = mini(TILE_CELLS, start_along + coarse_step)
+    var first: float
+    var last: float
+    if horizontal:
+        first = source.read_finite_or_nan(tx * TILE_CELLS + start_along, gz)
+        last = source.read_finite_or_nan(tx * TILE_CELLS + end_along, gz)
+    else:
+        first = source.read_finite_or_nan(gx, tz * TILE_CELLS + start_along)
+        last = source.read_finite_or_nan(gx, tz * TILE_CELLS + end_along)
+    if not is_finite(first) or not is_finite(last):
+        return NAN
+    return lerpf(first, last, float(along - start_along) / float(end_along - start_along))
+
+## Experimental D: same B lease, scalar reads only inside geometry.
+## All required pages were validated before entry. Invalid scalar reads
+## fail closed; no NAN or fallback height may reach geometry arrays.
+static func generate_with_scalar_view(source, tx: int, tz: int, lod: int, desired: Dictionary) -> Dictionary:
+    if source == null or not source.is_open() or lod < 0 or lod > 2 or tx < 0 or tz < 0 or (tx+1)*TILE_CELLS > source.cells.x or (tz+1)*TILE_CELLS > source.cells.y:
+        return {"error":ERR_INVALID_PARAMETER}
+    var acquired: Dictionary = source.acquire_tile_view(required_pages(source,tx,tz,lod))
+    if acquired["error"] != OK:
+        return acquired
+    var view = acquired["view"]
+    var result: Dictionary = _generate(view,tx,tz,lod,desired,true)
+    var released: Error = source.release_tile_view(view)
+    if released != OK:
+        return {"error":released}
+    return result
+
 ## Same geometry algorithm, only data-access strategy changes.
 static func generate_with_view(source, tx: int, tz: int, lod: int, desired: Dictionary) -> Dictionary:
     if source == null or not source.is_open() or lod < 0 or lod > 2 or tx < 0 or tz < 0 or (tx + 1) * TILE_CELLS > source.cells.x or (tz + 1) * TILE_CELLS > source.cells.y:
@@ -112,6 +174,9 @@ static func generate_with_dense(source, tx: int, tz: int, lod: int, desired: Dic
     return result
 
 static func generate(source, tx: int, tz: int, lod: int, desired: Dictionary) -> Dictionary:
+    return _generate(source,tx,tz,lod,desired,false)
+
+static func _generate(source, tx: int, tz: int, lod: int, desired: Dictionary, scalar: bool) -> Dictionary:
     if source == null or not source.is_open() or lod < 0 or lod > 2:
         return {"error": ERR_INVALID_PARAMETER}
     if tx < 0 or tz < 0 or (tx + 1) * TILE_CELLS > source.cells.x or (tz + 1) * TILE_CELLS > source.cells.y:
@@ -129,10 +194,16 @@ static func generate(source, tx: int, tz: int, lod: int, desired: Dictionary) ->
         for x in range(width):
             var sx: int = x * stride
             var sz: int = z * stride
-            var value: Dictionary = _seam(source, tx, tz, sx, sz, lod, desired)
-            if int(value.get("error", ERR_FILE_CORRUPT)) != OK:
-                return {"error": int(value.get("error", ERR_FILE_CORRUPT))}
-            var y: float = float(value["height"])
+            var y: float
+            if scalar:
+                y = _seam_scalar(source,tx,tz,sx,sz,lod,desired)
+                if not is_finite(y):
+                    return {"error":ERR_FILE_CORRUPT}
+            else:
+                var value: Dictionary = _seam(source, tx, tz, sx, sz, lod, desired)
+                if int(value.get("error", ERR_FILE_CORRUPT)) != OK:
+                    return {"error": int(value.get("error", ERR_FILE_CORRUPT))}
+                y = float(value["height"])
             vertices.append(Vector3(float(sx) * spacing, y, float(sz) * spacing))
             normals.append(Vector3.UP)
             uv.append(Vector2(float(tx * TILE_CELLS + sx), float(tz * TILE_CELLS + sz)) * spacing * 0.125)
@@ -165,26 +236,51 @@ static func generate(source, tx: int, tz: int, lod: int, desired: Dictionary) ->
             var gx: int = tx * TILE_CELLS + x * stride
             var gz: int = tz * TILE_CELLS + z * stride
             var halo: Dictionary
+            var halo_value: float
             if x == 0 and west_same:
-                halo = source.get_height(gx - stride, gz)
-                if int(halo["error"]) != OK:
-                    return {"error": int(halo["error"])}
-                dx = (vertices[i + 1].y - float(halo["height"])) / (2.0 * cell_world)
+                if scalar:
+                    halo_value = source.read_finite_or_nan(gx - stride, gz)
+                    if not is_finite(halo_value):
+                        return {"error":ERR_FILE_CORRUPT}
+                else:
+                    halo = source.get_height(gx - stride, gz)
+                    if int(halo["error"]) != OK:
+                        return {"error": int(halo["error"])}
+                    halo_value = float(halo["height"])
+                dx = (vertices[i + 1].y - halo_value) / (2.0 * cell_world)
             elif x == width - 1 and east_same:
-                halo = source.get_height(gx + stride, gz)
-                if int(halo["error"]) != OK:
-                    return {"error": int(halo["error"])}
-                dx = (float(halo["height"]) - vertices[i - 1].y) / (2.0 * cell_world)
+                if scalar:
+                    halo_value = source.read_finite_or_nan(gx + stride, gz)
+                    if not is_finite(halo_value):
+                        return {"error":ERR_FILE_CORRUPT}
+                else:
+                    halo = source.get_height(gx + stride, gz)
+                    if int(halo["error"]) != OK:
+                        return {"error": int(halo["error"])}
+                    halo_value = float(halo["height"])
+                dx = (halo_value - vertices[i - 1].y) / (2.0 * cell_world)
             if z == 0 and north_same:
-                halo = source.get_height(gx, gz - stride)
-                if int(halo["error"]) != OK:
-                    return {"error": int(halo["error"])}
-                dz = (vertices[i + width].y - float(halo["height"])) / (2.0 * cell_world)
+                if scalar:
+                    halo_value = source.read_finite_or_nan(gx, gz - stride)
+                    if not is_finite(halo_value):
+                        return {"error":ERR_FILE_CORRUPT}
+                else:
+                    halo = source.get_height(gx, gz - stride)
+                    if int(halo["error"]) != OK:
+                        return {"error": int(halo["error"])}
+                    halo_value = float(halo["height"])
+                dz = (vertices[i + width].y - halo_value) / (2.0 * cell_world)
             elif z == width - 1 and south_same:
-                halo = source.get_height(gx, gz + stride)
-                if int(halo["error"]) != OK:
-                    return {"error": int(halo["error"])}
-                dz = (float(halo["height"]) - vertices[i - width].y) / (2.0 * cell_world)
+                if scalar:
+                    halo_value = source.read_finite_or_nan(gx, gz + stride)
+                    if not is_finite(halo_value):
+                        return {"error":ERR_FILE_CORRUPT}
+                else:
+                    halo = source.get_height(gx, gz + stride)
+                    if int(halo["error"]) != OK:
+                        return {"error": int(halo["error"])}
+                    halo_value = float(halo["height"])
+                dz = (halo_value - vertices[i - width].y) / (2.0 * cell_world)
             var normal: Vector3 = Vector3(-dx, 1.0, -dz).normalized()
             normals[i] = normal
             colors[i] = grass.lerp(stone, clampf((1.0 - normal.y) * 3.0, 0.0, 1.0))
