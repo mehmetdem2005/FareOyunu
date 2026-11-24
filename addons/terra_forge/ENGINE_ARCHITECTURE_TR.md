@@ -1,5 +1,10 @@
 # TerraForge — As-Built Mimari, Veri Formatları ve Modül Envanteri
 
+> **GÜNCEL DEVİR — P1.5.1 profil aracı (24 Kasım 2026):** Kod SHA `73f3b7b078c0893bbe78d20a45d8989702028f78`, [28/28 Godot Linux CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45424665955). [P1_5_1_PROFILE_TR.md](P1_5_1_PROFILE_TR.md) güncel teknik kayıt. Android gerçek cihaz ölçümü henüz YOK. Sıradaki kod görevi P1.4: immutable generation, copy-on-write region transaction, atomik publication ve crash-injection testleri; editör fırçası şimdilik read-only. Boya/obje yok, main ve kullanıcı TFH/TFL korunur. Önceki devir notları tarihsel kayıttır.
+
+core/profile_histogram.gd sabit 26 bucket; async_region_source collect_io_profile opt-in, accepted results histogram; preview diagnostic world_extent/has_collision_at/io_profile; profiling/profile_scene.tscn bağımsız, manuel start, kamera trace ve JSON.
+
+
 > **GÜNCEL DEVİR — P1.3c (24 Kasım 2026):** Kod/test SHA `4790ef5bd411b5ca4a3865366d694809e9f8078c`, [27/27 Linux Godot CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45424020683). Önce [P1_3C_FAILURE_ISOLATION_TR.md](P1_3C_FAILURE_ISOLATION_TR.md) oku. Aşağıdaki 26/26 referansları tarihsel v0.4.4-dev.1 kaydıdır. Sonraki iş: izole Android profil sahnesi/ölçüm aracı (strict vs lazy startup, first collision, frame p95/p99, resident page/mesh ve IO), ardından P1.4 atomik generation transaction. Gerçek telefon testi hâlâ AÇIK; boya/obje yok.
 
 paged_terrain_preview.gd: _blocked_tiles map, _block_tile(), blocked_tiles/retained_failed_tiles stats; terminal error olan tile yeni IO almadan atlanır; generation/LOD/neighbor değişimi yeniden değerlendirebilir. Kaynak hata cache'i generation-local. Stop temizler. Eski editable node değişmedi.
