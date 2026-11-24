@@ -1,4 +1,4 @@
-# TerraForge Mobile 0.3.3 — Türkçe kullanım
+# TerraForge Mobile 0.4.0-dev.1 — Türkçe kullanım
 
 ## Kurulum (telefon / Godot 4.7.2)
 
@@ -49,6 +49,14 @@ Hepsinde **Size** etki alanını, **Power** etki şiddetini belirler. Ramp, Stam
 - Android'in dokunmatik olaylardan türetebildiği sahte fare tıklamaları bir süre yok sayılır.
 - **Yeni:** Fırça artık her dokunma olayı için değil, parmağın katettiği mesafe boyunca sabit aralıklarla etki uygular. Hızlı ve yavaş sürüklemede güç farkı azalır. Parmağı sabit tutmak devamlı kazma/yükseltme yapmaz.
 
+## P0/P1 uygulamasının ilk sürümü (0.4.0-dev.1)
+
+- Yeni `core/height_layers.gd` katman çekirdeği **ayrı** kodlandı. 32×32 seyrek bloklarda Float32 yükseklik farkları tutar; temel arazi dosyasını değiştirmez.
+- Şimdilik **canlı fırça menüsünde yeni katman aracı yok**. Katman aç/kapat/opacity ve `.tfl` yan dosyası işlevleri test ortamında bulunuyor. Tam doğrulanana kadar gerçek haritanda otomatik etkinleştirilmiyor.
+- **Terrain > Check** düğmesi artık katman kaydet/aç, görünürlük ve birleştirmeyi de kullanıcının arazisinden bağımsız test eder.
+- Bilgisayarda Godot 4.7.2 yüklüyse, tüm 14 regresyonu `bash addons/terra_forge/tests/run_all.sh /proje/yolu /godot/yolu` ile çalıştır.
+- Ayrıntılı uygulama ve geriye uyumluluk sınırları: [P0_P1_IMPLEMENTATION_TR.md](P0_P1_IMPLEMENTATION_TR.md).
+
 ## 0.3.3 — Yeni mühendislik düzeltmeleri
 
 - **LOD kenar aydınlatması:** Aynı ayrıntı seviyesindeki komşu tile'lar ışık hesabında ortak sınırın iki tarafını kullanır. Geometri kapanmış olsa bile göze çarpan gölge çizgilerinin azalması hedefleniyor.
@@ -62,7 +70,7 @@ Hepsinde **Size** etki alanını, **Power** etki şiddetini belirler. Ramp, Stam
 
 `res://terraforge_data/*.tfh`, 32-bit float yüksekliği içeren projene özel veri dosyasıdır. Bir araziyi başka projeye taşırken sahne dosyasıyla beraber bağlı `.tfh` dosyasını da taşı. Bu sürüm oyun dosyalarını değiştirmez; yalnızca `addons/terra_forge/` eklentisi dağıtılır.
 
-**Test durumu:** v0.3.3 için Godot 4.7.2 Android testleri henüz yapılmadı. Check düğmesi gerçek GPU kare süresi testi değildir. Arayüz açılmıyorsa veya harita boş kalıyorsa Godot'un **Debugger → Errors** bölümündeki ilk kırmızı hata satırını paylaş.
+**Test durumu:** v0.4.0-dev.1 için Godot 4.7.2 Android testleri henüz yapılmadı. Check düğmesi gerçek GPU kare süresi testi değildir. Arayüz açılmıyorsa veya harita boş kalıyorsa Godot'un **Debugger → Errors** bölümündeki ilk kırmızı hata satırını paylaş.
 
 ## İlk denemede ne görmelisin?
 

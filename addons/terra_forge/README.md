@@ -1,4 +1,4 @@
-# TerraForge Mobile — v0.3.3 (terrain data safety, edge shading and drainage research)
+# TerraForge Mobile — v0.4.0-dev.1 (P0 validation + P1 sparse height layers)
 
 Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, native library, or changes to game files. Designed for Android editor testing with Mobile Renderer.
 
@@ -37,6 +37,15 @@ Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, nativ
 - **Weather**: tap a steep area and release for 1–6 bounded thermal passes (up to 32m). It now uses two scans of the four neighbors rather than allocating candidate arrays per sample. Material is transferred conservatively; **no water flow or sediment simulation is claimed**.
 - **Smooth**: two-pass neighborhood snapshot plus a 55% bilateral blend reduces directional scan artifacts while retaining some high-contrast edges. Ramp/Stamp/Weather controls remain contextual; Undo/Redo and Float32 data format are unchanged.
 - Mobile **Check** button tests Float32 roundtrip, path consistency, local mass balance and reports CPU processing times without changing the user's terrain.
+
+## P0/P1 initial implementation (0.4.0-dev.1)
+
+- Added `core/height_layers.gd`: experimental **non-destructive additive Float32 height layer stack** with 32×32 sparse delta chunks, enable/disable, opacity, reorder, and composite-on-demand. Base elevations remain unchanged.
+- Added independent `TFL1` versioned serialization to a `.tfl` sidecar with validated dimensions, bounded layer counts, checks for non-finite values and fail-closed corrupted files. Only explicit calls save these files; no existing `.tfh` is migrated.
+- Added `tests/test_height_layers.gd` for layer fidelity, border samples, toggles, opacity, save/reload, and corrupt file isolation.
+- Added `tests/run_all.sh` to run all 14 Godot regression scripts against a real project and Godot **4.7.2**.
+- Extended **Terrain > Check** with a non-destructive scratch-layer smoke test, reported as `Layers ... ms`.
+- **Not connected to live sculpting, scene serialization, or Undo/Redo yet.** This intentionally avoids multi-file save risks until P0 tests pass. Read [P0_P1_IMPLEMENTATION_TR.md](P0_P1_IMPLEMENTATION_TR.md) before enabling such integration.
 
 ## Experimental drainage analysis (0.3.3; no terrain modification)
 
@@ -101,6 +110,7 @@ godot --headless --path /path/to/project --script res://addons/terra_forge/tests
 godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_data_safety.gd
 godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_edge_normals.gd
 godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_drainage_analysis.gd
+godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_height_layers.gd
 ```
 
 See [MOBILE_TEST_PLAN.md](MOBILE_TEST_PLAN.md) for hands-on Android checks and acceptance criteria. These tests have **not yet been executed** with the Godot engine here.
@@ -111,7 +121,8 @@ Read [QUALITY_GATE.md](QUALITY_GATE.md). The addon **is not certified optimized 
 
 ## Next stages
 
-1. Validate v0.3.3 on Android 11 and run **Terrain > Check**, documenting all results and measured CPU times.
+1. Run the complete **14-test** Godot 4.7.2 CLI regression suite (P0) and fix all parse/API/behavior failures.
+2. Run **Terrain > Check** on Android 11 and record the new Layers timings (P1 scratch test).
 2. Inspect long ridge/valley shape quality at ground-camera height and fix contour artifacts.
 3. Validate thermal mass-balance, LOD edge normals, seam continuity and collision on-device.
 4. Validate the new priority-flood/MFD **read-only** drainage analysis with synthetic depressions, flat terrain and real landscape test cases, then decide whether automatic incision is geometrically credible and affordable.

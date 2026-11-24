@@ -7,6 +7,7 @@ const THERMAL = preload("res://addons/terra_forge/core/thermal_weathering.gd")
 const LOD = preload("res://addons/terra_forge/core/lod_policy.gd")
 const SHAPES = preload("res://addons/terra_forge/core/brush_shapes.gd")
 const DRAINAGE = preload("res://addons/terra_forge/core/drainage_analysis.gd")
+const HEIGHT_LAYERS = preload("res://addons/terra_forge/core/height_layers.gd")
 
 static func run() -> Dictionary:
     var errors: Array[String] = []
@@ -86,6 +87,35 @@ static func run() -> Dictionary:
         errors.append("Drainage modified source heights")
     var drainage_ms: float = float(Time.get_ticks_usec() - drainage_start) / 1000.0
 
+    # P1 layer prototype: exercise scratch data, never the user's map.
+    var layers_start_us: int = Time.get_ticks_usec()
+    var layer_stack = HEIGHT_LAYERS.new()
+    var layer_index: int = -1
+    if layer_stack.initialize(data.heights, data.cells, data.spacing) != OK:
+        errors.append("P1 layer base initialization")
+    else:
+        layer_index = layer_stack.add_layer("Test Sculpt")
+        if layer_index < 0 or layer_stack.put_delta(layer_index, target_index, 2.5) != OK:
+            errors.append("P1 sparse layer write")
+        elif absf(layer_stack.composite_height(target_index) - (data.heights[target_index] + 2.5)) > 0.0001:
+            errors.append("P1 layer composition")
+        else:
+            layer_stack.set_enabled(layer_index, false)
+            if absf(layer_stack.composite_height(target_index) - data.heights[target_index]) > 0.0001:
+                errors.append("P1 non-destructive visibility")
+            layer_stack.set_enabled(layer_index, true)
+            var layer_path: String = "user://terraforge_selftest_" + str(Time.get_ticks_usec()) + ".tfl"
+            var layer_err: Error = layer_stack.save_file(layer_path)
+            if layer_err != OK:
+                errors.append("P1 layer save: " + error_string(layer_err))
+            else:
+                var loaded_stack = HEIGHT_LAYERS.new()
+                layer_err = loaded_stack.load_file(layer_path)
+                if layer_err != OK or absf(loaded_stack.composite_height(target_index) - layer_stack.composite_height(target_index)) > 0.0001:
+                    errors.append("P1 layer file roundtrip")
+                DirAccess.remove_absolute(ProjectSettings.globalize_path(layer_path))
+    var layers_ms: float = float(Time.get_ticks_usec() - layers_start_us) / 1000.0
+
     var all_passed: bool = errors.is_empty()
     return {
         "ok": all_passed,
@@ -95,9 +125,10 @@ static func run() -> Dictionary:
         "weather_ms": weather_ms,
         "shape_ms": shape_ms,
         "drainage_ms": drainage_ms,
+        "layers_ms": layers_ms,
         "total_ms": float(Time.get_ticks_usec() - start_us) / 1000.0,
         "summary": (
-            "PASS | F32 %.1fms | Path %.1fms | Weather %.1fms | Shape %.1fms | Drain %.1fms" % [data_ms, path_ms, weather_ms, shape_ms, drainage_ms]
+            "PASS | F32 %.1fms | Path %.1fms | Weather %.1fms | Shape %.1fms | Drain %.1fms | Layers %.1fms" % [data_ms, path_ms, weather_ms, shape_ms, drainage_ms, layers_ms]
             if all_passed
             else "FAIL: " + ", ".join(errors)
         )

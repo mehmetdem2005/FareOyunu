@@ -56,3 +56,9 @@
 - **Daha optimize** olduğuna ancak Terrain3D ile aynı harita, aynı materyal, aynı kamera ve gerçek telefonda adil karşılaştırmayla karar verilebilir.
 
 **Boyama ve obje yerleştirme, bu kontrol listesi geçilene kadar sonraki geliştirme aşaması değildir.**
+
+## P0/P1 geçiş kaydı (0.4.0-dev.1)
+
+- Katman çekirdeği tekil Float32 referans veri, seyrek 32×32 delta tile ve sürümlü TFL1 yan dosya olarak hazırlandı; eski TFH verisi dönüştürülmedi.
+- Yeni `tests/test_height_layers.gd` dahil 14 regresyon testi için `tests/run_all.sh` eklendi. Godot 4.7.2 çalıştırması tamamlanmadan tamamlandı işareti verilmez.
+- Katmanların sahne, Undo/Redo ve güvenli tek işlem kaydıyla tam entegrasyonu sonraki P1 kapısıdır. Bakınız `P0_P1_IMPLEMENTATION_TR.md`.
