@@ -1,5 +1,10 @@
 # P1.3 — Gerçek Bölgesel ArrayMesh ve Çarpışma Entegrasyonu (Salt Okunur)
 
+> **GÜNCEL DEVİR — P1.3c (24 Kasım 2026):** Kod/test SHA `4790ef5bd411b5ca4a3865366d694809e9f8078c`, [27/27 Linux Godot CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45424020683). Önce [P1_3C_FAILURE_ISOLATION_TR.md](P1_3C_FAILURE_ISOLATION_TR.md) oku. Aşağıdaki 26/26 referansları tarihsel v0.4.4-dev.1 kaydıdır. Sonraki iş: izole Android profil sahnesi/ölçüm aracı (strict vs lazy startup, first collision, frame p95/p99, resident page/mesh ve IO), ardından P1.4 atomik generation transaction. Gerçek telefon testi hâlâ AÇIK; boya/obje yok.
+
+P1.3c aynı dünya koordinatındaki son doğrulanmış ArrayMesh ve HeightMapShape3D'yi başarısız rebuild'de korur. Diğer sağlıklı tile'lar devam eder. View dışına çıkan tile eskisi gibi kaldırılır; Android traversal/seam garanti değil.
+
+
 **Durum:** v0.4.4-dev.1 / **izole opt-in prototip UYGULANDI**. **25/25 Godot 4.7.2 CI PASS**: https://github.com/mehmetdem2005/FareOyunu/actions/runs/45415690507  
 **Kod commit'leri:** `4422e0b6` (ilk prototip), `c0068833` (adil mesh-normal parity testi), `286b135d` (editör kamerası köprüsü).  
 **Dal:** `feat/terraforge-mobile-addon`. Ana `main`, Fare oyununun mevcut sahneleri ve `terraforge_data` korunmuştur.

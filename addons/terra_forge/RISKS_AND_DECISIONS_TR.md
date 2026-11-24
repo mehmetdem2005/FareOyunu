@@ -1,5 +1,10 @@
 # TerraForge — Karar Günlüğü, Risk Kaydı ve Geri Dönüş İlkeleri
 
+> **GÜNCEL DEVİR — P1.3c (24 Kasım 2026):** Kod/test SHA `4790ef5bd411b5ca4a3865366d694809e9f8078c`, [27/27 Linux Godot CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45424020683). Önce [P1_3C_FAILURE_ISOLATION_TR.md](P1_3C_FAILURE_ISOLATION_TR.md) oku. Aşağıdaki 26/26 referansları tarihsel v0.4.4-dev.1 kaydıdır. Sonraki iş: izole Android profil sahnesi/ölçüm aracı (strict vs lazy startup, first collision, frame p95/p99, resident page/mesh ve IO), ardından P1.4 atomik generation transaction. Gerçek telefon testi hâlâ AÇIK; boya/obje yok.
+
+R-21: Hasarlı page yakın tile üzerinden head-of-line blocking yapabiliyordu. Artık generation-local blocked tile; aynı koordinatta mevcut sağlam geometry korunur. Hiç yüklenmeyen tile veya view dışı tile için collision garanti edilmez. Retained LOD komşu seam QA gerekir; gerçek Android ve P1.4 açık.
+
+
 **Güncel as-built:** v0.4.4-dev.1 / 24 Kasım 2026. **Status:** Bazı çekirdekler Linux CI PASS; Android performans/doğallık kanıtı yok. Risklerin giderilmiş olması için ayrıca belirtilen kabul testi şarttır.
 
 ## A. Değiştirilmeyecek temel kararlar

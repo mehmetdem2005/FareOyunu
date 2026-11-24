@@ -1,5 +1,10 @@
 # TerraForge — CI, Test Matrisi, Android Performans ve Kalite Kapısı
 
+> **GÜNCEL DEVİR — P1.3c (24 Kasım 2026):** Kod/test SHA `4790ef5bd411b5ca4a3865366d694809e9f8078c`, [27/27 Linux Godot CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45424020683). Önce [P1_3C_FAILURE_ISOLATION_TR.md](P1_3C_FAILURE_ISOLATION_TR.md) oku. Aşağıdaki 26/26 referansları tarihsel v0.4.4-dev.1 kaydıdır. Sonraki iş: izole Android profil sahnesi/ölçüm aracı (strict vs lazy startup, first collision, frame p95/p99, resident page/mesh ve IO), ardından P1.4 atomik generation transaction. Gerçek telefon testi hâlâ AÇIK; boya/obje yok.
+
+27. test: test_paged_failure_isolation.gd; disposable cold missing page, aynı mesh/shape identity, bağımsız tile LOD0 collision, 9 page cap, no fake height, immutable TFH, no same-generation IO retry. Eski test_stream_budget.gd artık frame başına 1–2 iş, queue conservation ve eventual completion kontrol eder; üretim bütçesi değişmedi.
+
+
 **Tarih:** 2026-11-24. **Baz kod:** v0.4.4-dev.1, `73603a15361766397854d11bad44ecb41e9bd53e`. **Son doğrulanmış run:** [GitHub Actions 45420063664, 26/26 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45420063664).
 
 ## A. GitHub CI gerçek kapsamı

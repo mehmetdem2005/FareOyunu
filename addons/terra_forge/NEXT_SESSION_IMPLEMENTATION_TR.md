@@ -1,5 +1,10 @@
 # Sıradaki Uygulama İş Emri — P1.3 Sahada Doğrulama ve P1.4 Veri İşlemleri
 
+> **GÜNCEL DEVİR — P1.3c (24 Kasım 2026):** Kod/test SHA `4790ef5bd411b5ca4a3865366d694809e9f8078c`, [27/27 Linux Godot CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45424020683). Önce [P1_3C_FAILURE_ISOLATION_TR.md](P1_3C_FAILURE_ISOLATION_TR.md) oku. Aşağıdaki 26/26 referansları tarihsel v0.4.4-dev.1 kaydıdır. Sonraki iş: izole Android profil sahnesi/ölçüm aracı (strict vs lazy startup, first collision, frame p95/p99, resident page/mesh ve IO), ardından P1.4 atomik generation transaction. Gerçek telefon testi hâlâ AÇIK; boya/obje yok.
+
+P1.3c DONE: aynı generation içinde hata izolasyonu, last-good mesh/shape retention, 27. test. İlk açık kod görevi ayrı profil sahnesi ve ölçüm/export, telefon QA ayrıca.
+
+
 **24 Kasım 2026.** Kod tabanı `73603a15361766397854d11bad44ecb41e9bd53e`, dal `feat/terraforge-mobile-addon`. P1.2b worker IO ve P1.3 opt-in read-only preview + P1.3b kamera/cache stresi DONE / 26/26 CI PASS. P1.3 gerçek Android kalite kapısı + P1.4 writable transaction PLAN. Kullanıcı mobil telefon kullanıyor; CI GitHub Actions üzerinde çalışmalı.
 
 ## Önce kontrol

@@ -1,5 +1,11 @@
 # TERRAFORGE — AÇIK DÜNYA TERRAIN MASTER ROADMAP (P0–P7)
 
+> **GÜNCEL DEVİR — P1.3c (24 Kasım 2026):** Kod/test SHA `4790ef5bd411b5ca4a3865366d694809e9f8078c`, [27/27 Linux Godot CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45424020683). Önce [P1_3C_FAILURE_ISOLATION_TR.md](P1_3C_FAILURE_ISOLATION_TR.md) oku. Aşağıdaki 26/26 referansları tarihsel v0.4.4-dev.1 kaydıdır. Sonraki iş: izole Android profil sahnesi/ölçüm aracı (strict vs lazy startup, first collision, frame p95/p99, resident page/mesh ve IO), ardından P1.4 atomik generation transaction. Gerçek telefon testi hâlâ AÇIK; boya/obje yok.
+
+- [x] P1.3c hata izolasyonu ve mevcut sağlam mesh/collision koruma (27/27 CI).
+- [ ] Profil sahnesi, gerçek Android RSS/FPS/termal, collision boşlukları; P1.4 açık.
+
+
 **Tarih:** 2026-11-24. **Hedef:** Godot 4.7.2 / Android 11 / Mobile Renderer. **Yalnız arazi**: geometri, veri, erozyon, harita streaming, LOD, çarpışma, editör UX, ölçüm. Boya/texture paint, bitki, objeler ve sahne dekorasyonu **BU FAZLARDA YOKTUR**.
 
 ## Temel mühendislik ilkeleri
