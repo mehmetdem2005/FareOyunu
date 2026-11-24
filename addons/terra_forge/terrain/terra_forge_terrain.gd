@@ -5,6 +5,8 @@ extends Node3D
 const HEIGHT_STORE = preload("res://addons/terra_forge/core/height_store.gd")
 const LOD_POLICY = preload("res://addons/terra_forge/core/lod_policy.gd")
 const BRUSH_SHAPES = preload("res://addons/terra_forge/core/brush_shapes.gd")
+const LANDFORM_PATHS = preload("res://addons/terra_forge/core/landform_paths.gd")
+const WEATHERING = preload("res://addons/terra_forge/core/thermal_weathering.gd")
 const TILE_CELLS: int = 32
 const MAX_HISTORY: int = 20
 
@@ -15,6 +17,7 @@ const MAX_HISTORY: int = 20
 @export_range(80.0, 640.0, 16.0) var view_distance: float = 224.0
 @export_range(32, 256, 8) var max_visible_tiles: int = 96
 @export_range(1, 6, 1) var tile_updates_per_frame: int = 2
+@export_range(1.0, 8.0, 0.5) var max_tile_work_ms: float = 3.0
 @export_range(32.0, 180.0, 8.0) var high_detail_distance: float = 72.0
 @export_range(80.0, 320.0, 8.0) var medium_detail_distance: float = 144.0
 
@@ -42,6 +45,21 @@ var _ramp_end_local: Vector3 = Vector3.ZERO
 var _ramp_width: float = 8.0
 var _ramp_strength: float = 3.0
 var _ramp_rise: float = 5.0
+var _path_points: Array[Vector2] = []
+var _path_strength: float = 3.0
+var _path_radius: float = 8.0
+var _path_tool: int = 4
+var _path_length: float = 0.0
+var _weather_center_set: bool = false
+var _weather_center: Vector2 = Vector2.ZERO
+var _weather_radius: float = 8.0
+var _weather_strength: float = 3.0
+var _weather_steps: int = 3
+var _tile_builds: int = 0
+var _tile_last_ms: float = 0.0
+var _tile_max_ms: float = 0.0
+var _edit_last_ms: float = 0.0
+var _edit_max_ms: float = 0.0
 var _changed_since_save: bool = false
 var _last_edit_time: int = 0
 var _last_mesh_time: int = 0
@@ -199,6 +217,7 @@ func _drain_tile_queue() -> void:
         return da < db
     )
     var budget: int = maxi(1, tile_updates_per_frame)
+    var start_us: int = Time.get_ticks_usec()
     for key in keys:
         if budget <= 0:
             break
@@ -213,17 +232,26 @@ func _drain_tile_queue() -> void:
         _rebuild_tile(key.x, key.y, tile, level)
         tile["lod"] = level
         budget -= 1
+        # A single tile can exceed the budget; stop *after* that tile so
+        # additional rebuilds cannot compound a large frame hitch.
+        if float(Time.get_ticks_usec() - start_us) >= max_tile_work_ms * 1000.0:
+            break
 
 func get_stream_stats() -> Dictionary:
     var lod_counts: PackedInt32Array = PackedInt32Array([0, 0, 0])
+    var resident_vertices: int = 0
     for key in _tile_nodes:
         var tile: Dictionary = _tile_nodes[key]
         var lod: int = int(tile["lod"])
         if lod >= 0 and lod < lod_counts.size():
             lod_counts[lod] += 1
+        resident_vertices += int(tile.get("vertex_count", 0))
     return {
         "resident": _tile_nodes.size(), "pending": _tile_queue.size(),
-        "lod0": lod_counts[0], "lod1": lod_counts[1], "lod2": lod_counts[2]
+        "lod0": lod_counts[0], "lod1": lod_counts[1], "lod2": lod_counts[2],
+        "vertices": resident_vertices, "builds": _tile_builds,
+        "tile_last_ms": _tile_last_ms, "tile_max_ms": _tile_max_ms,
+        "edit_last_ms": _edit_last_ms, "edit_max_ms": _edit_max_ms
     }
 
 func set_quality_profile(profile: int) -> void:
@@ -234,18 +262,21 @@ func set_quality_profile(profile: int) -> void:
             high_detail_distance = 56.0
             medium_detail_distance = 104.0
             tile_updates_per_frame = 1
+            max_tile_work_ms = 2.5
         1: # Balanced Android (default)
             view_distance = 224.0
             max_visible_tiles = 96
             high_detail_distance = 72.0
             medium_detail_distance = 144.0
             tile_updates_per_frame = 2
+            max_tile_work_ms = 4.0
         2: # Higher-end devices
             view_distance = 320.0
             max_visible_tiles = 160
             high_detail_distance = 112.0
             medium_detail_distance = 208.0
             tile_updates_per_frame = 3
+            max_tile_work_ms = 6.0
     _last_stream_sync = -100000
 
 func _seam_height(tx: int, tz: int, sample_x: int, sample_z: int, lod: int) -> float:
@@ -292,6 +323,7 @@ func _seam_height(tx: int, tz: int, sample_x: int, sample_z: int, lod: int) -> f
     return lerpf(start_height, end_height, float(along - start_along) / float(end_along - start_along))
 
 func _rebuild_tile(tx: int, tz: int, item: Dictionary, lod: int) -> void:
+    var build_start_us: int = Time.get_ticks_usec()
     var stride: int = LOD_POLICY.sample_stride(lod)
     var width: int = int(TILE_CELLS / stride) + 1
     var minimum_height: float = INF
@@ -313,13 +345,13 @@ func _rebuild_tile(tx: int, tz: int, item: Dictionary, lod: int) -> void:
             minimum_height = minf(minimum_height, y)
             maximum_height = maxf(maximum_height, y)
             var slope_x: float = (
-                height_data.get_height(gx + 1, gz) -
-                height_data.get_height(gx - 1, gz)
-            ) / (2.0 * step)
+                height_data.get_height(gx + stride, gz) -
+                height_data.get_height(gx - stride, gz)
+            ) / (2.0 * step * float(stride))
             var slope_z: float = (
-                height_data.get_height(gx, gz + 1) -
-                height_data.get_height(gx, gz - 1)
-            ) / (2.0 * step)
+                height_data.get_height(gx, gz + stride) -
+                height_data.get_height(gx, gz - stride)
+            ) / (2.0 * step * float(stride))
             var normal: Vector3 = Vector3(-slope_x, 1.0, -slope_z).normalized()
             var steepness: float = clampf(1.0 - normal.y, 0.0, 1.0)
             var grass: Color = Color(0.27, 0.39, 0.22)
@@ -364,6 +396,10 @@ func _rebuild_tile(tx: int, tz: int, item: Dictionary, lod: int) -> void:
         collision.shape = shape
     else:
         collision.shape = null
+    item["vertex_count"] = vertices.size()
+    _tile_builds += 1
+    _tile_last_ms = float(Time.get_ticks_usec() - build_start_us) / 1000.0
+    _tile_max_ms = maxf(_tile_max_ms, _tile_last_ms)
 
 func _mark_sample_dirty(x: int, z: int) -> void:
     var tx1: int = floori(float(x) / float(TILE_CELLS))
@@ -394,6 +430,10 @@ func begin_stroke() -> void:
     _ramp_start_set = false
     _ramp_start_local = Vector3.ZERO
     _ramp_end_local = Vector3.ZERO
+    _path_points.clear()
+    _path_length = 0.0
+    _weather_center_set = false
+    _weather_center = Vector2.ZERO
 
 func paint_at(
         global_hit: Vector3,
@@ -406,6 +446,31 @@ func paint_at(
     if not _stroke_open or _read_only_source or height_data == null:
         return
     var local_hit: Vector3 = to_local(global_hit)
+    if tool == 4 or tool == 5:
+        var point: Vector2 = Vector2(local_hit.x, local_hit.z)
+        var threshold: float = maxf(0.6, brush_radius * 0.3)
+        if _path_points.is_empty():
+            _path_points.append(point)
+        else:
+            var last: Vector2 = _path_points.back()
+            var distance: float = last.distance_to(point)
+            if distance >= threshold and _path_points.size() < LANDFORM_PATHS.MAX_POINTS and _path_length < LANDFORM_PATHS.MAX_LENGTH:
+                var available: float = LANDFORM_PATHS.MAX_LENGTH - _path_length
+                var offset: Vector2 = (point - last).limit_length(available)
+                _path_points.append(last + offset)
+                _path_length += offset.length()
+        _path_radius = brush_radius
+        _path_strength = strength
+        _path_tool = tool
+        return
+    if tool == 8:
+        if not _weather_center_set:
+            _weather_center = Vector2(local_hit.x, local_hit.z)
+            _weather_center_set = true
+            _weather_radius = brush_radius
+            _weather_strength = strength
+            _weather_steps = clampi(int(round(ramp_rise)), 1, 6)
+        return
     if tool == BRUSH_SHAPES.TOOL_RAMP:
         # Drag to set endpoints; apply one corridor when the finger lifts.
         # This keeps one ramp = one undo action and avoids repeatedly
@@ -482,10 +547,6 @@ func _apply_stamp(local_hit: Vector3, tool: int, brush_radius: float, strength: 
                     result = lerpf(original, average, clampf(factor * 2.0, 0.0, 1.0))
                 3:
                     result = lerpf(original, _flatten_target, clampf(factor, 0.0, 1.0))
-                4: # Ridge
-                    result += maxf(0.0, strength) * 0.14 * BRUSH_SHAPES.ridge(normalized_distance)
-                5: # Valley
-                    result -= maxf(0.0, strength) * 0.14 * BRUSH_SHAPES.valley(normalized_distance)
                 7: # Procedural Stamp
                     result += maxf(0.0, strength) * 0.8 * BRUSH_SHAPES.stamp(stamp_preset, normalized_distance)
                 _:
@@ -500,6 +561,48 @@ func _apply_stamp(local_hit: Vector3, tool: int, brush_radius: float, strength: 
     if not _stroke_before.is_empty():
         _changed_since_save = true
         _last_edit_time = Time.get_ticks_msec()
+
+func _apply_height_changes(changes: Dictionary) -> void:
+    var width: int = height_data.cells.x + 1
+    for raw_index in changes:
+        var idx: int = int(raw_index)
+        var previous: float = height_data.heights[idx]
+        var updated: float = clampf(float(changes[raw_index]), -2000.0, 2000.0)
+        if absf(updated - previous) <= 0.000001:
+            continue
+        if not _stroke_before.has(idx):
+            _stroke_before[idx] = previous
+        height_data.heights[idx] = updated
+        _mark_sample_dirty(idx % width, int(idx / width))
+    if not _stroke_before.is_empty():
+        _changed_since_save = true
+        _last_edit_time = Time.get_ticks_msec()
+
+func _commit_landform() -> void:
+    if _path_points.is_empty() or _read_only_source:
+        return
+    var before_us: int = Time.get_ticks_usec()
+    var changes: Dictionary = LANDFORM_PATHS.build(
+        height_data, _path_points, _path_radius, _path_strength, _path_tool == 5
+    )
+    _apply_height_changes(changes)
+    _edit_last_ms = float(Time.get_ticks_usec() - before_us) / 1000.0
+    _edit_max_ms = maxf(_edit_max_ms, _edit_last_ms)
+
+func _commit_weathering() -> void:
+    if not _weather_center_set or _read_only_source:
+        return
+    var before_us: int = Time.get_ticks_usec()
+    var changes: Dictionary = WEATHERING.build(
+        height_data,
+        _weather_center,
+        minf(_weather_radius, WEATHERING.MAX_RADIUS_METERS),
+        _weather_steps,
+        clampf(_weather_strength / 8.0, 0.0, 1.0)
+    )
+    _apply_height_changes(changes)
+    _edit_last_ms = float(Time.get_ticks_usec() - before_us) / 1000.0
+    _edit_max_ms = maxf(_edit_max_ms, _edit_last_ms)
 
 func _commit_ramp() -> void:
     if not _ramp_start_set or _read_only_source:
@@ -555,7 +658,14 @@ func end_stroke() -> void:
         return
     if _ramp_start_set:
         _commit_ramp()
+    if not _path_points.is_empty():
+        _commit_landform()
+    if _weather_center_set:
+        _commit_weathering()
     _ramp_start_set = false
+    _weather_center_set = false
+    _path_points.clear()
+    _path_length = 0.0
     _stroke_open = false
     _stroke_has_sample = false
     _stroke_last_local = Vector3.ZERO

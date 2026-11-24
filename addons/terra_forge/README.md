@@ -1,4 +1,4 @@
-# TerraForge Mobile — v0.3.0 (advanced mobile sculpt brushes)
+# TerraForge Mobile — v0.3.1 (geology quality and on-device diagnostics)
 
 Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, native library, or changes to game files. Designed for Android editor testing with Mobile Renderer.
 
@@ -8,7 +8,7 @@ Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, nativ
 2. Open **Project > Project Settings > Plugins**, enable **TerraForge Mobile**.
 3. Open a saved 3D scene (Node3D root). In the **3D editor toolbar**, tap **Terrain** (next to **Brush**) to open the compact tools popup.
 4. Tap **+ New** to create an empty, initially flat terrain. The popup closes so the 3D view remains unobstructed.
-5. Tap **Terrain** again to choose Raise / Lower / Smooth / Flatten and adjust Size and Power.
+5. Tap **Terrain** again to choose Raise / Lower / Smooth / Flatten / Ridge / Valley / Ramp / Stamp / Weather and adjust Size and Power.
 6. Toggle **Brush** next to the Terrain button, then drag a finger or left mouse button across the surface. Toggle it off to move the editor camera.
 7. In the popup, **Save** writes Float32 heights; separately save the scene with Godot. **Quality** selects Mobile / Balanced / High.
 
@@ -26,23 +26,27 @@ Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, nativ
 - **Collision only at closest LOD**, with properly uniform scaling and pre-scaled height values.
 - **Per-frame tile rebuild budget**, with edited/dirtied tiles queued rather than regenerating the whole map at once.
 - Touch/mouse shaping with **distance-spaced stamps** (one touch-movement path now yields similar heights regardless of event count), 20-step local Undo/Redo, 2.5-second idle autosave, corrupt file write guard.
-- Live tile stats in the editor dock.
+- Live resident tile/vertex counts and CPU build/edit timings in the compact Terrain popup, plus a non-destructive **Check** self-test.
 
 ## Advanced sculpting (v0.3)
 
-- **Ridge**: drag a narrow positive ridge; distance-normalized sampling joins peaks along the stroke
-- **Valley**: drag a carved negative channel; wider falloff than Ridge
+- **Ridge**: draw a full crest path, **release to apply**. One coherent noise-warped, asymmetric corridor is calculated per path. Heights are not stacked by repeated circular stamps.
+- **Valley**: draw a full drainage-like incision path, **release to apply**. Same coherent corridor approach as Ridge, with a broader cross-section. This is not a true catchment solver.
 - **Ramp**: drag from start to finish and release. The tool makes one sloping corridor whose ending elevation is the existing end-point elevation plus **Rise** (initially +5m); negative Rise creates descending ramps. Nothing changes until release, and one drag is one Undo step. Single ramps are limited to 256m for mobile CPU safety
 - **Stamp**: one touch applies a deterministic analytic **Hill**, **Crater** (bowl + lip) or **Mesa** (flat-topped mound). Moving the same finger does not create more stamps
-- Options for Ramp/Stamp appear only when those tools are selected. Undo/Redo, Float32 persistence and tile invalidation continue to use the same paths as the original tools
+- **Weather**: tap a steep area and release to apply 1–6 thermal slope-relaxation passes inside a bounded radius (up to 32m). Material transfers downhill conservatively; **no water flow or sediment simulation is claimed**.
+- Ramp/Stamp/Weather-specific options appear only for those tools. Undo/Redo, Float32 persistence and tile invalidation reuse the original data flow.
+- Mobile **Check** button tests Float32 roundtrip, path consistency, local mass balance and reports CPU processing times without changing the user's terrain.
 
 ## Mobile streaming budgets (initial estimates; NOT performance measurements)
 
-| Profile | View radius | Max resident tiles | LOD0 / LOD1 radii | Rebuilds per frame |
-| --- | ---: | ---: | ---: | ---: |
-| Mobile - light | 160m | 64 | 56m / 104m | 1 |
-| Balanced (default) | 224m | 96 | 72m / 144m | 2 |
-| High detail | 320m | 160 | 112m / 208m | 3 |
+| Profile | View radius | Max resident tiles | LOD0 / LOD1 radii | Max rebuilds/frame | CPU work cap* |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Mobile - light | 160m | 64 | 56m / 104m | 1 | 2.5ms |
+| Balanced | 224m | 96 | 72m / 144m | 2 | 4.0ms |
+| High detail | 320m | 160 | 112m / 208m | 3 | 6.0ms |
+
+*Time budgets stop further work after a completed tile. One tile itself can exceed the budget, and CPU times are not GPU timing.*
 
 The **full Float32 height field remains in RAM**. This version streams visible **mesh + physics tiles**, not source height files from storage. It is not an infinite terrain system.
 
@@ -61,7 +65,7 @@ The **full Float32 height field remains in RAM**. This version streams visible *
 - The full Float32 heightmap is resident even when no mesh tile is loaded. File-backed streaming is not yet implemented.
 - Tile mesh builds **and node creation** happen on the main thread, strictly limited per frame. A later stage can move mesh input preparation to worker threads.
 - Collision is disabled for lower-detail tiles and enabled only near the camera. This is for performance; far-away physics interactions require a separate collision strategy.
-- The addon does not yet provide a texture painter, imported image stamp library, foliage, full hydraulic erosion, or 3D assets. v0.3 ships deterministic built-in stamp presets only.
+- Material painting and object placement are intentionally **on hold**. This version does not offer full hydraulic erosion, watershed solve, rock strata, procedural deposition, imported image stamps, or volumetric caves. The new Weather pass models thermal weathering only.
 - The 20 Undo/Redo entries live only in the terrain node's memory; Godot's global editor Undo/Redo integration remains pending.
 - Brush stamps are spaced by traveled **world distance**, preventing changes in the number of touch events from changing results. Holding the finger still does **not** continue to sculpt; pressure-sensitive, time-normalized holding is future work.
 
@@ -77,18 +81,23 @@ godot --headless --path /path/to/project --script res://addons/terra_forge/tests
 godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_stream_budget.gd
 godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_brush_sampling.gd
 godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_advanced_brushes.gd
+godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_geomorphology.gd
+godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_lod_normals.gd
 ```
 
 See [MOBILE_TEST_PLAN.md](MOBILE_TEST_PLAN.md) for hands-on Android checks and acceptance criteria. These tests have **not yet been executed** with the Godot engine here.
 
+## Quality gate before materials and foliage
+
+Read [QUALITY_GATE.md](QUALITY_GATE.md). The addon **is not certified optimized or professionally realistic** until Godot 4.7.2 Android tests confirm real-world shape quality, physics/LOD seams, stability, frame-time percentiles and memory use. The on-device **Check** button is a partial geometry/CPU smoke test, not a replacement for sustained frame/GPU profiling.
+
 ## Next stages
 
-1. Confirm v0.3.0 loads on Android 11 and all eight tools fit in the compact selection popup.
-2. With Brush ON, draw equally long strokes slowly and quickly at the same Power; verify similar height changes (new distance-sampling logic).
-2. Add progressive mesh generation that prevents frame spikes during initial loading.
-3. Implement true LOD seam stitching + sample-independent camera brush interaction.
-4. Add lightweight tile-based 2–4 material painter and GPU budget presets.
-5. Extend to file-backed height tile streaming, bounded collision cache, foliage cells and profiling.
+1. Validate v0.3.1 on Android 11 and run **Terrain > Check**, documenting the result and measured times.
+2. Inspect long ridge/valley shape quality at ground-camera height and fix contour artifacts.
+3. Validate thermal mass-balance, LOD edge normals, seam continuity and collision on-device.
+4. Add drainage/catchment-aware erosion and non-destructive processing layers where measured performance permits.
+5. Only after the [quality gate](QUALITY_GATE.md) passes, move to materials and object placement.
 
 ## License / origin
 

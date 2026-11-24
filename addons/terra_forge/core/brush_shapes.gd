@@ -10,6 +10,7 @@ const TOOL_RIDGE: int = 4
 const TOOL_VALLEY: int = 5
 const TOOL_RAMP: int = 6
 const TOOL_STAMP: int = 7
+const TOOL_WEATHER: int = 8
 
 const STAMP_HILL: int = 0
 const STAMP_CRATER: int = 1

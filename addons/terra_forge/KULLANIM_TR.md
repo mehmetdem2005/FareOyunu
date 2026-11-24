@@ -1,4 +1,4 @@
-# TerraForge Mobile 0.3.0 — Türkçe kullanım
+# TerraForge Mobile 0.3.1 — Türkçe kullanım
 
 ## Kurulum (telefon / Godot 4.7.2)
 
@@ -14,12 +14,23 @@
 
 ## Yeni şekillendirme araçları (v0.3)
 
-- **Ridge (Dağ sırtı):** Brush açıkken sürükle; dar ve belirgin yükselti çizgisi oluşur.
-- **Valley (Vadi):** Sürükleyerek araziyi bir hat boyunca oy; dere yatağı ve geçit için uygundur.
+- **Ridge (Dağ sırtı):** Parmağı sürükleyerek bir hat çiz, **parmağını kaldırınca** arazinin üzerinde tek parça, organik sapmalı bir sırt oluşturulur. Art arda dairesel tepecik basılmaz.
+- **Valley (Vadi):** Parmağını sürükleyip kaldırınca kesintisiz bir vadi oyar. Gerçek su havzası hesabı henüz yok.
 - **Ramp (Eğimli yol):** Başlangıç noktasına dokun, bitiş noktasına sürükle, **parmağını kaldır**. O zaman eğimli koridor uygulanır. Seçince çıkan **Rise** ayarı başlangıçta **+5 m**; negatif değer iniş oluşturur. Tek seferde en fazla 256 m uzunluğunda ramp yapılır.
-- **Stamp (Hazır şekil):** Tek dokunuşla **Hill** (tepe), **Crater** (krater) veya **Mesa** (plato) bas. Shape seçimi yalnız bu araçta gösterilir. Parmağı sürüklemek aynı dokunuşta ikinci stamp üretmez.
+- **Stamp (Hazır şekil):** Tek dokunuşla **Hill** (tepe), **Crater** (krater) veya **Mesa** (plato) bas. Parmağı sürüklemek aynı dokunuşta ikinci stamp üretmez.
+- **Weather (Termal aşınma):** Çok dik yamaçta tek dokunuşla aşınma işlemi başlat. **Steps** (1–6) işlem sayısını ayarlar; yukarıdaki gevşek malzeme aşağıya aktarılır. Su erozyonu veya tortu simülasyonu değildir.
 
-Hepsinde **Size** etki alanını, **Power** etki şiddetini belirler. Ramp ve Stamp seçenekleri yalnız ilgili araç seçildiğinde açılır; kalıcı geniş panel yoktur. Undo ve Redo her fırça hareketinde kullanılabilir.
+Hepsinde **Size** etki alanını, **Power** etki şiddetini belirler. Ramp, Stamp ve Weather seçenekleri yalnız ilgili araç seçildiğinde açılır; kalıcı geniş panel yoktur. Undo ve Redo her fırça hareketinde kullanılabilir.
+
+## Telefon üzerinde kalite kontrol
+
+1. **Terrain > Quality: Mobile** seç.
+2. Aynı küçük menüdeki **Check** düğmesine bas. Kod kendi geçici test verilerini kullanır; haritanı değiştirmez.
+3. Ekranda `PASS` veya `FAIL` sonucunu, Float32, Path ve Weather işlem sürelerini gör.
+4. `Mesh last/max ms` ve `Sculpt last/max ms` CPU süreleridir, toplam GPU maliyeti değildir.
+5. Ardından 30 dakika çizim, LOD, dosya aç-kapat, belleğin artışı ve sahnenin kare süresini gerçek telefonda kontrol et.
+
+**Önemli:** Bu sürüm henüz tam optimize edildi veya profesyonel doğallık kesinleşti diye işaretlenmedi. [QUALITY_GATE.md](QUALITY_GATE.md) geçilmeden malzeme ve obje yerleştirmeye başlanmayacak.
 
 ## Değişiklikler
 
@@ -34,7 +45,7 @@ Hepsinde **Size** etki alanını, **Power** etki şiddetini belirler. Ramp ve St
 
 `res://terraforge_data/*.tfh`, 32-bit float yüksekliği içeren projene özel veri dosyasıdır. Bir araziyi başka projeye taşırken sahne dosyasıyla beraber bağlı `.tfh` dosyasını da taşı. Bu sürüm oyun dosyalarını değiştirmez; yalnızca `addons/terra_forge/` eklentisi dağıtılır.
 
-**Önemli:** v0.2.2 kodu inceleme ve algoritma denetiminden geçti ama bu ortamda Godot 4.7.2 çalıştırılamadığı için Android editöründe henüz test edilmedi. Arayüz açılmıyorsa veya harita boş kalıyorsa Godot'un **Debugger → Errors** bölümündeki ilk kırmızı hata satırını paylaş.
+**Test durumu:** v0.3.1 için Godot 4.7.2 Android testleri henüz yapılmadı; yeni Check düğmesinin sonucu da telefonla doğrulanmalı. Arayüz açılmıyorsa veya harita boş kalıyorsa Godot'un **Debugger → Errors** bölümündeki ilk kırmızı hata satırını paylaş.
 
 ## İlk denemede ne görmelisin?
 
@@ -52,4 +63,6 @@ godot --headless --path /proje/yolu --script res://addons/terra_forge/tests/test
 godot --headless --path /proje/yolu --script res://addons/terra_forge/tests/test_stream_budget.gd
 godot --headless --path /proje/yolu --script res://addons/terra_forge/tests/test_brush_sampling.gd
 godot --headless --path /proje/yolu --script res://addons/terra_forge/tests/test_advanced_brushes.gd
+godot --headless --path /proje/yolu --script res://addons/terra_forge/tests/test_geomorphology.gd
+godot --headless --path /proje/yolu --script res://addons/terra_forge/tests/test_lod_normals.gd
 ```

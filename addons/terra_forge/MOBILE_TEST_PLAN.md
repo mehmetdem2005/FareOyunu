@@ -15,14 +15,22 @@ Target editor: Godot **4.7.2**, Android **11**, **Mobile** rendering method.
 9. Undo/redo 20 changes. Verify file bytes remain unchanged when only the camera moves.
 10. Disconnect/re-enable plugin, check no duplicate tile nodes are saved.
 
-## Advanced brush checks (0.3)
+## Advanced brush checks (0.3.1)
 
-- Draw Ridge and Valley at 3 different angles; continuous ridges/trenches should appear without giant gaps
+- Draw Ridge and Valley at 3 different angles; the shape is applied on touch release and must look continuous, without repeated circular humps
 - Make a Ramp with **Rise = +6m** on flat terrain: zero at the start and +6m at its centerline end, with a smooth shoulder; then Undo and Redo
 - Make another Ramp with a negative Rise value and confirm descending slope
 - Select each Stamp profile (Hill/Crater/Mesa) and tap once; crater must show depressed center and raised rim
 - Drag while Stamp is selected: it must stamp only once per touch, not at every drag event
 - Switch tools mid-session without expanding the persistent 3D toolbar
+
+## Geomorphology and profiler checks
+
+- Press **Terrain > Check**. Record PASS/FAIL and Float32/Path/Weather CPU times without modifying the original map
+- Draw a new ridge over a flat world. Test from ground level; asymmetry should look coherent and not like identical cones
+- Test **Weather** on steep and flat slopes. Material should move only on steep slopes, with no square edge
+- Record Tiles, Vertices, Mesh last/max ms, Sculpt last/max ms before/after camera movement
+- Compare balanced/mobile rendering on exactly the same camera path; observe p95 frame times, p99 spikes, thermal behavior and memory
 
 ## Stress tests
 
@@ -45,4 +53,4 @@ Target editor: Godot **4.7.2**, Android **11**, **Mobile** rendering method.
 
 ## Implementation notes
 
-This is a **resident tile streaming prototype**, not asynchronous disk IO or an infinite-world solution. The complete Float32 height array remains in RAM; only visible mesh/collision tile nodes are streamed, now created within per-frame budgets. LOD skirts conceal cracks; true stitched edge topology remains future work. No claim of performance improvement over Terrain3D is made before profiling on Android.
+This is a **resident tile streaming prototype**, not asynchronous disk IO or an infinite-world solution. The complete Float32 height array remains in RAM; only visible mesh/collision tile nodes are streamed, now created within per-frame budgets. Adjacent LOD edges use interpolated border heights rather than visible gray skirts; full edge-topology stitching remains future work. No claim of performance improvement over Terrain3D is made before profiling on Android.

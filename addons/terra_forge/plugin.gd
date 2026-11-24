@@ -3,6 +3,7 @@ extends EditorPlugin
 ## Mobile-first editor controls: only a tiny button remains in the 3D toolbar.
 ## Settings appear in a dismissible popup rather than a permanent bottom panel.
 const TERRAIN_SCRIPT = preload("res://addons/terra_forge/terrain/terra_forge_terrain.gd")
+const SELF_TEST = preload("res://addons/terra_forge/core/self_test.gd")
 
 var _toolbar: HBoxContainer
 var _menu_button: Button
@@ -18,6 +19,9 @@ var _advanced_row: HBoxContainer
 var _advanced_label: Label
 var _stamp_preset: OptionButton
 var _ramp_rise: SpinBox
+var _current_tool: int = 0
+var _ramp_setting: float = 5.0
+var _weather_setting: float = 3.0
 var _radius_display: Label
 var _strength_display: Label
 var _active: TerraForgeTerrain
@@ -73,7 +77,7 @@ func _enter_tree() -> void:
     label.text = "Tool"
     tool_row.add_child(label)
     _tool_select = OptionButton.new()
-    for tool_name in ["Raise", "Lower", "Smooth", "Flatten", "Ridge", "Valley", "Ramp", "Stamp"]:
+    for tool_name in ["Raise", "Lower", "Smooth", "Flatten", "Ridge", "Valley", "Ramp", "Stamp", "Weather"]:
         _tool_select.add_item(tool_name)
     _tool_select.item_selected.connect(_on_tool_changed)
     _tool_select.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -163,6 +167,11 @@ func _enter_tree() -> void:
     _profile_select.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     _profile_select.item_selected.connect(_quality_changed)
     profile_row.add_child(_profile_select)
+    var diagnostics_button: Button = Button.new()
+    diagnostics_button.text = "Check"
+    diagnostics_button.tooltip_text = "Run non-destructive terrain geometry and performance self-test"
+    diagnostics_button.pressed.connect(_run_self_test)
+    profile_row.add_child(diagnostics_button)
 
     _stats_label = Label.new()
     _stats_label.text = "Tiles: -"
@@ -227,30 +236,60 @@ func _process(_delta: float) -> void:
             _active.set_stream_center(camera.global_position)
     if _popup.visible:
         var stats: Dictionary = _active.get_stream_stats()
-        _stats_label.text = "Tiles %d / Pending %d / LOD %d:%d:%d" % [
-            stats["resident"], stats["pending"],
-            stats["lod0"], stats["lod1"], stats["lod2"]
+        _stats_label.text = "Tiles %d / Pending %d / Vertices %d\nMesh %.1fms (max %.1f) | Sculpt %.1fms (max %.1f)" % [
+            stats["resident"], stats["pending"], stats["vertices"],
+            stats["tile_last_ms"], stats["tile_max_ms"],
+            stats["edit_last_ms"], stats["edit_max_ms"]
         ]
 
 func _on_tool_changed(tool: int) -> void:
-    _advanced_row.visible = (tool == 6 or tool == 7)
-    _advanced_label.text = "Rise" if tool == 6 else "Shape"
-    _ramp_rise.visible = tool == 6
+    if _current_tool == 6:
+        _ramp_setting = float(_ramp_rise.value)
+    elif _current_tool == 8:
+        _weather_setting = float(_ramp_rise.value)
+    _current_tool = tool
+    _advanced_row.visible = tool == 6 or tool == 7 or tool == 8
+    _advanced_label.text = "Steps" if tool == 8 else ("Rise" if tool == 6 else "Shape")
+    _ramp_rise.visible = tool == 6 or tool == 8
     _stamp_preset.visible = tool == 7
+    if tool == 8:
+        _ramp_rise.min_value = 1.0
+        _ramp_rise.max_value = 6.0
+        _ramp_rise.step = 1.0
+        _ramp_rise.value = _weather_setting
+        _ramp_rise.suffix = "passes"
+    else:
+        _ramp_rise.min_value = -40.0
+        _ramp_rise.max_value = 40.0
+        _ramp_rise.step = 0.5
+        _ramp_rise.value = _ramp_setting
+        _ramp_rise.suffix = "m"
     match tool:
         4:
-            _set_status("Ridge: drag a sharp raised mountain spine.")
+            _set_status("Ridge: draw the entire crest, release to build.")
         5:
-            _set_status("Valley: drag a carved drainage channel.")
+            _set_status("Valley: draw the complete drainage path, release to carve.")
         6:
             _set_status("Ramp: drag start to end; the gradient is applied when released.")
         7:
             _set_status("Stamp: one tap adds the selected terrain shape.")
+        8:
+            _set_status("Weather: tap a slope to move loose material downhill.")
         _:
             _set_status("Drag on the terrain with Brush ON.")
     if _popup.visible:
         _popup.hide()
         _toggle_popup()
+
+func _run_self_test() -> void:
+    _finish_stroke()
+    _set_status("Checking Float32, geology and touch-independent paths...")
+    var report: Dictionary = SELF_TEST.run()
+    _set_status(str(report["summary"]))
+    if bool(report["ok"]):
+        print("[TerraForge self-test] ", report)
+    else:
+        push_error("[TerraForge self-test] " + str(report["summary"]))
 
 func _quality_changed(profile: int) -> void:
     if is_instance_valid(_active):

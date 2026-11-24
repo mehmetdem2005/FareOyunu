@@ -38,8 +38,10 @@ func _initialize() -> void:
     ridge.paint_at(Vector3(22, 0, 32), SHAPES.TOOL_RIDGE, 10.0, 3.0)
     ridge.paint_at(Vector3(60, 0, 32), SHAPES.TOOL_RIDGE, 10.0, 3.0)
     ridge.end_stroke()
-    if ridge.height_data.get_height(40, 32) <= 0.0 or ridge.height_data.get_height(40, 42) != 0.0:
-        _fail("Ridge centerline/edge")
+    # New terrain corridors are asymmetric and coherently domain-warped.
+    # Their maximum reach is slightly wider than the nominal radius.
+    if ridge.height_data.get_height(40, 32) <= 0.0 or ridge.height_data.get_height(40, 48) != 0.0:
+        _fail("Ridge centerline/extended edge")
         return
     ridge.undo_stroke()
     if absf(ridge.height_data.get_height(40, 32)) > 0.00001:
