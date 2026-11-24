@@ -1,5 +1,8 @@
 # Sıradaki Uygulama İş Emri — P1.3 Sahada Doğrulama ve P1.4 Veri İşlemleri
 
+> **GÜNCEL DEVİR — P1.5.7e2 CI_VERIFIED (24 Kasım 2026):** f17e311461f5d0b95fc3680d5d15b8dee4cbb3b6, [54/54 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45472547229), [ham JSON](P1_5_7E2_RETENTION_CI.json). 16 ×120 ticks; each baseline 102 missing rays/119 airborne/17 changed bodies, each held 0/0/0, drift0, three equal-height shape reuses, zero changed-height replacements. Caps4/8, pages16, geometry reservations <=2. Fixed synthetic camera jumps, stationary actor, no equal completed geometry or Android claim. A p95 upper bounds baseline3.485–3.617ms, held3.589–4ms; G both1ms upper bounds. NEXT P1.5.7e3 lease-aware movement admission and continuous measured cold seam transfer, 16 ×150 ticks, CI_PENDING. No production movement controller, default unchanged, P1.4/P1.4R PARKED. Prior CI failure retained.
+
+
 > **P1.5.7e2 CI FAILURE / RETRY (24 Kasım 2026):** 4bb4ce8d4f6e9eec4a65552d0eefdc687ef0a73b, [52/54 PASS, 2 FAIL](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45471322997), job 138719724712. Both new tests timed out after GDScript runtime type error at test_support_retention.gd:42 (untyped ternary array assigned to Array[bool]); no SUPPORT_TRACE rows, no physics experiment executed. Fix only harness typed array initialization/reverse; no acceptance threshold change, production code unchanged. Retry CI pending. Do not advance until actual results, preserve failure history.
 
 

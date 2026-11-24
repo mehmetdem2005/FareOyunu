@@ -729,6 +729,28 @@ func _update_support(point: Vector2,radius: float,session: int,revision: int,exc
         _last_sync_msec=-100000
     return {"error":OK,"reason":"held","session":_support_session,"revision":_support_revision,"tiles":_support_keys.duplicate(),"ray_count":confirmed["ray_count"]}
 
+## Experimental admission query for a held support lease. No actor motion,
+## lease mutation, streaming request or future collision guarantee.
+## Call before movement, then update_support using ACTUAL resulting XZ
+## before any pump. If pending, hold horizontal movement; gravity is caller-owned.
+func inspect_support_step(start: Vector2,finish: Vector2,radius: float,session: int,revision: int,exclude: Array[RID]=[]) -> Dictionary:
+    if not _support_active or _reader==null or not is_inside_tree() or not Engine.is_in_physics_frame():
+        return {"ready":false,"reason":"support_context","ray_count":0}
+    if session!=_support_session or revision!=_support_revision:
+        return {"ready":false,"reason":"stale_lease","ray_count":0}
+    var size: float=float(TILE_CELLS)*_reader.spacing
+    var current: Dictionary=FOOTPRINT.plan(start,start,radius,world_extent(),size)
+    if not current["ready"]:
+        return current
+    if _support_keys.is_empty() or current["tiles"]!=_support_keys:
+        return {"ready":false,"reason":"lease_footprint_mismatch","ray_count":0}
+    var next: Dictionary=FOOTPRINT.plan(start,finish,radius,world_extent(),size)
+    if not next["ready"]:
+        return next
+    if next["tiles"].size()>SUPPORT.MAX_SUPPORT or next["tiles"].size()>max_visible_tiles:
+        return {"ready":false,"reason":"support_cap","ray_count":0}
+    return inspect_collision_footprint(start,finish,radius,exclude)
+
 func release_support(session: int,revision: int) -> Error:
     if not _support_active or not is_inside_tree() or not Engine.is_in_physics_frame():
         return ERR_UNCONFIGURED

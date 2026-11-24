@@ -1,5 +1,8 @@
 # TerraForge — CI, Test Matrisi, Android Performans ve Kalite Kapısı
 
+> **GÜNCEL DEVİR — P1.5.7e2 CI_VERIFIED (24 Kasım 2026):** f17e311461f5d0b95fc3680d5d15b8dee4cbb3b6, [54/54 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45472547229), [ham JSON](P1_5_7E2_RETENTION_CI.json). 16 ×120 ticks; each baseline 102 missing rays/119 airborne/17 changed bodies, each held 0/0/0, drift0, three equal-height shape reuses, zero changed-height replacements. Caps4/8, pages16, geometry reservations <=2. Fixed synthetic camera jumps, stationary actor, no equal completed geometry or Android claim. A p95 upper bounds baseline3.485–3.617ms, held3.589–4ms; G both1ms upper bounds. NEXT P1.5.7e3 lease-aware movement admission and continuous measured cold seam transfer, 16 ×150 ticks, CI_PENDING. No production movement controller, default unchanged, P1.4/P1.4R PARKED. Prior CI failure retained.
+
+
 > **GÜNCEL DEVİR — P1.5.7e1 (24 Kasım 2026):** Kod 4e7dfa8b2a032d6dd9e316c83a071987de600c6d, [52/52 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45470559534), pure selector 21 checks. [Raw JSON](P1_5_7E1_SELECTION_CI.json). NEXT P1.5.7e2 live opt-in support retention implemented, CI PENDING: current verified footprint session/revision, cap rejection, priority, sync neighbor signature check, equal-height shape reuse and changed-height real replacement. 16 controlled 120-tick baseline/held traces planned by test, TFM1/2 A/G cap4/8, two test processes for timeout headroom. No results or production guarantee yet. [Design](P1_5_7E_SUPPORT_RETENTION_TR.md). No default changes; P1.4/P1.4R PARKED; all experimental/device gates remain. User requested deeper engineering; compare metrics and failures, not file/test count.
 
 
