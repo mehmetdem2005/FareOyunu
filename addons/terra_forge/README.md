@@ -1,4 +1,4 @@
-# TerraForge Mobile — v0.3.2 (shape quality + stable LOD + fewer CPU allocations)
+# TerraForge Mobile — v0.3.3 (terrain data safety, edge shading and drainage research)
 
 Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, native library, or changes to game files. Designed for Android editor testing with Mobile Renderer.
 
@@ -16,7 +16,7 @@ Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, nativ
 
 - **Lossless Float32 height storage** in a versioned `.tfh` height file (little-endian TFH1 header + row-major Float32 samples).
 - **Resident visual tiles**: allocate only camera-near tile nodes, with maximum active tile budget. Drop far mesh/collision nodes on travel.
-- **3 mesh LODs**: strides 1, 2, 4 with lower-resolution edges conforming to neighboring tiles; an **8-meter distance hysteresis** reduces rapid LOD switching. Surface normals/visual slope colors now derive from the actual seam-adjusted mesh, not stale high-resolution height samples.
+- **3 mesh LODs**: strides 1, 2, 4 with seam-conformed edges and 8m hysteresis. Surface normals are computed from seam-adjusted mesh. At **same-LOD tile boundaries**, gradients now sample across the shared border to reduce lighting seams on curved slopes.
 - **Top surface fix**: corrected the terrain's triangle winding; previously it was backface-culled and only the grey LOD skirts appeared, creating a fake hollow/checkerboard view.
 - **Compact toolbar UI**: removed the giant bottom dock; one **Terrain** popup button and one **Brush** toggle live in Godot's 3D editor toolbar. The popup is clamped to the mobile viewport.
 - **Incremental node allocation**: in v0.2.1 the tile meshes were capped per frame but all tile nodes were created together. v0.2.2 now creates only the permitted number of tile nodes per frame, too.
@@ -30,13 +30,27 @@ Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, nativ
 
 ## Advanced sculpting (v0.3)
 
-- **Ridge**: draw a full crest path, **release to apply**. One coherent noise-warped, asymmetric corridor is calculated per path. Heights are not stacked by repeated circular stamps.
-- **Valley**: draw a full drainage-like incision path, **release to apply**. Same coherent corridor approach as Ridge, with a broader cross-section. This is not a true catchment solver.
+- **Ridge**: draw a full crest path, **release to apply**. One continuous asymmetric corridor is calculated. Coherent warp samples are cached across overlapping path segments, with a **65,536-sample cap** to bound temporary memory; height values are still Float32.
+- **Valley**: draw a full incision path, **release to apply**. It uses the same bounded warp cache as Ridge. Valley geometry is still **artist-directed** rather than automatically aligned to drainage basins.
 - **Ramp**: drag from start to finish and release. The tool makes one sloping corridor whose ending elevation is the existing end-point elevation plus **Rise** (initially +5m); negative Rise creates descending ramps. Nothing changes until release, and one drag is one Undo step. Single ramps are limited to 256m for mobile CPU safety
 - **Stamp**: one touch applies a deterministic **Hill**, **Crater** (bowl + lip) or **Mesa**. Its once-perfect circular outline uses a bounded world-space noise warp and slight anisotropy, tapering exactly to zero at the brush border. Still a procedural shape, not simulated rock formation.
 - **Weather**: tap a steep area and release for 1–6 bounded thermal passes (up to 32m). It now uses two scans of the four neighbors rather than allocating candidate arrays per sample. Material is transferred conservatively; **no water flow or sediment simulation is claimed**.
 - **Smooth**: two-pass neighborhood snapshot plus a 55% bilateral blend reduces directional scan artifacts while retaining some high-contrast edges. Ramp/Stamp/Weather controls remain contextual; Undo/Redo and Float32 data format are unchanged.
 - Mobile **Check** button tests Float32 roundtrip, path consistency, local mass balance and reports CPU processing times without changing the user's terrain.
+
+## Experimental drainage analysis (0.3.3; no terrain modification)
+
+- New `core/drainage_analysis.gd` estimates local drainage from **Float32 heights** using **priority-flood depression conditioning** and deterministic **multiple-flow-direction (MFD)** accumulation.
+- An open **local patch boundary** acts as an outlet. Flat routing uses distance-to-outlet as a heap tie-break to reduce arbitrary corner bias.
+- Radius is limited to **48 height samples** (at most **97×97 cells**) to bound CPU and memory on Android; larger requests are capped. Patch analysis is not global catchment modelling.
+- The solver **does not** modify heights, paint channels, claim hydraulic erosion, or place water. Its test is included in **Terrain > Check**, with measured Drainage CPU time.
+- Flow maps and depression fill are currently computational research data only; **no Drainage sculpt button** until output quality, rainfall balance and on-device costs have been verified.
+
+## Missing file protection (0.3.3)
+
+- An existing scene whose `.tfh` height file is missing or invalid becomes **read-only**; it will not silently overwrite the missing source with a blank map.
+- Only the explicit **Terrain > + New** action can create a missing Float32 data file. After the first successful save, file creation permission is switched off.
+- If the editor reports missing data, restore the **original linked `.tfh`** from backup instead of clicking + New.
 
 ## Mobile streaming budgets (initial estimates; NOT performance measurements)
 
@@ -84,6 +98,9 @@ godot --headless --path /path/to/project --script res://addons/terra_forge/tests
 godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_geomorphology.gd
 godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_lod_normals.gd
 godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_shape_quality.gd
+godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_data_safety.gd
+godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_edge_normals.gd
+godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_drainage_analysis.gd
 ```
 
 See [MOBILE_TEST_PLAN.md](MOBILE_TEST_PLAN.md) for hands-on Android checks and acceptance criteria. These tests have **not yet been executed** with the Godot engine here.
@@ -94,10 +111,10 @@ Read [QUALITY_GATE.md](QUALITY_GATE.md). The addon **is not certified optimized 
 
 ## Next stages
 
-1. Validate v0.3.2 on Android 11 and run **Terrain > Check**, documenting the result and measured times.
+1. Validate v0.3.3 on Android 11 and run **Terrain > Check**, documenting all results and measured CPU times.
 2. Inspect long ridge/valley shape quality at ground-camera height and fix contour artifacts.
 3. Validate thermal mass-balance, LOD edge normals, seam continuity and collision on-device.
-4. Prototype a catchment-aware drainage solver *after* proving the current path/slope algorithm stays responsive on the phone; simple D8 routing alone creates visibly artificial drainage on flat areas.
+4. Validate the new priority-flood/MFD **read-only** drainage analysis with synthetic depressions, flat terrain and real landscape test cases, then decide whether automatic incision is geometrically credible and affordable.
 5. Only after the [quality gate](QUALITY_GATE.md) passes, move to materials and object placement.
 
 ## License / origin

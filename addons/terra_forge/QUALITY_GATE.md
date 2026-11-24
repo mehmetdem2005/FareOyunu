@@ -17,7 +17,7 @@
 | Plugin yükleme | Godot 4.7.2 Android editörde temiz açılır | Telefon testi bekliyor |
 | Touch | Tek dokunuş tek işlem, çoklu dokunma kamerayı bozmaz | Test bekliyor |
 | Float32 | Kaydet/aç değerleri bit hassasiyetini korur | Test kodu var, çalıştırılmadı |
-| Jeoloji | Doğrusal Ridge/Valley farklı örnekleme hızlarında aynı; Weather malzeme dengesi ±0.01m | Test kodu var, çalıştırılmadı |
+| Jeoloji | Ridge/Valley kararlılığı, Weather dengesi; Priority-flood/MFD yerel drenaj analizi su dengesini korur | Test kodu var, çalıştırılmadı |
 | LOD topoloji | Dikiş yarıkları ve kırmızı/gri dikey duvar görülmez | Cihaz görsel testi bekliyor |
 | Mesh normals | LOD0/1/2 eğim normalleri analitik referansla uyumlu | Test kodu var, çalıştırılmadı |
 | Ekran alanı | Açılır menü kapalıyken alt panel ekranı daraltmaz | Cihaz testi bekliyor |
@@ -48,9 +48,10 @@
 
 ## Sınırların dürüst dökümü
 
-- Tam hidrolik erozyon yok. Gaea benzeri aşamalandırılmış drenaj + kaya + tortu sistemi, gelişmiş bir sonraki büyük mimari çalışmadır.
+- 0.3.3'te yerel ve salt-okunur priority-flood + MFD akış birikimi analizi bulunuyor. **Bu henüz hidrolik erozyon değildir.** Geniş havza, kaya ve tortu sistemleri sonraki aşamalardadır.
 - Yeraltı mağaraları/overhang heightfield ile oluşturulamaz; ayrı mesh/voxel sistemi gerekir.
 - Bütün Float32 yükseklik verisi hâlâ RAM'de. Meshe ait resident tile sayısı yönetiliyor, gerçek diskten tile streaming henüz yok.
+- Mevcut sahneye ait eksik `.tfh` verisinin üstüne boş yükseklik yazmayı engelleyen salt-okunur koruma var. Ayrıca LOD komşularının normalleri için sayısal test eklendi; Godot/Android doğrulaması bekliyor.
 - Birden fazla düzenleme katmanı / ayrı dokular / taş fiziği / GPU profiler / nonblocking worker sürümü yapılmadı.
 - **Daha optimize** olduğuna ancak Terrain3D ile aynı harita, aynı materyal, aynı kamera ve gerçek telefonda adil karşılaştırmayla karar verilebilir.
 

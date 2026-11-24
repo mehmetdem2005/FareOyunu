@@ -8,6 +8,7 @@ extends RefCounted
 const SHAPES = preload("res://addons/terra_forge/core/brush_shapes.gd")
 const MAX_POINTS: int = 256
 const MAX_LENGTH: float = 256.0
+const MAX_WARP_CACHE_SAMPLES: int = 65536  # Bound short-lived GDScript dictionary memory.
 
 static func build(
         height_store: RefCounted,
@@ -26,6 +27,10 @@ static func build(
     if amplitude <= 0.0:
         return results
     var influence: Dictionary = {}
+    # The same pixel is often visited by multiple nearby path segments.
+    # Cache its world-space warp so two expensive noise evaluations are
+    # performed only once per touched sample, not per segment.
+    var warp_cache: Dictionary = {}
     var noise: FastNoiseLite = FastNoiseLite.new()
     noise.seed = seed
     noise.frequency = 1.0 / maxf(28.0, radius * 7.0)
@@ -57,10 +62,19 @@ static func build(
         var z1: int = clampi(ceili((maxf(start.y, finish.y) + reach) / spacing), 0, height_store.cells.y)
         for z in range(z0, z1 + 1):
             for x in range(x0, x1 + 1):
-                var world: Vector2 = Vector2(float(x), float(z)) * spacing
-                var warp_x: float = noise.get_noise_2d(world.x, world.y) * radius * 0.14
-                var warp_z: float = noise.get_noise_2d(world.x + 113.17, world.y - 91.73) * radius * 0.14
-                var warped: Vector2 = world + Vector2(warp_x, warp_z)
+                var idx: int = height_store.index_of(x, z)
+                var warped: Vector2
+                if warp_cache.has(idx):
+                    warped = warp_cache[idx]
+                else:
+                    var world: Vector2 = Vector2(float(x), float(z)) * spacing
+                    var warp_x: float = noise.get_noise_2d(world.x, world.y) * radius * 0.14
+                    var warp_z: float = noise.get_noise_2d(world.x + 113.17, world.y - 91.73) * radius * 0.14
+                    warped = world + Vector2(warp_x, warp_z)
+                    # A very large/high-resolution terrain must not allocate
+                    # an unbounded Dictionary during a single touch stroke.
+                    if warp_cache.size() < MAX_WARP_CACHE_SAMPLES:
+                        warp_cache[idx] = warped
                 var projection: float = clampf((warped - start).dot(path) / len_sq, 0.0, 1.0)
                 var closest: Vector2 = start + path * projection
                 var signed_dist: float = unit.cross(warped - closest)
@@ -72,7 +86,6 @@ static func build(
                     continue
                 var profile: float = SHAPES.valley(normalized) if carve_valley else SHAPES.ridge(normalized)
                 var weight: float = maxf(0.0, profile)
-                var idx: int = height_store.index_of(x, z)
                 influence[idx] = maxf(float(influence.get(idx, 0.0)), weight)
     var sign: float = -1.0 if carve_valley else 1.0
     for idx in influence:

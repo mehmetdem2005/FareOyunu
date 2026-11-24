@@ -40,6 +40,14 @@ Target editor: Godot **4.7.2**, Android **11**, **Mobile** rendering method.
 - Record Tiles, Vertices, Mesh last/max ms, Sculpt last/max ms before/after camera movement
 - Compare balanced/mobile rendering on exactly the same camera path; observe p95 frame times, p99 spikes, thermal behavior and memory
 
+## v0.3.3 quality checks
+
+- On a scene with an intentionally missing `.tfh`, **Brush must remain disabled** and **Save must not create/overwrite** a blank replacement. On a separately created new scene, + New must still save correctly
+- Test steep curved surfaces with side-by-side LOD0 and LOD1 tile boundaries for residual lighting stripes
+- With **Terrain > Check**, record the new drainage calculation time; verify it never silently changes the loaded game's terrain
+- Check a real-world representative valley manually: a local MFD patch report is not evidence of actual sediment or global hydrology
+- Draw a winding 200m Ridge path and record Sculpt last/max ms; CPU allocation should be bounded by the warp-cache cap
+
 ## Stress tests
 
 - Draw the same path once slowly and once quickly, with the same Brush Size/Power on clean areas; compare sculpt depths. A stroke should not become stronger just because Android sends more drag events.

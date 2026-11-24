@@ -21,6 +21,9 @@ const MAX_HISTORY: int = 20
 @export_range(32.0, 180.0, 8.0) var high_detail_distance: float = 72.0
 @export_range(80.0, 320.0, 8.0) var medium_detail_distance: float = 144.0
 
+# Only the explicit "Create Terrain" editor action may initialize a missing
+# height file. A reopened scene with a missing .tfh must fail closed instead.
+var allow_data_creation: bool = false
 var height_data
 var _tile_nodes: Dictionary = {}  # Resident tiles only; not all map tiles.
 var _desired_tiles: Dictionary = {}  # Keys + selected LOD before any node allocation.
@@ -31,6 +34,7 @@ var _stream_anchor_valid: bool = false
 var _last_stream_sync: int = -100000
 var _last_stream_camera: Vector3 = Vector3(1000000.0, 0.0, 1000000.0)
 var _read_only_source: bool = false
+var _source_load_error: Error = OK
 var _history: Array[Dictionary] = []
 var _redo: Array[Dictionary] = []
 var _stroke_before: Dictionary = {}
@@ -68,14 +72,18 @@ var _terrain_material: StandardMaterial3D
 func _ready() -> void:
     height_data = HEIGHT_STORE.new()
     var load_error: Error = height_data.load_file(data_file)
+    _source_load_error = load_error
     if load_error != OK:
         height_data.initialize(
             Vector2i(maxi(TILE_CELLS, cells_x), maxi(TILE_CELLS, cells_z)),
             sample_spacing
         )
-        if load_error != ERR_FILE_NOT_FOUND:
+        if load_error != ERR_FILE_NOT_FOUND or not allow_data_creation:
             _read_only_source = true
-            push_error("TerraForge: Damaged or unreadable height file. Editing/saving disabled to protect it: " + data_file)
+            push_error(
+                "TerraForge: Height data is missing or unreadable. This scene is read-only "
+                + "to protect the original terrain: " + data_file
+            )
     cells_x = height_data.cells.x
     cells_z = height_data.cells.y
     sample_spacing = height_data.spacing
@@ -357,6 +365,10 @@ func _rebuild_tile(tx: int, tz: int, item: Dictionary, lod: int) -> void:
     var cell_world: float = step * float(stride)
     var grass: Color = Color(0.27, 0.39, 0.22)
     var stone: Color = Color(0.48, 0.46, 0.41)
+    var west_same: bool = int(_desired_tiles.get(Vector2i(tx - 1, tz), -1)) == lod
+    var east_same: bool = int(_desired_tiles.get(Vector2i(tx + 1, tz), -1)) == lod
+    var north_same: bool = int(_desired_tiles.get(Vector2i(tx, tz - 1), -1)) == lod
+    var south_same: bool = int(_desired_tiles.get(Vector2i(tx, tz + 1), -1)) == lod
     for z in range(width):
         for x in range(width):
             var i: int = z * width + x
@@ -370,6 +382,19 @@ func _rebuild_tile(tx: int, tz: int, item: Dictionary, lod: int) -> void:
             var dz: float = (
                 vertices[south * width + x].y - vertices[north * width + x].y
             ) / (float(south - north) * cell_world)
+            # When the neighbor has the same LOD, use centered gradients
+            # across the actual shared edge. One-sided tile-edge gradients
+            # gave a visible lighting seam even with identical vertices.
+            var global_x: int = tx * TILE_CELLS + x * stride
+            var global_z: int = tz * TILE_CELLS + z * stride
+            if x == 0 and west_same:
+                dx = (vertices[i + 1].y - height_data.get_height(global_x - stride, global_z)) / (2.0 * cell_world)
+            elif x == width - 1 and east_same:
+                dx = (height_data.get_height(global_x + stride, global_z) - vertices[i - 1].y) / (2.0 * cell_world)
+            if z == 0 and north_same:
+                dz = (vertices[i + width].y - height_data.get_height(global_x, global_z - stride)) / (2.0 * cell_world)
+            elif z == width - 1 and south_same:
+                dz = (height_data.get_height(global_x, global_z + stride) - vertices[i - width].y) / (2.0 * cell_world)
             var normal: Vector3 = Vector3(-dx, 1.0, -dz).normalized()
             normals[i] = normal
             colors[i] = grass.lerp(stone, clampf((1.0 - normal.y) * 3.0, 0.0, 1.0))
@@ -784,10 +809,12 @@ func save_data() -> Error:
     if height_data == null:
         return ERR_UNCONFIGURED
     if _read_only_source:
-        return ERR_FILE_CORRUPT
+        return _source_load_error
     var result: Error = height_data.save_file(data_file)
     if result == OK:
         _changed_since_save = false
+        _source_load_error = OK
+        allow_data_creation = false
     else:
         push_error("TerraForge: Cannot save %s: %s" % [data_file, error_string(result)])
     return result

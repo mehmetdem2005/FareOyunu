@@ -6,6 +6,7 @@ const PATHS = preload("res://addons/terra_forge/core/landform_paths.gd")
 const THERMAL = preload("res://addons/terra_forge/core/thermal_weathering.gd")
 const LOD = preload("res://addons/terra_forge/core/lod_policy.gd")
 const SHAPES = preload("res://addons/terra_forge/core/brush_shapes.gd")
+const DRAINAGE = preload("res://addons/terra_forge/core/drainage_analysis.gd")
 
 static func run() -> Dictionary:
     var errors: Array[String] = []
@@ -72,6 +73,19 @@ static func run() -> Dictionary:
         errors.append("LOD level transition")
     var shape_ms: float = float(Time.get_ticks_usec() - shape_start) / 1000.0
 
+    var drainage_start: int = Time.get_ticks_usec()
+    var sample_data = STORE.new()
+    sample_data.initialize(Vector2i(32, 32), 1.0)
+    sample_data.heights[sample_data.index_of(16, 16)] = -6.0
+    var drainage: Dictionary = DRAINAGE.analyze(sample_data, Vector2(16, 16), 8.0)
+    if drainage.is_empty() or int(drainage["filled_cells"]) < 1:
+        errors.append("Priority-flood depression conditioning")
+    elif absf(float(drainage["outlet_flow"]) - float(drainage["rainfall_cells"])) > 0.5:
+        errors.append("Multiple-flow water balance")
+    if sample_data.heights[sample_data.index_of(16, 16)] != -6.0:
+        errors.append("Drainage modified source heights")
+    var drainage_ms: float = float(Time.get_ticks_usec() - drainage_start) / 1000.0
+
     var all_passed: bool = errors.is_empty()
     return {
         "ok": all_passed,
@@ -80,9 +94,10 @@ static func run() -> Dictionary:
         "path_ms": path_ms,
         "weather_ms": weather_ms,
         "shape_ms": shape_ms,
+        "drainage_ms": drainage_ms,
         "total_ms": float(Time.get_ticks_usec() - start_us) / 1000.0,
         "summary": (
-            "PASS | F32 %.1fms | Path %.1fms | Weather %.1fms | Shape %.1fms" % [data_ms, path_ms, weather_ms, shape_ms]
+            "PASS | F32 %.1fms | Path %.1fms | Weather %.1fms | Shape %.1fms | Drain %.1fms" % [data_ms, path_ms, weather_ms, shape_ms, drainage_ms]
             if all_passed
             else "FAIL: " + ", ".join(errors)
         )

@@ -341,7 +341,10 @@ func _set_active(terrain: TerraForgeTerrain) -> void:
     if terrain == null:
         _set_status("Create terrain or select an existing one.")
     else:
-        _set_status("Editing: %s" % terrain.name)
+        if terrain._read_only_source:
+            _set_status("Height data missing/corrupt. Terrain is READ-ONLY; restore its .tfh file.")
+        else:
+            _set_status("Editing: %s" % terrain.name)
         terrain.set_quality_profile(_profile_select.selected)
 
 func _set_status(message: String) -> void:
@@ -355,6 +358,7 @@ func _create_terrain() -> void:
         return
     var terrain: TerraForgeTerrain = TERRAIN_SCRIPT.new()
     terrain.name = "TerraForgeTerrain"
+    terrain.allow_data_creation = true
     terrain.data_file = "res://terraforge_data/%s_%s.tfh" % [
         root.name.to_snake_case(), Crypto.new().generate_random_bytes(12).hex_encode()
     ]
@@ -378,6 +382,11 @@ func _create_terrain() -> void:
     _popup.hide()
 
 func _toggle_brush(enabled: bool) -> void:
+    if enabled and is_instance_valid(_active) and _active._read_only_source:
+        _brush_button.set_pressed_no_signal(false)
+        _brush_button.text = "Brush"
+        _set_status("Cannot sculpt: original .tfh file is missing or damaged.")
+        return
     if enabled and not is_instance_valid(_active):
         _brush_button.set_pressed_no_signal(false)
         _set_status("Create or select a terrain.")

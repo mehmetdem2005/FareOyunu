@@ -1,4 +1,4 @@
-# TerraForge Mobile 0.3.2 — Türkçe kullanım
+# TerraForge Mobile 0.3.3 — Türkçe kullanım
 
 ## Kurulum (telefon / Godot 4.7.2)
 
@@ -49,11 +49,20 @@ Hepsinde **Size** etki alanını, **Power** etki şiddetini belirler. Ramp, Stam
 - Android'in dokunmatik olaylardan türetebildiği sahte fare tıklamaları bir süre yok sayılır.
 - **Yeni:** Fırça artık her dokunma olayı için değil, parmağın katettiği mesafe boyunca sabit aralıklarla etki uygular. Hızlı ve yavaş sürüklemede güç farkı azalır. Parmağı sabit tutmak devamlı kazma/yükseltme yapmaz.
 
+## 0.3.3 — Yeni mühendislik düzeltmeleri
+
+- **LOD kenar aydınlatması:** Aynı ayrıntı seviyesindeki komşu tile'lar ışık hesabında ortak sınırın iki tarafını kullanır. Geometri kapanmış olsa bile göze çarpan gölge çizgilerinin azalması hedefleniyor.
+- **Ridge/Valley:** Birbirini tekrar tarayan uzun çizim parçaları için doğal sapma hesabı önbelleğe alındı; geçici önbellek en fazla 65.536 örneğe kadar büyür.
+- **Kaybolmuş yükseklik dosyası:** Eski sahnenin bağlı `.tfh` dosyası eksik/bozuksa eklenti araziyi salt okunur yapar. Eksik dosyayı boş araziyle yanlışlıkla ezmez.
+- **Drenaj analizi:** Yerel çukurları koşullandıran ve suyu birden çok alt komşuya dağıtan deneysel bir hesap motoru eklendi; **henüz araziyi oymaz**. `Terrain > Check` çıktısında `Drain` işlem süresi görünebilir.
+
+**Eksik .tfh uyarısı alırsan:** Önce `terraforge_data` yedeğinden aynı dosyayı geri yükle. Eski haritanın üstüne `+ New` kullanma.
+
 ## Dosyalar ve güvenlik
 
 `res://terraforge_data/*.tfh`, 32-bit float yüksekliği içeren projene özel veri dosyasıdır. Bir araziyi başka projeye taşırken sahne dosyasıyla beraber bağlı `.tfh` dosyasını da taşı. Bu sürüm oyun dosyalarını değiştirmez; yalnızca `addons/terra_forge/` eklentisi dağıtılır.
 
-**Test durumu:** v0.3.2 için Godot 4.7.2 Android testleri henüz yapılmadı. Check düğmesi gerçek GPU kare süresi testi değildir. Arayüz açılmıyorsa veya harita boş kalıyorsa Godot'un **Debugger → Errors** bölümündeki ilk kırmızı hata satırını paylaş.
+**Test durumu:** v0.3.3 için Godot 4.7.2 Android testleri henüz yapılmadı. Check düğmesi gerçek GPU kare süresi testi değildir. Arayüz açılmıyorsa veya harita boş kalıyorsa Godot'un **Debugger → Errors** bölümündeki ilk kırmızı hata satırını paylaş.
 
 ## İlk denemede ne görmelisin?
 
@@ -74,4 +83,7 @@ godot --headless --path /proje/yolu --script res://addons/terra_forge/tests/test
 godot --headless --path /proje/yolu --script res://addons/terra_forge/tests/test_geomorphology.gd
 godot --headless --path /proje/yolu --script res://addons/terra_forge/tests/test_lod_normals.gd
 godot --headless --path /proje/yolu --script res://addons/terra_forge/tests/test_shape_quality.gd
+godot --headless --path /proje/yolu --script res://addons/terra_forge/tests/test_data_safety.gd
+godot --headless --path /proje/yolu --script res://addons/terra_forge/tests/test_edge_normals.gd
+godot --headless --path /proje/yolu --script res://addons/terra_forge/tests/test_drainage_analysis.gd
 ```
