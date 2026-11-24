@@ -51,11 +51,12 @@ func _run() -> void:
     print("PASS: continuous physics cold seam admission and verified live support transfer, fixed cap and camera departure")
     quit(0)
 
-func _case(directory: String,format: int,mode: int,cap: int,speed: float) -> Dictionary:
+func _case(directory: String,format: int,mode: int,cap: int,speed: float,predictive: bool=false) -> Dictionary:
     _p=P.new()
     _p.region_index_format=format
     _p.sampling_strategy=mode
     _p.enable_support_retention=true
+    _p.enable_motion_prefetch=predictive
     _p.max_visible_tiles=cap
     _p.high_detail_distance=64.0
     _p.medium_detail_distance=80.0
@@ -130,6 +131,9 @@ func _case(directory: String,format: int,mode: int,cap: int,speed: float) -> Dic
     var pump_hist=HIST.new()
     var reasons: Dictionary={}
     var previous_revision: int=revision
+    var actual_velocity: Vector2=Vector2.ZERO
+    var initial_io: Dictionary=_p.stats()["source"]
+    var peak_forecast: int=0
     for tick in range(TICKS):
         await physics_frame
         var before: Vector3=_body.global_position
@@ -141,7 +145,10 @@ func _case(directory: String,format: int,mode: int,cap: int,speed: float) -> Dic
         if tick==96:
             _p.set_stream_center(Vector3(100,0,100))
         var walking: bool=tick<96
-        var requested: Vector2=from+Vector2(speed*dt if walking else 0.0,0)
+        var intent=Vector2(speed if walking else 0.0,0)
+        if predictive and _p.sample_motion_prefetch(from,actual_velocity,intent,RADIUS,session,revision)!=OK:
+            return {"error":FAILED,"stage":"motion sample","tick":tick}
+        var requested: Vector2=from+intent*dt
         var began: int=Time.get_ticks_usec()
         var admission: Dictionary=_p.inspect_support_step(from,requested,RADIUS,session,revision,exclude)
         guard_hist.add(float(Time.get_ticks_usec()-began)/1000.0)
@@ -165,6 +172,7 @@ func _case(directory: String,format: int,mode: int,cap: int,speed: float) -> Dic
         _body.move_and_slide()
         var after: Vector3=_body.global_position
         var actual=Vector2(after.x,after.z)
+        actual_velocity=(actual-from)/dt
         var hit: Dictionary=_ground(after)
         if not _body.is_on_floor() or not _valid_ground(hit):
             return {"error":FAILED,"stage":"actual ground loss","tick":tick,"admission":admission,"position":str(after)}
@@ -196,6 +204,9 @@ func _case(directory: String,format: int,mode: int,cap: int,speed: float) -> Dic
         if pumped["error"]!=OK:
             return {"error":FAILED,"stage":"pump","tick":tick,"detail":pumped}
         var stats: Dictionary=_p.stats()
+        peak_forecast=maxi(peak_forecast,stats["motion_prefetch"]["selected"].size())
+        if peak_forecast>2:
+            return {"error":FAILED,"stage":"forecast cap"}
         max_tiles=maxi(max_tiles,int(stats["tiles"]))
         max_pages=maxi(max_pages,int(stats["source"]["resident"]))
         max_jobs=maxi(max_jobs,int(stats["geometry_reservations"]))
@@ -208,7 +219,16 @@ func _case(directory: String,format: int,mode: int,cap: int,speed: float) -> Dic
             old_evicted_tick=tick
     var finish: Vector3=_body.global_position
     var report: Dictionary={"error":OK,"ticks":TICKS,"cold_denied":cold_denied,"denied_ticks":denied,"longest_stall_ticks":longest_stall,"first_resume_tick":resumed,"both_tiles_tick":both_tick,"new_only_tick":new_tick,"old_evicted_tick":old_evicted_tick,"revisions":revision-previous_revision,"finish_x":finish.x,"max_denied_drift":max_denied_drift,"missing_rays":0,"airborne_ticks":0,"total_readiness_rays":total_rays,"peak_readiness_rays":peak_rays,"max_tiles":max_tiles,"max_pages":max_pages,"max_jobs":max_jobs,"denial_reasons":reasons,"guard_ms":guard_hist.report(),"transfer_ms":claim_hist.report(),"pump_ms":pump_hist.report(),"support":_p.support_state()}
-    if cold_denied<6 or resumed<24 or both_tick<0 or new_tick<=both_tick or new_tick>=96 or old_evicted_tick<96 or revision-previous_revision!=2 or max_denied_drift>0.05 or finish.x<=512.5 or _p.support_state()["tiles"]!=[NEW]:
+    var final_io: Dictionary=_p.stats()["source"]
+    report["motion_prefetch"]=_p.motion_prefetch_state()
+    report["peak_forecast"]=peak_forecast
+    report["disk_reads_delta"]=int(final_io["disk_reads"])-int(initial_io["disk_reads"])
+    report["stale_discarded_delta"]=int(final_io["stale_discarded"])-int(initial_io["stale_discarded"])
+    report["mesh_builds"]=_p.stats()["mesh_builds"]
+    # Predictive path may eliminate all stalls; baseline remains strict.
+    if predictive and (peak_forecast==0 or not _p.motion_prefetch_state()["keys"].is_empty()):
+        return {"error":FAILED,"stage":"forecast not used or stationary not cleared","detail":report}
+    if (not predictive and (cold_denied<6 or resumed<24)) or both_tick<0 or new_tick<=both_tick or new_tick>=96 or old_evicted_tick<96 or revision-previous_revision!=2 or max_denied_drift>0.05 or finish.x<=512.5 or _p.support_state()["tiles"]!=[NEW]:
         report["error"]=FAILED
         report["stage"]="transfer evidence"
         return report

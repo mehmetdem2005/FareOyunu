@@ -11,6 +11,7 @@ const HIST = preload("res://addons/terra_forge/core/profile_histogram.gd")
 const PUBLICATION = preload("res://addons/terra_forge/core/publication_accounting.gd")
 const FOOTPRINT = preload("res://addons/terra_forge/core/collision_footprint.gd")
 const SUPPORT = preload("res://addons/terra_forge/core/support_tile_selection.gd")
+const MOTION = preload("res://addons/terra_forge/core/motion_prefetch.gd")
 const TILE_CELLS: int = 32
 
 @export var preview_enabled: bool = false
@@ -50,6 +51,20 @@ var _publication
 @export_range(80.0, 640.0, 16.0) var view_distance: float = 160.0
 ## Experimental, session-pinned, single caller. Never enabled by default.
 @export var enable_support_retention: bool = false
+## P1.5.8a experiment, requires support retention. Pinned on open.
+@export var enable_motion_prefetch: bool = false
+var _motion_active: bool=false
+var _motion_keys: Array[Vector2i]=[]
+var _motion_selected: Array[Vector2i]=[]
+var _motion_velocity: Vector2=Vector2.ZERO
+var _motion_point: Vector2=Vector2.ZERO
+var _motion_tick: int=-1
+var _motion_changes: int=0
+var _motion_expirations: int=0
+var _motion_promotions: int=0
+var _motion_abandoned: int=0
+var _motion_published: int=0
+var _motion_hist=HIST.new()
 var _support_active: bool = false
 var _support_keys: Array[Vector2i] = []
 var _support_session: int = 0
@@ -142,6 +157,7 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
         return status
     _reader = next
     _support_active = enable_support_retention
+    _motion_active=enable_motion_prefetch and _support_active
     if _support_active and (max_visible_tiles < 1 or max_visible_tiles > SUPPORT.MAX_TOTAL):
         stop_preview()
         _last_error=ERR_INVALID_PARAMETER
@@ -190,6 +206,17 @@ func resolved_sampling_strategy() -> int:
 func stop_preview() -> void:
     set_process(false)
     # Explicit shutdown revokes even a held support lease. Camera epochs do not.
+    _motion_active=false
+    _motion_keys.clear()
+    _motion_selected.clear()
+    _motion_velocity=Vector2.ZERO
+    _motion_tick=-1
+    _motion_changes=0
+    _motion_expirations=0
+    _motion_promotions=0
+    _motion_abandoned=0
+    _motion_published=0
+    _motion_hist=HIST.new()
     _support_active=false
     _support_keys.clear()
     _support_session+=1
@@ -247,6 +274,11 @@ func pump_stream() -> Dictionary:
     var completed: Dictionary = _reader.poll_results(max_background_jobs)
     if int(completed.get("error", ERR_FILE_CORRUPT)) != OK:
         return completed
+    if _motion_active and _motion_tick>=0 and Engine.get_physics_frames()-_motion_tick>4:
+        _motion_tick=-1
+        _motion_velocity=Vector2.ZERO
+        _motion_expirations+=1
+        _set_motion_keys([])
     var current: int = Time.get_ticks_msec()
     if current - _last_sync_msec > 220:
         _sync_tiles()
@@ -318,9 +350,16 @@ func _sync_tiles() -> void:
     if _support_active:
         var selection_started: int=Time.get_ticks_usec()
         var ranked: Array[Dictionary]=[]
+        var ahead: Array[Vector2i]=[]
+        if _motion_active:
+            for key in _motion_keys:
+                if not _support_keys.has(key) and ahead.size()<max_visible_tiles-_support_keys.size():
+                    ahead.append(key)
+                    ranked.append({"key":key,"lod":0})
         for entry in found:
             var key: Vector2i=entry["key"]
-            ranked.append({"key":key,"lod":int(new_desired[key])})
+            if not ahead.has(key) and ranked.size()<SUPPORT.MAX_TOTAL:
+                ranked.append({"key":key,"lod":int(new_desired[key])})
         var grid=Vector2i(int(_reader.cells.x/TILE_CELLS),int(_reader.cells.y/TILE_CELLS))
         var chosen: Dictionary=SUPPORT.select(_support_keys,ranked,grid,max_visible_tiles)
         _support_selection_hist.add(float(Time.get_ticks_usec()-selection_started)/1000.0)
@@ -329,6 +368,14 @@ func _sync_tiles() -> void:
             _last_error=int(chosen["error"])
             return
         new_desired=chosen["desired"]
+        if _motion_active:
+            for key in _motion_selected:
+                if not ahead.has(key):
+                    if _support_keys.has(key):
+                        _motion_promotions+=1
+                    else:
+                        _motion_abandoned+=1
+            _motion_selected=ahead
     var previous: Dictionary = _desired_tiles
     _desired_tiles = new_desired
     for key in new_desired:
@@ -403,6 +450,8 @@ func _priority_ranks() -> Dictionary:
         var has_shape: bool=_tiles.has(key) and _tiles[key]["collision"].shape is HeightMapShape3D
         classes[key]=0 if key==focus and int(_desired_tiles[key])==0 and not has_shape else (1 if int(_desired_tiles[key])==0 and not has_shape else 2)
         if _support_active and _support_keys.has(key):
+            classes[key]=-2 if _motion_active else -1
+        elif _motion_active and _motion_selected.has(key):
             classes[key]=-1
     keys.sort_custom(func(a: Variant,b: Variant)->bool:
         if classes[a]!=classes[b]:
@@ -610,6 +659,8 @@ func _publish_geometry(key: Vector2i,lod: int,generated: Dictionary,started: int
     _tiles[key] = tile
     _pending_tiles.erase(key)
     _mesh_builds += 1
+    if _motion_active and _motion_selected.has(key) and not _support_keys.has(key):
+        _motion_published+=1
     _last_build_ms = float(Time.get_ticks_usec() - started) / 1000.0
     _max_build_ms = maxf(_max_build_ms, _last_build_ms)
     if _publication!=null:
@@ -751,6 +802,41 @@ func inspect_support_step(start: Vector2,finish: Vector2,radius: float,session: 
         return {"ready":false,"reason":"support_cap","ray_count":0}
     return inspect_collision_footprint(start,finish,radius,exclude)
 
+## Call once per physics tick with local XZ position, actual prior velocity,
+## and current requested horizontal velocity. Stale/invalid samples never
+## replace the held footprint. No independent IO queue or data generation.
+func sample_motion_prefetch(point: Vector2,actual: Vector2,intent: Vector2,radius: float,session: int,revision: int) -> Error:
+    if not _motion_active or _reader==null or not is_inside_tree() or not Engine.is_in_physics_frame():
+        return ERR_UNCONFIGURED
+    if session!=_support_session or revision!=_support_revision or _support_keys.is_empty():
+        return ERR_INVALID_PARAMETER
+    var tick: int=Engine.get_physics_frames()
+    if tick==_motion_tick:
+        return ERR_BUSY
+    var started: int=Time.get_ticks_usec()
+    var size: float=float(TILE_CELLS)*_reader.spacing
+    var previous: Vector2=_motion_velocity
+    if _motion_tick<0 or tick-_motion_tick>4 or point.distance_to(_motion_point)>size*0.5:
+        previous=Vector2.ZERO
+    var predicted: Dictionary=MOTION.predict(point,actual,intent,previous,radius,world_extent(),size,_support_keys)
+    _motion_hist.add(float(Time.get_ticks_usec()-started)/1000.0)
+    if predicted["error"]!=OK:
+        return int(predicted["error"])
+    _motion_point=point
+    _motion_tick=tick
+    _motion_velocity=predicted["velocity"]
+    _set_motion_keys(predicted["keys"])
+    return OK
+
+func _set_motion_keys(keys: Array[Vector2i]) -> void:
+    if keys!=_motion_keys:
+        _motion_keys=keys.duplicate()
+        _motion_changes+=1
+        _last_sync_msec=-100000
+
+func motion_prefetch_state() -> Dictionary:
+    return {"active":_motion_active,"keys":_motion_keys.duplicate(),"selected":_motion_selected.duplicate(),"changes":_motion_changes,"expirations":_motion_expirations,"promotions":_motion_promotions,"abandoned_selection":_motion_abandoned,"speculative_publications":_motion_published,"sample_ms":_motion_hist.report()}
+
 func release_support(session: int,revision: int) -> Error:
     if not _support_active or not is_inside_tree() or not Engine.is_in_physics_frame():
         return ERR_UNCONFIGURED
@@ -758,6 +844,9 @@ func release_support(session: int,revision: int) -> Error:
         return ERR_INVALID_PARAMETER
     if not _support_keys.is_empty():
         _support_keys.clear()
+        _set_motion_keys([])
+        _motion_tick=-1
+        _motion_velocity=Vector2.ZERO
         _support_revision+=1
         _last_sync_msec=-100000
     return OK
@@ -802,6 +891,7 @@ func stats() -> Dictionary:
         "camera_cancellations": _camera_cancellations,
         "waiting_tile_frames": _waiting_tile_frames,
         "support": support_state(),
+        "motion_prefetch": motion_prefetch_state(),
         "writable": false
     }
 

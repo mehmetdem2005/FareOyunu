@@ -1,5 +1,8 @@
 # P1.5.7e — Current physics support retention (staged)
 
+> **GÜNCEL DEVİR — P1.5.7e3 CI_VERIFIED (24 Kasım 2026):** b6610de889dd2bc93ac5c1c85a94990d95da55ae, [56/56 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45474716862), [ham JSON](P1_5_7E3_TRANSFER_CI.json). 16 ×150 actual physics ticks, zero missing ground or airborne, exactly two transfers, old eviction tick96, stalls24–30 ticks, resume32–34, max4 readiness rays/tick. Guard p95 upper0.138–0.248ms, pump A4.932–5ms / G1.432–2ms. Fixed synthetic camera return tick24; no production controller/device proof. NEXT P1.5.8a opt-in player motion corridor integrated, 16 paired traces cap4 and speeds12/24, CI_PENDING; no performance conclusion until logs. P1.4/P1.4R PARKED; A default unchanged.
+
+
 > **GÜNCEL DEVİR — P1.5.7e2 CI_VERIFIED (24 Kasım 2026):** f17e311461f5d0b95fc3680d5d15b8dee4cbb3b6, [54/54 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45472547229), [ham JSON](P1_5_7E2_RETENTION_CI.json). 16 ×120 ticks; each baseline 102 missing rays/119 airborne/17 changed bodies, each held 0/0/0, drift0, three equal-height shape reuses, zero changed-height replacements. Caps4/8, pages16, geometry reservations <=2. Fixed synthetic camera jumps, stationary actor, no equal completed geometry or Android claim. A p95 upper bounds baseline3.485–3.617ms, held3.589–4ms; G both1ms upper bounds. NEXT P1.5.7e3 lease-aware movement admission and continuous measured cold seam transfer, 16 ×150 ticks, CI_PENDING. No production movement controller, default unchanged, P1.4/P1.4R PARKED. Prior CI failure retained.
 
 
