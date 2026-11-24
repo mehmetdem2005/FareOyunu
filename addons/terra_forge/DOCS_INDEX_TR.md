@@ -1,6 +1,6 @@
 # TerraForge Mobile — Kalıcı Proje Hafızası ve Teknik Doküman İndeksi
 
-**Hazırlanma:** 24 Kasım 2026. **Aktif dal:** `feat/terraforge-mobile-addon`. **Kod tabanı:** v0.4.1-dev.2.  
+**Hazırlanma:** 24 Kasım 2026. **Aktif dal:** `feat/terraforge-mobile-addon`. **Kod tabanı:** v0.4.2-dev.1.  
 Bu dosyalar GitHub dalında saklanır, **sohbet hafızasına bağlı değildir**. Başka sohbet, model veya geliştirici ile devam edildiğinde önce bu indeks ve merkez devir dosyası okunacak.
 
 ## 1. Yeni sohbetin başlangıç sırası
@@ -8,14 +8,16 @@ Bu dosyalar GitHub dalında saklanır, **sohbet hafızasına bağlı değildir**
 | Okuma sırası | MD | İçerik / neden zorunlu |
 |---:|---|---|
 | 1 | [HANDOFF_START_HERE_TR.md](HANDOFF_START_HERE_TR.md) | Repo, branch, güncel sürüm, güvenli çalışma, hangi iş sırada, yeni sohbet promptu |
-| 2 | [STATUS_AND_CHANGELOG_TR.md](STATUS_AND_CHANGELOG_TR.md) | Başlangıçtan v0.4.1-dev.2'ye kadar tarihçe, commit prefix, DONE/CI/PENDING |
+| 2 | [STATUS_AND_CHANGELOG_TR.md](STATUS_AND_CHANGELOG_TR.md) | Başlangıçtan v0.4.2-dev.1'e kadar tarihçe, commit prefix, DONE/CI/PENDING |
 | 3 | [ROADMAP_MASTER_TR.md](ROADMAP_MASTER_TR.md) | **P0–P7** fazları, alt fazlar, bağımlılıklar, kabul kapıları |
-| 4 | [NEXT_SESSION_IMPLEMENTATION_TR.md](NEXT_SESSION_IMPLEMENTATION_TR.md) | **ŞİMDİ BAŞLANACAK P1.2** dosya, API ve test düzeyinde iş listesi |
+| 4 | [NEXT_SESSION_IMPLEMENTATION_TR.md](NEXT_SESSION_IMPLEMENTATION_TR.md) | **ŞİMDİ BAŞLANACAK P1.2b** dosya, API ve test düzeyinde iş listesi |
 | 5 | [ENGINE_ARCHITECTURE_TR.md](ENGINE_ARCHITECTURE_TR.md) | Mevcut gerçek kod akışı, TFH/TFL/TFR/TFM formatları, LOD/collision, sınırlamalar |
 | 6 | [RISKS_AND_DECISIONS_TR.md](RISKS_AND_DECISIONS_TR.md) | Sözleşmeler, kritik riskler, eski veri/backup/manifest koruma ve rollback |
-| 7 | [QUALITY_TESTS_AND_BENCHMARKS_TR.md](QUALITY_TESTS_AND_BENCHMARKS_TR.md) | 20 test, GitHub Actions ve cihazda ölçülmesi gereken gerçek performans/kalite |
+| 7 | [QUALITY_TESTS_AND_BENCHMARKS_TR.md](QUALITY_TESTS_AND_BENCHMARKS_TR.md) | 22 test, GitHub Actions ve cihazda ölçülmesi gereken gerçek performans/kalite |
 | 8 | [TERRAIN_GEOMORPHOLOGY_TR.md](TERRAIN_GEOMORPHOLOGY_TR.md) | Profesyonel doğal arazi algoritmaları, su/erozyon, LOD alternatifleri ve kaynaklar |
 | 9 | [MOBILE_WORKFLOW_TR.md](MOBILE_WORKFLOW_TR.md) | Telefon editör kullanım kuralları, CI'ı GitHub'dan izleme, güvenli ZIP yükleme |
+
+**P1.2 teknik ek:** [P1_2_PAGED_SAMPLER_TR.md](P1_2_PAGED_SAMPLER_TR.md) — salt okunur Float32 sampler, kamera ön yükleme, API ve CI 22/22, kalan async IO işi.
 
 ## 2. Eski ama korunan proje belgeleri
 
@@ -38,7 +40,7 @@ Bu belgeler silinmez. Zaman içinde bir bölümü tarihsel kalmıştır; **as-bu
 - Gerçek data Float32; JPEG yükseltmesi kaybolan yükseklik bilgisi değildir.
 - TFH/TFL asıl kaynak korunur; TFR1/TFM1 şu an sadece **izole snapshot** veri prototipi. Canlı data RAM streaming henüz yok.
 - Godot GitHub CI **Linux headless**, Android GPU/gesture/ısınma kanıtı sayılmaz.
-- Her yeni kod değişimi için GitHub Actions sonuçları; geçmişte son gerçek 20/20 PASS run: https://github.com/mehmetdem2005/FareOyunu/actions/runs/45398690227 .
+- Her yeni kod değişimi için GitHub Actions sonuçları; son gerçek 22/22 PASS run: https://github.com/mehmetdem2005/FareOyunu/actions/runs/45404989825 .
 
 ## 4. Güncelleme disiplini — yeni sohbette unutulmayı engelle
 
@@ -58,8 +60,8 @@ Her yeni geliştirme turu sonunda:
 
 ## 5. Copy-paste yeni sohbet mesajı
 
-> FareOyunu / TerraForge Mobile projesini GitHub'da sürdür. Depo `mehmetdem2005/FareOyunu`, dal `feat/terraforge-mobile-addon`. Önce `addons/terra_forge/DOCS_INDEX_TR.md`, `HANDOFF_START_HERE_TR.md` ve oradan bağlı tüm güncel MD belgelerini **repo içinden oku**; gerekiyorsa gerçek kodu kontrol et. v0.4.1-dev.2 snapshot: `734c908`, GitHub Actions CI 20/20 PASS (Linux Godot 4.7.2); Android cihaz GPU testi yok. Boyama ve obje yok, sadece profesyonel gerçekçi terrain; main ve kullanıcı veri dosyalarını koru. `NEXT_SESSION_IMPLEMENTATION_TR.md`'deki P1.2 ilk açık işe uygulamayla başla, test ekle, CI çalıştır, en son Markdown kayıtlarını güncelle. Telefon kullanıyorum; testleri GitHub CI üzerinden yap.
+> FareOyunu / TerraForge Mobile projesini GitHub'da sürdür. Depo `mehmetdem2005/FareOyunu`, dal `feat/terraforge-mobile-addon`. Önce `addons/terra_forge/DOCS_INDEX_TR.md`, `HANDOFF_START_HERE_TR.md` ve oradan bağlı tüm güncel MD belgelerini **repo içinden oku**; gerekiyorsa gerçek kodu kontrol et. v0.4.2-dev.1 snapshot: `a214c907`, GitHub Actions CI 22/22 PASS (Linux Godot 4.7.2); Android cihaz GPU testi yok. Boyama ve obje yok, sadece profesyonel gerçekçi terrain; main ve kullanıcı veri dosyalarını koru. `NEXT_SESSION_IMPLEMENTATION_TR.md`'deki P1.2b ilk açık işe uygulamayla başla, test ekle, CI çalıştır, en son Markdown kayıtlarını güncelle. Telefon kullanıyorum; testleri GitHub CI üzerinden yap.
 
 ## 6. Tamamlanma statüsü
 
-**Bu paket:** dokümantasyon/dal devri; **yeni runtime özellik implementasyonu değildir**. Belgeler GitHub'da commit edildikten sonra kodun regression CI sonucu ayrıca doğrulanır. Belgelerin kapsamı bugüne kadar konuşulmuş ve kodda görülebilen özellik/planları açık biçimde korumayı amaçlar; gelecekteki her küçük kararın otomatik kaydedildiğini varsaymayın.
+**Güncelleme:** İzole read-only sampler ve kamera ön yükleme modülleri yeni runtime veri çekirdeğidir, CI 22/22 PASS; canlı terrain render/physics/Brush entegrasyonu **yapılmadı**. Belgeler GitHub'da commit edildikten sonra kodun regression CI sonucu ayrıca doğrulanır. Belgelerin kapsamı bugüne kadar konuşulmuş ve kodda görülebilen özellik/planları açık biçimde korumayı amaçlar; gelecekteki her küçük kararın otomatik kaydedildiğini varsaymayın.

@@ -1,6 +1,6 @@
 # TerraForge — Karar Günlüğü, Risk Kaydı ve Geri Dönüş İlkeleri
 
-**Güncel as-built:** v0.4.1-dev.2 / 24 Kasım 2026. **Status:** Bazı çekirdekler Linux CI PASS; Android performans/doğallık kanıtı yok. Risklerin giderilmiş olması için ayrıca belirtilen kabul testi şarttır.
+**Güncel as-built:** v0.4.2-dev.1 / 24 Kasım 2026. **Status:** Bazı çekirdekler Linux CI PASS; Android performans/doğallık kanıtı yok. Risklerin giderilmiş olması için ayrıca belirtilen kabul testi şarttır.
 
 ## A. Değiştirilmeyecek temel kararlar
 
@@ -24,16 +24,16 @@
 ## B. Açık kritik riskler
 
 ### R-01 — Canlı RAM mimarisi hâlâ bütünü tutuyor
-**Önem: ÇOK YÜKSEK.** TFR1/TFM1 ve export çalışsa da `terrain/terra_forge_terrain.gd` doğrudan `height_data.heights` dizisini kullanır. UI'da “disk streaming” diye anlatılan resident tile yalnız mesh/collision'dır. 4096², 8192² ve 16k² için gerçek RAM yükü katlanır. **Önlem:** P1.2 source sampler; P1.3 read-only mesh/collision; P1.4 edit transaction; gerçek profilleme.
+**Önem: ÇOK YÜKSEK.** TFR1/TFM1, read-only paged source ve kamera ön yükleyici çalışsa da `terrain/terra_forge_terrain.gd` doğrudan `height_data.heights` dizisini kullanır. UI'da “disk streaming” diye anlatılan resident tile yalnız mesh/collision'dır. 4096², 8192² ve 16k² için gerçek RAM yükü katlanır. **Önlem:** P1.2 sampler + senkron prefetch DONE; P1.2b worker thread ve bounded inflight IO, P1.3 read-only mesh/collision, P1.4 edit transaction; gerçek profilleme.
 
 ### R-02 — Manifest/page tutarlılığı
 **Önem: KRİTİK.** TFM1 `pages[].sha256` manifesti immutable snapshot'ı tanımlar. Bir TFR1 sayfası write_height/flush ile değiştiğinde manifest artık o sayfaya ait değildir. Page + manifest çift dosya yazımı sırasında crash, dünyanın “bir kısmı yeni, bir kısmı eski” olmasına yol açar. **Önlem:** Generations + copy-on-write + tek atomic head-pointer/manifest publish, journal, tüm sayfa SHA doğrulaması. Böyle bir transaction olmadan **canlı paged sculpt açma**.
 
 ### R-03 — Synchronous disk IO ve SHA frame hitch
-**Önem: YÜKSEK.** TFR1 sayfa read/write, manifest full-check ve hashler senkron; TFL2 büyük dosya kaydı/main thread. Android düşük depolama hızı ve termal throttling ile dokunmatik editör donabilir. **Önlem:** Bounded page prefetch, frame budget, job queue, scratch buffer, ölçülmüş cache hit/miss, background thread veri işlemi, main-thread scene update.
+**Önem: YÜKSEK.** TFR1 sayfa read/write, manifest full-check ve hashler senkron; TFL2 büyük dosya kaydı/main thread. Android düşük depolama hızı ve termal throttling ile dokunmatik editör donabilir. **Kısmi önlem DONE:** Bounded 1–8 **senkron** page read/tick, cache hit/miss ve IO last/max ms ölçülüyor. Bu bir frame-time garantisi değil. **Kalan:** background worker + bounded inflight, generation cancellation sonuç yayınında, cold source immutable buffer, main-thread scene commit.
 
 ### R-04 — Android gerçek test eksik
-**Önem: YÜKSEK.** Godot 4.7.2 Linux headless CI 20/20 PASS, ancak Redmi/Android sürücü/gesture/perf kanıtı yok. Önemli yüzey mesh, collision ve UI problemleri önceden yalnız kullanıcı görselinden tespit edilmişti. **Önlem:** P0 cihaz smoke, 30 dk memory, FPS/ısınma; hata raporu ve birebir sahne.
+**Önem: YÜKSEK.** Godot 4.7.2 Linux headless CI 22/22 PASS, ancak Redmi/Android sürücü/gesture/perf kanıtı yok. Önemli yüzey mesh, collision ve UI problemleri önceden yalnız kullanıcı görselinden tespit edilmişti. **Önlem:** P0 cihaz smoke, 30 dk memory, FPS/ısınma; hata raporu ve birebir sahne.
 
 ### R-05 — Görsel LOD topoloji gerçekten stitched değil
 **Önem: YÜKSEK.** Mevcut LOD komşu height uyarlaması ve normals daha iyi fakat T-junction, aşırı eğim normal, ani transition/popping, physics sınırı olabilir. **Önlem:** Analytical seam tests + ground-camera screenshot; gerekirse edge stitching ve geomorph; hızlı kamera hareketi test.
@@ -64,6 +64,10 @@
 
 ### R-14 — Çalışma bağlamı/sonraki sohbet unutması
 **Önem: ÇOK YÜKSEK.** Uzun sohbet değişince son commit, biten faz ve koruma kuralları kaybolabilir. **Önlem:** `HANDOFF_START_HERE_TR.md` başlangıç otoritesi, bu karar/roadmap/status belgeleri, her commit sonunda güncelleme ve gerçek GitHub head okuma; asla eski özetleri kodun yerine koyma.
+
+### R-15 — P1.2 doğrulama başlangıcında çok sayfalı senkron tarama ve kamera prefetch sınırları
+
+**Önem: YÜKSEK.** `paged_height_source.open()` TFM1 manifestteki her TFR1 sayfasını senkron doğrular; büyük dünyada açılış beklemesi oluşabilir. `camera_page_prefetch.tick()` çağrı başına 1–8 disk okumasını sınırlar ancak tek okuma yavaş NAND'de frame süresini aşabilir. Pending generation iptali yalnız henüz başlamamış işleri kapsar, in-flight thread sonucu kavramı henüz yok. **Önlem:** P1.2b async/worker-safe IO, full-file SHA + data buffer snapshot, bounded pending/inflight, gerçek kamera stress ve Android p95/p99.
 
 ## C. Acil veri kaybı anında yapılacaklar
 

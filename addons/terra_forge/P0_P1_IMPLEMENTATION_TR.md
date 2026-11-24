@@ -1,5 +1,5 @@
 # TerraForge — P0 doğrulama ve P1 veri katmanları, ilk uygulama
-Sürüm: 0.4.1-dev.1
+Sürüm: 0.4.2-dev.1
 Durum: **Godot 4.7.2 Linux GitHub CI üzerinden test ediliyor; Android 11 GPU ve dokunmatik testleri henüz yapılmadı.**
 
 ## P0 — Güvenlik ve regresyon kapısı
@@ -73,3 +73,9 @@ Malzeme boyama, bitki, taş ve obje yerleştirme bu fazın dışındadır.
 - `tests/test_region_store.gd`: 19. regresyon olarak eklenmiştir.
 - Bu sürüm **canlı arazi RAM kullanımını azaltmaz**. `terra_forge_terrain.gd` eski bütünü RAM'de tutan API'yi kullanmaya devam eder.
 - Sonraki zorunlu adım, dünya manifesti + bağımsız doğrulama + kayıpsız dönüşüm ve katmanlı taşınma için testlerdir. Detay: `REGION_STREAMING_PLAN_TR.md`.
+
+## v0.4.2-dev.1 — P1.2 salt okunur height source + kamera scheduler
+
+- `core/paged_height_source.gd` ve `core/camera_page_prefetch.gd` **uygulandı**; TFM1 ve TFR1 tam SHA, Float32 bilinear, LRU, senkron nearest-first camera prefetch ve pending generation reset.
+- İki yeni regresyonla [Godot 4.7.2 CI 22/22 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45404989825).
+- **Hâlâ:** gerçek canlı `TerraForgeTerrain` tüm Float32 `height_data.heights` verisini RAM'de tutar. Asenkron işçi IO, canlı mesh/collision/Brush entegrasyonu ve Android GPU/perf ölçümü yok. Sonraki görev [NEXT_SESSION_IMPLEMENTATION_TR.md](NEXT_SESSION_IMPLEMENTATION_TR.md).

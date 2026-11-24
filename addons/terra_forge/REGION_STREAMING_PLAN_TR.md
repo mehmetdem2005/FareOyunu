@@ -1,4 +1,4 @@
-# TerraForge P1 — Bölgesel Float32 yükseklik belleği (v0.4.1-dev.2)
+# TerraForge P1 — Bölgesel Float32 yükseklik belleği (v0.4.2-dev.1)
 
 **Durum: API prototipi + regresyon testi; canlı Terrain3D mesh/çarpışma/fırça sistemine henüz entegre değil.**
 
@@ -40,3 +40,10 @@ Mevcut `.tfh`, `.tfl` ve `.tfl.bak` kayıtları **dokunulmadan korunuyor**.
 - Çıktı klasörü zaten bulunuyorsa işlem reddedilir, eski dünya korunur. Başarısız dönüşümde son çıktı klasörü oluşturulmaz; staging klasörü teşhis için kalabilir.
 - `tests/test_region_export.gd` ile tam boyut/sınır örnekleri, görünür TFL kompoziti, bozulmuş/eksik bölge, kaynak dokunulmazlığı ve tekrarlı export engeli test edilir.
 - **Bu gerçek zamanlı streaming entegrasyonu değildir.** Mobilde RAM/CPU kazancı için sonraki aşamada bounded region sampler, mesh ve collision değişiklikleri gerekir.
+
+## v0.4.2-dev.1 — TFM1 kontrollü P1.2 sampler ve kamera ön yükleme
+
+- **DONE:** `core/paged_height_source.gd` doğrulanan TFM1/TFR1 dosyalarından Float32 örnek/bilinear değer okur; 1–64 page LRU, SHA-256, IO süre/hit/miss ölçümü ve başta sıfır resident page.
+- **DONE:** `core/camera_page_prefetch.gd` en yakın/yön önceliği, 1–8 synchronous cold page read/tick, eski queued generation iptali; gerçek worker thread, canlı kamera ve mesh bağlantısı **yok**.
+- **CI:** `test_paged_height_source.gd` ve `test_camera_page_prefetch.gd` eklendi, [Godot 4.7.2 22/22 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45404989825).
+- **DEVAM:** Asenkron IO ve immutable buffer, bounded inflight/late cancellation, startup verification budget, opt-in read-only render+collision, ardından çok-bölge transaction. Detay: [P1_2_PAGED_SAMPLER_TR.md](P1_2_PAGED_SAMPLER_TR.md).

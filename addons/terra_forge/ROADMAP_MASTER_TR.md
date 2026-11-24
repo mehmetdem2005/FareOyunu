@@ -14,11 +14,11 @@
 
 ## P0 — Doğrulama, ürün güvenliği ve proje izolasyonu
 
-**Durum:** Linux headless CI ve kod regresyonları **DONE, 20/20 PASS**; Android son kullanıcı onayı **AÇIK**.
+**Durum:** Linux headless CI ve kod regresyonları **DONE, 22/22 PASS**; Android son kullanıcı onayı **AÇIK**.
 
 ### P0.1 — DONE: altyapı
 - İzole `feat/terraforge-mobile-addon` dalı; oyun ve `main` dosyaları korunuyor.
-- Godot 4.7.2 headless CI, geçici test projesi, `bash -n`, script import, eklenti editör yükleme, 20 test.
+- Godot 4.7.2 headless CI, geçici test projesi, `bash -n`, script import, eklenti editör yükleme, 22 test.
 - Mevcut bozuk/eksik TFH/TFL dosyalarında fail-closed read-only ve yedek kurtarma.
 - `QUALITY_GATE.md` ve `MOBILE_TEST_PLAN.md` kabul belgeleri.
 
@@ -47,14 +47,21 @@
 - CI: `test_region_store.gd`, `test_region_export.gd`, toplam 20/20.
 - **Önemli:** Bu bileşenler canlı render/physics/fırçada kullanımda değil; kullanıcı oyununun RAM'i bu çalışmadan dolayı henüz azalmıyor.
 
-### P1.2 — **SIRADAKİ İŞ / PLAN**: salt okunur canlı sayfa kaynağı
-- [ ] `core/paged_height_source.gd`: manifest açık ve doğrulanmış, GDScript `get_height` + bilinear `sample_local`, çok-bölge sınırı; API sonucu hata kodu ile birlikte gelsin.
-- [ ] Kameraya göre sınırlı bölge prefetch, LRU unload, cache hit/miss/disk ms sayaçları; cache < limit koşulu; “eksik sayfa = sıfır arazi” YASAK.
-- [ ] Ardışık/rasgele kamera rotalarında senkron okumanın frame spike maliyetini ölç; sonra işçi thread'de yalnız veri IO, main thread'de node/mesh.
-- [ ] Global world coordinates ↔ region coordinates dönüşümü için overflow, negatif yerel adres, dış sınır ve bilinear testleri.
-- [ ] TFM1 sayfa SHA/manifest doğrulamasını **açılışta**, çalışma sırasında staging/corrupt koşullarını **fail-closed** ele al.
-- [ ] `test_paged_height_source.gd` ve stres fixture'ları ekle; CI tam yeşil.
-- **Kapı:** 3×3 sayfa sınırı, x=32/z=32 bilinear örneği, köşe örneği, malformed/missing data, bellek limitleri ve eski dosyanın dokunulmazlığı kanıtlandı.
+### P1.2 — Read-only sampler ve kamera scheduler DONE; asenkron IO PLAN
+
+**Kanıt:** `paged_height_source.gd` ve `camera_page_prefetch.gd` commit'ler `d516147` ve `a214c907`; [Godot 4.7.2 22/22 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45404989825).
+
+- [x] TFM1 + TFR1 full SHA/metadata validation at open, cold page checksum ve fail-closed.
+- [x] Float32 `get_height` ve bilinear cross-region `sample_local` (world dışında explicit hata).
+- [x] 1–64 LRU cache, istatistikler, disk IO last/max ms, `prefetch_rect` cursor + per-call cold-read budget.
+- [x] Kamera merkezli, yön öncelikli 1–8 synchronous read/tick scheduler ve pending generation reset.
+- [x] İki yeni test, toplam **22/22 CI PASS**.
+- [ ] Worker thread, bounded inflight results ve geçmiş generation sonucu iptal; bunlar henüz yok.
+- [ ] Büyük dünyada manifest ilk açılışta bütün TFR1 dosyalarını senkron tarama maliyetini ölç, güvenli alternatif geliştir.
+- [ ] Android 11 RAM/CPU p95/p99, dokunmatik ve 30 dk kamera trace testleri.
+- [ ] Canlı `terra_forge_terrain.gd` render/physics/source entegrasyonu: **P1.3 PLAN**.
+
+**Kapı:** İzole read-only algoritmalar geçti; gerçek RAM tasarrufu ve asenkron IOS + cihaz doğrulaması AÇIK. [P1_2_PAGED_SAMPLER_TR.md](P1_2_PAGED_SAMPLER_TR.md).
 
 ### P1.3 — PLAN: opt-in region üzerinden mesh/LOD/collision
 - [ ] `HeightStore`'a doğrudan dizin erişimi kullanan renderer bağımlılıklarını `HeightSource` soyutlamasına geçir; legacy in-memory kaynak korunur.

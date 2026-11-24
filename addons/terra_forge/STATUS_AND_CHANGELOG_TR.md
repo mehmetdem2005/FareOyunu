@@ -1,12 +1,12 @@
 # TerraForge Mobile — Tam İlerleme Kaydı, Kanıt Düzeyi ve Sürüm Günlüğü
 
-**Son durum tarihi:** 2026-11-24. **Aktif kod tabanı:** v0.4.1-dev.2, `734c9088d76603279599654d345249b0cc90e321` (dokümantasyon öncesi). **Dal:** `feat/terraforge-mobile-addon`.  
+**Son durum tarihi:** 2026-11-24. **Aktif kod tabanı:** v0.4.2-dev.1, `a214c907b6fba2d3cd7dba32f883ee5fad7ed446` (dokümantasyon öncesi uygulama commit'i). **Dal:** `feat/terraforge-mobile-addon`.  
 **Durum anahtarı:** **DONE** = kod commit edildi; **CI PASS** = GitHub Actions Godot Linux headless testleri geçti; **DEVICE PENDING** = Android kullanıcı testinde henüz kanıt yok; **PLAN** = uygulanmadı. GitHub CI sonuçları, “kullanıcının telefonunda sorunsuz” anlamına gelmez.
 
 ## 1. En son kanıt ve geçerlilik
 
-- **GitHub Actions run:** https://github.com/mehmetdem2005/FareOyunu/actions/runs/45398690227  
-  **Sonuç:** 20/20 GDScript regresyonu PASS, Godot 4.7.2 stable, ubuntu-24.04 headless. Son kod SHA `734c9088d76603279599654d345249b0cc90e321`.
+- **GitHub Actions run:** https://github.com/mehmetdem2005/FareOyunu/actions/runs/45404989825  
+  **Sonuç:** 22/22 GDScript regresyonu PASS, Godot 4.7.2 stable, ubuntu-24.04 headless. Son kod SHA `a214c907b6fba2d3cd7dba32f883ee5fad7ed446`.
 - İş akışı kaynağı: `.github/workflows/terraforge-ci.yml`. Eklentiyi geçici `project.godot` ile parse eder, editör eklentisinin başlatılmasını kontrol eder, `tests/run_all.sh` ile tek tek test çalıştırır. Exit code + `PASS:` + istenmeyen Godot ERROR/SCRIPT ERROR denetimi vardır.
 - İstisna: bazı testler **bilerek** salt okunur kaynak-koruma hatası üretir; test çalıştırıcısı yalnız bu beklenen mesajları filtreler.
 - Gerçek **Android 11 Mobile Renderer**, GPU, touch davranışı, uzun stres, VRAM, sıcaklık, 30/60 FPS, görsel doğallık ve Terrain3D karşılaştırması **DEVICE PENDING**.
@@ -32,6 +32,8 @@
 | v0.4.1-dev.1 | `1a36674` | **İzole** `region_store.gd`: `TFR1` 32×32 Float32 disk sayfası, LRU resident limit, güvenli kayıt ve checksum | 19/19 CI. **Oyun RAM'i henüz azalmadı** |
 | v0.4.1-dev.2 | `c0e3a0d` → `734c908` | `TFM1` world manifest, kaynak SHA + tüm TFR1 page SHA doğrulaması; `TFH1/TFL1/TFL2` için staged, kaynağa dokunmayan snapshot export; kaynak değişim kontrolü | **20/20 CI PASS**. Canlı mesh/physics/brush entegrasyonu henüz yok |
 
+| v0.4.2-dev.1 | `d516147` → `a214c907` | İzole `paged_height_source.gd` ile TFM1/TFR1 read-only Float32 ve bilinear LRU; `camera_page_prefetch.gd` ile nearest-first senkron read budget + generation, 2 yeni test | **22/22 CI PASS**; canlı renderer/physics henüz bağlı değil |
+
 Not: erken commit prefix'leri tarihsel kayıt amacıyla verilmiştir; yeni dal ilerledikçe tam baş SHA'yı **GitHub'dan yeniden okuyun**. `main`'e merge edilmedi.
 
 ## 3. Güncel özellik envanteri (gerçek / kısmi / plan)
@@ -51,8 +53,10 @@ Not: erken commit prefix'leri tarihsel kayıt amacıyla verilmiştir; yeni dal i
 | 3 LOD ve tile mesh resident yönetimi | DONE / CI PASS | Tam crack-free stitched topology / geomorph henüz onaylı değil |
 | Gerçek TFR1 disk sayfaları | DONE / CI PASS **izole** | Canlı scene height kaynağında kullanılmıyor |
 | TFM1 dünya manifesti/export | DONE / CI PASS **izole** | Snapshot, TFL edit katmanlarını düzleştirir; gerçek runtime değil |
-| Kamera yönlü disk prefetch / async | **PLAN** | P1.2 |
-| Canlı LOD, collision ve sculpt için paged sampler | **PLAN** | P1.2–P1.4 |
+| Kamera yönlü **senkron** bounded prefetch | DONE / CI PASS **izole** | P1.2 |
+| Worker-thread asenkron disk IO | **PLAN** | P1.2b |
+| Salt okunur paged sampler + LRU | DONE / CI PASS **izole** | P1.2 |
+| Canlı LOD, collision ve sculpt için paged sampler | **PLAN** | P1.3–P1.4 |
 | Multi-page atomik düzenleme ve Undo/Redo | **PLAN** | P1.4 |
 | Ridge graph, watershed graph | **PLAN** | P2 |
 | Gerçek hidrolik erozyon/sediment | **PLAN** | P3 |
@@ -72,7 +76,7 @@ Not: erken commit prefix'leri tarihsel kayıt amacıyla verilmiştir; yeni dal i
 
 ## 5. Şimdiki öncelik / sıradaki değişiklik
 
-**P1.2 — TFM1 manifest doğrulamalı, salt okunur paged height sampler; kamera-odaklı bounded prefetch ve cache ölçüm API'si.** Henüz uygulandığını söyleme. Sonra **opt-in read-only streaming visual/collision**, ardından **atomik çok-bölge düzenlemeli streaming**, en son eski tam RAM modelinden isteğe bağlı geçiş. Ayrıntılı kabul ve dosya adımları: [NEXT_SESSION_IMPLEMENTATION_TR.md](NEXT_SESSION_IMPLEMENTATION_TR.md).
+**P1.2b:** Asenkron worker-thread-safe, sınırlı inflight page IO. Şu an salt okunur `paged_height_source.gd` ve `camera_page_prefetch.gd` **DONE / 22/22 CI PASS**, ancak `tick()` senkron ve canlı `terra_forge_terrain.gd` bütün heightmap'i RAM'de tutuyor. Sonra P1.3 yalnız opt-in read-only mesh/collision ve P1.4 transaction. [NEXT_SESSION_IMPLEMENTATION_TR.md](NEXT_SESSION_IMPLEMENTATION_TR.md).
 
 ## 6. Kanıt ve geçmiş kuralları
 

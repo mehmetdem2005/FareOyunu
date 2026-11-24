@@ -1,6 +1,6 @@
 # TerraForge — As-Built Mimari, Veri Formatları ve Modül Envanteri
 
-**Kod tabanı:** v0.4.1-dev.2, `734c9088d76603279599654d345249b0cc90e321`. **Hedef:** Godot 4.7.2 / Android 11 Mobile. **Kural:** Bu belgeyi kod değiştikçe güncelle; doğrulanmamış bileşenleri CANLI diye sunma.
+**Kod tabanı:** v0.4.2-dev.1, `a214c907b6fba2d3cd7dba32f883ee5fad7ed446`. **Hedef:** Godot 4.7.2 / Android 11 Mobile. **Kural:** Bu belgeyi kod değiştikçe güncelle; doğrulanmamış bileşenleri CANLI diye sunma.
 
 ## 1. Modül envanteri
 
@@ -20,9 +20,11 @@
 | `core/region_store.gd` | TFR1 disk page, LRU, load/save/evict | İZOLE, CANLIYA BAĞLI DEĞİL |
 | `core/region_manifest.gd` | TFM1 world manifest + source/page hash kontrolü | İZOLE |
 | `core/region_export.gd` | TFH/TFL snapshot → staged TFR1 pages + manifest | İZOLE |
+| `core/paged_height_source.gd` | TFM1/TFR1 read-only verified Float32 cache, cross-page bilinear, 1–64 LRU | İZOLE / CI PASS |
+| `core/camera_page_prefetch.gd` | Kamera yakın/yön priority, 1–8 senkron page read/tick, generation reset | İZOLE / CI PASS |
 | `tests/*.gd` | 20 Godot headless regresyon | CI PASS |
 | `tests/run_all.sh` | 4.7.2 version, PASS çıktısı, exit code, engine log kontrolleri | CI PASS |
-| `.github/workflows/terraforge-ci.yml` | Ubuntu, geçici Godot projesi, 20 test, log artifacts | CI PASS |
+| `.github/workflows/terraforge-ci.yml` | Ubuntu, geçici Godot projesi, 22 test, log artifacts | CI PASS |
 
 **Kesin ayrım:** `region_store.gd` bulunması, çalışan oyunda RAM tasarruflu streaming yapıldığı anlamına GELMEZ. Canlı terrain hâlâ `height_data.heights` için bütün world Float32 yükseklik dizisini bellekte tutuyor.
 
@@ -92,14 +94,13 @@
 - Ridge/Valley maksimum path uzunluğu ve örnek sayısı, noise cache üst sınırı; fare gözüne yakın geometri için mikro relief ayrı plan.
 - Kompakt popup, widget durumu; ekranı kaplayan bottom dock geri gelmemeli.
 
-## 5. Planlanan data-source abstraction (HENÜZ YOK)
+## 5. P1.2 — Uygulanan salt okunur data source ve sınırları
 
-Önerilen `core/paged_height_source.gd`:
-- `open_manifest(dir) -> Error`, `get_height(x,z) -> {error,height}`, `sample_local(x,z) -> {error,height}`, `prefetch(page_rect,budget)`, `unload_outside(page_rect)`, `stats()`.
-- Bu API `region_store.gd` ve `region_manifest.gd` üzerinde çalışacak; önce izole **read-only** prototip, sonra isteğe bağlı render/collision node.
-- Çekirdekte istisna/eksik veri sessiz 0'a dönmez; border bilinear iki page okuyabilir; LRU limit sürekli korunmalı.
-- Daha sonra `height_data.heights[index]` doğrudan erişimlerinin yerine height source abstraction; Undo/Redo/write için multi-page transaction ayrı faz.
-- Node/Mesh ana thread; arka planda bounded IO ve CPU data processing, async result versioning ve cancellation tasarımı gerekli.
+**Kodlandı / 22/22 CI PASS:** `paged_height_source.gd` `open,get_height,sample_local,prefetch_rect,release_outside,stats,close` API'lerini sunar. TFM1 full verification, cold TFR1 tam dosya hash ve internal checksum, 1–64 LRU Float32 sayfa cache, cross-page bilinear. `get_height` hata durumunda sahte `height=0` dönmez; `sample_local` dünya dışını explicit hata ile reddeder (**legacy TFH clamp ile farklı**).
+
+**Kodlandı / 22/22 CI PASS:** `camera_page_prefetch.gd` `configure,request_focus,tick,release_distant,stats` API'lerini sunar. En yakın sayfaya, sonra hareket yönüne öncelik verir; 1–8 **senkron** cold read/tick, eski bekleyen sıraları generation ile iptal. Her page'nin tek IO okuması kare süresini aşabilir.
+
+**PLAN:** worker-thread async IO, bounded inflight, generation-id ile **geç sonuçları** atma, startup full world sync SHA optimizasyonu, `HeightSource` ile gerçek `TerraForgeTerrain` mesh/normal/physics bağlama ve multi-page writable transaction. Canlı terrain hâlâ bütün Float32 height array'i tutar. Teknik API kaydı: [P1_2_PAGED_SAMPLER_TR.md](P1_2_PAGED_SAMPLER_TR.md).
 
 ## 6. Bilinen operasyonel sınırlar
 

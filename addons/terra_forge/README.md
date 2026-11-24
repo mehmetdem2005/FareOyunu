@@ -1,4 +1,4 @@
-# TerraForge Mobile — v0.4.1-dev.2 (validated regional world manifests and safe export)
+# TerraForge Mobile — v0.4.2-dev.1 (manifest-verified paging and camera prefetch)
 > **NEW CHAT / FULL PROJECT MEMORY (2026-11-24):** Start with [DOCS_INDEX_TR.md](DOCS_INDEX_TR.md) and [HANDOFF_START_HERE_TR.md](HANDOFF_START_HERE_TR.md). The complete P0–P7 plan, actual CI results, full code/data architecture, risks, terrain geology research, mobile workflow, and the next exact GitHub CI implementation tasks are saved as multiple Markdown documents in this addon branch. **These documents do not mean live regional streaming is implemented.**
 
 
@@ -39,6 +39,14 @@ Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, nativ
 - **Weather**: tap a steep area and release for 1–6 bounded thermal passes (up to 32m). It now uses two scans of the four neighbors rather than allocating candidate arrays per sample. Material is transferred conservatively; **no water flow or sediment simulation is claimed**.
 - **Smooth**: two-pass neighborhood snapshot plus a 55% bilateral blend reduces directional scan artifacts while retaining some high-contrast edges. Ramp/Stamp/Weather controls remain contextual; Undo/Redo and Float32 data format are unchanged.
 - Mobile **Check** button tests Float32 roundtrip, path consistency, local mass balance and reports CPU processing times without changing the user's terrain.
+
+## P1.2 verified read-only paged sampler (v0.4.2-dev.1)
+
+- Added `core/paged_height_source.gd`: TFM1 manifest + every region page verified at open, Float32 `get_height` and bilinear `sample_local` across page borders, 1–64 page LRU, SHA on cold loads, error reporting and IO/cache counters.
+- Added `core/camera_page_prefetch.gd`: nearest-camera and movement-direction priority, 1–8 **synchronous** cold-page reads per tick, replacement of queued work after camera teleports.
+- Added 21st and 22nd Godot headless regressions `test_paged_height_source.gd` and `test_camera_page_prefetch.gd`. [Godot 4.7.2 CI: 22/22 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45404989825).
+- **Still isolated**: no auto connection to live `TerraForgeTerrain` mesh/collision/sculpt or visible camera. No claim that game RAM, FPS or mobile rendering improved. Startup manifest verification and each page load are still synchronous.
+- Next: bounded thread-safe async page IO and genuine late-generation cancellation; then opt-in read-only live render/collision. More: [P1_2_PAGED_SAMPLER_TR.md](P1_2_PAGED_SAMPLER_TR.md), [NEXT_SESSION_IMPLEMENTATION_TR.md](NEXT_SESSION_IMPLEMENTATION_TR.md).
 
 ## P1 manifest and safe heightfield export (0.4.1-dev.2)
 

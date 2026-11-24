@@ -1,4 +1,4 @@
-# TerraForge Mobile 0.4.1-dev.2 — Türkçe kullanım
+# TerraForge Mobile 0.4.2-dev.1 — Türkçe kullanım
 > **Yeni sohbette unutulmasın:** Önce [DOCS_INDEX_TR.md](DOCS_INDEX_TR.md) ve [HANDOFF_START_HERE_TR.md](HANDOFF_START_HERE_TR.md) oku. Sürüm geçmişi, P0–P7 tüm fazları, profesyonel terrain araştırması, mimari, CI kanıtları, riskler ve sıradaki uygulanabilir işler bu daldaki yeni MD dosyalarında kalıcı olarak kayıtlı.
 
 
@@ -50,6 +50,13 @@ Hepsinde **Size** etki alanını, **Power** etki şiddetini belirler. Ramp, Stam
 - Küçük ekranlarda açılır menü pencere sınırları içinde tutulmaya çalışılır; alt panel açılmaz.
 - Android'in dokunmatik olaylardan türetebildiği sahte fare tıklamaları bir süre yok sayılır.
 - **Yeni:** Fırça artık her dokunma olayı için değil, parmağın katettiği mesafe boyunca sabit aralıklarla etki uygular. Hızlı ve yavaş sürüklemede güç farkı azalır. Parmağı sabit tutmak devamlı kazma/yükseltme yapmaz.
+
+## v0.4.2-dev.1 — İzole salt okunur yükseklik ve kamera ön yükleme prototipi
+
+- `core/paged_height_source.gd` TFM1/TFR1 dosyalarını SHA-256 doğrulayarak Float32 örnekleri ve 32 sayfalık sınırda bilinear interpolasyonu destekliyor; en fazla 1–64 bölgeyi RAM cache'de tutuyor.
+- `core/camera_page_prefetch.gd` kamera merkezine/yönüne yakın region sayfalarını seçiyor; her çağrıda 1–8 **senkron** disk okumasını aşmıyor ve henüz başlamamış eski istekleri kamera sıçrayınca iptal ediyor.
+- GitHub Godot 4.7.2 CI [22/22 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45404989825). **Henüz canlı terrain mesh/physics/Brush sistemine bağlı değil.** Eski haritanın RAM tüketimi otomatik azalmıyor.
+- Bir sonraki iş worker-thread-safe async IO ve bounded in-flight jobs; ardından opt-in read-only terrain. Bkz. [P1_2_PAGED_SAMPLER_TR.md](P1_2_PAGED_SAMPLER_TR.md).
 
 ## v0.4.1-dev.2 — Dünya manifesti ve kayıpsız yüksekliğin dışa aktarımı
 
