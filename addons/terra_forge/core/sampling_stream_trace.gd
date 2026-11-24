@@ -25,8 +25,8 @@ static func _close(p,result: Dictionary) -> Dictionary:
     p.free()
     return result
 
-static func run(directory: String, format: int, mode: int, cache: int, geometry_cap: int=2) -> Dictionary:
-    if format not in [0,1] or mode not in [0,1,2,3] or cache not in [9,16] or geometry_cap not in [1,2,4]:
+static func run(directory: String, format: int, mode: int, cache: int, geometry_cap: int=2, cadence_us: int=0) -> Dictionary:
+    if format not in [0,1] or mode not in [0,1,2,3,4] or cache not in [9,16] or geometry_cap not in [1,2,4] or cadence_us not in [0,8000]:
         return {"error": ERR_INVALID_PARAMETER}
     var p = PREVIEW.new()
     p.region_index_format = format
@@ -60,8 +60,19 @@ static func run(directory: String, format: int, mode: int, cache: int, geometry_
     var job_peak: int = 0
     var shard_peak: int = 0
     var vertex_peak: int = 0
+    var deadline_misses: int=0
+    var max_late_us: int=0
     var begin: int = Time.get_ticks_usec()
     for step in range(STEPS):
+        if cadence_us>0:
+            var target: int=begin+step*cadence_us
+            var remaining: int=target-Time.get_ticks_usec()
+            if remaining>0:
+                OS.delay_usec(remaining)
+            var late: int=maxi(0,Time.get_ticks_usec()-target)
+            max_late_us=maxi(max_late_us,late)
+            if late>=cadence_us:
+                deadline_misses+=1
         var now: int = Time.get_ticks_usec()
         if previous > 0:
             intervals.add(float(now-previous)/1000.0)
@@ -80,7 +91,7 @@ static func run(directory: String, format: int, mode: int, cache: int, geometry_
         if progress["error"]!=OK or src["resident"]>cache or src["resident_float_bytes"]>cache*4096 or jobs>4 or s["tiles"]>8 or s["pending_tiles"]>8 or src["shard_resident"]>2 or src["tile_view_active_pages"]!=0 or s["dense_payload_peak_bytes"]>4900:
             return _close(p,{"error":ERR_BUG,"stage":"budget or IO","step":step,"stats":s})
         var worker: Dictionary=s["geometry_worker"]
-        if mode==3:
+        if mode>=3:
             if worker["slots"]>geometry_cap or s["geometry_reservations"]>geometry_cap or s["geometry_publish_peak_per_pump"]>1:
                 return _close(p,{"error":ERR_BUG,"stage":"geometry cap","step":step,"stats":s})
             geometry_peak=maxi(geometry_peak,int(worker["slots"]))
@@ -101,7 +112,8 @@ static func run(directory: String, format: int, mode: int, cache: int, geometry_
             var rss: Variant=PROFILE._rss()
             if rss!=null:
                 peak=rss if peak==null else maxi(int(peak),int(rss))
-        OS.delay_msec(WAIT_MS)
+        if cadence_us==0:
+            OS.delay_msec(WAIT_MS)
     var elapsed: float=float(Time.get_ticks_usec()-begin)/1000.0
     var s: Dictionary=p.stats()
     var src: Dictionary=s["source"]
@@ -118,11 +130,11 @@ static func run(directory: String, format: int, mode: int, cache: int, geometry_
         return _close(p,{"error":ERR_BUG,"stage":"recovery","stats":s})
     var report: Dictionary={
         "error":OK,"route":ROUTE_ID,"steps":STEPS,"sleep_ms":WAIT_MS,"format":"TFM"+str(format+1),"strategy":mode,"page_cap":cache,"job_cap":4,"tile_cap":8,"shard_cap":2 if format==1 else 0,
-        "elapsed_ms":elapsed,"pump_ms":pumps.report(),"pump_interval_ms":intervals.report(),"missing_shape_steps":missing,"longest_missing_shape_steps":gap_max,
+        "cadence_target_us":cadence_us,"deadline_misses":deadline_misses,"max_late_us":max_late_us,"elapsed_ms":elapsed,"pump_ms":pumps.report(),"pump_interval_ms":intervals.report(),"missing_shape_steps":missing,"longest_missing_shape_steps":gap_max,
         "rss_baseline_bytes":baseline,"rss_peak_sampled_bytes":peak,"page_peak":page_peak,"page_payload_peak_bytes":page_peak*4096,"tile_peak":tile_peak,"job_peak":job_peak,"shard_peak":shard_peak,"vertex_peak":vertex_peak,
         "mesh_builds":s["mesh_builds"],"camera_cancellations":s["camera_cancellations"],"waiting_tile_frames":s["waiting_tile_frames"],"dense_payload_peak_bytes":s["dense_payload_peak_bytes"],
         "accepted_page_reads":src["disk_reads"],"unique_accepted_pages":src["pages_verified_on_demand"],"accepted_page_reloads":maxi(0,src["disk_reads"]-src["pages_verified_on_demand"]),"request_cache_hits":src["cache_hits"],"evictions":src["evictions"],"stale_discarded":src["stale_discarded"],"submitted":src["submitted"],"worker_errors":src["worker_errors"],"lru_touches":src["lru_touches"],"direct_reads":src["direct_height_reads"],"view_reads":src["tile_view_reads"],
-        "geometry_cap":geometry_cap if mode==3 else 0,"geometry_peak":geometry_peak,"first_shape_step":first_shape_step,"geometry_worker":s["geometry_worker"],
+        "geometry_cap":geometry_cap if mode>=3 else 0,"geometry_peak":geometry_peak,"first_shape_step":first_shape_step,"geometry_worker":s["geometry_worker"],
         "geometry_copy_ms":s["geometry_copy_ms"],"geometry_queue_ms":s["geometry_queue_ms"],"geometry_worker_ms":s["geometry_worker_ms"],"geometry_delivery_ms":s["geometry_delivery_ms"],"geometry_publish_ms":s["geometry_publish_ms"],
         "recovery_ok":settled
     }

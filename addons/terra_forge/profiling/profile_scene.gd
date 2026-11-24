@@ -16,7 +16,7 @@ var _buttons: Array[Button] = []
 @export_range(1, 16, 1) var shard_limit: int = 4
 @export var use_tile_read_view: bool = false
 var _sampling_choice: OptionButton
-@export_enum("Legacy flag:-1", "A direct:0", "B tile view:1", "C dense buffer:2", "E geometry worker:3") var sampling_strategy: int = -1
+@export_enum("Legacy flag:-1", "A direct:0", "B tile view:1", "C dense buffer:2", "E geometry worker:3", "F priority worker:4") var sampling_strategy: int = -1
 var _format: OptionButton
 var _fixture_size: OptionButton
 var _estimate: Label
@@ -93,8 +93,9 @@ func _ready() -> void:
     _sampling_choice.add_item("B tile view (experimental)", 1)
     _sampling_choice.add_item("C dense (experimental)", 2)
     _sampling_choice.add_item("E geometry worker (experimental)", 3)
+    _sampling_choice.add_item("F priority worker (experimental)", 4)
 
-    _sampling_choice.select(clampi((1 if use_tile_read_view else 0) if sampling_strategy == -1 else sampling_strategy, 0, 3))
+    _sampling_choice.select(clampi((1 if use_tile_read_view else 0) if sampling_strategy == -1 else sampling_strategy, 0, 4))
     _sampling_choice.item_selected.connect(func(index): sampling_strategy = _sampling_choice.get_item_id(index))
     ui.add_child(_sampling_choice)
     _button(ui, "Create isolated sample", _make_fixture)

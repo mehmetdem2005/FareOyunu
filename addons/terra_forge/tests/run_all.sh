@@ -52,6 +52,7 @@ suite=(
   test_geometry_worker
   test_geometry_worker_preview
   test_geometry_worker_comparison
+  test_worker_priority
   test_lod_policy
   test_surface_faces
   test_lod_normals

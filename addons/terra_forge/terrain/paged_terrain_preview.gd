@@ -23,7 +23,7 @@ const TILE_CELLS: int = 32
 ## Experimental A/B CPU sampling path. Default stays baseline until measured.
 @export var use_tile_read_view: bool = false
 ## -1 preserves serialized legacy bool. Explicit mode overrides it.
-@export_enum("Legacy flag:-1", "A direct:0", "B tile view:1", "C dense buffer:2", "E geometry worker:3") var sampling_strategy: int = -1
+@export_enum("Legacy flag:-1", "A direct:0", "B tile view:1", "C dense buffer:2", "E geometry worker:3", "F priority worker:4") var sampling_strategy: int = -1
 var _active_sampling_strategy: int = 0
 var _dense_payload_peak: int = 0
 @export_range(1,4,1) var geometry_job_limit: int = 2
@@ -92,7 +92,7 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
         _last_error = ERR_INVALID_PARAMETER
         return _last_error
     var selected: int = resolved_sampling_strategy()
-    if selected < 0 or selected > 3:
+    if selected < 0 or selected > 4:
         _last_error = ERR_INVALID_PARAMETER
         return _last_error
     _active_sampling_strategy = selected
@@ -109,7 +109,7 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
         _last_error = status
         return status
     _reader = next
-    if selected==3:
+    if selected==3 or selected==4:
         _geometry_worker=WORKER.new()
         status=_geometry_worker.start(_reader,geometry_job_limit)
         if status!=OK:
@@ -200,6 +200,11 @@ func pump_stream() -> Dictionary:
         _last_sync_msec = current
     var started: int=Time.get_ticks_usec()
     if _geometry_worker!=null:
+        if _active_sampling_strategy==4:
+            var reconciled: Error=_geometry_worker.reconcile(_reader,_desired_tiles,_priority_ranks())
+            if reconciled!=OK:
+                _last_error=reconciled
+                return {"error":reconciled}
         _publish_worker_results(started)
     _build_pending_tiles(started)
     return {
@@ -312,15 +317,43 @@ func _create_tile(tx: int, tz: int) -> Dictionary:
         "lod": -1, "vertex_count": 0
     }
 
+## Experimental F: actual anchor tile first, then desired LOD0 tiles
+## without attached collision, then ordinary distance order.
+func _priority_ranks() -> Dictionary:
+    var width: float=float(TILE_CELLS)*_reader.spacing
+    var focus: Vector2i=Vector2i(floori(_anchor.x/width),floori(_anchor.z/width))
+    var keys: Array=_desired_tiles.keys()
+    var classes: Dictionary={}
+    for key in keys:
+        var has_shape: bool=_tiles.has(key) and _tiles[key]["collision"].shape is HeightMapShape3D
+        classes[key]=0 if key==focus and int(_desired_tiles[key])==0 and not has_shape else (1 if int(_desired_tiles[key])==0 and not has_shape else 2)
+    keys.sort_custom(func(a: Variant,b: Variant)->bool:
+        if classes[a]!=classes[b]:
+            return int(classes[a])<int(classes[b])
+        var da: float=LOD.tile_distance(a,width,_anchor)
+        var db: float=LOD.tile_distance(b,width,_anchor)
+        if da==db:
+            return a.y<b.y if a.y!=b.y else a.x<b.x
+        return da<db
+    )
+    var result: Dictionary={}
+    for i in range(keys.size()):
+        result[keys[i]]=i
+    return result
+
 func _build_pending_tiles(started: int = -1) -> void:
     if _pending_tiles.is_empty():
         return
     var keys: Array = _pending_tiles.keys().filter(func(key: Variant) -> bool:
         return not _blocked_tiles.has(key) and not _geometry_jobs.has(key)
     )
-    keys.sort_custom(func(a: Variant, b: Variant) -> bool:
-        return LOD.tile_distance(a, float(TILE_CELLS) * _reader.spacing, _anchor) < LOD.tile_distance(b, float(TILE_CELLS) * _reader.spacing, _anchor)
-    )
+    if _active_sampling_strategy==4:
+        var ranks: Dictionary=_priority_ranks()
+        keys.sort_custom(func(a: Variant,b: Variant)->bool: return int(ranks[a])<int(ranks[b]))
+    else:
+        keys.sort_custom(func(a: Variant, b: Variant) -> bool:
+            return LOD.tile_distance(a, float(TILE_CELLS) * _reader.spacing, _anchor) < LOD.tile_distance(b, float(TILE_CELLS) * _reader.spacing, _anchor)
+        )
     var max_builds: int = maxi(1, tile_updates_per_frame)
     var submitted: int = 0
     if started<0:

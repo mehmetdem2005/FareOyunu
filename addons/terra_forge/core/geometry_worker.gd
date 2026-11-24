@@ -31,6 +31,8 @@ var _submitted: int = 0
 var _delivered: int = 0
 var _dropped: int = 0
 var _peak_slots: int = 0
+var _pruned_pending: int = 0
+var _pruned_finished: int = 0
 
 func start(source, cap: int=2) -> Error:
     close()
@@ -175,6 +177,38 @@ func _loop() -> void:
             job={}
             _mutex.unlock()
 
+## Experimental F: main-thread reconciliation of bounded queues.
+## Never interrupt running computation or mutate its immutable input.
+func reconcile(source,desired: Dictionary,priority: Dictionary) -> Error:
+    var context: Error=_context(source)
+    if context!=OK:
+        return context
+    _mutex.lock()
+    for i in range(_pending.size()-1,-1,-1):
+        var job: Dictionary=_pending[i]
+        var sig: Dictionary=signature(job["key"],job["lod"],desired,source.cells)
+        if sig.get("error",FAILED)!=OK or sig["levels"]!=job["levels"]:
+            _pending.remove_at(i)
+            _dropped+=1
+            _pruned_pending+=1
+    for i in range(_finished.size()-1,-1,-1):
+        var job: Dictionary=_finished[i]
+        var sig: Dictionary=signature(job["key"],job["lod"],desired,source.cells)
+        if sig.get("error",FAILED)!=OK or sig["levels"]!=job["levels"]:
+            _finished.remove_at(i)
+            _dropped+=1
+            _pruned_finished+=1
+    # Deterministic tie-break by unique job ID. Priority is main-owned
+    # and never retained or read by worker outside this mutex.
+    var less=func(a: Dictionary,b: Dictionary)->bool:
+        var pa: int=int(priority.get(a["key"],2147483647))
+        var pb: int=int(priority.get(b["key"],2147483647))
+        return int(a["id"])<int(b["id"]) if pa==pb else pa<pb
+    _pending.sort_custom(less)
+    _finished.sort_custom(less)
+    _mutex.unlock()
+    return OK
+
 ## Only transfer one result per call. Recheck current source session,
 ## epoch, requested LOD and four-neighbor signature before delivery.
 func poll(source,desired: Dictionary) -> Dictionary:
@@ -212,7 +246,7 @@ func active_ids() -> Array[int]:
 
 func stats() -> Dictionary:
     _mutex.lock()
-    var result: Dictionary={"open":_open,"pending":_pending.size(),"inflight":_inflight,"finished":_finished.size(),"slots":_slots(),"cap":_cap,"reserved_payload_bytes":_slots()*SLOT_BYTES,"payload_cap_bytes":_cap*SLOT_BYTES,"peak_slots":_peak_slots,"submitted":_submitted,"delivered":_delivered,"dropped":_dropped,"epoch":_epoch}
+    var result: Dictionary={"open":_open,"pending":_pending.size(),"inflight":_inflight,"finished":_finished.size(),"slots":_slots(),"cap":_cap,"reserved_payload_bytes":_slots()*SLOT_BYTES,"payload_cap_bytes":_cap*SLOT_BYTES,"peak_slots":_peak_slots,"pruned_pending":_pruned_pending,"pruned_finished":_pruned_finished,"submitted":_submitted,"delivered":_delivered,"dropped":_dropped,"epoch":_epoch}
     _mutex.unlock()
     return result
 
@@ -236,6 +270,8 @@ func close() -> void:
     _delivered=0
     _dropped=0
     _peak_slots=0
+    _pruned_pending=0
+    _pruned_finished=0
     _next_id=0
     _source_id=0
     _serial=0
