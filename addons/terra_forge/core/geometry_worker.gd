@@ -4,6 +4,7 @@ extends RefCounted
 ## Worker owns copied dense inputs and pure packed arrays, never a source
 ## reader, cache lease, scene node, Mesh resource or Physics server object.
 const G = preload("res://addons/terra_forge/core/paged_tile_geometry.gd")
+const PUB = preload("res://addons/terra_forge/core/publication_accounting.gd")
 const DENSE = preload("res://addons/terra_forge/core/tile_dense_buffer.gd")
 const LOD = preload("res://addons/terra_forge/core/lod_policy.gd")
 const INPUT_CAP: int = 4900
@@ -213,17 +214,23 @@ func reconcile(source,desired: Dictionary,priority: Dictionary) -> Error:
 
 ## Only transfer one result per call. Recheck current source session,
 ## epoch, requested LOD and four-neighbor signature before delivery.
-func poll(source,desired: Dictionary) -> Dictionary:
+func poll(source,desired: Dictionary,max_source_bytes: int=-1) -> Dictionary:
     var context: Error=_context(source)
     if context!=OK:
         return {"error":context}
     _mutex.lock()
     while not _finished.is_empty():
-        var result: Dictionary=_finished.pop_front()
+        var result: Dictionary=_finished[0]
         var sig: Dictionary=signature(result["key"],result["lod"],desired,source.cells)
         if result["epoch"]!=_epoch or sig["error"]!=OK or sig["levels"]!=result["levels"]:
+            _finished.pop_front()
             _dropped+=1
             continue
+        # Valid but too expensive: keep original bounded ownership/ID.
+        if max_source_bytes>=0 and int(PUB.expected(result["lod"])["total_bytes"])>max_source_bytes:
+            _mutex.unlock()
+            return {"error":ERR_BUSY,"deferred_bytes":true}
+        _finished.pop_front()
         _delivered+=1
         result["snapshot"]=_snapshot
         result["source_serial"]=_serial

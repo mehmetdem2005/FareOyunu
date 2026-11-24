@@ -16,6 +16,10 @@ var _buttons: Array[Button] = []
 @export_range(1, 16, 1) var shard_limit: int = 4
 @export var use_tile_read_view: bool = false
 var _sampling_choice: OptionButton
+var _budget_toggle: CheckButton
+@export var enforce_publication_budget: bool=false
+@export_range(4096,1048576,4096) var publication_byte_target: int=131072
+@export_range(100,8000,100) var publication_time_target_us: int=1000
 @export_enum("Legacy flag:-1", "A direct:0", "B tile view:1", "C dense buffer:2", "E geometry worker:3", "F priority worker:4", "G scalar priority worker:5") var sampling_strategy: int = -1
 var _format: OptionButton
 var _fixture_size: OptionButton
@@ -99,6 +103,11 @@ func _ready() -> void:
     _sampling_choice.select(clampi((1 if use_tile_read_view else 0) if sampling_strategy == -1 else sampling_strategy, 0, 5))
     _sampling_choice.item_selected.connect(func(index): sampling_strategy = _sampling_choice.get_item_id(index))
     ui.add_child(_sampling_choice)
+    _budget_toggle=CheckButton.new()
+    _budget_toggle.text="Publication budget (experimental)"
+    _budget_toggle.button_pressed=enforce_publication_budget
+    _budget_toggle.toggled.connect(func(enabled): enforce_publication_budget=enabled)
+    ui.add_child(_budget_toggle)
     _button(ui, "Create isolated sample", _make_fixture)
     _cancel_button = Button.new()
     _cancel_button.text = "Cancel fixture generation"
@@ -133,6 +142,7 @@ func _set_busy(busy: bool) -> void:
     _fixture_size.disabled = busy
     _format.disabled = busy
     _sampling_choice.disabled = busy
+    _budget_toggle.disabled = busy
 
 func _refresh_sizes() -> void:
     var previous: int = _fixture_size.get_selected_id() if _fixture_size.item_count > 0 else 256
@@ -265,9 +275,15 @@ func _begin(lazy: bool) -> void:
     _preview.use_tile_read_view = use_tile_read_view
     _preview.sampling_strategy = sampling_strategy
     _preview.observe_publication = true
+    _preview.enforce_publication_budget=enforce_publication_budget
+    _preview.publication_byte_target=publication_byte_target
+    _preview.publication_time_target_us=publication_time_target_us
     _run_settings = {"page_limit": page_limit, "job_limit": job_limit, "shard_limit": shard_limit if _run_format == "TFM2" else 0, "view_distance": _preview.view_distance, "high_detail_distance": _preview.high_detail_distance, "medium_detail_distance": _preview.medium_detail_distance, "max_visible_tiles": _preview.max_visible_tiles, "tile_updates_per_frame": _preview.tile_updates_per_frame, "max_tile_work_ms": _preview.max_tile_work_ms, "viewport": [get_viewport().size.x, get_viewport().size.y]}
     _run_settings["use_tile_read_view"] = use_tile_read_view
     _run_settings["sampling_strategy"] = _preview.resolved_sampling_strategy()
+    _run_settings["publication_budget"]=enforce_publication_budget
+    _run_settings["publication_byte_target"]=publication_byte_target
+    _run_settings["publication_time_target_us"]=publication_time_target_us
     add_child(_preview)
     _started = Time.get_ticks_usec()
     var status: Error = _preview.start_preview(_run_path, page_limit, job_limit)

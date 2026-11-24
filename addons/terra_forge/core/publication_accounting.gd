@@ -20,6 +20,13 @@ var _pump_count: int=0
 var _pump_bytes: int=0
 var _pump_us: int=0
 var _count_target: int=1
+var _byte_target: int=BYTE_TARGET
+var _time_target_us: int=TIME_TARGET_US
+var _budget_enabled: bool=false
+var _byte_deferrals: int=0
+var _time_stops: int=0
+var _count_stops: int=0
+var _first_item_byte_exceptions: int=0
 var _pumps: int=0
 var _active_pumps: int=0
 var _peak_count: int=0
@@ -67,6 +74,41 @@ static func describe(generated: Dictionary,lod: int) -> Dictionary:
             return {"error":ERR_INVALID_DATA}
     return e
 
+func configure_budget(enabled: bool,byte_target: int=BYTE_TARGET,time_target_us: int=TIME_TARGET_US) -> void:
+    _budget_enabled=enabled
+    _byte_target=byte_target
+    _time_target_us=time_target_us
+
+## -1: unlimited/first-item progress; 0: stop; positive: remaining allowance.
+## Time is already measured publication work, not a prediction or hard cap.
+func admission_bytes() -> int:
+    if not _budget_enabled or not _pump_open or _pump_count==0:
+        return -1
+    if _pump_count>=_count_target:
+        _count_stops+=1
+        return 0
+    if _pump_us>=_time_target_us:
+        _time_stops+=1
+        return 0
+    if _pump_bytes>=_byte_target:
+        _byte_deferrals+=1
+        return 0
+    return _byte_target-_pump_bytes
+
+func note_byte_deferral() -> void:
+    _byte_deferrals+=1
+
+func admit(lod: int) -> bool:
+    var remaining: int=admission_bytes()
+    if remaining<0:
+        return true
+    if remaining==0:
+        return false
+    if int(expected(lod)["total_bytes"])>remaining:
+        note_byte_deferral()
+        return false
+    return true
+
 func begin_pump(count_target: int) -> void:
     _pump_open=true
     _pump_count=0
@@ -84,6 +126,8 @@ func record(lod: int,info: Dictionary,mesh_us: int,shape_us: int,publish_us: int
     _shape.add(float(shape_us)/1000.0)
     _publish.add(float(publish_us)/1000.0)
     if _pump_open:
+        if _budget_enabled and _pump_count==0 and int(info["total_bytes"])>_byte_target:
+            _first_item_byte_exceptions+=1
         _pump_count+=1
         _pump_bytes+=int(info["total_bytes"])
         _pump_us+=publish_us
@@ -99,12 +143,12 @@ func end_pump(resident: Dictionary) -> void:
     _peak_count=maxi(_peak_count,_pump_count)
     _peak_bytes=maxi(_peak_bytes,_pump_bytes)
     _peak_us=maxi(_peak_us,_pump_us)
-    if _pump_bytes>BYTE_TARGET:
+    if _pump_bytes>_byte_target:
         _over_bytes+=1
-        _max_byte_excess=maxi(_max_byte_excess,_pump_bytes-BYTE_TARGET)
-    if _pump_us>TIME_TARGET_US:
+        _max_byte_excess=maxi(_max_byte_excess,_pump_bytes-_byte_target)
+    if _pump_us>_time_target_us:
         _over_time+=1
-        _max_time_excess_us=maxi(_max_time_excess_us,_pump_us-TIME_TARGET_US)
+        _max_time_excess_us=maxi(_max_time_excess_us,_pump_us-_time_target_us)
     if _pump_count>_count_target:
         _over_count+=1
     _peak_resident_bytes=maxi(_peak_resident_bytes,int(resident["total_bytes"]))
@@ -113,4 +157,4 @@ func end_pump(resident: Dictionary) -> void:
     _peak_resident_shapes=maxi(_peak_resident_shapes,int(resident["shapes"]))
 
 func report(resident: Dictionary) -> Dictionary:
-    return {"schema":"TF_PUBLICATION_1","source_array_allowance_only":true,"gpu_time_ms":null,"gpu_resident_bytes":null,"publication_count":_count,"lod_counts":_lod_counts.duplicate(),"mesh_source_bytes":_mesh_bytes,"shape_source_bytes":_shape_bytes,"total_source_bytes":_mesh_bytes+_shape_bytes,"published_triangles":_triangles,"mesh_main_ms":_mesh.report(),"shape_main_ms":_shape.report(),"publish_main_ms":_publish.report(),"pump_publish_main_ms":_pump_hist.report(),"pumps":_pumps,"active_pumps":_active_pumps,"peak_pump_count":_peak_count,"peak_pump_source_bytes":_peak_bytes,"peak_pump_publish_us":_peak_us,"observation_byte_target":BYTE_TARGET,"observation_time_target_us":TIME_TARGET_US,"over_byte_pumps":_over_bytes,"over_time_pumps":_over_time,"over_count_pumps":_over_count,"max_byte_excess":_max_byte_excess,"max_time_excess_us":_max_time_excess_us,"resident":resident,"peak_end_pump_resident_source_bytes":_peak_resident_bytes,"peak_end_pump_resident_triangles":_peak_resident_triangles,"peak_end_pump_resident_meshes":_peak_resident_meshes,"peak_end_pump_resident_shapes":_peak_resident_shapes}
+    return {"schema":"TF_PUBLICATION_1","source_array_allowance_only":true,"gpu_time_ms":null,"gpu_resident_bytes":null,"publication_count":_count,"lod_counts":_lod_counts.duplicate(),"mesh_source_bytes":_mesh_bytes,"shape_source_bytes":_shape_bytes,"total_source_bytes":_mesh_bytes+_shape_bytes,"published_triangles":_triangles,"mesh_main_ms":_mesh.report(),"shape_main_ms":_shape.report(),"publish_main_ms":_publish.report(),"pump_publish_main_ms":_pump_hist.report(),"pumps":_pumps,"active_pumps":_active_pumps,"peak_pump_count":_peak_count,"peak_pump_source_bytes":_peak_bytes,"peak_pump_publish_us":_peak_us,"budget_enabled":_budget_enabled,"observation_byte_target":_byte_target,"observation_time_target_us":_time_target_us,"byte_deferral_checks":_byte_deferrals,"time_stop_checks":_time_stops,"count_stop_checks":_count_stops,"first_item_byte_exceptions":_first_item_byte_exceptions,"over_byte_pumps":_over_bytes,"over_time_pumps":_over_time,"over_count_pumps":_over_count,"max_byte_excess":_max_byte_excess,"max_time_excess_us":_max_time_excess_us,"resident":resident,"peak_end_pump_resident_source_bytes":_peak_resident_bytes,"peak_end_pump_resident_triangles":_peak_resident_triangles,"peak_end_pump_resident_meshes":_peak_resident_meshes,"peak_end_pump_resident_shapes":_peak_resident_shapes}

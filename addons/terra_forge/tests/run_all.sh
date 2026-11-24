@@ -55,6 +55,7 @@ suite=(
   test_worker_priority
   test_scalar_worker
   test_publication_accounting
+  test_publication_budget
   test_lod_policy
   test_surface_faces
   test_lod_normals

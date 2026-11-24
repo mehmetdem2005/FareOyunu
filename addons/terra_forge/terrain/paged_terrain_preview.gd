@@ -38,6 +38,10 @@ var _publish_hist = HIST.new()
 var _publish_peak_per_pump: int = 0
 ## Optional observation only; pinned on open. Not a GPU budget.
 @export var observe_publication: bool = false
+@export var enforce_publication_budget: bool = false
+@export_range(4096,1048576,4096) var publication_byte_target: int = 131072
+@export_range(100,8000,100) var publication_time_target_us: int = 1000
+var _publication_budget_active: bool=false
 var _publication
 @export_range(9, 64, 1) var resident_page_limit: int = 16
 @export_range(1, 8, 1) var max_background_jobs: int = 4
@@ -99,6 +103,9 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
     if selected < 0 or selected > 5:
         _last_error = ERR_INVALID_PARAMETER
         return _last_error
+    if enforce_publication_budget and (publication_byte_target<4096 or publication_byte_target>1048576 or publication_time_target_us<100 or publication_time_target_us>8000):
+        _last_error=ERR_INVALID_PARAMETER
+        return _last_error
     _active_sampling_strategy = selected
     _dense_payload_peak = 0
     _ensure_material()
@@ -126,7 +133,10 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
     _delivery_hist=HIST.new()
     _publish_hist=HIST.new()
     _publish_peak_per_pump=0
-    _publication=PUBLICATION.new() if observe_publication else null
+    _publication_budget_active=enforce_publication_budget
+    _publication=PUBLICATION.new() if observe_publication or _publication_budget_active else null
+    if _publication!=null:
+        _publication.configure_budget(_publication_budget_active,publication_byte_target if _publication_budget_active else PUBLICATION.BYTE_TARGET,publication_time_target_us if _publication_budget_active else PUBLICATION.TIME_TARGET_US)
     region_directory = directory
     resident_page_limit = cache_pages
     max_background_jobs = max_jobs
@@ -158,6 +168,7 @@ func stop_preview() -> void:
         _geometry_worker=null
     _geometry_jobs.clear()
     _publication=null
+    _publication_budget_active=false
     for item in _tiles.values():
         var root: Node3D = item["root"]
         if is_instance_valid(root):
@@ -208,7 +219,7 @@ func pump_stream() -> Dictionary:
     if _publication!=null:
         _publication.begin_pump(tile_updates_per_frame)
     if _geometry_worker!=null:
-        if _active_sampling_strategy>=4:
+        if _active_sampling_strategy>=4 or _publication_budget_active:
             var reconciled: Error=_geometry_worker.reconcile(_reader,_desired_tiles,_priority_ranks())
             if reconciled!=OK:
                 _last_error=reconciled
@@ -359,7 +370,7 @@ func _build_pending_tiles(started: int = -1) -> void:
     var keys: Array = _pending_tiles.keys().filter(func(key: Variant) -> bool:
         return not _blocked_tiles.has(key) and not _geometry_jobs.has(key)
     )
-    if _active_sampling_strategy>=4:
+    if _active_sampling_strategy>=4 or _publication_budget_active:
         var ranks: Dictionary=_priority_ranks()
         keys.sort_custom(func(a: Variant,b: Variant)->bool: return int(ranks[a])<int(ranks[b]))
     else:
@@ -378,6 +389,8 @@ func _build_pending_tiles(started: int = -1) -> void:
             if worker_stats["slots"]>=worker_stats["cap"]:
                 break
         var lod: int = int(_desired_tiles[key])
+        if _publication_budget_active and _geometry_worker==null and not _publication.admit(lod):
+            break
         var required: Array[Vector2i] = GEOMETRY.required_pages(_reader, key.x, key.y, lod)
         # Keep every already-loaded member of this tile's height/normal
         # halo hotter than unrelated pages before new IO completions
@@ -455,7 +468,12 @@ func _build_pending_tiles(started: int = -1) -> void:
 func _publish_worker_results(started: int) -> void:
     var count: int=0
     while count<maxi(1,tile_updates_per_frame) and float(Time.get_ticks_usec()-started)<max_tile_work_ms*1000.0:
-        var polled: Dictionary=_geometry_worker.poll(_reader,_desired_tiles)
+        var remaining: int=_publication.admission_bytes() if _publication_budget_active else -1
+        if remaining==0:
+            break
+        var polled: Dictionary=_geometry_worker.poll(_reader,_desired_tiles,remaining)
+        if _publication_budget_active and polled.get("deferred_bytes",false):
+            _publication.note_byte_deferral()
         var status: Error=int(polled["error"])
         if status!=OK:
             if status!=ERR_BUSY:
