@@ -34,6 +34,18 @@ func get_height(x: int, z: int) -> Dictionary:
     _reads += 1
     return {"error": OK, "height": values[(z & 31) * 32 + (x & 31)]}
 
+## Internal scalar path for validated buffer construction; NAN is an
+## error sentinel, never a height. All decoded TFR1 samples are finite.
+func read_finite_or_nan(x: int, z: int) -> float:
+    if not _open or x < 0 or z < 0 or x > cells.x or z > cells.y:
+        return NAN
+    var local: Vector2i = Vector2i(x >> 5, z >> 5) - _first
+    if local.x < 0 or local.y < 0 or local.x >= _extent.x or local.y >= _extent.y:
+        return NAN
+    var values: PackedFloat32Array = _pages[local.y * _extent.x + local.x]
+    _reads += 1
+    return values[(z & 31) * 32 + (x & 31)]
+
 func page_count_held() -> int:
     return _pages.size()
 

@@ -3,6 +3,7 @@ extends RefCounted
 ## Read-only terrain geometry builder. Identical height/LOD/normal/collision
 ## conventions to the legacy TerraForgeTerrain mesh, but NO full-world array.
 ## All reads are nonblocking from async_region_source.gd's resident cache.
+const DENSE = preload("res://addons/terra_forge/core/tile_dense_buffer.gd")
 const LOD_POLICY = preload("res://addons/terra_forge/core/lod_policy.gd")
 const PAGE_WIDTH: int = 32
 const TILE_CELLS: int = 32
@@ -89,6 +90,25 @@ static func generate_with_view(source, tx: int, tz: int, lod: int, desired: Dict
     var released: Error = source.release_tile_view(view)
     if released != OK:
         return {"error": released}
+    return result
+
+## Experimental benchmark-only C. Copy cost is inside the measured call.
+static func generate_with_dense(source, tx: int, tz: int, lod: int, desired: Dictionary) -> Dictionary:
+    if source == null or not source.is_open() or lod < 0 or lod > 2 or tx < 0 or tz < 0 or (tx+1)*TILE_CELLS > source.cells.x or (tz+1)*TILE_CELLS > source.cells.y:
+        return {"error":ERR_INVALID_PARAMETER}
+    var acquired: Dictionary = source.acquire_tile_view(required_pages(source,tx,tz,lod))
+    if acquired["error"] != OK:
+        return acquired
+    var view = acquired["view"]
+    var copied: Dictionary = DENSE.build(view,tx,tz,LOD_POLICY.sample_stride(lod))
+    var released: Error = source.release_tile_view(view)
+    if released != OK:
+        return {"error":released}
+    if copied["error"] != OK:
+        return copied
+    var buffer = copied["buffer"]
+    var result: Dictionary = generate(buffer,tx,tz,lod,desired)
+    result["dense_payload_bytes"] = buffer.payload_bytes()
     return result
 
 static func generate(source, tx: int, tz: int, lod: int, desired: Dictionary) -> Dictionary:
