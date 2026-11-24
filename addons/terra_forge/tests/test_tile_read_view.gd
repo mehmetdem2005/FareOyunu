@@ -8,7 +8,7 @@ const PREVIEW = preload("res://addons/terra_forge/terrain/paged_terrain_preview.
 func _initialize() -> void:
     var src = ASYNC.new()
     for version in [1,2]:
-        var b = V1.new() if version == 1 else V2.new()
+        var b: Variant = V1.new() if version == 1 else V2.new()
         var err: Error = b.start(Vector2i(96,96),true) if version == 1 else b.start(Vector2i(96,96))
         if err != OK:
             _fail("fixture start",src,b)
