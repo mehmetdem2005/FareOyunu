@@ -1,4 +1,7 @@
 # P1.5.7e — Current physics support retention (staged)
+
+> **P1.5.7e2 CI FAILURE / RETRY (24 Kasım 2026):** 4bb4ce8d4f6e9eec4a65552d0eefdc687ef0a73b, [52/54 PASS, 2 FAIL](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45471322997), job 138719724712. Both new tests timed out after GDScript runtime type error at test_support_retention.gd:42 (untyped ternary array assigned to Array[bool]); no SUPPORT_TRACE rows, no physics experiment executed. Fix only harness typed array initialization/reverse; no acceptance threshold change, production code unchanged. Retry CI pending. Do not advance until actual results, preserve failure history.
+
 ## Root cause
 Camera-only _sync_tiles selects desired tiles and frees excluded roots; _publish_geometry removes collision at LOD1/2. Player support and camera visibility are distinct. _seam can modify boundary heights when neighbor LOD changes; worker signature includes cardinal neighbors. Keeping a root alone is not a collision stability guarantee. Published shapes are distinct from page LRU; do not pin each tile's nine-page halo indefinitely.
 ## e1 — pure selector, CI_VERIFIED 52/52

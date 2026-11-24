@@ -39,7 +39,9 @@ func _run() -> void:
             # Equal cap within pair; alternating order reduces warm-cache bias.
             for cap in [4,8]:
                 var paired: Dictionary={}
-                var order: Array[bool]=[false,true] if cap==4 else [true,false]
+                var order: Array[bool]=[false,true]
+                if cap!=4:
+                    order.reverse()
                 for held in order:
                     var result: Dictionary=await _case(made["directory"],format,mode,cap,held)
                     if result.get("error",FAILED)!=OK:

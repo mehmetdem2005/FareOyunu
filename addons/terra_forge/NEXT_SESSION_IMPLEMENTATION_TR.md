@@ -1,5 +1,8 @@
 # Sıradaki Uygulama İş Emri — P1.3 Sahada Doğrulama ve P1.4 Veri İşlemleri
 
+> **P1.5.7e2 CI FAILURE / RETRY (24 Kasım 2026):** 4bb4ce8d4f6e9eec4a65552d0eefdc687ef0a73b, [52/54 PASS, 2 FAIL](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45471322997), job 138719724712. Both new tests timed out after GDScript runtime type error at test_support_retention.gd:42 (untyped ternary array assigned to Array[bool]); no SUPPORT_TRACE rows, no physics experiment executed. Fix only harness typed array initialization/reverse; no acceptance threshold change, production code unchanged. Retry CI pending. Do not advance until actual results, preserve failure history.
+
+
 > **GÜNCEL DEVİR — P1.5.7e1 (24 Kasım 2026):** Kod 4e7dfa8b2a032d6dd9e316c83a071987de600c6d, [52/52 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45470559534), pure selector 21 checks. [Raw JSON](P1_5_7E1_SELECTION_CI.json). NEXT P1.5.7e2 live opt-in support retention implemented, CI PENDING: current verified footprint session/revision, cap rejection, priority, sync neighbor signature check, equal-height shape reuse and changed-height real replacement. 16 controlled 120-tick baseline/held traces planned by test, TFM1/2 A/G cap4/8, two test processes for timeout headroom. No results or production guarantee yet. [Design](P1_5_7E_SUPPORT_RETENTION_TR.md). No default changes; P1.4/P1.4R PARKED; all experimental/device gates remain. User requested deeper engineering; compare metrics and failures, not file/test count.
 
 
