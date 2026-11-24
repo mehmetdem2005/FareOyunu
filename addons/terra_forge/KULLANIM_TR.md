@@ -66,7 +66,7 @@ Hepsinde **Size** etki alanını, **Power** etki şiddetini belirler. Ramp, Stam
 - Yeni `core/height_layers.gd` katman çekirdeği **ayrı** kodlandı. 32×32 seyrek bloklarda Float32 yükseklik farkları tutar; temel arazi dosyasını değiştirmez.
 - Bu **v0.4.0-dev.1** açıklaması, izole ilk prototipin tarihçesidir. **v0.4.0-dev.2** ile katmanları mobil menüden isteğe bağlı açabiliyorsun.
 - **Terrain > Check** düğmesi artık katman kaydet/aç, görünürlük ve birleştirmeyi de kullanıcının arazisinden bağımsız test eder.
-- Bilgisayarda Godot 4.7.2 yüklüyse, tüm 16 regresyonu `bash addons/terra_forge/tests/run_all.sh /proje/yolu /godot/yolu` ile çalıştır.
+- Bilgisayarda Godot 4.7.2 yüklüyse, tüm 17 regresyonu `bash addons/terra_forge/tests/run_all.sh /proje/yolu /godot/yolu` ile çalıştır.
 - Ayrıntılı uygulama ve geriye uyumluluk sınırları: [P0_P1_IMPLEMENTATION_TR.md](P0_P1_IMPLEMENTATION_TR.md).
 
 ## 0.3.3 — Yeni mühendislik düzeltmeleri

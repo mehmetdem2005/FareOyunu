@@ -44,9 +44,13 @@ Malzeme boyama, bitki, taş ve obje yerleştirme bu fazın dışındadır.
 
 ## P1 canlı katman entegrasyonu (0.4.0-dev.2)
 
+**Not:** Yukarıdaki 'katmanlar henüz canlı bağlanmadı' ifadeleri v0.4.0-dev.1'in tarihsel durumudur; v0.4.0-dev.2 canlı katman entegrasyonunu içerir.
+
 - İsteğe bağlı **Enable Layers** işlemi mevcut TFH verisinden TFL1 belge yaratır; eski dosya dokunulmadan kalır. Sahne dosyasını ayrıca kaydetmek zorunludur.
 - TFL1, base + tüm delta katmanlarının **tek kalıcı otorite dosyasıdır**; TFH'ye çift yazım yapılmaz.
 - Fırça/Undo/Redo seçilen katmana uygulanır. Katman görünürlüğü kompoziti yeniden hesaplar ve geçmişi temizler.
 - `tests/test_live_layers.gd` opt-in, eski TFH'nin değişmemesi, çoklu katman, Undo/Redo, save/reopen ve eksik TFL1 korumasını denetler.
 - **Sınır:** Opaklığı 1 olmayan katmana fırça yapılmaz. Eklenti katman dosyası yokken mevcut TFH'ye sessizce dönmez. CI testleri yeşil olmadan cihaz kullanımında kararlı olduğu iddia edilmez.
-- **P0:** Test sayısı artık 16'dır; gerçek Android GPU/ısı ve uzun süreli dokunmatik testleri bekliyor.
+- **P0:** Test sayısı artık 17'dir; gerçek Android GPU/ısı ve uzun süreli dokunmatik testleri bekliyor.
+
+- `tests/test_layer_scene_roundtrip.gd`: Godot `.tscn` kaydında katman modu/yolu korunuyor ve `.tfl` ile yeniden açılan sahne aynı yüksekliği geri alıyor (17/17 CI).
