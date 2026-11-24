@@ -25,6 +25,8 @@ var _job_limit: int = 3
 var _manifest_hashes: Dictionary = {}
 var _root_v2 = null
 var _snapshot_id: String = ""
+# Monotonic per reader instance; TFM1 also needs reopen isolation.
+var _session_serial: int = 0
 var _shard_limit: int = 4
 var _verified_bits: PackedByteArray = PackedByteArray()
 var _verified_unique: int = 0
@@ -178,7 +180,11 @@ func _start_worker(directory: String, resident_limit: int, max_jobs: int, verify
         return status
     _thread_started = true
     _opened = true
+    _session_serial += 1
     return OK
+
+func session_serial() -> int:
+    return _session_serial
 
 func is_open() -> bool:
     return _opened

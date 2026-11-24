@@ -49,6 +49,7 @@ suite=(
   test_sampling_benchmark
   test_sampling_stream_trace
   test_scalar_sampling_benchmark
+  test_geometry_worker
   test_lod_policy
   test_surface_faces
   test_lod_normals
