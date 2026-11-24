@@ -5,6 +5,7 @@ extends RefCounted
 ## reader, cache lease, scene node, Mesh resource or Physics server object.
 const G = preload("res://addons/terra_forge/core/paged_tile_geometry.gd")
 const PUB = preload("res://addons/terra_forge/core/publication_accounting.gd")
+const TOPOLOGY = preload("res://addons/terra_forge/core/tile_topology_cache.gd")
 const DENSE = preload("res://addons/terra_forge/core/tile_dense_buffer.gd")
 const LOD = preload("res://addons/terra_forge/core/lod_policy.gd")
 const INPUT_CAP: int = 4900
@@ -24,6 +25,9 @@ var _snapshot: String = ""
 var _epoch: int = 0
 var _cap: int = 2
 var _scalar_sampling: bool = false
+var _topology
+var _topology_payload: int=0
+var _topology_setup_us: int=0
 var _next_id: int = 0
 var _pending: Array[Dictionary] = []
 var _finished: Array[Dictionary] = []
@@ -36,9 +40,9 @@ var _peak_slots: int = 0
 var _pruned_pending: int = 0
 var _pruned_finished: int = 0
 
-func start(source, cap: int=2, scalar_sampling: bool=false) -> Error:
+func start(source, cap: int=2, scalar_sampling: bool=false,reuse_topology: bool=false) -> Error:
     close()
-    if source==null or not source.is_open() or cap<1 or cap>4:
+    if source==null or not source.is_open() or cap<1 or cap>4 or (reuse_topology and not scalar_sampling):
         return ERR_INVALID_PARAMETER
     var stats: Dictionary=source.stats()
     _source_id=source.get_instance_id()
@@ -47,11 +51,21 @@ func start(source, cap: int=2, scalar_sampling: bool=false) -> Error:
     _epoch=stats["generation"]
     _cap=cap
     _scalar_sampling=scalar_sampling
+    if reuse_topology:
+        var started: int=Time.get_ticks_usec()
+        _topology=TOPOLOGY.new()
+        var err: Error=_topology.initialize()
+        if err!=OK:
+            close()
+            return err
+        _topology_payload=_topology.payload_bytes()
+        _topology_setup_us=Time.get_ticks_usec()-started
     _stop=false
     _thread=Thread.new()
     var status: Error=_thread.start(Callable(self,"_loop"),Thread.PRIORITY_LOW)
     if status!=OK:
         _thread=null
+        close()
         return status
     _open=true
     return OK
@@ -153,7 +167,7 @@ func _loop() -> void:
             var key: Vector2i=job["key"]
             var started: int=Time.get_ticks_usec()
             job["queue_wait_us"]=started-int(job["queued_us"])
-            var generated: Dictionary=G.generate_owned_dense_scalar(job["buffer"],key.x,key.y,job["lod"],job["desired"]) if _scalar_sampling else G.generate(job["buffer"],key.x,key.y,job["lod"],job["desired"])
+            var generated: Dictionary=G.generate_owned_dense_scalar(job["buffer"],key.x,key.y,job["lod"],job["desired"],_topology) if _scalar_sampling else G.generate(job["buffer"],key.x,key.y,job["lod"],job["desired"])
             var elapsed: int=Time.get_ticks_usec()-started
             var output_bytes: int=0
             if generated["error"]==OK:
@@ -255,7 +269,7 @@ func active_ids() -> Array[int]:
 
 func stats() -> Dictionary:
     _mutex.lock()
-    var result: Dictionary={"open":_open,"scalar_sampling":_scalar_sampling,"pending":_pending.size(),"inflight":_inflight,"finished":_finished.size(),"slots":_slots(),"cap":_cap,"reserved_payload_bytes":_slots()*SLOT_BYTES,"payload_cap_bytes":_cap*SLOT_BYTES,"peak_slots":_peak_slots,"pruned_pending":_pruned_pending,"pruned_finished":_pruned_finished,"submitted":_submitted,"delivered":_delivered,"dropped":_dropped,"epoch":_epoch}
+    var result: Dictionary={"open":_open,"scalar_sampling":_scalar_sampling,"topology_cache_bytes":_topology_payload,"topology_setup_us":_topology_setup_us,"total_worker_payload_allowance_bytes":_cap*SLOT_BYTES+_topology_payload,"pending":_pending.size(),"inflight":_inflight,"finished":_finished.size(),"slots":_slots(),"cap":_cap,"reserved_payload_bytes":_slots()*SLOT_BYTES,"payload_cap_bytes":_cap*SLOT_BYTES,"peak_slots":_peak_slots,"pruned_pending":_pruned_pending,"pruned_finished":_pruned_finished,"submitted":_submitted,"delivered":_delivered,"dropped":_dropped,"epoch":_epoch}
     _mutex.unlock()
     return result
 
@@ -272,6 +286,9 @@ func close() -> void:
     _thread=null
     _open=false
     _scalar_sampling=false
+    _topology=null
+    _topology_payload=0
+    _topology_setup_us=0
     _armed=false
     _wake=Semaphore.new()
     _inflight=0

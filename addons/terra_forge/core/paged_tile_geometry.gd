@@ -174,13 +174,13 @@ static func generate_with_dense(source, tx: int, tz: int, lod: int, desired: Dic
     return result
 
 ## Worker-owned dense buffer, no reader or lease involved.
-static func generate_owned_dense_scalar(buffer,tx: int,tz: int,lod: int,desired: Dictionary) -> Dictionary:
-    return _generate(buffer,tx,tz,lod,desired,true)
+static func generate_owned_dense_scalar(buffer,tx: int,tz: int,lod: int,desired: Dictionary,topology=null) -> Dictionary:
+    return _generate(buffer,tx,tz,lod,desired,true,topology)
 
 static func generate(source, tx: int, tz: int, lod: int, desired: Dictionary) -> Dictionary:
     return _generate(source,tx,tz,lod,desired,false)
 
-static func _generate(source, tx: int, tz: int, lod: int, desired: Dictionary, scalar: bool) -> Dictionary:
+static func _generate(source, tx: int, tz: int, lod: int, desired: Dictionary, scalar: bool,topology=null) -> Dictionary:
     if source == null or not source.is_open() or lod < 0 or lod > 2:
         return {"error": ERR_INVALID_PARAMETER}
     if tx < 0 or tz < 0 or (tx + 1) * TILE_CELLS > source.cells.x or (tz + 1) * TILE_CELLS > source.cells.y:
@@ -289,15 +289,20 @@ static func _generate(source, tx: int, tz: int, lod: int, desired: Dictionary, s
             normals[i] = normal
             colors[i] = grass.lerp(stone, clampf((1.0 - normal.y) * 3.0, 0.0, 1.0))
 
-    for z in range(width - 1):
-        for x in range(width - 1):
-            var a: int = z * width + x
-            indices.append(a)
-            indices.append(a + 1)
-            indices.append(a + width)
-            indices.append(a + 1)
-            indices.append(a + width + 1)
-            indices.append(a + width)
+    if topology!=null:
+        indices=topology.copy_indices(lod)
+        if indices.size()!=(width-1)*(width-1)*6:
+            return {"error":ERR_INVALID_DATA}
+    else:
+        for z in range(width - 1):
+            for x in range(width - 1):
+                var a: int = z * width + x
+                indices.append(a)
+                indices.append(a + 1)
+                indices.append(a + width)
+                indices.append(a + 1)
+                indices.append(a + width + 1)
+                indices.append(a + width)
     var arrays: Array = []
     arrays.resize(Mesh.ARRAY_MAX)
     arrays[Mesh.ARRAY_VERTEX] = vertices

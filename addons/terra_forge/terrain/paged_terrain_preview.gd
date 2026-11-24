@@ -24,7 +24,7 @@ const TILE_CELLS: int = 32
 ## Experimental A/B CPU sampling path. Default stays baseline until measured.
 @export var use_tile_read_view: bool = false
 ## -1 preserves serialized legacy bool. Explicit mode overrides it.
-@export_enum("Legacy flag:-1", "A direct:0", "B tile view:1", "C dense buffer:2", "E geometry worker:3", "F priority worker:4", "G scalar priority worker:5") var sampling_strategy: int = -1
+@export_enum("Legacy flag:-1", "A direct:0", "B tile view:1", "C dense buffer:2", "E geometry worker:3", "F priority worker:4", "G scalar priority worker:5", "H cached topology worker:6") var sampling_strategy: int = -1
 var _active_sampling_strategy: int = 0
 var _dense_payload_peak: int = 0
 @export_range(1,4,1) var geometry_job_limit: int = 2
@@ -100,7 +100,7 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
         _last_error = ERR_INVALID_PARAMETER
         return _last_error
     var selected: int = resolved_sampling_strategy()
-    if selected < 0 or selected > 5:
+    if selected < 0 or selected > 6:
         _last_error = ERR_INVALID_PARAMETER
         return _last_error
     if enforce_publication_budget and (publication_byte_target<4096 or publication_byte_target>1048576 or publication_time_target_us<100 or publication_time_target_us>8000):
@@ -122,7 +122,7 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
     _reader = next
     if selected>=3:
         _geometry_worker=WORKER.new()
-        status=_geometry_worker.start(_reader,geometry_job_limit,selected==5)
+        status=_geometry_worker.start(_reader,geometry_job_limit,selected>=5,selected==6)
         if status!=OK:
             stop_preview()
             _last_error=status

@@ -26,7 +26,7 @@ static func _close(p,result: Dictionary) -> Dictionary:
     return result
 
 static func run(directory: String, format: int, mode: int, cache: int, geometry_cap: int=2, cadence_us: int=0, observe_publication: bool=false) -> Dictionary:
-    if format not in [0,1] or mode not in [0,1,2,3,4,5] or cache not in [9,16] or geometry_cap not in [1,2,4] or cadence_us not in [0,8000]:
+    if format not in [0,1] or mode not in [0,1,2,3,4,5,6] or cache not in [9,16] or geometry_cap not in [1,2,4] or cadence_us not in [0,8000]:
         return {"error": ERR_INVALID_PARAMETER}
     var p = PREVIEW.new()
     p.region_index_format = format

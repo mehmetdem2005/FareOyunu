@@ -52,7 +52,7 @@ static func _fingerprints(p) -> Dictionary:
     return result
 
 static func run(directory: String,format: int,mode: int,cap: int) -> Dictionary:
-    if mode not in [2,3,4,5] or cap not in [1,2,4] or format not in [0,1]:
+    if mode not in [2,3,4,5,6] or cap not in [1,2,4] or format not in [0,1]:
         return {"error":ERR_INVALID_PARAMETER}
     var p=P.new()
     p.region_index_format=format

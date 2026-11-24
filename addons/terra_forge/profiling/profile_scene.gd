@@ -20,7 +20,7 @@ var _budget_toggle: CheckButton
 @export var enforce_publication_budget: bool=false
 @export_range(4096,1048576,4096) var publication_byte_target: int=131072
 @export_range(100,8000,100) var publication_time_target_us: int=1000
-@export_enum("Legacy flag:-1", "A direct:0", "B tile view:1", "C dense buffer:2", "E geometry worker:3", "F priority worker:4", "G scalar priority worker:5") var sampling_strategy: int = -1
+@export_enum("Legacy flag:-1", "A direct:0", "B tile view:1", "C dense buffer:2", "E geometry worker:3", "F priority worker:4", "G scalar priority worker:5", "H cached topology worker:6") var sampling_strategy: int = -1
 var _format: OptionButton
 var _fixture_size: OptionButton
 var _estimate: Label
@@ -99,8 +99,9 @@ func _ready() -> void:
     _sampling_choice.add_item("E geometry worker (experimental)", 3)
     _sampling_choice.add_item("F priority worker (experimental)", 4)
     _sampling_choice.add_item("G scalar priority worker (experimental)", 5)
+    _sampling_choice.add_item("H cached topology worker (experimental)", 6)
 
-    _sampling_choice.select(clampi((1 if use_tile_read_view else 0) if sampling_strategy == -1 else sampling_strategy, 0, 5))
+    _sampling_choice.select(clampi((1 if use_tile_read_view else 0) if sampling_strategy == -1 else sampling_strategy, 0, 6))
     _sampling_choice.item_selected.connect(func(index): sampling_strategy = _sampling_choice.get_item_id(index))
     ui.add_child(_sampling_choice)
     _budget_toggle=CheckButton.new()
