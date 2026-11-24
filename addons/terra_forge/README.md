@@ -1,37 +1,75 @@
-# TerraForge Mobile — v0.1.0 (first functional slice)
+# TerraForge Mobile — v0.2.0 (resident tile LOD prototype)
 
-A **standalone** Godot 4.7.2 3D terrain editor addon, developed without Terrain3D, native libraries, or any changes to game scenes. Mobile Renderer is the initial target.
+Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, native library, or changes to game files. Designed for Android editor testing with Mobile Renderer.
 
-## Install
-1. Copy `addons/terra_forge/` into any Godot 4.7.2 project.
-2. Open **Project > Project Settings > Plugins** and enable **TerraForge Mobile**.
-3. Open a 3D scene; find the **TerraForge** bottom panel and choose **Create Terrain**.
-4. Select the generated `TerraForgeTerrain` node and toggle **Brush ON**.
-5. Use left mouse drag or a single touch to Raise, Lower, Smooth or Flatten. **Brush OFF** returns normal editor camera controls.
-6. Tap **Save**, or leave the brush idle for auto-save after ~3 seconds.
+## Install / use
 
-## Scope & data integrity
-- Adds nothing outside `addons/terra_forge/` to the source repository.
-- When users create terrain, its Float32 data is saved to a separate `res://terraforge_data/*.tfh` file in *their project*. The scene references this file via `data_file`; both scene and data file must be preserved when moving a project.
-- A `.tfh` file is simple raw Float32 data (magic TFH1, UInt32 cells x/z, Float32 spacing, Float32 height samples row-major). It is **not** a PNG, and no quantization happens.
-- Auto-save uses a temporary file and rename so interrupted writes do not overwrite a valid previous file.
-- Generated tile mesh and collision children are transient; the saved scene stores only the terrain node settings.
-- For preview, the entire 256×256 m grid is initially built as 32×32 m tiles. **LOD, streaming, materials, instancing, and imported heightmaps are NOT implemented in v0.1.0.**
-- The editing surface is a minimum viable tool, not a performance claim against Terrain3D.
+1. Copy **only** `addons/terra_forge/` into the root of any Godot 4.7.2 project.
+2. Open **Project > Project Settings > Plugins**, enable **TerraForge Mobile**.
+3. Open a saved 3D scene (Node3D root). Open the **TerraForge** bottom dock and press **Create Terrain**.
+4. Select the generated terrain node, enable **Brush ON**, choose Raise / Lower / Smooth / Flatten, then drag a finger or left mouse button.
+5. Disable Brush to regain ordinary editor camera navigation. **Save** writes Float32 heights. Save the scene separately.
+6. Use the **Streaming quality** dropdown to select **Mobile - light**, **Balanced**, or **High detail**.
 
-## Current limitations
-- Exact Android 11 / Godot 4.7.2 device validation remains outstanding.
-- Touch dispatch in the Godot Android *editor* must be verified on-device.
-- Scene changes from creating a terrain node are saved by Godot's normal scene Save operation.
-- Undo/Redo buttons track the last 20 brush strokes in local memory, not the global EditorUndoRedoManager yet.
-- Changing width, depth, spacing or data path on an existing node requires a scene reload; saved Float32 data is authoritative.
+## Features implemented
 
-## Development sequence
-1. v0.1 — height store, editable tile meshes, touch/mouse sculpt, undo/redo, save/load.
-2. v0.2 — offscreen tile streaming and LOD variants, seam tests, collision scheduling.
-3. v0.3 — layered lightweight material shader and painting.
-4. v0.4 — terrain stamps, foliage cells and more brushes.
-5. v0.5 — profiling Android hardware, optimizing hot paths and crash tests.
+- **Lossless Float32 height storage** in a versioned `.tfh` height file (little-endian TFH1 header + row-major Float32 samples).
+- **Resident visual tiles**: allocate only camera-near tile nodes, with maximum active tile budget. Drop far mesh/collision nodes on travel.
+- **3 mesh LODs**: tile sampling strides 1, 2 and 4 with descending mesh complexity. Adaptive skirts cover cracks where neighboring levels meet.
+- **Editor camera following** through `EditorInterface.get_editor_viewport_3d(0).get_camera_3d()`. Scene camera following while running.
+- **Collision only at closest LOD**, with properly uniform scaling and pre-scaled height values.
+- **Per-frame tile rebuild budget**, with edited/dirtied tiles queued rather than regenerating the whole map at once.
+- Touch/mouse shaping, 20-step local Undo/Redo, 2.5-second idle autosave, corrupt file write guard.
+- Live tile stats in the editor dock.
 
-## License
-New TerraForge implementation. No Terrain3D source files copied.
+## Mobile streaming budgets (initial estimates; NOT performance measurements)
+
+| Profile | View radius | Max resident tiles | LOD0 / LOD1 radii | Rebuilds per frame |
+| --- | ---: | ---: | ---: | ---: |
+| Mobile - light | 160m | 64 | 56m / 104m | 1 |
+| Balanced (default) | 224m | 96 | 72m / 144m | 2 |
+| High detail | 320m | 160 | 112m / 208m | 3 |
+
+The **full Float32 height field remains in RAM**. This version streams visible **mesh + physics tiles**, not source height files from storage. It is not an infinite terrain system.
+
+## File safety / project isolation
+
+- This feature branch only writes paths inside `addons/terra_forge/`. It does not alter the FareOyunu game, player, project settings, or scenes.
+- When a user creates a terrain in their own project, height data is saved to `res://terraforge_data/<scene>_<id>.tfh`. This is user-generated runtime content, not part of this repository's changes.
+- Heightmap files are written to a temporary path then renamed. If the existing height file is corrupt/unreadable, editing and saving are blocked until recovered externally.
+- Save both the scene **and** its linked `.tfh` data file when migrating a project.
+- Generated tile meshes and collision nodes are internal children and are not persisted into scenes.
+
+## Limitations / pending validation
+
+- **Not yet validated on the user's Android 11 Godot 4.7.2 installation.** GDScript parsing, touch gestures and frame-time targets require on-device tests.
+- Skirts conceal visual cracks, but geometry remains LOD-discontinuous at T-junctions; precise edge stitching will follow.
+- The full Float32 heightmap is resident even when no mesh tile is loaded. File-backed streaming is not yet implemented.
+- Tile mesh builds happen on the main thread, strictly limited per frame. A later stage can move mesh input preparation to worker threads.
+- Collision is disabled for lower-detail tiles and enabled only near the camera. This is for performance; far-away physics interactions require a separate collision strategy.
+- The first generation has no texture painter, terrain stamps, foliage, erosion or 3D assets.
+- The 20 Undo/Redo entries live only in the terrain node's memory; Godot's global editor Undo/Redo integration remains pending.
+- Brush strength depends on how many input events arrive (future update: fixed-distance or time-normalized stamping).
+
+## Automated tests
+
+From a project containing the addon:
+
+```bash
+godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_height_store.gd
+godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_lod_policy.gd
+```
+
+See [MOBILE_TEST_PLAN.md](MOBILE_TEST_PLAN.md) for hands-on Android checks and acceptance criteria. These tests have **not yet been executed** with the Godot engine here.
+
+## Next stages
+
+1. Test v0.2 on Android 11 editor + fix any GDScript/API errors.
+2. Add progressive mesh generation that prevents frame spikes during initial loading.
+3. Implement true LOD seam stitching + sample-independent camera brush interaction.
+4. Add lightweight tile-based 2–4 material painter and GPU budget presets.
+5. Extend to file-backed height tile streaming, bounded collision cache, foliage cells and profiling.
+
+## License / origin
+
+Independent implementation. No Terrain3D source files copied.

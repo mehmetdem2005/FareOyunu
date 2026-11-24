@@ -3,6 +3,7 @@ class_name TerraForgeTerrain
 extends Node3D
 ## A self-contained, Float32, tiled terrain. Generated children are transient.
 const HEIGHT_STORE = preload("res://addons/terra_forge/core/height_store.gd")
+const LOD_POLICY = preload("res://addons/terra_forge/core/lod_policy.gd")
 const TILE_CELLS: int = 32
 const MAX_HISTORY: int = 20
 
@@ -10,10 +11,21 @@ const MAX_HISTORY: int = 20
 @export_range(32, 2048, 32) var cells_z: int = 256
 @export_range(0.25, 4.0, 0.25) var sample_spacing: float = 1.0
 @export_file("*.tfh") var data_file: String = "res://terraforge_data/terrain.tfh"
+@export_range(80.0, 640.0, 16.0) var view_distance: float = 224.0
+@export_range(32, 256, 8) var max_visible_tiles: int = 96
+@export_range(1, 6, 1) var tile_updates_per_frame: int = 2
+@export_range(32.0, 180.0, 8.0) var high_detail_distance: float = 72.0
+@export_range(80.0, 320.0, 8.0) var medium_detail_distance: float = 144.0
 
 var height_data
-var _tile_nodes: Dictionary = {}
+var _tile_nodes: Dictionary = {}  # Resident tiles only; not all map tiles.
 var _dirty_tiles: Dictionary = {}
+var _tile_queue: Dictionary = {}
+var _stream_anchor: Vector3 = Vector3.ZERO
+var _stream_anchor_valid: bool = false
+var _last_stream_sync: int = -100000
+var _last_stream_camera: Vector3 = Vector3(1000000.0, 0.0, 1000000.0)
+var _read_only_source: bool = false
 var _history: Array[Dictionary] = []
 var _redo: Array[Dictionary] = []
 var _stroke_before: Dictionary = {}
@@ -34,15 +46,21 @@ func _ready() -> void:
             sample_spacing
         )
         if load_error != ERR_FILE_NOT_FOUND:
-            push_warning("TerraForge: Cannot open terrain file (%s). Starting a blank temporary preview; do NOT save over the damaged file." % error_string(load_error))
-            _changed_since_save = false
+            _read_only_source = true
+            push_error("TerraForge: Damaged or unreadable height file. Editing/saving disabled to protect it: " + data_file)
     cells_x = height_data.cells.x
     cells_z = height_data.cells.y
     sample_spacing = height_data.spacing
     _terrain_material = StandardMaterial3D.new()
     _terrain_material.vertex_color_use_as_albedo = true
     _terrain_material.roughness = 0.95
-    _build_tiles()
+    _stream_anchor = Vector3(
+        float(height_data.cells.x) * height_data.spacing * 0.5,
+        0.0,
+        float(height_data.cells.y) * height_data.spacing * 0.5
+    )
+    _stream_anchor_valid = true
+    _sync_resident_tiles()
     set_process(true)
 
 func _exit_tree() -> void:
@@ -50,57 +68,162 @@ func _exit_tree() -> void:
         save_data()
 
 func _process(_delta: float) -> void:
+    if height_data == null:
+        return
+    # In a running game, follow the actual scene camera. In the editor,
+    # plugin.gd forwards the 3D editor camera explicitly.
+    if not Engine.is_editor_hint():
+        var scene_camera: Camera3D = get_viewport().get_camera_3d()
+        if scene_camera != null:
+            set_stream_center(scene_camera.global_position)
     var now: int = Time.get_ticks_msec()
-    if not _dirty_tiles.is_empty() and now - _last_mesh_time >= 90:
+    if now - _last_stream_sync > 220:
+        _sync_resident_tiles()
+        _last_stream_sync = now
+    if not _dirty_tiles.is_empty() and now - _last_mesh_time >= 85:
         _refresh_dirty_tiles()
         _last_mesh_time = now
+    _drain_tile_queue()
     if _changed_since_save and not _stroke_open and now - _last_edit_time >= 2500:
         save_data()
+
+func set_stream_center(global_position: Vector3) -> void:
+    var local_position: Vector3 = to_local(global_position)
+    if not _stream_anchor_valid or _stream_anchor.distance_squared_to(local_position) > 64.0:
+        _stream_anchor = local_position
+        _stream_anchor_valid = true
+        _last_stream_sync = -100000
 
 func _tile_key(tx: int, tz: int) -> Vector2i:
     return Vector2i(tx, tz)
 
-func _build_tiles() -> void:
-    for key in _tile_nodes.keys():
-        var item: Dictionary = _tile_nodes[key]
-        var old_node: Node3D = item["root"]
-        if is_instance_valid(old_node):
-            old_node.free()
-    _tile_nodes.clear()
-    var nx: int = int(height_data.cells.x / TILE_CELLS)
-    var nz: int = int(height_data.cells.y / TILE_CELLS)
-    for tz in range(nz):
-        for tx in range(nx):
-            var root: Node3D = Node3D.new()
-            root.name = "TF_Tile_%d_%d" % [tx, tz]
-            root.position = Vector3(
-                float(tx * TILE_CELLS) * height_data.spacing,
-                0.0,
-                float(tz * TILE_CELLS) * height_data.spacing
-            )
-            add_child(root, false, Node.INTERNAL_MODE_FRONT)
-            var visual: MeshInstance3D = MeshInstance3D.new()
-            visual.name = "Visual"
-            visual.material_override = _terrain_material
-            root.add_child(visual)
-            var physics: StaticBody3D = StaticBody3D.new()
-            physics.name = "Physics"
-            root.add_child(physics)
-            var collision: CollisionShape3D = CollisionShape3D.new()
-            collision.name = "HeightCollision"
-            collision.position = Vector3(
-                float(TILE_CELLS) * height_data.spacing * 0.5,
-                0.0,
-                float(TILE_CELLS) * height_data.spacing * 0.5
-            )
-            collision.scale = Vector3(height_data.spacing, 1.0, height_data.spacing)
-            physics.add_child(collision)
-            var item: Dictionary = {"root": root, "visual": visual, "collision": collision}
-            _tile_nodes[_tile_key(tx, tz)] = item
-            _rebuild_tile(tx, tz, item)
+func _create_tile(tx: int, tz: int) -> Dictionary:
+    var root: Node3D = Node3D.new()
+    root.name = "TF_Tile_%d_%d" % [tx, tz]
+    root.position = Vector3(
+        float(tx * TILE_CELLS) * height_data.spacing,
+        0.0,
+        float(tz * TILE_CELLS) * height_data.spacing
+    )
+    # Internal children never pollute the saved 3D scene or user's scene tree.
+    add_child(root, false, Node.INTERNAL_MODE_FRONT)
+    var visual: MeshInstance3D = MeshInstance3D.new()
+    visual.name = "Visual"
+    visual.material_override = _terrain_material
+    root.add_child(visual)
+    var physics: StaticBody3D = StaticBody3D.new()
+    physics.name = "Physics"
+    root.add_child(physics)
+    var collision: CollisionShape3D = CollisionShape3D.new()
+    collision.name = "HeightCollision"
+    collision.position = Vector3(
+        float(TILE_CELLS) * height_data.spacing * 0.5,
+        0.0,
+        float(TILE_CELLS) * height_data.spacing * 0.5
+    )
+    # GodotPhysics3D requires uniform scale. The height map samples
+    # are divided by spacing when building the collision shape.
+    collision.scale = Vector3.ONE * height_data.spacing
+    physics.add_child(collision)
+    return {"root": root, "visual": visual, "collision": collision, "lod": -1, "desired_lod": 0}
 
-func _rebuild_tile(tx: int, tz: int, item: Dictionary) -> void:
-    var width: int = TILE_CELLS + 1
+func _sync_resident_tiles() -> void:
+    if not _stream_anchor_valid or height_data == null:
+        return
+    var candidates: Array[Dictionary] = LOD_POLICY.tile_candidates(
+        height_data.cells,
+        TILE_CELLS,
+        height_data.spacing,
+        _stream_anchor,
+        view_distance,
+        high_detail_distance,
+        medium_detail_distance,
+        max_visible_tiles
+    )
+    var desired: Dictionary = {}
+    for entry in candidates:
+        var key: Vector2i = entry["key"]
+        var level: int = int(entry["lod"])
+        desired[key] = level
+        if not _tile_nodes.has(key):
+            _tile_nodes[key] = _create_tile(key.x, key.y)
+            _tile_queue[key] = true
+        var tile: Dictionary = _tile_nodes[key]
+        if int(tile["desired_lod"]) != level:
+            tile["desired_lod"] = level
+            _tile_queue[key] = true
+    # Release all geometry, collision, and CPU meshes outside the resident set.
+    for key in _tile_nodes.keys():
+        if not desired.has(key):
+            var tile: Dictionary = _tile_nodes[key]
+            var root: Node3D = tile["root"]
+            if is_instance_valid(root):
+                root.free()
+            _tile_nodes.erase(key)
+            _tile_queue.erase(key)
+    _last_stream_camera = _stream_anchor
+
+func _drain_tile_queue() -> void:
+    if _tile_queue.is_empty():
+        return
+    var keys: Array = _tile_queue.keys()
+    keys.sort_custom(func(a: Variant, b: Variant) -> bool:
+        var da: float = LOD_POLICY.tile_distance(a, float(TILE_CELLS) * height_data.spacing, _stream_anchor)
+        var db: float = LOD_POLICY.tile_distance(b, float(TILE_CELLS) * height_data.spacing, _stream_anchor)
+        return da < db
+    )
+    var budget: int = maxi(1, tile_updates_per_frame)
+    for key in keys:
+        if budget <= 0:
+            break
+        _tile_queue.erase(key)
+        if not _tile_nodes.has(key):
+            continue
+        var tile: Dictionary = _tile_nodes[key]
+        var level: int = int(tile["desired_lod"])
+        _rebuild_tile(key.x, key.y, tile, level)
+        tile["lod"] = level
+        budget -= 1
+
+func get_stream_stats() -> Dictionary:
+    var lod_counts: PackedInt32Array = PackedInt32Array([0, 0, 0])
+    for key in _tile_nodes:
+        var tile: Dictionary = _tile_nodes[key]
+        var lod: int = int(tile["lod"])
+        if lod >= 0 and lod < lod_counts.size():
+            lod_counts[lod] += 1
+    return {
+        "resident": _tile_nodes.size(), "pending": _tile_queue.size(),
+        "lod0": lod_counts[0], "lod1": lod_counts[1], "lod2": lod_counts[2]
+    }
+
+func set_quality_profile(profile: int) -> void:
+    match profile:
+        0: # Low-end Android
+            view_distance = 160.0
+            max_visible_tiles = 64
+            high_detail_distance = 56.0
+            medium_detail_distance = 104.0
+            tile_updates_per_frame = 1
+        1: # Balanced Android (default)
+            view_distance = 224.0
+            max_visible_tiles = 96
+            high_detail_distance = 72.0
+            medium_detail_distance = 144.0
+            tile_updates_per_frame = 2
+        2: # Higher-end devices
+            view_distance = 320.0
+            max_visible_tiles = 160
+            high_detail_distance = 112.0
+            medium_detail_distance = 208.0
+            tile_updates_per_frame = 3
+    _last_stream_sync = -100000
+
+func _rebuild_tile(tx: int, tz: int, item: Dictionary, lod: int) -> void:
+    var stride: int = LOD_POLICY.sample_stride(lod)
+    var width: int = int(TILE_CELLS / stride) + 1
+    var minimum_height: float = INF
+    var maximum_height: float = -INF
     var vertices: PackedVector3Array = PackedVector3Array()
     var normals: PackedVector3Array = PackedVector3Array()
     var uv: PackedVector2Array = PackedVector2Array()
@@ -110,9 +233,13 @@ func _rebuild_tile(tx: int, tz: int, item: Dictionary) -> void:
     var step: float = height_data.spacing
     for z in range(width):
         for x in range(width):
-            var gx: int = tx * TILE_CELLS + x
-            var gz: int = tz * TILE_CELLS + z
+            var sx: int = x * stride
+            var sz: int = z * stride
+            var gx: int = tx * TILE_CELLS + sx
+            var gz: int = tz * TILE_CELLS + sz
             var y: float = height_data.get_height(gx, gz)
+            minimum_height = minf(minimum_height, y)
+            maximum_height = maxf(maximum_height, y)
             var slope_x: float = (
                 height_data.get_height(gx + 1, gz) -
                 height_data.get_height(gx - 1, gz)
@@ -125,13 +252,13 @@ func _rebuild_tile(tx: int, tz: int, item: Dictionary) -> void:
             var steepness: float = clampf(1.0 - normal.y, 0.0, 1.0)
             var grass: Color = Color(0.27, 0.39, 0.22)
             var stone: Color = Color(0.48, 0.46, 0.41)
-            vertices.append(Vector3(float(x) * step, y, float(z) * step))
+            vertices.append(Vector3(float(sx) * step, y, float(sz) * step))
             normals.append(normal)
             uv.append(Vector2(float(gx), float(gz)) * step * 0.125)
             colors.append(grass.lerp(stone, clampf(steepness * 3.0, 0.0, 1.0)))
-            height_samples.append(y)
-    for z in range(TILE_CELLS):
-        for x in range(TILE_CELLS):
+            height_samples.append(y / step)
+    for z in range(width - 1):
+        for x in range(width - 1):
             var a: int = z * width + x
             # Upward-facing triangle winding.
             indices.append(a)
@@ -140,6 +267,51 @@ func _rebuild_tile(tx: int, tz: int, item: Dictionary) -> void:
             indices.append(a + 1)
             indices.append(a + width)
             indices.append(a + width + 1)
+    # Skirts hide T-junction cracks between neighboring levels of detail.
+    # Each edge is drawn outward; this doesn't modify the original height data.
+    var skirt_floor: float = minimum_height - maxf(4.0, (maximum_height - minimum_height) * 0.5 + 2.0)
+    for side in range(4):
+        for i in range(width - 1):
+            var ax: int = 0
+            var az: int = 0
+            var bx: int = 0
+            var bz: int = 0
+            var outward: Vector3 = Vector3.ZERO
+            match side:
+                0: # North, +X
+                    ax = i
+                    bx = i + 1
+                    outward = Vector3(0.0, 0.0, -1.0)
+                1: # East, +Z
+                    ax = width - 1
+                    bx = width - 1
+                    az = i
+                    bz = i + 1
+                    outward = Vector3(1.0, 0.0, 0.0)
+                2: # South, -X
+                    ax = width - 1 - i
+                    bx = width - 2 - i
+                    az = width - 1
+                    bz = width - 1
+                    outward = Vector3(0.0, 0.0, 1.0)
+                3: # West, -Z
+                    az = width - 1 - i
+                    bz = width - 2 - i
+                    outward = Vector3(-1.0, 0.0, 0.0)
+            var ha: float = height_data.get_height(tx * TILE_CELLS + ax * stride, tz * TILE_CELLS + az * stride)
+            var hb: float = height_data.get_height(tx * TILE_CELLS + bx * stride, tz * TILE_CELLS + bz * stride)
+            var start: int = vertices.size()
+            for v in [
+                Vector3(float(ax * stride) * step, ha, float(az * stride) * step),
+                Vector3(float(bx * stride) * step, hb, float(bz * stride) * step),
+                Vector3(float(ax * stride) * step, skirt_floor, float(az * stride) * step),
+                Vector3(float(bx * stride) * step, skirt_floor, float(bz * stride) * step)
+            ]:
+                vertices.append(v)
+                normals.append(outward)
+                uv.append(Vector2(v.x, v.z) * 0.125)
+                colors.append(Color(0.33, 0.32, 0.29))
+            indices.append_array(PackedInt32Array([start, start + 1, start + 2, start + 1, start + 3, start + 2]))
     var arrays: Array = []
     arrays.resize(Mesh.ARRAY_MAX)
     arrays[Mesh.ARRAY_VERTEX] = vertices
@@ -151,12 +323,17 @@ func _rebuild_tile(tx: int, tz: int, item: Dictionary) -> void:
     new_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
     var visual: MeshInstance3D = item["visual"]
     visual.mesh = new_mesh
-    var shape: HeightMapShape3D = HeightMapShape3D.new()
-    shape.map_width = width
-    shape.map_depth = width
-    shape.map_data = height_samples
+
+    # Only LOD0 tiles have physics. Uniform scale is required by GodotPhysics3D.
     var collision: CollisionShape3D = item["collision"]
-    collision.shape = shape
+    if lod == 0:
+        var shape: HeightMapShape3D = HeightMapShape3D.new()
+        shape.map_width = width
+        shape.map_depth = width
+        shape.map_data = height_samples
+        collision.shape = shape
+    else:
+        collision.shape = null
 
 func _mark_sample_dirty(x: int, z: int) -> void:
     var tx1: int = floori(float(x) / float(TILE_CELLS))
@@ -173,8 +350,7 @@ func _mark_sample_dirty(x: int, z: int) -> void:
 func _refresh_dirty_tiles() -> void:
     for key in _dirty_tiles.keys():
         if _tile_nodes.has(key):
-            var item: Dictionary = _tile_nodes[key]
-            _rebuild_tile(key.x, key.y, item)
+            _tile_queue[key] = true
     _dirty_tiles.clear()
 
 func begin_stroke() -> void:
@@ -185,7 +361,7 @@ func begin_stroke() -> void:
     _flatten_target_set = false
 
 func paint_at(global_hit: Vector3, tool: int, brush_radius: float, strength: float) -> void:
-    if not _stroke_open:
+    if not _stroke_open or _read_only_source:
         return
     var local_hit: Vector3 = to_local(global_hit)
     var px: float = local_hit.x / height_data.spacing
@@ -289,6 +465,8 @@ func redo_stroke() -> void:
 func save_data() -> Error:
     if height_data == null:
         return ERR_UNCONFIGURED
+    if _read_only_source:
+        return ERR_FILE_CORRUPT
     var result: Error = height_data.save_file(data_file)
     if result == OK:
         _changed_since_save = false

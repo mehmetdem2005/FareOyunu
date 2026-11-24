@@ -9,6 +9,9 @@ var _brush_button: CheckButton
 var _tool_select: OptionButton
 var _radius: HSlider
 var _strength: HSlider
+var _profile_select: OptionButton
+var _stats_label: Label
+var _last_stats_update_ms: int = -100000
 var _active: TerraForgeTerrain
 var _stroke_active: bool = false
 var _touch_session: bool = false
@@ -77,12 +80,54 @@ func _enter_tree() -> void:
     _strength.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     radius_row.add_child(_strength)
 
+    var profile_row: HBoxContainer = HBoxContainer.new()
+    _dock.add_child(profile_row)
+    var quality_caption: Label = Label.new()
+    quality_caption.text = "Streaming quality"
+    profile_row.add_child(quality_caption)
+    _profile_select = OptionButton.new()
+    _profile_select.add_item("Mobile - light")
+    _profile_select.add_item("Balanced")
+    _profile_select.add_item("High detail")
+    _profile_select.select(1)
+    _profile_select.item_selected.connect(_quality_changed)
+    _profile_select.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    profile_row.add_child(_profile_select)
+    _stats_label = Label.new()
+    _stats_label.text = "Resident: 0  |  Pending: 0"
+    _dock.add_child(_stats_label)
+
     _status = Label.new()
     _status.text = "Open a 3D scene, then Create Terrain."
     _status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     _dock.add_child(_status)
     add_control_to_bottom_panel(_dock, "TerraForge")
     get_editor_interface().get_selection().selection_changed.connect(_on_selection_changed)
+    set_process(true)
+
+func _process(_delta: float) -> void:
+    if not is_instance_valid(_active):
+        return
+    var now: int = Time.get_ticks_msec()
+    if now - _last_stats_update_ms < 180:
+        return
+    _last_stats_update_ms = now
+    var editor_view: SubViewport = get_editor_interface().get_editor_viewport_3d(0)
+    if editor_view != null:
+        var editor_camera: Camera3D = editor_view.get_camera_3d()
+        if editor_camera != null:
+            _active.set_stream_center(editor_camera.global_position)
+    if _stats_label != null:
+        var stats: Dictionary = _active.get_stream_stats()
+        _stats_label.text = "Tiles %d | Pending %d | LOD 0/1/2: %d/%d/%d" % [
+            stats["resident"], stats["pending"],
+            stats["lod0"], stats["lod1"], stats["lod2"]
+        ]
+
+func _quality_changed(profile: int) -> void:
+    if is_instance_valid(_active):
+        _active.set_quality_profile(profile)
+        _set_status("Streaming preset updated. Only visible tiles are kept.")
 
 func _exit_tree() -> void:
     _finish_stroke()
