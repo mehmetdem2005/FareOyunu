@@ -256,6 +256,21 @@ func _touch(key: Vector2i) -> void:
         _lru.remove_at(idx)
     _lru.append(key)
 
+## Main-thread-only duplicate check for a pending, running, or
+## completed-but-uncommitted read. Avoid counting duplicate requests
+## against the per-pump *new job* submission budget.
+func is_requested(key: Vector2i) -> bool:
+    return _reserved.has(key)
+
+## Cache pinning hint for a tile under construction. Only promotes
+## already resident verified pages; does NOT retain extra pages.
+func prioritize_resident(keys: Array[Vector2i]) -> void:
+    if not _opened:
+        return
+    for key in keys:
+        if _cache.has(key):
+            _touch(key)
+
 func page_status(key: Vector2i) -> Error:
     if not _valid_page(key):
         return ERR_INVALID_PARAMETER

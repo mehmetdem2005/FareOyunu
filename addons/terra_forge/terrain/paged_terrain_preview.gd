@@ -26,6 +26,9 @@ var _pending_tiles: Dictionary = {}
 var _material: StandardMaterial3D
 var _anchor: Vector3 = Vector3.ZERO
 var _anchor_valid: bool = false
+var _queue_focus_page: Vector2i = Vector2i(-999999, -999999)
+var _camera_cancellations: int = 0
+var _waiting_tile_frames: int = 0
 var _last_sync_msec: int = -100000
 var _last_error: Error = OK
 var _last_error_page: Vector2i = Vector2i(-1, -1)
@@ -73,6 +76,9 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
     max_background_jobs = max_jobs
     _last_error = OK
     _last_error_page = Vector2i(-1, -1)
+    _queue_focus_page = Vector2i(-999999, -999999)
+    _camera_cancellations = 0
+    _waiting_tile_frames = 0
     _anchor = Vector3(
         float(_reader.cells.x) * _reader.spacing * 0.5,
         0.0, float(_reader.cells.y) * _reader.spacing * 0.5
@@ -93,6 +99,7 @@ func stop_preview() -> void:
     _desired_tiles.clear()
     _pending_tiles.clear()
     _anchor_valid = false
+    _queue_focus_page = Vector2i(-999999, -999999)
     if _reader != null:
         _reader.close()  # explicit safe worker Thread join; not per-frame.
         _reader = null
@@ -140,6 +147,31 @@ func pump_stream() -> Dictionary:
 func _sync_tiles() -> void:
     if _reader == null or not _anchor_valid:
         return
+    # The original preview only changed which MESHES were desired. It
+    # never cancelled disk work for an old camera location. Cancel when
+    # the camera moved at least two regions from the last queue focus;
+    # this avoids cancelling useful reads at every normal tile boundary.
+    var tile_world: float = float(TILE_CELLS) * _reader.spacing
+    var focus_page: Vector2i = Vector2i(
+        floori(_anchor.x / tile_world), floori(_anchor.z / tile_world)
+    )
+    if _queue_focus_page.x == -999999:
+        _queue_focus_page = focus_page
+    elif maxi(
+            absi(focus_page.x - _queue_focus_page.x),
+            absi(focus_page.y - _queue_focus_page.y)
+        ) >= 2:
+        var current_generation: int = int(_reader.stats()["generation"])
+        var cancel_error: Error = _reader.set_generation(current_generation + 1)
+        if cancel_error != OK:
+            _last_error = cancel_error
+            return
+        _queue_focus_page = focus_page
+        _camera_cancellations += 1
+        # Page errors from the old camera generation do not describe the
+        # current area; if damage persists, the new IO reports it again.
+        _last_error = OK
+        _last_error_page = Vector2i(-1, -1)
     var found: Array[Dictionary] = LOD.tile_candidates(
         _reader.cells, TILE_CELLS, _reader.spacing,
         _anchor, view_distance, high_detail_distance,
@@ -217,6 +249,10 @@ func _build_pending_tiles() -> void:
             break
         var lod: int = int(_desired_tiles[key])
         var required: Array[Vector2i] = GEOMETRY.required_pages(_reader, key.x, key.y, lod)
+        # Keep every already-loaded member of this tile's height/normal
+        # halo hotter than unrelated pages before new IO completions
+        # evict anything. The reader still enforces its exact page cap.
+        _reader.prioritize_resident(required)
         var all_resident: bool = true
         for page in required:
             var state: Error = _reader.page_status(page)
@@ -226,7 +262,7 @@ func _build_pending_tiles() -> void:
                     _last_error = state
                     _last_error_page = page
                     return
-                if submitted < max_background_jobs:
+                if submitted < max_background_jobs and not _reader.is_requested(page):
                     var request: Error = _reader.request_page(page)
                     if request != OK and request != ERR_BUSY:
                         _last_error = request
@@ -235,6 +271,7 @@ func _build_pending_tiles() -> void:
                     if request == OK:
                         submitted += 1
         if not all_resident:
+            _waiting_tile_frames += 1
             # Focus only on the nearest pending tile. Otherwise page loads
             # for far tiles can evict this tile's required border samples.
             break
@@ -289,6 +326,9 @@ func stats() -> Dictionary:
         "source": source,
         "last_error": _last_error,
         "last_error_page": _last_error_page,
+        "focus_page": _queue_focus_page,
+        "camera_cancellations": _camera_cancellations,
+        "waiting_tile_frames": _waiting_tile_frames,
         "writable": false
     }
 
