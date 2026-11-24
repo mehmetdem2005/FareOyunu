@@ -5,6 +5,7 @@ extends RefCounted
 ## Mesh, Physics, ResourceLoader or shared mutable heightfield access.
 ## Strict open validates all pages; on-demand open checks only the manifest.
 ## Camera epoch cancellation never changes the pinned manifest.
+const PAGE_CODEC = preload("res://addons/terra_forge/core/region_page_codec.gd")
 const HISTOGRAM = preload("res://addons/terra_forge/core/profile_histogram.gd")
 const MANIFEST = preload("res://addons/terra_forge/core/region_manifest.gd")
 const REGIONS = preload("res://addons/terra_forge/core/region_store.gd")
@@ -73,42 +74,9 @@ static func _sha(data: PackedByteArray) -> String:
 static func _read_page_file(job: Dictionary) -> Dictionary:
     var begin: int = Time.get_ticks_usec()
     var key: Vector2i = job["key"]
-    var result: Dictionary = {
-        "key": key, "generation": int(job["generation"]),
-        "error": ERR_FILE_CORRUPT
-    }
-    var path: String = str(job["path"])
-    if not FileAccess.file_exists(path):
-        result["error"] = ERR_FILE_NOT_FOUND
-    else:
-        var file: FileAccess = FileAccess.open(path, FileAccess.READ)
-        if file == null:
-            result["error"] = FileAccess.get_open_error()
-        elif file.get_length() != FILE_BYTES:
-            result["error"] = ERR_FILE_CORRUPT
-        else:
-            # One file handle, one immutable byte snapshot; no hash(path) /
-            # parse(path) / hash(path) time-of-check/time-of-use gap.
-            var raw: PackedByteArray = file.get_buffer(FILE_BYTES)
-            file.close()
-            if raw.size() == FILE_BYTES and _sha(raw) == str(job["sha256"]):
-                var payload: PackedByteArray = raw.slice(0, REGIONS.HEADER_BYTES + PAGE_BYTES)
-                var inner: String = raw.slice(REGIONS.HEADER_BYTES + PAGE_BYTES, FILE_BYTES).get_string_from_ascii()
-                if raw.slice(0, 4).get_string_from_ascii() == REGIONS.MAGIC and _sha(payload) == inner:
-                    var sizes: Vector2i = Vector2i(int(raw.decode_u32(4)), int(raw.decode_u32(8)))
-                    var source_key: Vector2i = Vector2i(int(raw.decode_u32(12)), int(raw.decode_u32(16)))
-                    var size: float = raw.decode_float(20)
-                    if sizes == job["cells"] and source_key == key and is_equal_approx(size, float(job["spacing"])):
-                        var values: PackedFloat32Array = raw.slice(REGIONS.HEADER_BYTES, REGIONS.HEADER_BYTES + PAGE_BYTES).to_float32_array()
-                        if values.size() == REGIONS.PAGE_VALUES:
-                            var finite: bool = true
-                            for v in values:
-                                if not is_finite(v):
-                                    finite = false
-                                    break
-                            if finite:
-                                result["error"] = OK
-                                result["values"] = values
+    var result: Dictionary = PAGE_CODEC.load_page(str(job["path"]), job["cells"], float(job["spacing"]), key, str(job["sha256"]).hex_decode(), false)
+    result["key"] = key
+    result["generation"] = int(job["generation"])
     result["io_ms"] = float(Time.get_ticks_usec() - begin) / 1000.0
     return result
 
