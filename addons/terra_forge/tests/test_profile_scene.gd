@@ -32,6 +32,16 @@ func _run() -> void:
         return
     var p = SCENE.instantiate()
     root.add_child(p)
+    p._reset_frame_samples()
+    for interval_us in [33333, 33334, 50000, 50001, 33333, 60000]:
+        p._record_frame_interval(interval_us)
+    if p._over_30fps_budget != 4 or p._over_50ms != 2 or p._longest_late_streak != 3:
+        _fail("Frame spike thresholds or streak counting", p)
+        return
+    p._reset_frame_samples()
+    if p._over_30fps_budget != 0 or p._over_50ms != 0 or p._longest_late_streak != 0 or p._late_streak != 0:
+        _fail("Frame counters leaked across runs", p)
+        return
     p._make_fixture()
     var fixture_deadline: int = Time.get_ticks_msec() + 30000
     while p._fixture != null and Time.get_ticks_msec() < fixture_deadline:

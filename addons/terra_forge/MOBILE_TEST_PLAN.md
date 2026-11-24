@@ -1,5 +1,12 @@
 # Android on-device verification (not yet run)
 
+## P1.5.10 — Android kare süresi kaydı
+
+Godot Android editöründe `addons/terra_forge/profiling/profile_scene.tscn` sahnesini Mobile Renderer ile çalıştır. **Create isolated sample** ile ayrı test dünyası oluştur. Aynı dünya, süre ve ayarlarla önce strict sonra lazy çalıştır. Ters sırada da tekrarla. **Save / show JSON report** düğmesi dosyanın tam yolunu gösterir. Rapor ile telefon modeli, ekran yenileme hızı ve güç tasarrufu durumunu kaydet.
+
+Her koşuda `frame_interval_ms.count` örnek sayısını, `frame_intervals_over_30fps_budget` 1/30 saniyeyi geçen aralıkları, `frame_intervals_over_50ms` 50 ms'yi aşanları, `longest_consecutive_over_30fps_budget` art arda bütçeyi aşan en uzun seriyi verir. Açılış süresi ayrıca open_ms alanındadır. Sonuçları aynı rota ve ayarlarda karşılaştır. Android cihaz sonucu bekleniyor.
+
+
 Target editor: Godot **4.7.2**, Android **11**, **Mobile** rendering method.
 
 ## Smoke test

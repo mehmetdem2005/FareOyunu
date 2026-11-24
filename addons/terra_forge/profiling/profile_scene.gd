@@ -45,6 +45,10 @@ var _next_memory_sample: int = 0
 var _first_collision: Variant = null
 var _open_ms: float = 0.0
 var _frame_hist
+var _over_30fps_budget := 0
+var _over_50ms := 0
+var _late_streak := 0
+var _longest_late_streak := 0
 var _pump_hist
 var _rss_baseline: Variant = null
 var _rss_peak: Variant = null
@@ -251,7 +255,7 @@ func _begin(lazy: bool) -> void:
     var generated: Dictionary = _generated.get(_run_path, {})
     _run_recipe = str(generated.get("recipe", "")) if generated.get("format", "") == _run_format else ""
     _run_seconds = duration_seconds
-    _frame_hist = HIST.new()
+    _reset_frame_samples()
     _pump_hist = HIST.new()
     _mesh_hist = HIST.new()
     _last_mesh_builds = 0
@@ -311,7 +315,7 @@ func _process(_delta: float) -> void:
     var now: int = Time.get_ticks_usec()
     var elapsed: float = float(now - _opened) / 1000000.0
     if _previous_frame > 0:
-        _frame_hist.add(float(now - _previous_frame) / 1000.0)
+        _record_frame_interval(now - _previous_frame)
     _previous_frame = now
     # Identical route for both modes; fixed initial focus for two seconds.
     var t: float = clampf((elapsed - 2.0) / maxf(1.0, _run_seconds - 2.0), 0.0, 1.0)
@@ -352,6 +356,24 @@ func _process(_delta: float) -> void:
         _finish(int(progress["error"]))
     elif elapsed >= _run_seconds:
         _finish(OK)
+
+func _reset_frame_samples() -> void:
+    _frame_hist = HIST.new()
+    _over_30fps_budget = 0
+    _over_50ms = 0
+    _late_streak = 0
+    _longest_late_streak = 0
+
+func _record_frame_interval(interval_us: int) -> void:
+    _frame_hist.add(float(interval_us) / 1000.0)
+    if interval_us * 30 > 1000000:
+        _over_30fps_budget += 1
+        _late_streak += 1
+        _longest_late_streak = maxi(_longest_late_streak, _late_streak)
+    else:
+        _late_streak = 0
+    if interval_us > 50000:
+        _over_50ms += 1
 
 func _finish(status: Error) -> void:
     _running = false
@@ -395,6 +417,9 @@ func _finish(status: Error) -> void:
         "page_limit": page_limit, "job_limit": job_limit, "open_ms": _open_ms,
         "manifest_verify_ms": src.get("open_verify_ms", null),
         "first_focus_collision_ms_from_open_start": _first_collision,
+        "frame_intervals_over_30fps_budget": _over_30fps_budget,
+        "frame_intervals_over_50ms": _over_50ms,
+        "longest_consecutive_over_30fps_budget": _longest_late_streak,
         "shutdown_ms": shutdown_ms, "frame_interval_ms": _frame_hist.report(),
         "main_thread_pump_ms": _pump_hist.report(), "accepted_worker_io_ms": io,
         "io_pipeline": pipeline,
