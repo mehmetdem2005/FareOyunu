@@ -1,5 +1,8 @@
 # TerraForge Mobile — Kalıcı Proje Hafızası ve Teknik Doküman İndeksi
 
+> **GÜNCEL DEVİR — P1.5.7b (24 Kasım 2026):** Kod 1da154b8c98472cdbf2239c4bbd3dcce4039ee96, [49/49 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45462434054). [Rapor](P1_5_7B_DYNAMIC_PHYSICS_TR.md), [ham JSON](P1_5_7B_DYNAMIC_PHYSICS_CI.json). Eight warm actual capsule runs: zero airborne ticks/missed rays/penetration, both seams crossed at12/24 units/s. Separate 144-tick streaming route each 35 missing actual ray steps, longest A24/G25, metadata agrees at sampled points; includes teleport, not continuous player walking. P1.5.7c bounded collision readiness query implemented next, CI pending. No safety guarantee; no production movement change. P1.4/P1.4R PARKED.
+
+
 > **GÜNCEL DEVİR — P1.5.7a (24 Kasım 2026):** Kod fe9cefc11d05c5dc2546d4db2caff58ff97d7af8, [48/48 CI PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45460991716). [Rapor](P1_5_7A_PHYSICS_RAYCAST_TR.md), [ham JSON](P1_5_7A_PHYSICS_RAYCAST_CI.json). 648 actual in-tree successful ray probes, zero mesh diagonal mismatches, max delta 0.000009536743 world units, TFM1/2 A/G, spacing1 translation+yaw. Eviction, last-good after scratch missing page, recovery, stop no hit. Default physics setting on Linux, not Android or general all terrains. P1.5.7b dynamic capsule crossing + actual moving ray coverage implemented next, CI pending. P1.4/P1.4R PARKED.
 
 

@@ -1,0 +1,244 @@
+{
+  "schema": "TF_DYNAMIC_PHYSICS_1",
+  "commit": "1da154b8c98472cdbf2239c4bbd3dcce4039ee96",
+  "ci_run": 45462434054,
+  "environment": {
+    "capsule_height": 0.6,
+    "capsule_radius": 0.25,
+    "godot": "4.7.2-stable (official)",
+    "notes": "warm actual CharacterBody3D, then separate moving direct-space ray trace; no player safety fallback, headless Linux spacing1",
+    "physics_engine_setting": "DEFAULT",
+    "ticks_per_second": 60,
+    "walk_ticks": 120
+  },
+  "cases": [
+    {
+      "fast_walk": {
+        "airborne_ticks": 0,
+        "crossed_x": true,
+        "crossed_z": true,
+        "distance": 47.88671875,
+        "end_grounded": true,
+        "error": 0,
+        "finish": [
+          521.860961914062,
+          10.9179401397705,
+          521.861083984375
+        ],
+        "longest_airborne_ticks": 0,
+        "max_bottom_above_ray_height": 0.00198669433593679,
+        "max_bottom_below_ray_height": 0,
+        "missed_ground_rays": 0,
+        "speed_world_units_per_second": 24,
+        "ticks": 120
+      },
+      "format": 1,
+      "mode": 0,
+      "moving_rays": {
+        "attached_without_hit": 0,
+        "error": 0,
+        "first_hit_step": 4,
+        "hit_without_attached": 0,
+        "longest_actual_gap_ticks": 24,
+        "mesh_builds": 52,
+        "missing_actual_ray_steps": 35,
+        "missing_attached_shape_steps": 35,
+        "peak_tiles": 8,
+        "recovered": true,
+        "recovery_ticks": 1,
+        "steps": 144,
+        "wall_elapsed_us": 2398972
+      },
+      "slow_walk": {
+        "airborne_ticks": 0,
+        "crossed_x": true,
+        "crossed_z": true,
+        "distance": 23.9260940551758,
+        "end_grounded": true,
+        "error": 0,
+        "finish": [
+          516.918212890625,
+          10.6090126037598,
+          516.918395996094
+        ],
+        "longest_airborne_ticks": 0,
+        "max_bottom_above_ray_height": 0.00199527740478445,
+        "max_bottom_below_ray_height": 0,
+        "missed_ground_rays": 0,
+        "speed_world_units_per_second": 12,
+        "ticks": 120
+      }
+    },
+    {
+      "fast_walk": {
+        "airborne_ticks": 0,
+        "crossed_x": true,
+        "crossed_z": true,
+        "distance": 47.88671875,
+        "end_grounded": true,
+        "error": 0,
+        "finish": [
+          521.860961914062,
+          10.9179401397705,
+          521.861083984375
+        ],
+        "longest_airborne_ticks": 0,
+        "max_bottom_above_ray_height": 0.00198669433593679,
+        "max_bottom_below_ray_height": 0,
+        "missed_ground_rays": 0,
+        "speed_world_units_per_second": 24,
+        "ticks": 120
+      },
+      "format": 1,
+      "mode": 5,
+      "moving_rays": {
+        "attached_without_hit": 0,
+        "error": 0,
+        "first_hit_step": 5,
+        "hit_without_attached": 0,
+        "longest_actual_gap_ticks": 25,
+        "mesh_builds": 47,
+        "missing_actual_ray_steps": 35,
+        "missing_attached_shape_steps": 35,
+        "peak_tiles": 8,
+        "recovered": true,
+        "recovery_ticks": 1,
+        "steps": 144,
+        "wall_elapsed_us": 2399049
+      },
+      "slow_walk": {
+        "airborne_ticks": 0,
+        "crossed_x": true,
+        "crossed_z": true,
+        "distance": 23.9260940551758,
+        "end_grounded": true,
+        "error": 0,
+        "finish": [
+          516.918212890625,
+          10.6090126037598,
+          516.918395996094
+        ],
+        "longest_airborne_ticks": 0,
+        "max_bottom_above_ray_height": 0.00199527740478445,
+        "max_bottom_below_ray_height": 0,
+        "missed_ground_rays": 0,
+        "speed_world_units_per_second": 12,
+        "ticks": 120
+      }
+    },
+    {
+      "fast_walk": {
+        "airborne_ticks": 0,
+        "crossed_x": true,
+        "crossed_z": true,
+        "distance": 47.88671875,
+        "end_grounded": true,
+        "error": 0,
+        "finish": [
+          521.860961914062,
+          10.9179401397705,
+          521.861083984375
+        ],
+        "longest_airborne_ticks": 0,
+        "max_bottom_above_ray_height": 0.00198669433593679,
+        "max_bottom_below_ray_height": 0,
+        "missed_ground_rays": 0,
+        "speed_world_units_per_second": 24,
+        "ticks": 120
+      },
+      "format": 2,
+      "mode": 0,
+      "moving_rays": {
+        "attached_without_hit": 0,
+        "error": 0,
+        "first_hit_step": 4,
+        "hit_without_attached": 0,
+        "longest_actual_gap_ticks": 24,
+        "mesh_builds": 52,
+        "missing_actual_ray_steps": 35,
+        "missing_attached_shape_steps": 35,
+        "peak_tiles": 8,
+        "recovered": true,
+        "recovery_ticks": 1,
+        "steps": 144,
+        "wall_elapsed_us": 2400246
+      },
+      "slow_walk": {
+        "airborne_ticks": 0,
+        "crossed_x": true,
+        "crossed_z": true,
+        "distance": 23.9260940551758,
+        "end_grounded": true,
+        "error": 0,
+        "finish": [
+          516.918212890625,
+          10.6090126037598,
+          516.918395996094
+        ],
+        "longest_airborne_ticks": 0,
+        "max_bottom_above_ray_height": 0.00199527740478445,
+        "max_bottom_below_ray_height": 0,
+        "missed_ground_rays": 0,
+        "speed_world_units_per_second": 12,
+        "ticks": 120
+      }
+    },
+    {
+      "fast_walk": {
+        "airborne_ticks": 0,
+        "crossed_x": true,
+        "crossed_z": true,
+        "distance": 47.88671875,
+        "end_grounded": true,
+        "error": 0,
+        "finish": [
+          521.860961914062,
+          10.9179401397705,
+          521.861083984375
+        ],
+        "longest_airborne_ticks": 0,
+        "max_bottom_above_ray_height": 0.00198669433593679,
+        "max_bottom_below_ray_height": 0,
+        "missed_ground_rays": 0,
+        "speed_world_units_per_second": 24,
+        "ticks": 120
+      },
+      "format": 2,
+      "mode": 5,
+      "moving_rays": {
+        "attached_without_hit": 0,
+        "error": 0,
+        "first_hit_step": 5,
+        "hit_without_attached": 0,
+        "longest_actual_gap_ticks": 25,
+        "mesh_builds": 47,
+        "missing_actual_ray_steps": 35,
+        "missing_attached_shape_steps": 35,
+        "peak_tiles": 8,
+        "recovered": true,
+        "recovery_ticks": 1,
+        "steps": 144,
+        "wall_elapsed_us": 2400134
+      },
+      "slow_walk": {
+        "airborne_ticks": 0,
+        "crossed_x": true,
+        "crossed_z": true,
+        "distance": 23.9260940551758,
+        "end_grounded": true,
+        "error": 0,
+        "finish": [
+          516.918212890625,
+          10.6090126037598,
+          516.918395996094
+        ],
+        "longest_airborne_ticks": 0,
+        "max_bottom_above_ray_height": 0.00199527740478445,
+        "max_bottom_below_ray_height": 0,
+        "missed_ground_rays": 0,
+        "speed_world_units_per_second": 12,
+        "ticks": 120
+      }
+    }
+  ]
+}

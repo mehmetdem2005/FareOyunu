@@ -9,6 +9,7 @@ const GEOMETRY = preload("res://addons/terra_forge/core/paged_tile_geometry.gd")
 const WORKER = preload("res://addons/terra_forge/core/geometry_worker.gd")
 const HIST = preload("res://addons/terra_forge/core/profile_histogram.gd")
 const PUBLICATION = preload("res://addons/terra_forge/core/publication_accounting.gd")
+const FOOTPRINT = preload("res://addons/terra_forge/core/collision_footprint.gd")
 const TILE_CELLS: int = 32
 
 @export var preview_enabled: bool = false
@@ -594,6 +595,44 @@ func has_collision_at(global_position: Vector3) -> bool:
         return false
     var collision: CollisionShape3D = _tiles[key]["collision"]
     return collision.shape is HeightMapShape3D and not collision.disabled
+
+## Experimental read-only readiness query. Call during a physics tick,
+## before proposing horizontal movement, with local XZ and local radius.
+## Does NOT pin tiles, stream data, move a body, freeze gravity, or guarantee
+## a capsule sweep. Recheck immediately before movement; caller owns policy.
+func inspect_collision_footprint(start: Vector2,finish: Vector2,radius: float,exclude: Array[RID]=[]) -> Dictionary:
+    if _reader==null or not is_inside_tree() or not Engine.is_in_physics_frame():
+        return {"ready":false,"reason":"physics_context"}
+    var size: float=float(TILE_CELLS)*_reader.spacing
+    var planned: Dictionary=FOOTPRINT.plan(start,finish,radius,world_extent(),size)
+    if not planned["ready"]:
+        return planned
+    var keys: Array[Vector2i]=planned["tiles"]
+    # Validate all metadata before issuing any physics query.
+    for key in keys:
+        if int(_desired_tiles.get(key,-1))!=0 or not _tiles.has(key):
+            return {"ready":false,"reason":"missing_lod0","tile":key,"tiles":keys,"ray_count":0}
+        var tile: Dictionary=_tiles[key]
+        if _blocked_tiles.has(key) or _pending_tiles.has(key) or int(tile["lod"])!=0:
+            return {"ready":false,"reason":"unsettled","tile":key,"tiles":keys,"ray_count":0}
+        var collision: CollisionShape3D=tile["collision"]
+        if not is_instance_valid(collision) or collision.disabled or not collision.shape is HeightMapShape3D or not is_instance_valid(tile["visual"].mesh):
+            return {"ready":false,"reason":"missing_shape","tile":key,"tiles":keys,"ray_count":0}
+    var rays: int=0
+    var space: PhysicsDirectSpaceState3D=get_world_3d().direct_space_state
+    for key in keys:
+        var tile: Dictionary=_tiles[key]
+        var collision: CollisionShape3D=tile["collision"]
+        var body: StaticBody3D=collision.get_parent()
+        var bounds: AABB=tile["visual"].mesh.get_aabb()
+        var center: Vector2=(Vector2(key)+Vector2(0.5,0.5))*size
+        var query=PhysicsRayQueryParameters3D.create(to_global(Vector3(center.x,bounds.end.y+1.0,center.y)),to_global(Vector3(center.x,bounds.position.y-1.0,center.y)),body.collision_layer,exclude)
+        query.collide_with_areas=false
+        var hit: Dictionary=space.intersect_ray(query)
+        rays+=1
+        if hit.is_empty() or hit.get("collider")!=body:
+            return {"ready":false,"reason":"physics_unconfirmed","tile":key,"tiles":keys,"ray_count":rays}
+    return {"ready":true,"reason":"sampled_ready","tiles":keys,"ray_count":rays}
 
 func stats() -> Dictionary:
     var source: Dictionary = _reader.stats() if _reader != null else {}
