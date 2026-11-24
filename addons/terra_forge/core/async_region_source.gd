@@ -7,6 +7,7 @@ extends RefCounted
 ## Camera epoch cancellation never changes the pinned manifest.
 const IDX = preload("res://addons/terra_forge/core/region_index_v2.gd")
 const READER_V2 = preload("res://addons/terra_forge/core/region_read_v2.gd")
+const TILE_VIEW = preload("res://addons/terra_forge/core/tile_read_view.gd")
 const PAGE_CODEC = preload("res://addons/terra_forge/core/region_page_codec.gd")
 const HISTOGRAM = preload("res://addons/terra_forge/core/profile_histogram.gd")
 const MANIFEST = preload("res://addons/terra_forge/core/region_manifest.gd")
@@ -41,6 +42,13 @@ var _shard_evictions: int = 0
 # Published under mutex; stats never access the live worker cache.
 var _shard_stats: Dictionary = {}
 var _cache: Dictionary = {}
+var _tile_view = null
+var _view_acquires: int = 0
+var _view_reads: int = 0
+var _view_page_touches: int = 0
+var _view_peak_pages: int = 0
+var _direct_height_reads: int = 0
+var _lru_touches: int = 0
 var _lru: Array[Vector2i] = []
 var _errors: Dictionary = {}
 var _reserved: Dictionary = {}  # Main thread only: key -> request generation.
@@ -184,6 +192,57 @@ func _valid_page(key: Vector2i) -> bool:
     var bounds: Vector2i = page_count()
     return _opened and key.x >= 0 and key.y >= 0 and key.x < bounds.x and key.y < bounds.y
 
+## Single synchronous lease, with a rectangular <=3x3 resident page halo.
+## No eviction can retain extra payload: revoke before cache mutation.
+func acquire_tile_view(keys: Array[Vector2i]) -> Dictionary:
+    if not _opened:
+        return {"error": ERR_UNCONFIGURED}
+    if _tile_view != null:
+        return {"error": ERR_BUSY}
+    if keys.is_empty() or keys.size() > TILE_VIEW.MAX_PAGES:
+        return {"error": ERR_INVALID_PARAMETER}
+    var first: Vector2i = keys[0]
+    var last: Vector2i = first
+    var unique: Dictionary = {}
+    for key in keys:
+        if not _valid_page(key) or unique.has(key):
+            return {"error": ERR_INVALID_PARAMETER}
+        unique[key] = true
+        first = Vector2i(mini(first.x, key.x), mini(first.y, key.y))
+        last = Vector2i(maxi(last.x, key.x), maxi(last.y, key.y))
+    var extent: Vector2i = last - first + Vector2i.ONE
+    if extent.x > 3 or extent.y > 3 or extent.x * extent.y != keys.size():
+        return {"error": ERR_INVALID_PARAMETER}
+    var pages: Array[PackedFloat32Array] = []
+    for z in range(first.y, last.y + 1):
+        for x in range(first.x, last.x + 1):
+            var key: Vector2i = Vector2i(x,z)
+            var status: Error = page_status(key)
+            if status != OK:
+                return {"error": status}
+            var values: PackedFloat32Array = _cache[key]
+            if values.size() != REGIONS.PAGE_VALUES:
+                return {"error": ERR_FILE_CORRUPT}
+            pages.append(values)
+    for key in keys:
+        _touch(key)
+    _view_page_touches += keys.size()
+    _view_acquires += 1
+    _view_peak_pages = maxi(_view_peak_pages, pages.size())
+    _tile_view = TILE_VIEW.new(cells, spacing, first, extent, pages)
+    return {"error": OK, "view": _tile_view}
+
+func release_tile_view(view) -> Error:
+    if _tile_view == null or view != _tile_view:
+        return ERR_INVALID_PARAMETER
+    _revoke_tile_view()
+    return OK
+
+func _revoke_tile_view() -> void:
+    if _tile_view != null:
+        _view_reads += _tile_view._revoke()
+        _tile_view = null
+
 func set_generation(next_id: int) -> Error:
     if not _opened or next_id < 0:
         return ERR_INVALID_PARAMETER
@@ -198,6 +257,7 @@ func set_generation(next_id: int) -> Error:
     _pending.clear()
     _finished.clear()
     _mutex.unlock()
+    _revoke_tile_view()
     _reserved.clear()
     _errors.clear()
     _error_bytes.clear()
@@ -358,6 +418,7 @@ func _worker_loop() -> void:
 func poll_results(max_results: int = 3) -> Dictionary:
     if not _opened or max_results < 1 or max_results > 8:
         return {"error": ERR_INVALID_PARAMETER}
+    _revoke_tile_view()
     var found: Array[Dictionary] = []
     _mutex.lock()
     var current: int = _generation
@@ -405,6 +466,7 @@ func poll_results(max_results: int = 3) -> Dictionary:
     return {"error": OK, "committed": committed, "failed": failures, "discarded": _discarded}
 
 func _touch(key: Vector2i) -> void:
+    _lru_touches += 1
     var idx: int = _lru.find(key)
     if idx >= 0:
         _lru.remove_at(idx)
@@ -442,6 +504,7 @@ func get_height(x: int, z: int) -> Dictionary:
     var status: Error = page_status(key)
     if status != OK:
         return {"error": status}
+    _direct_height_reads += 1
     _touch(key)
     var values: PackedFloat32Array = _cache[key]
     return {"error": OK, "height": values[(z % PAGE_WIDTH) * PAGE_WIDTH + (x % PAGE_WIDTH)]}
@@ -478,6 +541,7 @@ func sample_local(world_x: float, world_z: float) -> Dictionary:
 func release_outside(first: Vector2i, last: Vector2i) -> Error:
     if not _valid_page(first) or not _valid_page(last) or first.x > last.x or first.y > last.y:
         return ERR_INVALID_PARAMETER
+    _revoke_tile_view()
     for key in _lru.duplicate():
         if key.x < first.x or key.y < first.y or key.x > last.x or key.y > last.y:
             _cache.erase(key)
@@ -516,6 +580,10 @@ func stats() -> Dictionary:
         "resident": _cache.size(),
         "limit": _limit,
         "resident_float_bytes": _cache.size() * PAGE_BYTES,
+        "direct_height_reads": _direct_height_reads, "lru_touches": _lru_touches,
+        "tile_view_acquires": _view_acquires, "tile_view_reads": _view_reads + (_tile_view._reads if _tile_view != null else 0),
+        "tile_view_page_touches": _view_page_touches, "tile_view_peak_pages": _view_peak_pages,
+        "tile_view_active_pages": _tile_view.page_count_held() if _tile_view != null else 0,
         "outstanding": outstanding,
         "inflight": inflight,
         "finished": finished,
@@ -549,6 +617,7 @@ func stats() -> Dictionary:
     }
 
 func close() -> void:
+    _revoke_tile_view()
     # Join can block until a single in-flight file read finishes. Never call
     # this every frame. Caller must close before losing the last reference.
     _mutex.lock()
@@ -582,6 +651,12 @@ func close() -> void:
     _verified_once.clear()
     _cache.clear()
     _lru.clear()
+    _view_acquires = 0
+    _view_reads = 0
+    _view_page_touches = 0
+    _view_peak_pages = 0
+    _direct_height_reads = 0
+    _lru_touches = 0
     _errors.clear()
     _reserved.clear()
     _mutex.lock()

@@ -18,6 +18,8 @@ const TILE_CELLS: int = 32
 ## Bad/missing pages stay ERR_FILE_CORRUPT/ERR_FILE_NOT_FOUND, never flat.
 ## Disable for the previous whole-world, strictly checked open behavior.
 @export var verify_pages_on_demand: bool = true
+## Experimental A/B CPU sampling path. Default stays baseline until measured.
+@export var use_tile_read_view: bool = false
 @export_range(9, 64, 1) var resident_page_limit: int = 16
 @export_range(1, 8, 1) var max_background_jobs: int = 4
 @export_range(80.0, 640.0, 16.0) var view_distance: float = 160.0
@@ -313,9 +315,7 @@ func _build_pending_tiles() -> void:
             # Focus only on the nearest pending tile. Otherwise page loads
             # for far tiles can evict this tile's required border samples.
             break
-        var generated: Dictionary = GEOMETRY.generate(
-            _reader, key.x, key.y, lod, _desired_tiles
-        )
+        var generated: Dictionary = GEOMETRY.generate_with_view(_reader, key.x, key.y, lod, _desired_tiles) if use_tile_read_view else GEOMETRY.generate(_reader, key.x, key.y, lod, _desired_tiles)
         var error: Error = int(generated.get("error", ERR_FILE_CORRUPT))
         if error != OK:
             if error != ERR_BUSY:
@@ -404,6 +404,7 @@ func stats() -> Dictionary:
         "max_build_ms": _max_build_ms,
         "source": source,
         "verify_pages_on_demand": verify_pages_on_demand,
+        "use_tile_read_view": use_tile_read_view,
         "index_format": source.get("index_format", "TFM2" if region_index_format == 1 else "TFM1"),
         "last_error": _last_error,
         "last_error_page": _last_error_page,

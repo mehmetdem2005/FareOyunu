@@ -45,6 +45,7 @@ suite=(
   test_region_fixture_v2
   test_async_region_v2
   test_paged_preview_v2
+  test_tile_read_view
   test_lod_policy
   test_surface_faces
   test_lod_normals

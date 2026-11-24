@@ -77,6 +77,20 @@ static func _seam(source, tx: int, tz: int, x: int, z: int, lod: int,
         )
     }
 
+## Same geometry algorithm, only data-access strategy changes.
+static func generate_with_view(source, tx: int, tz: int, lod: int, desired: Dictionary) -> Dictionary:
+    if source == null or not source.is_open() or lod < 0 or lod > 2 or tx < 0 or tz < 0 or (tx + 1) * TILE_CELLS > source.cells.x or (tz + 1) * TILE_CELLS > source.cells.y:
+        return {"error": ERR_INVALID_PARAMETER}
+    var acquired: Dictionary = source.acquire_tile_view(required_pages(source, tx, tz, lod))
+    if acquired["error"] != OK:
+        return acquired
+    var view = acquired["view"]
+    var result: Dictionary = generate(view, tx, tz, lod, desired)
+    var released: Error = source.release_tile_view(view)
+    if released != OK:
+        return {"error": released}
+    return result
+
 static func generate(source, tx: int, tz: int, lod: int, desired: Dictionary) -> Dictionary:
     if source == null or not source.is_open() or lod < 0 or lod > 2:
         return {"error": ERR_INVALID_PARAMETER}

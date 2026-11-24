@@ -14,6 +14,8 @@ var _path: LineEdit
 var _label: Label
 var _buttons: Array[Button] = []
 @export_range(1, 16, 1) var shard_limit: int = 4
+@export var use_tile_read_view: bool = false
+var _view_toggle: CheckButton
 var _format: OptionButton
 var _fixture_size: OptionButton
 var _estimate: Label
@@ -85,6 +87,11 @@ func _ready() -> void:
     _format.item_selected.connect(func(_index): _refresh_sizes())
     _fixture_size.item_selected.connect(func(_index): _refresh_estimate())
     _refresh_sizes()
+    _view_toggle = CheckButton.new()
+    _view_toggle.text = "Tile read view (experimental)"
+    _view_toggle.button_pressed = use_tile_read_view
+    _view_toggle.toggled.connect(func(enabled): use_tile_read_view = enabled)
+    ui.add_child(_view_toggle)
     _button(ui, "Create isolated sample", _make_fixture)
     _cancel_button = Button.new()
     _cancel_button.text = "Cancel fixture generation"
@@ -118,6 +125,7 @@ func _set_busy(busy: bool) -> void:
     _path.editable = not busy
     _fixture_size.disabled = busy
     _format.disabled = busy
+    _view_toggle.disabled = busy
 
 func _refresh_sizes() -> void:
     var previous: int = _fixture_size.get_selected_id() if _fixture_size.item_count > 0 else 256
@@ -247,7 +255,9 @@ func _begin(lazy: bool) -> void:
     _preview.verify_pages_on_demand = lazy
     _preview.region_index_format = _format.get_selected_id()
     _preview.resident_shard_limit = shard_limit
+    _preview.use_tile_read_view = use_tile_read_view
     _run_settings = {"page_limit": page_limit, "job_limit": job_limit, "shard_limit": shard_limit if _run_format == "TFM2" else 0, "view_distance": _preview.view_distance, "high_detail_distance": _preview.high_detail_distance, "medium_detail_distance": _preview.medium_detail_distance, "max_visible_tiles": _preview.max_visible_tiles, "tile_updates_per_frame": _preview.tile_updates_per_frame, "max_tile_work_ms": _preview.max_tile_work_ms, "viewport": [get_viewport().size.x, get_viewport().size.y]}
+    _run_settings["use_tile_read_view"] = use_tile_read_view
     add_child(_preview)
     _started = Time.get_ticks_usec()
     var status: Error = _preview.start_preview(_run_path, page_limit, job_limit)
@@ -337,6 +347,9 @@ func _finish(status: Error) -> void:
         "snapshot_id": src.get("snapshot_id", "") if _run_format == "TFM2" else null,
         "route": "normalized_sine_v1", "settings": _run_settings,
         "root_index_bytes": src.get("root_index_bytes", 0),
+        "direct_height_reads": src.get("direct_height_reads", 0), "lru_touches": src.get("lru_touches", 0),
+        "tile_view_acquires": src.get("tile_view_acquires", 0), "tile_view_reads": src.get("tile_view_reads", 0),
+        "tile_view_page_touches": src.get("tile_view_page_touches", 0), "tile_view_peak_pages": src.get("tile_view_peak_pages", 0),
         "shard_resident_peak": _shard_peak, "shard_resident_bytes_peak": _shard_bytes_peak,
         "shard_hits": src.get("shard_hits", 0), "shard_misses": src.get("shard_misses", 0),
         "shard_loads": src.get("shard_loads", 0), "shard_evictions": src.get("shard_evictions", 0),
