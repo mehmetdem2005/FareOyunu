@@ -290,12 +290,14 @@ func _process(_delta: float) -> void:
         var checked: int = int(source.get("pages_verified_on_demand", 0))
         if check_mode == "FULL":
             checked = int(source.get("manifest_entries", 0))
-        _stats_label.text = "READ-ONLY %s | Tiles %d / Pending %d\nRAM %d/%d pages | Checked %d/%d | IO max %.1fms" % [
-            check_mode, int(preview_stats["tiles"]), int(preview_stats["pending_tiles"]),
+        _stats_label.text = "%s READ-ONLY %s | Tiles %d / Pending %d\nRAM %d/%d pages | Checked %d/%d | IO max %.1fms" % [
+            str(preview_stats.get("index_format", "TFM1")), check_mode, int(preview_stats["tiles"]), int(preview_stats["pending_tiles"]),
             int(source.get("resident", 0)), int(source.get("limit", 0)),
             checked, int(source.get("manifest_entries", 0)),
             float(source.get("max_io_ms", 0.0))
         ]
+        if str(source.get("index_format", "")) == "TFM2":
+            _stats_label.text += "\nIndex %d/%d shards | %d KiB" % [int(source.get("shard_resident", 0)), int(source.get("shard_limit", 0)), int(ceil(float(source.get("shard_resident_bytes", 0)) / 1024.0))]
     elif legacy:
         var stats: Dictionary = _active.get_stream_stats()
         _stats_label.text = "Tiles %d / Pending %d / Vertices %d\nMesh %.1fms (max %.1f) | Sculpt %.1fms (max %.1f)" % [

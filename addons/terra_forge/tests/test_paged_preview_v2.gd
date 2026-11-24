@@ -133,6 +133,7 @@ func _initialize() -> void:
     if stats["source"]["resident"] > 16 or stats["source"]["shard_resident"] > 2 or stats["writable"] or p.save_data()!=ERR_UNAVAILABLE or p.paint_at(Vector3.ZERO,0,8.0,1.0)!=ERR_UNAVAILABLE or FileAccess.get_sha256(folder.path_join("manifest.tfm2"))!=root_hash:
         _fail("bounds/read-only",p,b)
         return
+    p.stop_preview()
     p.free()
     b.close()
     print("PASS: real TFM2 ArrayMesh and collision across four interior shards, LOD0/1/2 and mixed seams, last-good retention, camera recovery")
@@ -178,6 +179,7 @@ func _arrays_match(actual: Array, expected: Array, packed: bool) -> bool:
     return true
 
 func _fail(msg: String,p,b) -> void:
+    p.stop_preview()
     p.free()
     b.close()
     push_error("TFM2 preview: "+msg)
