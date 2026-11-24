@@ -15,6 +15,15 @@ Target editor: Godot **4.7.2**, Android **11**, **Mobile** rendering method.
 9. Undo/redo 20 changes. Verify file bytes remain unchanged when only the camera moves.
 10. Disconnect/re-enable plugin, check no duplicate tile nodes are saved.
 
+## Advanced brush checks (0.3)
+
+- Draw Ridge and Valley at 3 different angles; continuous ridges/trenches should appear without giant gaps
+- Make a Ramp with **Rise = +6m** on flat terrain: zero at the start and +6m at its centerline end, with a smooth shoulder; then Undo and Redo
+- Make another Ramp with a negative Rise value and confirm descending slope
+- Select each Stamp profile (Hill/Crater/Mesa) and tap once; crater must show depressed center and raised rim
+- Drag while Stamp is selected: it must stamp only once per touch, not at every drag event
+- Switch tools mid-session without expanding the persistent 3D toolbar
+
 ## Stress tests
 
 - Draw the same path once slowly and once quickly, with the same Brush Size/Power on clean areas; compare sculpt depths. A stroke should not become stronger just because Android sends more drag events.

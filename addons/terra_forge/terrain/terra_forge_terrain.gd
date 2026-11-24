@@ -4,6 +4,7 @@ extends Node3D
 ## A self-contained, Float32, tiled terrain. Generated children are transient.
 const HEIGHT_STORE = preload("res://addons/terra_forge/core/height_store.gd")
 const LOD_POLICY = preload("res://addons/terra_forge/core/lod_policy.gd")
+const BRUSH_SHAPES = preload("res://addons/terra_forge/core/brush_shapes.gd")
 const TILE_CELLS: int = 32
 const MAX_HISTORY: int = 20
 
@@ -35,6 +36,12 @@ var _stroke_has_sample: bool = false
 var _stroke_last_local: Vector3 = Vector3.ZERO
 var _flatten_target: float = 0.0
 var _flatten_target_set: bool = false
+var _ramp_start_set: bool = false
+var _ramp_start_local: Vector3 = Vector3.ZERO
+var _ramp_end_local: Vector3 = Vector3.ZERO
+var _ramp_width: float = 8.0
+var _ramp_strength: float = 3.0
+var _ramp_rise: float = 5.0
 var _changed_since_save: bool = false
 var _last_edit_time: int = 0
 var _last_mesh_time: int = 0
@@ -384,35 +391,59 @@ func begin_stroke() -> void:
     _stroke_has_sample = false
     _stroke_last_local = Vector3.ZERO
     _flatten_target_set = false
+    _ramp_start_set = false
+    _ramp_start_local = Vector3.ZERO
+    _ramp_end_local = Vector3.ZERO
 
-func paint_at(global_hit: Vector3, tool: int, brush_radius: float, strength: float) -> void:
+func paint_at(
+        global_hit: Vector3,
+        tool: int,
+        brush_radius: float,
+        strength: float,
+        stamp_preset: int = 0,
+        ramp_rise: float = 5.0
+    ) -> void:
     if not _stroke_open or _read_only_source or height_data == null:
         return
     var local_hit: Vector3 = to_local(global_hit)
-    var grid_position: Vector2 = Vector2(local_hit.x, local_hit.z)
+    if tool == BRUSH_SHAPES.TOOL_RAMP:
+        # Drag to set endpoints; apply one corridor when the finger lifts.
+        # This keeps one ramp = one undo action and avoids repeatedly
+        # mutating the same pixels on high-frequency touch events.
+        if not _ramp_start_set:
+            _ramp_start_local = local_hit
+            _ramp_start_set = true
+        _ramp_end_local = local_hit
+        _ramp_width = brush_radius
+        _ramp_strength = strength
+        _ramp_rise = ramp_rise
+        return
+
+    var cursor: Vector2 = Vector2(local_hit.x, local_hit.z)
     if not _stroke_has_sample:
         _stroke_last_local = local_hit
         _stroke_has_sample = true
-        _apply_stamp(local_hit, tool, brush_radius, strength)
+        _apply_stamp(local_hit, tool, brush_radius, strength, stamp_preset)
         return
-    # Input events arrive at wildly different rates on Android devices.
-    # Stamp at fixed *world distance* so the same stroke produces nearly
-    # identical geometry even if only a few touch-drag events are delivered.
+    if tool == BRUSH_SHAPES.TOOL_STAMP:
+        # Procedural stamps are placed once per touch, not sprayed.
+        return
+    # Fixed distance sampling: device touch-event frequency does not change
+    # how many bumps are applied along a ridge or valley.
     var step_size: float = maxf(0.25, brush_radius * 0.2)
     var previous: Vector2 = Vector2(_stroke_last_local.x, _stroke_last_local.z)
-    var distance: float = previous.distance_to(grid_position)
+    var distance: float = previous.distance_to(cursor)
     if distance < step_size:
         return
-    var direction: Vector2 = (grid_position - previous) / distance
-    # A bound protects the editor from a huge stall after a touch jump.
+    var direction: Vector2 = (cursor - previous) / distance
     var count: int = mini(96, floori(distance / step_size))
     for i in range(count):
-        var p: Vector2 = previous + direction * step_size * float(i + 1)
-        var stamp: Vector3 = Vector3(p.x, local_hit.y, p.y)
-        _apply_stamp(stamp, tool, brush_radius, strength)
+        var point: Vector2 = previous + direction * step_size * float(i + 1)
+        var stamp: Vector3 = Vector3(point.x, local_hit.y, point.y)
+        _apply_stamp(stamp, tool, brush_radius, strength, stamp_preset)
         _stroke_last_local = stamp
 
-func _apply_stamp(local_hit: Vector3, tool: int, brush_radius: float, strength: float) -> void:
+func _apply_stamp(local_hit: Vector3, tool: int, brush_radius: float, strength: float, stamp_preset: int = 0) -> void:
     var px: float = local_hit.x / height_data.spacing
     var pz: float = local_hit.z / height_data.spacing
     var rs: float = maxf(0.5, brush_radius / height_data.spacing)
@@ -430,7 +461,8 @@ func _apply_stamp(local_hit: Vector3, tool: int, brush_radius: float, strength: 
             var dist: float = Vector2(float(x) - px, float(z) - pz).length()
             if dist > rs:
                 continue
-            var falloff: float = pow(1.0 - dist / rs, 2.0)
+            var normalized_distance: float = dist / rs
+            var falloff: float = pow(1.0 - normalized_distance, 2.0)
             var factor: float = maxf(0.0, strength) * falloff * 0.06
             var idx: int = height_data.index_of(x, z)
             var original: float = height_data.heights[idx]
@@ -450,6 +482,14 @@ func _apply_stamp(local_hit: Vector3, tool: int, brush_radius: float, strength: 
                     result = lerpf(original, average, clampf(factor * 2.0, 0.0, 1.0))
                 3:
                     result = lerpf(original, _flatten_target, clampf(factor, 0.0, 1.0))
+                4: # Ridge
+                    result += maxf(0.0, strength) * 0.14 * BRUSH_SHAPES.ridge(normalized_distance)
+                5: # Valley
+                    result -= maxf(0.0, strength) * 0.14 * BRUSH_SHAPES.valley(normalized_distance)
+                7: # Procedural Stamp
+                    result += maxf(0.0, strength) * 0.8 * BRUSH_SHAPES.stamp(stamp_preset, normalized_distance)
+                _:
+                    return
             result = clampf(result, -2000.0, 2000.0)
             if absf(result - original) < 0.000001:
                 continue
@@ -461,9 +501,61 @@ func _apply_stamp(local_hit: Vector3, tool: int, brush_radius: float, strength: 
         _changed_since_save = true
         _last_edit_time = Time.get_ticks_msec()
 
+func _commit_ramp() -> void:
+    if not _ramp_start_set or _read_only_source:
+        return
+    var start: Vector2 = Vector2(_ramp_start_local.x, _ramp_start_local.z)
+    var finish: Vector2 = Vector2(_ramp_end_local.x, _ramp_end_local.z)
+    var run: Vector2 = finish - start
+    var length: float = run.length()
+    if length < height_data.spacing:
+        return
+    # Limit a single expensive main-thread edit on mobile devices.
+    if length > 256.0:
+        run = run / length * 256.0
+        finish = start + run
+        length = 256.0
+    var radius: float = maxf(0.5, _ramp_width)
+    var spacing: float = height_data.spacing
+    var min_x: int = clampi(floori((minf(start.x, finish.x) - radius) / spacing), 0, height_data.cells.x)
+    var max_x: int = clampi(ceili((maxf(start.x, finish.x) + radius) / spacing), 0, height_data.cells.x)
+    var min_z: int = clampi(floori((minf(start.y, finish.y) - radius) / spacing), 0, height_data.cells.y)
+    var max_z: int = clampi(ceili((maxf(start.y, finish.y) + radius) / spacing), 0, height_data.cells.y)
+    var begin_height: float = height_data.sample_local(start.x, start.y)
+    var end_height: float = height_data.sample_local(finish.x, finish.y) + _ramp_rise
+    var length_squared: float = run.length_squared()
+    var intensity: float = clampf(_ramp_strength / 3.0, 0.0, 1.0)
+    for z in range(min_z, max_z + 1):
+        for x in range(min_x, max_x + 1):
+            var sample: Vector2 = Vector2(float(x) * spacing, float(z) * spacing)
+            var fraction: float = clampf((sample - start).dot(run) / length_squared, 0.0, 1.0)
+            var closest: Vector2 = start + run * fraction
+            var radial: float = sample.distance_to(closest) / radius
+            if radial >= 1.0:
+                continue
+            var influence: float = BRUSH_SHAPES.blend(radial) * intensity
+            if influence < 0.000001:
+                continue
+            var idx: int = height_data.index_of(x, z)
+            var original: float = height_data.heights[idx]
+            var target_height: float = lerpf(begin_height, end_height, fraction)
+            var next_height: float = clampf(lerpf(original, target_height, influence), -2000.0, 2000.0)
+            if absf(original - next_height) < 0.000001:
+                continue
+            if not _stroke_before.has(idx):
+                _stroke_before[idx] = original
+            height_data.heights[idx] = next_height
+            _mark_sample_dirty(x, z)
+    if not _stroke_before.is_empty():
+        _changed_since_save = true
+        _last_edit_time = Time.get_ticks_msec()
+
 func end_stroke() -> void:
     if not _stroke_open:
         return
+    if _ramp_start_set:
+        _commit_ramp()
+    _ramp_start_set = false
     _stroke_open = false
     _stroke_has_sample = false
     _stroke_last_local = Vector3.ZERO

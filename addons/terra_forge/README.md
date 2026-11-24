@@ -1,4 +1,4 @@
-# TerraForge Mobile — v0.2.3 (consistent mobile brush strokes)
+# TerraForge Mobile — v0.3.0 (advanced mobile sculpt brushes)
 
 Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, native library, or changes to game files. Designed for Android editor testing with Mobile Renderer.
 
@@ -28,6 +28,14 @@ Standalone **Godot 4.7.2** terrain shaping addon. No Terrain3D dependency, nativ
 - Touch/mouse shaping with **distance-spaced stamps** (one touch-movement path now yields similar heights regardless of event count), 20-step local Undo/Redo, 2.5-second idle autosave, corrupt file write guard.
 - Live tile stats in the editor dock.
 
+## Advanced sculpting (v0.3)
+
+- **Ridge**: drag a narrow positive ridge; distance-normalized sampling joins peaks along the stroke
+- **Valley**: drag a carved negative channel; wider falloff than Ridge
+- **Ramp**: drag from start to finish and release. The tool makes one sloping corridor whose ending elevation is the existing end-point elevation plus **Rise** (initially +5m); negative Rise creates descending ramps. Nothing changes until release, and one drag is one Undo step. Single ramps are limited to 256m for mobile CPU safety
+- **Stamp**: one touch applies a deterministic analytic **Hill**, **Crater** (bowl + lip) or **Mesa** (flat-topped mound). Moving the same finger does not create more stamps
+- Options for Ramp/Stamp appear only when those tools are selected. Undo/Redo, Float32 persistence and tile invalidation continue to use the same paths as the original tools
+
 ## Mobile streaming budgets (initial estimates; NOT performance measurements)
 
 | Profile | View radius | Max resident tiles | LOD0 / LOD1 radii | Rebuilds per frame |
@@ -53,7 +61,7 @@ The **full Float32 height field remains in RAM**. This version streams visible *
 - The full Float32 heightmap is resident even when no mesh tile is loaded. File-backed streaming is not yet implemented.
 - Tile mesh builds **and node creation** happen on the main thread, strictly limited per frame. A later stage can move mesh input preparation to worker threads.
 - Collision is disabled for lower-detail tiles and enabled only near the camera. This is for performance; far-away physics interactions require a separate collision strategy.
-- The first generation has no texture painter, terrain stamps, foliage, erosion or 3D assets.
+- The addon does not yet provide a texture painter, imported image stamp library, foliage, full hydraulic erosion, or 3D assets. v0.3 ships deterministic built-in stamp presets only.
 - The 20 Undo/Redo entries live only in the terrain node's memory; Godot's global editor Undo/Redo integration remains pending.
 - Brush stamps are spaced by traveled **world distance**, preventing changes in the number of touch events from changing results. Holding the finger still does **not** continue to sculpt; pressure-sensitive, time-normalized holding is future work.
 
@@ -68,13 +76,14 @@ godot --headless --path /path/to/project --script res://addons/terra_forge/tests
 godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_lod_seams.gd
 godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_stream_budget.gd
 godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_brush_sampling.gd
+godot --headless --path /path/to/project --script res://addons/terra_forge/tests/test_advanced_brushes.gd
 ```
 
 See [MOBILE_TEST_PLAN.md](MOBILE_TEST_PLAN.md) for hands-on Android checks and acceptance criteria. These tests have **not yet been executed** with the Godot engine here.
 
 ## Next stages
 
-1. Confirm v0.2.3 loads on Android 11, displays solid terrain, and the compact popup fits within the viewport.
+1. Confirm v0.3.0 loads on Android 11 and all eight tools fit in the compact selection popup.
 2. With Brush ON, draw equally long strokes slowly and quickly at the same Power; verify similar height changes (new distance-sampling logic).
 2. Add progressive mesh generation that prevents frame spikes during initial loading.
 3. Implement true LOD seam stitching + sample-independent camera brush interaction.

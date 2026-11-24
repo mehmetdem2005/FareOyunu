@@ -14,6 +14,10 @@ var _tool_select: OptionButton
 var _radius: HSlider
 var _strength: HSlider
 var _profile_select: OptionButton
+var _advanced_row: HBoxContainer
+var _advanced_label: Label
+var _stamp_preset: OptionButton
+var _ramp_rise: SpinBox
 var _radius_display: Label
 var _strength_display: Label
 var _active: TerraForgeTerrain
@@ -69,8 +73,9 @@ func _enter_tree() -> void:
     label.text = "Tool"
     tool_row.add_child(label)
     _tool_select = OptionButton.new()
-    for tool_name in ["Raise", "Lower", "Smooth", "Flatten"]:
+    for tool_name in ["Raise", "Lower", "Smooth", "Flatten", "Ridge", "Valley", "Ramp", "Stamp"]:
         _tool_select.add_item(tool_name)
+    _tool_select.item_selected.connect(_on_tool_changed)
     _tool_select.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     tool_row.add_child(_tool_select)
     var undo_button: Button = Button.new()
@@ -122,6 +127,28 @@ func _enter_tree() -> void:
     strength_row.add_child(_strength_display)
     _strength.value_changed.connect(_strength_changed)
 
+    _advanced_row = HBoxContainer.new()
+    _advanced_row.visible = false
+    content.add_child(_advanced_row)
+    _advanced_label = Label.new()
+    _advanced_label.text = "Shape"
+    _advanced_label.custom_minimum_size.x = 58
+    _advanced_row.add_child(_advanced_label)
+    _stamp_preset = OptionButton.new()
+    for preset_name in ["Hill", "Crater", "Mesa"]:
+        _stamp_preset.add_item(preset_name)
+    _stamp_preset.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    _advanced_row.add_child(_stamp_preset)
+    _ramp_rise = SpinBox.new()
+    _ramp_rise.min_value = -40.0
+    _ramp_rise.max_value = 40.0
+    _ramp_rise.step = 0.5
+    _ramp_rise.value = 5.0
+    _ramp_rise.suffix = "m"
+    _ramp_rise.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    _advanced_row.add_child(_ramp_rise)
+    _ramp_rise.visible = false
+
     var profile_row: HBoxContainer = HBoxContainer.new()
     content.add_child(profile_row)
     var profile_label: Label = Label.new()
@@ -171,7 +198,8 @@ func _toggle_popup() -> void:
     var window_size: Vector2i = get_editor_interface().get_base_control().get_window().size
     var button_position: Vector2i = Vector2i(_menu_button.get_screen_position())
     var width: int = mini(300, maxi(240, window_size.x - 16))
-    var height: int = mini(275, maxi(180, window_size.y - 16))
+    var required_height: int = 310 if _advanced_row.visible else 275
+    var height: int = mini(required_height, maxi(180, window_size.y - 16))
     var x: int = clampi(button_position.x, 0, maxi(0, window_size.x - width))
     var y: int = clampi(
         button_position.y + int(_menu_button.size.y) + 3,
@@ -203,6 +231,26 @@ func _process(_delta: float) -> void:
             stats["resident"], stats["pending"],
             stats["lod0"], stats["lod1"], stats["lod2"]
         ]
+
+func _on_tool_changed(tool: int) -> void:
+    _advanced_row.visible = (tool == 6 or tool == 7)
+    _advanced_label.text = "Rise" if tool == 6 else "Shape"
+    _ramp_rise.visible = tool == 6
+    _stamp_preset.visible = tool == 7
+    match tool:
+        4:
+            _set_status("Ridge: drag a sharp raised mountain spine.")
+        5:
+            _set_status("Valley: drag a carved drainage channel.")
+        6:
+            _set_status("Ramp: drag start to end; the gradient is applied when released.")
+        7:
+            _set_status("Stamp: one tap adds the selected terrain shape.")
+        _:
+            _set_status("Drag on the terrain with Brush ON.")
+    if _popup.visible:
+        _popup.hide()
+        _toggle_popup()
 
 func _quality_changed(profile: int) -> void:
     if is_instance_valid(_active):
@@ -343,7 +391,9 @@ func _paint_at(camera: Camera3D, position: Vector2) -> void:
             surface["position"],
             _tool_select.selected,
             float(_radius.value),
-            float(_strength.value)
+            float(_strength.value),
+            _stamp_preset.selected,
+            float(_ramp_rise.value)
         )
 
 func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:

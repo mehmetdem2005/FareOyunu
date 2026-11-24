@@ -1,4 +1,4 @@
-# TerraForge Mobile 0.2.3 — Türkçe kullanım
+# TerraForge Mobile 0.3.0 — Türkçe kullanım
 
 ## Kurulum (telefon / Godot 4.7.2)
 
@@ -7,10 +7,19 @@
 3. Godot'ta **Project → Project Settings → Plugins** menüsünden **TerraForge Mobile**'ı etkinleştir.
 4. Bir 3D sahne aç; kök düğüm `Node3D` olsun.
 5. Üst 3D araç çubuğundaki **Terrain** butonuna dokun. Açılan küçük menüden **+ New** ile arazi oluştur.
-6. İlk arazi *bilerek düzdür*. Bu bir hata değildir: **Raise** ile dağ, **Lower** ile vadi/çukur, **Smooth** ile geçiş, **Flatten** ile düz alan oluştur.
+6. İlk arazi *bilerek düzdür*. Bu bir hata değildir: **Raise** ile yükselt, **Lower** ile alçalt, **Smooth** ile yumuşat, **Flatten** ile düzleştir.
 7. **Terrain** menüsünden araç ve **Size / Power** değerlerini ayarla. Menüyü kapat. Üst çubuktaki **Brush** anahtarını açıp araziyi tek parmakla şekillendir. Kamerayı hareket ettirmek için **Brush** anahtarını kapat.
 8. **Quality → Mobile** profilinde başla. Daha fazla ayrıntı gerektiğinde Balanced/High dene.
 9. **Terrain → Save**, Float32 yükseklik verisini kaydeder. Ayrıca Godot'un normal **Scene → Save** seçeneğiyle sahneyi kaydet. *İkisi de gereklidir*.
+
+## Yeni şekillendirme araçları (v0.3)
+
+- **Ridge (Dağ sırtı):** Brush açıkken sürükle; dar ve belirgin yükselti çizgisi oluşur.
+- **Valley (Vadi):** Sürükleyerek araziyi bir hat boyunca oy; dere yatağı ve geçit için uygundur.
+- **Ramp (Eğimli yol):** Başlangıç noktasına dokun, bitiş noktasına sürükle, **parmağını kaldır**. O zaman eğimli koridor uygulanır. Seçince çıkan **Rise** ayarı başlangıçta **+5 m**; negatif değer iniş oluşturur. Tek seferde en fazla 256 m uzunluğunda ramp yapılır.
+- **Stamp (Hazır şekil):** Tek dokunuşla **Hill** (tepe), **Crater** (krater) veya **Mesa** (plato) bas. Shape seçimi yalnız bu araçta gösterilir. Parmağı sürüklemek aynı dokunuşta ikinci stamp üretmez.
+
+Hepsinde **Size** etki alanını, **Power** etki şiddetini belirler. Ramp ve Stamp seçenekleri yalnız ilgili araç seçildiğinde açılır; kalıcı geniş panel yoktur. Undo ve Redo her fırça hareketinde kullanılabilir.
 
 ## Değişiklikler
 
@@ -42,4 +51,5 @@ godot --headless --path /proje/yolu --script res://addons/terra_forge/tests/test
 godot --headless --path /proje/yolu --script res://addons/terra_forge/tests/test_lod_seams.gd
 godot --headless --path /proje/yolu --script res://addons/terra_forge/tests/test_stream_budget.gd
 godot --headless --path /proje/yolu --script res://addons/terra_forge/tests/test_brush_sampling.gd
+godot --headless --path /proje/yolu --script res://addons/terra_forge/tests/test_advanced_brushes.gd
 ```
