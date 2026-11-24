@@ -2,6 +2,8 @@ extends Node3D
 ## Isolated opt-in diagnostic scene. Open and run this scene, never the game.
 const PREVIEW = preload("res://addons/terra_forge/terrain/paged_terrain_preview.gd")
 const HIST = preload("res://addons/terra_forge/core/profile_histogram.gd")
+const V2 = preload("res://addons/terra_forge/core/region_fixture_v2.gd")
+const INDEX = preload("res://addons/terra_forge/core/region_index_v2.gd")
 const BUILDER = preload("res://addons/terra_forge/core/profile_fixture_builder.gd")
 @export_range(5.0, 1800.0, 1.0) var duration_seconds: float = 20.0
 @export_range(9, 64, 1) var page_limit: int = 16
@@ -11,7 +13,21 @@ var _camera: Camera3D
 var _path: LineEdit
 var _label: Label
 var _buttons: Array[Button] = []
+@export_range(1, 16, 1) var shard_limit: int = 4
+var _format: OptionButton
 var _fixture_size: OptionButton
+var _estimate: Label
+var _generated: Dictionary = {}
+var _generating_recipe: String = ""
+var _run_format: String = ""
+var _run_recipe: String = ""
+var _run_settings: Dictionary = {}
+var _shard_peak: int = 0
+var _shard_bytes_peak: int = 0
+var _gap_start: int = -1
+var _gap_max_us: int = 0
+var _mesh_hist
+var _last_mesh_builds: int = 0
 var _cancel_button: Button
 var _fixture = null
 var _running: bool = false
@@ -53,13 +69,22 @@ func _ready() -> void:
     var ui: VBoxContainer = VBoxContainer.new()
     panel.add_child(ui)
     _path = LineEdit.new()
-    _path.placeholder_text = "TFM1 folder (user:// or res://)"
+    _path.placeholder_text = "Read-only world (user:// or res://)"
     _path.custom_minimum_size.x = 280.0
     ui.add_child(_path)
+    _format = OptionButton.new()
+    _format.add_item("TFM1", 0)
+    _format.add_item("TFM2", 1)
+    ui.add_child(_format)
     _fixture_size = OptionButton.new()
-    for size in [256, 512, 1024, 2048]:
-        _fixture_size.add_item("%dx%d cells" % [size, size], size)
     ui.add_child(_fixture_size)
+    _estimate = Label.new()
+    _estimate.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    _estimate.custom_minimum_size.x = 280.0
+    ui.add_child(_estimate)
+    _format.item_selected.connect(func(_index): _refresh_sizes())
+    _fixture_size.item_selected.connect(func(_index): _refresh_estimate())
+    _refresh_sizes()
     _button(ui, "Create isolated sample", _make_fixture)
     _cancel_button = Button.new()
     _cancel_button.text = "Cancel fixture generation"
@@ -76,7 +101,7 @@ func _ready() -> void:
     _label = Label.new()
     _label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     _label.custom_minimum_size.x = 280.0
-    _label.text = "Choose sample or existing read-only TFM1 folder."
+    _label.text = "Select format and sample, or enter an existing world folder."
     ui.add_child(_label)
 
 func _button(parent: VBoxContainer, title: String, action: Callable) -> void:
@@ -92,13 +117,41 @@ func _set_busy(busy: bool) -> void:
         button.disabled = busy
     _path.editable = not busy
     _fixture_size.disabled = busy
+    _format.disabled = busy
+
+func _refresh_sizes() -> void:
+    var previous: int = _fixture_size.get_selected_id() if _fixture_size.item_count > 0 else 256
+    _fixture_size.clear()
+    var sizes: Array[int] = [256, 512, 1024, 2048]
+    if _format.get_selected_id() == 1:
+        sizes.append_array([4096, 8192])
+    for size in sizes:
+        _fixture_size.add_item("%dx%d cells" % [size, size], size)
+    var index: int = sizes.find(previous)
+    _fixture_size.select(index if index >= 0 else 0)
+    _refresh_estimate()
+
+func _refresh_estimate() -> void:
+    var size: int = _fixture_size.get_selected_id()
+    var dims: Vector2i = Vector2i(size, size)
+    var v2: bool = _format.get_selected_id() == 1
+    var plan: Dictionary = V2.preflight(dims) if v2 else BUILDER.preflight(dims)
+    if plan.get("error", FAILED) != OK:
+        _estimate.text = "Unsupported size"
+        return
+    var logical: int = int(plan["logical_upper_bytes"])
+    var reserve: int = logical + (int(plan["pages"]) + int(plan.get("shards", 0))) * 8192 + 16 * 1024 * 1024
+    _estimate.text = "%d pages | <= %.1f MiB logical\nFree-space gate %.1f MiB (estimate)" % [plan["pages"], float(logical) / 1048576.0, float(reserve) / 1048576.0]
 
 func _make_fixture() -> void:
     if _running or _fixture != null:
         return
     var size: int = _fixture_size.get_selected_id()
-    _fixture = BUILDER.new()
-    var err: Error = _fixture.start(Vector2i(size, size))
+    var dims: Vector2i = Vector2i(size, size)
+    var v2: bool = _format.get_selected_id() == 1
+    _generating_recipe = INDEX.sha(V2.descriptor(dims)).hex_encode()
+    _fixture = V2.new() if v2 else BUILDER.new()
+    var err: Error = _fixture.start(dims) if v2 else _fixture.start(dims, true)
     if err != OK:
         _fixture = null
         _label.text = "Fixture refused: " + error_string(err)
@@ -122,6 +175,9 @@ func _poll_fixture() -> void:
             _label.text += " | staging retained: " + str(result["remaining_staging"])
         return
     _path.text = str(result["directory"])
+    if _generated.size() >= 8:
+        _generated.erase(_generated.keys()[0])
+    _generated[_path.text] = {"recipe": _generating_recipe, "format": _format.get_item_text(_format.selected)}
     _label.text = "Sample ready (%.1f s). Select strict or lazy." % (float(result["generation_ms"]) / 1000.0)
 
 # Linux/Android process resident memory, NOT system free RAM or Godot static memory.
@@ -165,9 +221,18 @@ func _begin(lazy: bool) -> void:
     _set_busy(true)
     _mode = "on_demand" if lazy else "strict"
     _run_path = _path.text.strip_edges()
+    _run_format = _format.get_item_text(_format.selected)
+    var generated: Dictionary = _generated.get(_run_path, {})
+    _run_recipe = str(generated.get("recipe", "")) if generated.get("format", "") == _run_format else ""
     _run_seconds = duration_seconds
     _frame_hist = HIST.new()
     _pump_hist = HIST.new()
+    _mesh_hist = HIST.new()
+    _last_mesh_builds = 0
+    _shard_peak = 0
+    _shard_bytes_peak = 0
+    _gap_start = -1
+    _gap_max_us = 0
     _first_collision = null
     _extent = Vector2.ZERO
     _rss_baseline = _rss()
@@ -180,6 +245,9 @@ func _begin(lazy: bool) -> void:
     _missing_frames = 0
     _preview = PREVIEW.new()
     _preview.verify_pages_on_demand = lazy
+    _preview.region_index_format = _format.get_selected_id()
+    _preview.resident_shard_limit = shard_limit
+    _run_settings = {"page_limit": page_limit, "job_limit": job_limit, "shard_limit": shard_limit if _run_format == "TFM2" else 0, "view_distance": _preview.view_distance, "high_detail_distance": _preview.high_detail_distance, "medium_detail_distance": _preview.medium_detail_distance, "max_visible_tiles": _preview.max_visible_tiles, "tile_updates_per_frame": _preview.tile_updates_per_frame, "max_tile_work_ms": _preview.max_tile_work_ms, "viewport": [get_viewport().size.x, get_viewport().size.y]}
     add_child(_preview)
     _started = Time.get_ticks_usec()
     var status: Error = _preview.start_preview(_run_path, page_limit, job_limit)
@@ -195,7 +263,7 @@ func _begin(lazy: bool) -> void:
     _previous_frame = 0
     _next_memory_sample = 0
     _running = true
-    _label.text = _mode + " running..."
+    _label.text = _run_format + " " + _mode + " running..."
 
 func _process(_delta: float) -> void:
     if _fixture != null:
@@ -222,12 +290,23 @@ func _process(_delta: float) -> void:
     _page_peak = maxi(_page_peak, int(src.get("resident", 0)))
     _tile_peak = maxi(_tile_peak, int(s.get("tiles", 0)))
     _vertex_peak = maxi(_vertex_peak, int(s.get("vertices", 0)))
+    _shard_peak = maxi(_shard_peak, int(src.get("shard_resident", 0)))
+    _shard_bytes_peak = maxi(_shard_bytes_peak, int(src.get("shard_resident_bytes", 0)))
+    var builds: int = int(s.get("mesh_builds", 0))
+    if builds > _last_mesh_builds:
+        _mesh_hist.add(float(s.get("last_build_ms", 0.0)))
+        _last_mesh_builds = builds
     _coverage_frames += 1
     if _preview.has_collision_at(focus):
+        if _gap_start >= 0:
+            _gap_max_us = maxi(_gap_max_us, now - _gap_start)
+            _gap_start = -1
         if _first_collision == null:
             _first_collision = float(Time.get_ticks_usec() - _started) / 1000.0
     else:
         _missing_frames += 1
+        if _gap_start < 0:
+            _gap_start = now
     if now >= _next_memory_sample:
         _memory()
         _next_memory_sample = now + 500000
@@ -245,12 +324,26 @@ func _finish(status: Error) -> void:
     var io: Dictionary = _preview.io_profile()
     var pipeline: Dictionary = _preview.pipeline_profile()
     var end: int = Time.get_ticks_usec()
+    if _gap_start >= 0:
+        _gap_max_us = maxi(_gap_max_us, end - _gap_start)
+    var rss_end: Variant = _rss()
     _preview.stop_preview()
     var shutdown_ms: float = float(Time.get_ticks_usec() - end) / 1000.0
     _preview.free()
     _preview = null
     var report: Dictionary = {
         "mode": _mode, "world": _run_path, "error": int(status),
+        "index_format": _run_format, "fixture_recipe_session_hint": _run_recipe if not _run_recipe.is_empty() else null,
+        "snapshot_id": src.get("snapshot_id", "") if _run_format == "TFM2" else null,
+        "route": "normalized_sine_v1", "settings": _run_settings,
+        "root_index_bytes": src.get("root_index_bytes", 0),
+        "shard_resident_peak": _shard_peak, "shard_resident_bytes_peak": _shard_bytes_peak,
+        "shard_hits": src.get("shard_hits", 0), "shard_misses": src.get("shard_misses", 0),
+        "shard_loads": src.get("shard_loads", 0), "shard_evictions": src.get("shard_evictions", 0),
+        "verification_bitmap_bytes": src.get("verification_bitmap_bytes", 0), "terminal_error_bytes": src.get("terminal_error_bytes", 0),
+        "mesh_build_pump_sample_ms": _mesh_hist.report(), "mesh_builds": s.get("mesh_builds", 0),
+        "longest_sampled_collision_shape_gap_ms": float(_gap_max_us) / 1000.0 if _coverage_frames > 0 else null,
+        "rss_end_before_shutdown_bytes": rss_end,
         "requested_seconds": _run_seconds, "actual_stream_seconds": float(end - _opened) / 1000000.0,
         "page_limit": page_limit, "job_limit": job_limit, "open_ms": _open_ms,
         "manifest_verify_ms": src.get("open_verify_ms", null),
@@ -283,11 +376,11 @@ func _finish(status: Error) -> void:
 
 func report_document() -> Dictionary:
     return {
-        "schema": "TF_PROFILE_2", "os": OS.get_name(), "os_version": OS.get_version(),
+        "schema": "TF_PROFILE_3", "os": OS.get_name(), "os_version": OS.get_version(),
         "device_model": OS.get_model_name(), "godot": Engine.get_version_info().get("string", ""),
         "display": DisplayServer.get_name(), "renderer": RenderingServer.get_current_rendering_method(),
         "headless": DisplayServer.get_name() == "headless",
-        "notes": "Frame intervals include scheduler/render waits; not GPU timings. RSS is sampled process-wide; static memory is separate. Worker IO includes accepted success/failure results only, excludes strict scan and canceled jobs. Pipeline splits queue wait, worker service and result delivery; counts include canceled jobs separately. First focus collision means shape attached, not a raycast. No OS cache flush; repeat in opposite order. Fixture generation excluded.",
+        "notes": "Frame intervals include scheduler/render waits; not GPU timings. RSS is sampled process-wide; static memory is separate. Worker IO includes accepted success/failure results only, excludes strict scan and canceled jobs. Pipeline splits queue wait, worker service and result delivery; counts include canceled jobs separately. First focus collision means shape attached, not a raycast. No OS cache flush; repeat in opposite order. Fixture generation excluded. Session recipe is a hint, not verification of external edits. Compare identical extent, settings and route; normalized route speed varies with world size. Shard counters include canceled work. Mesh sample is cumulative pump-to-last-build, not pure mesh CPU or GPU. Collision gap is sampled shape coverage, not physics raycast. Strict scan blocks the opening call.",
         "runs": _reports.duplicate(true)
     }
 

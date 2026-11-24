@@ -1,6 +1,7 @@
 extends RefCounted
 ## Diagnostic fixture only. No user path input, no modification of existing worlds.
 ## Produces a genuine TFH1 source by rows and TFR1 pages by blocks, not a full height array.
+const MATCHED = preload("res://addons/terra_forge/core/region_fixture_v2.gd")
 const STORE = preload("res://addons/terra_forge/core/height_store.gd")
 const REGIONS = preload("res://addons/terra_forge/core/region_store.gd")
 const MANIFEST = preload("res://addons/terra_forge/core/region_manifest.gd")
@@ -42,7 +43,7 @@ static func preflight(dimensions: Vector2i) -> Dictionary:
 static func sample(x: int, z: int) -> float:
     return 8.0 + 3.0 * sin(float(x) * 0.04) + 4.0 * cos(float(z) * 0.035) + 0.5 * sin(float(x + z) * 0.17)
 
-func start(dimensions: Vector2i) -> Error:
+func start(dimensions: Vector2i, matched_recipe: bool = false) -> Error:
     if _thread != null:
         return ERR_BUSY
     var plan: Dictionary = preflight(dimensions)
@@ -63,7 +64,7 @@ func start(dimensions: Vector2i) -> Error:
     _progress = {"phase": "starting", "completed": 0, "total": 1}
     _mutex.unlock()
     _thread = Thread.new()
-    var status: Error = _thread.start(Callable(self, "_work").bind(dimensions), Thread.PRIORITY_LOW)
+    var status: Error = _thread.start(Callable(self, "_work").bind(dimensions, matched_recipe), Thread.PRIORITY_LOW)
     if status != OK:
         _thread = null
     return status
@@ -111,7 +112,7 @@ func close() -> void:
         _thread.wait_to_finish()
         _thread = null
 
-func _work(dimensions: Vector2i) -> void:
+func _work(dimensions: Vector2i, matched_recipe: bool) -> void:
     var token: String = str(Time.get_unix_time_from_system()).replace(".", "_") + "_" + str(Time.get_ticks_usec()) + "_" + str(get_instance_id())
     var output: String = PREFIX + token
     var stage: String = output + ".staging"
@@ -123,7 +124,7 @@ func _work(dimensions: Vector2i) -> void:
         err = DirAccess.make_dir_absolute(stage)
         owned = err == OK
     if owned:
-        err = _generate(stage, dimensions)
+        err = _generate(stage, dimensions, matched_recipe)
     if err == OK:
         # Cancellation and publication are serialized; cancellation after
         # publication is not a promise to undo an already completed world.
@@ -145,7 +146,7 @@ func _work(dimensions: Vector2i) -> void:
     _done = true
     _mutex.unlock()
 
-func _generate(stage: String, dimensions: Vector2i) -> Error:
+func _generate(stage: String, dimensions: Vector2i, matched_recipe: bool) -> Error:
     var source_path: String = stage.path_join("source.tfh")
     var f: FileAccess = FileAccess.open(source_path, FileAccess.WRITE)
     if f == null:
@@ -161,7 +162,7 @@ func _generate(stage: String, dimensions: Vector2i) -> Error:
             f.close()
             return ERR_SKIP
         for x in range(dimensions.x + 1):
-            row[x] = sample(x, z)
+            row[x] = MATCHED.sample(x, z) if matched_recipe else sample(x, z)
         f.store_buffer(row.to_byte_array())
         if f.get_error() != OK:
             var err: Error = f.get_error()
@@ -197,7 +198,7 @@ func _generate(stage: String, dimensions: Vector2i) -> Error:
                     var gx: int = px * 32 + local_x
                     if gx > dimensions.x:
                         break
-                    values[local_z * 32 + local_x] = sample(gx, gz)
+                    values[local_z * 32 + local_x] = MATCHED.sample(gx, gz) if matched_recipe else sample(gx, gz)
             var key: Vector2i = Vector2i(px, pz)
             var status: Error = store.create_page_with_samples(key, values)
             if status != OK:

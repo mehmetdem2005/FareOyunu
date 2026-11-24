@@ -65,10 +65,48 @@ func _run() -> void:
     if p.report_document()["runs"].size() != 2 or FileAccess.get_sha256(manifest) != before:
         _fail("Missing comparison or modified source manifest", p)
         return
+    var legacy_path: String = p._path.text
+    p._format.select(1)
+    p._refresh_sizes()
+    if p._fixture_size.item_count != 6 or p._fixture_size.get_item_id(5) != 8192:
+        _fail("Missing large V2 choices", p)
+        return
+    p._make_fixture()
+    fixture_deadline = Time.get_ticks_msec() + 30000
+    while p._fixture != null and Time.get_ticks_msec() < fixture_deadline:
+        await process_frame
+        OS.delay_msec(2)
+    if p._fixture != null or p._path.text == legacy_path:
+        _fail("V2 fixture failed", p)
+        return
+    var v2_manifest: String = p._path.text.path_join("manifest.tfm2")
+    var v2_sha: String = FileAccess.get_sha256(v2_manifest)
+    if v2_sha.is_empty():
+        _fail("V2 root missing", p)
+        return
+    for z in range(9):
+        for x in range(9):
+            var name: String = "r_%05d_%05d.tfr" % [x,z]
+            if FileAccess.get_sha256(legacy_path.path_join(name)) != FileAccess.get_sha256(p._path.text.path_join(name)):
+                _fail("Matched fixture TFR1 bytes differ", p)
+                return
+    for lazy in [false,true]:
+        p._begin(lazy)
+        var deadline: int = Time.get_ticks_msec() + 15000
+        while p._running and Time.get_ticks_msec() < deadline:
+            await process_frame
+            OS.delay_msec(2)
+        var report: Dictionary = p._reports[-1]
+        if p._running or report["error"] != OK or report["index_format"] != "TFM2" or report["fixture_recipe_session_hint"] != p._reports[0]["fixture_recipe_session_hint"] or report["root_index_bytes"] <= 0 or report["shard_resident_peak"] < 1 or report["shard_resident_peak"] > p.shard_limit or report["first_focus_collision_ms_from_open_start"] == null or report["longest_sampled_collision_shape_gap_ms"] == null:
+            _fail("V2 profile report " + str(report), p)
+            return
+    if p.report_document()["schema"] != "TF_PROFILE_3" or p._reports.size() != 4 or FileAccess.get_sha256(v2_manifest) != v2_sha:
+        _fail("V2 profile identity or report", p)
+        return
     p._save_report()
     if not p._label.text.begins_with("Saved:"):
         _fail("JSON report export failed", p)
         return
     p.free()
-    print("PASS: bounded histograms, nullable RSS, isolated strict/lazy scene, first focus collision, worker IO, JSON and immutable manifest")
+    print("PASS: matched TFM1/TFM2 81 byte-identical pages, four strict/lazy profile runs, shard metrics, collision coverage, bounded histograms, immutable manifests and JSON")
     quit(0)
