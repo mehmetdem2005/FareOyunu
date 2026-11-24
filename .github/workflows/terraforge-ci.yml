@@ -58,6 +58,10 @@ jobs:
           godot --version
           echo "CI project: $project"
 
+      - name: Check Bash test runner syntax
+        shell: bash
+        run: bash -n addons/terra_forge/tests/run_all.sh
+
       - name: Import project and parse addon scripts
         shell: bash
         run: |
