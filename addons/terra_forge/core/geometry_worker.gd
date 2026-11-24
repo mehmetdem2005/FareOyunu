@@ -26,6 +26,7 @@ var _next_id: int = 0
 var _pending: Array[Dictionary] = []
 var _finished: Array[Dictionary] = []
 var _inflight: int = 0
+var _running_id: int = 0
 var _submitted: int = 0
 var _delivered: int = 0
 var _dropped: int = 0
@@ -101,6 +102,7 @@ func submit(source,key: Vector2i,lod: int,desired: Dictionary) -> Dictionary:
     _mutex.unlock()
     if full:
         return {"error":ERR_BUSY}
+    var copy_started: int=Time.get_ticks_usec()
     var acquired: Dictionary=source.acquire_tile_view(G.required_pages(source,key.x,key.y,lod))
     if acquired["error"]!=OK:
         return acquired
@@ -113,10 +115,11 @@ func submit(source,key: Vector2i,lod: int,desired: Dictionary) -> Dictionary:
     var buffer= copied["buffer"]
     if buffer.payload_bytes()>INPUT_CAP:
         return {"error":ERR_BUG}
+    var copy_elapsed: int=Time.get_ticks_usec()-copy_started
     _mutex.lock()
     _next_id+=1
     var id: int=_next_id
-    _pending.append({"id":id,"epoch":_epoch,"key":key,"lod":lod,"levels":sig["levels"],"desired":sig["desired"],"buffer":buffer,"input_bytes":buffer.payload_bytes()})
+    _pending.append({"id":id,"epoch":_epoch,"key":key,"lod":lod,"levels":sig["levels"],"desired":sig["desired"],"buffer":buffer,"input_bytes":buffer.payload_bytes(),"copy_elapsed_us":copy_elapsed,"queued_us":Time.get_ticks_usec()})
     _submitted+=1
     _peak_slots=maxi(_peak_slots,_slots())
     var wake: bool=not _armed
@@ -124,7 +127,7 @@ func submit(source,key: Vector2i,lod: int,desired: Dictionary) -> Dictionary:
     _mutex.unlock()
     if wake:
         _wake.post()
-    return {"error":OK,"id":id}
+    return {"error":OK,"id":id,"copy_elapsed_us":copy_elapsed,"input_bytes":buffer.payload_bytes()}
 
 func _loop() -> void:
     while true:
@@ -140,9 +143,11 @@ func _loop() -> void:
                 break
             var job: Dictionary=_pending.pop_front()
             _inflight=1
+            _running_id=job["id"]
             _mutex.unlock()
             var key: Vector2i=job["key"]
             var started: int=Time.get_ticks_usec()
+            job["queue_wait_us"]=started-int(job["queued_us"])
             var generated: Dictionary=G.generate(job["buffer"],key.x,key.y,job["lod"],job["desired"])
             var elapsed: int=Time.get_ticks_usec()-started
             var output_bytes: int=0
@@ -157,8 +162,10 @@ func _loop() -> void:
             job["geometry"]=generated
             job["output_reserved_payload_bytes"]=output_bytes
             job["build_elapsed_us"]=elapsed
+            job["completed_us"]=Time.get_ticks_usec()
             _mutex.lock()
             _inflight=0
+            _running_id=0
             if _stop or job["epoch"]!=_epoch:
                 _dropped+=1
             else:
@@ -184,10 +191,24 @@ func poll(source,desired: Dictionary) -> Dictionary:
         _delivered+=1
         result["snapshot"]=_snapshot
         result["source_serial"]=_serial
+        result["delivery_wait_us"]=Time.get_ticks_usec()-int(result["completed_us"])
         _mutex.unlock()
         return {"error":OK,"result":result}
     _mutex.unlock()
     return {"error":ERR_BUSY}
+
+## Main-thread snapshot of IDs still owned by worker. No result arrays.
+func active_ids() -> Array[int]:
+    _mutex.lock()
+    var ids: Array[int]=[]
+    for job in _pending:
+        ids.append(int(job["id"]))
+    for job in _finished:
+        ids.append(int(job["id"]))
+    if _running_id!=0:
+        ids.append(_running_id)
+    _mutex.unlock()
+    return ids
 
 func stats() -> Dictionary:
     _mutex.lock()
@@ -210,6 +231,7 @@ func close() -> void:
     _armed=false
     _wake=Semaphore.new()
     _inflight=0
+    _running_id=0
     _submitted=0
     _delivered=0
     _dropped=0

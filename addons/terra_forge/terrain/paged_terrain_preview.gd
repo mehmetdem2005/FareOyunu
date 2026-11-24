@@ -6,6 +6,8 @@ extends Node3D
 const ASYNC = preload("res://addons/terra_forge/core/async_region_source.gd")
 const LOD = preload("res://addons/terra_forge/core/lod_policy.gd")
 const GEOMETRY = preload("res://addons/terra_forge/core/paged_tile_geometry.gd")
+const WORKER = preload("res://addons/terra_forge/core/geometry_worker.gd")
+const HIST = preload("res://addons/terra_forge/core/profile_histogram.gd")
 const TILE_CELLS: int = 32
 
 @export var preview_enabled: bool = false
@@ -21,9 +23,18 @@ const TILE_CELLS: int = 32
 ## Experimental A/B CPU sampling path. Default stays baseline until measured.
 @export var use_tile_read_view: bool = false
 ## -1 preserves serialized legacy bool. Explicit mode overrides it.
-@export_enum("Legacy flag:-1", "A direct:0", "B tile view:1", "C dense buffer:2") var sampling_strategy: int = -1
+@export_enum("Legacy flag:-1", "A direct:0", "B tile view:1", "C dense buffer:2", "E geometry worker:3") var sampling_strategy: int = -1
 var _active_sampling_strategy: int = 0
 var _dense_payload_peak: int = 0
+@export_range(1,4,1) var geometry_job_limit: int = 2
+var _geometry_worker
+var _geometry_jobs: Dictionary = {}
+var _copy_hist = HIST.new()
+var _queue_hist = HIST.new()
+var _worker_hist = HIST.new()
+var _delivery_hist = HIST.new()
+var _publish_hist = HIST.new()
+var _publish_peak_per_pump: int = 0
 @export_range(9, 64, 1) var resident_page_limit: int = 16
 @export_range(1, 8, 1) var max_background_jobs: int = 4
 @export_range(80.0, 640.0, 16.0) var view_distance: float = 160.0
@@ -81,7 +92,7 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
         _last_error = ERR_INVALID_PARAMETER
         return _last_error
     var selected: int = resolved_sampling_strategy()
-    if selected < 0 or selected > 2:
+    if selected < 0 or selected > 3:
         _last_error = ERR_INVALID_PARAMETER
         return _last_error
     _active_sampling_strategy = selected
@@ -98,6 +109,19 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
         _last_error = status
         return status
     _reader = next
+    if selected==3:
+        _geometry_worker=WORKER.new()
+        status=_geometry_worker.start(_reader,geometry_job_limit)
+        if status!=OK:
+            stop_preview()
+            _last_error=status
+            return status
+    _copy_hist=HIST.new()
+    _queue_hist=HIST.new()
+    _worker_hist=HIST.new()
+    _delivery_hist=HIST.new()
+    _publish_hist=HIST.new()
+    _publish_peak_per_pump=0
     region_directory = directory
     resident_page_limit = cache_pages
     max_background_jobs = max_jobs
@@ -124,6 +148,10 @@ func resolved_sampling_strategy() -> int:
 
 func stop_preview() -> void:
     set_process(false)
+    if _geometry_worker!=null:
+        _geometry_worker.close()
+        _geometry_worker=null
+    _geometry_jobs.clear()
     for item in _tiles.values():
         var root: Node3D = item["root"]
         if is_instance_valid(root):
@@ -170,7 +198,10 @@ func pump_stream() -> Dictionary:
     if current - _last_sync_msec > 220:
         _sync_tiles()
         _last_sync_msec = current
-    _build_pending_tiles()
+    var started: int=Time.get_ticks_usec()
+    if _geometry_worker!=null:
+        _publish_worker_results(started)
+    _build_pending_tiles(started)
     return {
         "error": _last_error,
         "resident_tiles": _tiles.size(),
@@ -233,6 +264,15 @@ func _sync_tiles() -> void:
                 if _tiles.has(adjacent) and new_desired.has(adjacent):
                     _pending_tiles[adjacent] = true
                     _blocked_tiles.erase(adjacent)
+    if _geometry_worker!=null:
+        for key in new_desired:
+            var lod: int=int(new_desired[key])
+            var before: Dictionary=WORKER.signature(key,lod,previous,_reader.cells)
+            var after: Dictionary=WORKER.signature(key,lod,new_desired,_reader.cells)
+            if before.get("levels",[])!=after.get("levels",[]):
+                _blocked_tiles.erase(key)
+            if _tiles.has(key) and _tiles[key].get("levels",[])!=after.get("levels",[]):
+                _pending_tiles[key]=true
     for key in _tiles.keys():
         if not new_desired.has(key):
             var root: Node3D = _tiles[key]["root"]
@@ -272,21 +312,26 @@ func _create_tile(tx: int, tz: int) -> Dictionary:
         "lod": -1, "vertex_count": 0
     }
 
-func _build_pending_tiles() -> void:
+func _build_pending_tiles(started: int = -1) -> void:
     if _pending_tiles.is_empty():
         return
     var keys: Array = _pending_tiles.keys().filter(func(key: Variant) -> bool:
-        return not _blocked_tiles.has(key)
+        return not _blocked_tiles.has(key) and not _geometry_jobs.has(key)
     )
     keys.sort_custom(func(a: Variant, b: Variant) -> bool:
         return LOD.tile_distance(a, float(TILE_CELLS) * _reader.spacing, _anchor) < LOD.tile_distance(b, float(TILE_CELLS) * _reader.spacing, _anchor)
     )
     var max_builds: int = maxi(1, tile_updates_per_frame)
     var submitted: int = 0
-    var started: int = Time.get_ticks_usec()
+    if started<0:
+        started=Time.get_ticks_usec()
     for key in keys:
         if max_builds <= 0 or float(Time.get_ticks_usec() - started) >= max_tile_work_ms * 1000.0:
             break
+        if _geometry_worker!=null:
+            var worker_stats: Dictionary=_geometry_worker.stats()
+            if worker_stats["slots"]>=worker_stats["cap"]:
+                break
         var lod: int = int(_desired_tiles[key])
         var required: Array[Vector2i] = GEOMETRY.required_pages(_reader, key.x, key.y, lod)
         # Keep every already-loaded member of this tile's height/normal
@@ -328,6 +373,19 @@ func _build_pending_tiles() -> void:
             # Focus only on the nearest pending tile. Otherwise page loads
             # for far tiles can evict this tile's required border samples.
             break
+        if _geometry_worker!=null:
+            var accepted: Dictionary=_geometry_worker.submit(_reader,key,lod,_desired_tiles)
+            var status: Error=int(accepted["error"])
+            if status==OK:
+                _geometry_jobs[key]=accepted["id"]
+                _copy_hist.add(float(accepted["copy_elapsed_us"])/1000.0)
+                _dense_payload_peak=maxi(_dense_payload_peak,int(accepted["input_bytes"]))
+                max_builds-=1
+            elif status==ERR_BUSY:
+                break
+            else:
+                _block_tile(key,key,status)
+            continue
         var generated: Dictionary
         match _active_sampling_strategy:
             0: generated = GEOMETRY.generate(_reader, key.x, key.y, lod, _desired_tiles)
@@ -341,31 +399,74 @@ func _build_pending_tiles() -> void:
                 _block_tile(key, key, error)
                 continue
             break
-        # Fail-closed: don't allocate or replace any visible/collision tile
-        # until ALL required Float32 data and geometry arrays are valid.
-        if not _tiles.has(key):
-            _tiles[key] = _create_tile(key.x, key.y)
-        var tile: Dictionary = _tiles[key]
-        var mesh: ArrayMesh = ArrayMesh.new()
-        mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, generated["arrays"])
-        (tile["visual"] as MeshInstance3D).mesh = mesh
-        var collision: CollisionShape3D = tile["collision"]
-        if lod == 0:
-            var shape: HeightMapShape3D = HeightMapShape3D.new()
-            shape.map_width = int(generated["width"])
-            shape.map_depth = int(generated["width"])
-            shape.map_data = generated["collision_heights"]
-            collision.shape = shape
-        else:
-            collision.shape = null
-        tile["lod"] = lod
-        tile["vertex_count"] = int(generated["vertex_count"])
-        _tiles[key] = tile
-        _pending_tiles.erase(key)
-        _mesh_builds += 1
-        _last_build_ms = float(Time.get_ticks_usec() - started) / 1000.0
-        _max_build_ms = maxf(_max_build_ms, _last_build_ms)
+        _publish_geometry(key,lod,generated,started)
         max_builds -= 1
+
+## Poll before submission, share same soft main-thread time budget.
+## One result is transferred/published synchronously, never accumulated.
+func _publish_worker_results(started: int) -> void:
+    var count: int=0
+    while count<maxi(1,tile_updates_per_frame) and float(Time.get_ticks_usec()-started)<max_tile_work_ms*1000.0:
+        var polled: Dictionary=_geometry_worker.poll(_reader,_desired_tiles)
+        var status: Error=int(polled["error"])
+        if status!=OK:
+            if status!=ERR_BUSY:
+                _last_error=status
+            break
+        var result: Dictionary=polled["result"]
+        var key: Vector2i=result["key"]
+        var lod: int=result["lod"]
+        var signature: Dictionary=WORKER.signature(key,lod,_desired_tiles,_reader.cells)
+        var current: Dictionary=_reader.stats()
+        if _geometry_jobs.get(key,-1)!=result["id"] or not _pending_tiles.has(key) or _blocked_tiles.has(key) or result["epoch"]!=current["generation"] or result["snapshot"]!=current["snapshot_id"] or result["source_serial"]!=_reader.session_serial() or signature.get("error",FAILED)!=OK or signature["levels"]!=result["levels"]:
+            continue
+        _geometry_jobs.erase(key)
+        var generated: Dictionary=result["geometry"]
+        if generated["error"]!=OK:
+            _block_tile(key,key,int(generated["error"]))
+            continue
+        _queue_hist.add(float(result["queue_wait_us"])/1000.0)
+        _worker_hist.add(float(result["build_elapsed_us"])/1000.0)
+        _delivery_hist.add(float(result["delivery_wait_us"])/1000.0)
+        var publish_start: int=Time.get_ticks_usec()
+        _publish_geometry(key,lod,generated,started)
+        _publish_hist.add(float(Time.get_ticks_usec()-publish_start)/1000.0)
+        count+=1
+    _publish_peak_per_pump=maxi(_publish_peak_per_pump,count)
+    # Only release reservations for jobs that no longer exist. Worker can
+    # finish during this snapshot but cannot create a new job on its own.
+    var active: Array[int]=_geometry_worker.active_ids()
+    for key in _geometry_jobs.keys():
+        if not active.has(int(_geometry_jobs[key])):
+            _geometry_jobs.erase(key)
+
+func _publish_geometry(key: Vector2i,lod: int,generated: Dictionary,started: int) -> void:
+    # Fail-closed: don't allocate or replace any visible/collision tile
+    # until ALL required Float32 data and geometry arrays are valid.
+    if not _tiles.has(key):
+        _tiles[key] = _create_tile(key.x, key.y)
+    var tile: Dictionary = _tiles[key]
+    var mesh: ArrayMesh = ArrayMesh.new()
+    mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, generated["arrays"])
+    (tile["visual"] as MeshInstance3D).mesh = mesh
+    var collision: CollisionShape3D = tile["collision"]
+    if lod == 0:
+        var shape: HeightMapShape3D = HeightMapShape3D.new()
+        shape.map_width = int(generated["width"])
+        shape.map_depth = int(generated["width"])
+        shape.map_data = generated["collision_heights"]
+        collision.shape = shape
+    else:
+        collision.shape = null
+    tile["lod"] = lod
+    if _geometry_worker!=null:
+        tile["levels"]=WORKER.signature(key,lod,_desired_tiles,_reader.cells)["levels"]
+    tile["vertex_count"] = int(generated["vertex_count"])
+    _tiles[key] = tile
+    _pending_tiles.erase(key)
+    _mesh_builds += 1
+    _last_build_ms = float(Time.get_ticks_usec() - started) / 1000.0
+    _max_build_ms = maxf(_max_build_ms, _last_build_ms)
 
 func _block_tile(key: Vector2i, page: Vector2i, error: Error) -> void:
     _blocked_tiles[key] = error
@@ -426,6 +527,11 @@ func stats() -> Dictionary:
         "use_tile_read_view": use_tile_read_view,
         "sampling_strategy": _active_sampling_strategy if _reader != null else resolved_sampling_strategy(),
         "dense_payload_peak_bytes": _dense_payload_peak,
+        "geometry_worker": _geometry_worker.stats() if _geometry_worker!=null else {},
+        "geometry_reservations": _geometry_jobs.size(),
+        "geometry_copy_ms": _copy_hist.report(), "geometry_queue_ms": _queue_hist.report(),
+        "geometry_worker_ms": _worker_hist.report(), "geometry_delivery_ms": _delivery_hist.report(),
+        "geometry_publish_ms": _publish_hist.report(), "geometry_publish_peak_per_pump": _publish_peak_per_pump,
         "index_format": source.get("index_format", "TFM2" if region_index_format == 1 else "TFM1"),
         "last_error": _last_error,
         "last_error_page": _last_error_page,
