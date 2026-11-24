@@ -228,31 +228,38 @@ func reconcile(source,desired: Dictionary,priority: Dictionary) -> Error:
 
 ## Only transfer one result per call. Recheck current source session,
 ## epoch, requested LOD and four-neighbor signature before delivery.
-func poll(source,desired: Dictionary,max_source_bytes: int=-1) -> Dictionary:
+func poll(source,desired: Dictionary,max_source_bytes: int=-1,critical_only: bool=false) -> Dictionary:
     var context: Error=_context(source)
     if context!=OK:
         return {"error":context}
     _mutex.lock()
-    while not _finished.is_empty():
-        var result: Dictionary=_finished[0]
+    var index: int=0
+    var deferred_optional: bool=false
+    while index<_finished.size():
+        var result: Dictionary=_finished[index]
         var sig: Dictionary=signature(result["key"],result["lod"],desired,source.cells)
         if result["epoch"]!=_epoch or sig["error"]!=OK or sig["levels"]!=result["levels"]:
-            _finished.pop_front()
+            _finished.remove_at(index)
             _dropped+=1
             continue
-        # Valid but too expensive: keep original bounded ownership/ID.
+        # Keep optional outputs in existing bounded worker slots; scan
+        # for a valid LOD0 result rather than blocking it behind a far one.
+        if critical_only and int(result["lod"])!=0:
+            deferred_optional=true
+            index+=1
+            continue
         if max_source_bytes>=0 and int(PUB.expected(result["lod"])["total_bytes"])>max_source_bytes:
             _mutex.unlock()
-            return {"error":ERR_BUSY,"deferred_bytes":true}
-        _finished.pop_front()
+            return {"error":ERR_BUSY,"deferred_bytes":true,"deferred_optional":deferred_optional}
+        _finished.remove_at(index)
         _delivered+=1
         result["snapshot"]=_snapshot
         result["source_serial"]=_serial
         result["delivery_wait_us"]=Time.get_ticks_usec()-int(result["completed_us"])
         _mutex.unlock()
-        return {"error":OK,"result":result}
+        return {"error":OK,"result":result,"deferred_optional":deferred_optional}
     _mutex.unlock()
-    return {"error":ERR_BUSY}
+    return {"error":ERR_BUSY,"deferred_optional":deferred_optional}
 
 ## Main-thread snapshot of IDs still owned by worker. No result arrays.
 func active_ids() -> Array[int]:

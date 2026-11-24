@@ -79,6 +79,8 @@ suite=(
   test_motion_fault_recovery_v2
   test_adaptive_view_budget
   test_adaptive_view_budget_v2
+  test_adaptive_work_budget
+  test_adaptive_work_budget_v2
   test_lod_policy
   test_surface_faces
   test_lod_normals

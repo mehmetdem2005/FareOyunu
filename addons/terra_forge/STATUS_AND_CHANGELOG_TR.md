@@ -1,5 +1,8 @@
 # TerraForge Mobile — Tam İlerleme Kaydı, Kanıt Düzeyi ve Sürüm Günlüğü
 
+> **GÜNCEL DEVİR — P1.5.9a CI_VERIFIED (24 Kasım 2026):** cbcbab7ef2c49f8f8566327c41834c8e839ec118, [68/68 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45485999769), [ham JSON](P1_5_9A_VIEW_CI.json). Four 340-tick real stationary physics traces, injected pressure, far6→2→6, near6 unchanged, total12→8→12, zero ground gaps, four transitions; 30/60 policy tests/manual override pass. Not actual device FPS. NEXT P1.5.9b1 optional geometry work budget, shared tier, LOD0 bypass of extra governor, 8 paired single-seam movement traces, CI_PENDING. P1.4/P1.4R PARKED, A default unchanged, device and failure gates open.
+
+
 > **GÜNCEL DEVİR — P1.5.8b3 CI_VERIFIED (24 Kasım 2026):** f10a34d31c8081247e560c7c6728d2690ee00923, [66/66 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45484068904), [ham JSON](P1_5_8B3_FAULT_CI.json). Eight missing/corrupt cases, 1440 actual physics ticks, no floor/ray gaps, one worker error/case, repair60, explicit reset90, resume94/95, failed latency correctly excluded. NEXT P1.5.9a opt-in far-view pressure controller, 30/60 presets, EWMA+hysteresis/cooldown, real stationary physics and synthetic pressure input, 4×340 ticks, CI_PENDING. No device FPS/GPU claim, no default change, P1.4/P1.4R PARKED. Delayed worker, changed-height seams, precise IO attribution remain open.
 
 

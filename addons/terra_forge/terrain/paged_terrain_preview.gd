@@ -14,6 +14,7 @@ const SUPPORT = preload("res://addons/terra_forge/core/support_tile_selection.gd
 const MOTION = preload("res://addons/terra_forge/core/motion_prefetch.gd")
 const MOTION_LATENCY = preload("res://addons/terra_forge/core/motion_latency_window.gd")
 const VIEW_BUDGET = preload("res://addons/terra_forge/core/adaptive_view_budget.gd")
+const WORK_BUDGET = preload("res://addons/terra_forge/core/adaptive_work_budget.gd")
 const TILE_CELLS: int = 32
 
 @export var preview_enabled: bool = false
@@ -59,6 +60,10 @@ var _publication
 @export var enable_adaptive_motion_horizon: bool = false
 ## P1.5.9a experimental far-view pressure controller, requires support mode.
 @export var enable_adaptive_view_budget: bool=false
+## Independent opt-in; shares adaptive view pressure tier, not its tile cap.
+@export var enable_adaptive_work_budget: bool=false
+var _adaptive_work_active: bool=false
+var _work_budget=WORK_BUDGET.new()
 @export_enum("30 FPS:30","60 FPS:60") var adaptive_target_fps: int=30
 var _adaptive_view_active: bool=false
 var _view_budget=VIEW_BUDGET.new()
@@ -178,6 +183,7 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
     _motion_active=enable_motion_prefetch and _support_active
     _motion_adaptive=_motion_active and enable_adaptive_motion_horizon
     _adaptive_view_active=enable_adaptive_view_budget and _support_active
+    _adaptive_work_active=enable_adaptive_work_budget and _adaptive_view_active
     if _adaptive_view_active and _view_budget.configure(adaptive_target_fps)!=OK:
         stop_preview()
         _last_error=ERR_INVALID_PARAMETER
@@ -230,6 +236,8 @@ func resolved_sampling_strategy() -> int:
 func stop_preview() -> void:
     set_process(false)
     # Explicit shutdown revokes even a held support lease. Camera epochs do not.
+    _adaptive_work_active=false
+    _work_budget=WORK_BUDGET.new()
     _adaptive_view_active=false
     _view_budget=VIEW_BUDGET.new()
     _view_far_candidates=0
@@ -321,6 +329,8 @@ func pump_stream() -> Dictionary:
         _sync_tiles()
         _last_sync_msec = current
     var started: int=Time.get_ticks_usec()
+    if _adaptive_work_active:
+        _work_budget.begin_pump(_view_budget.tier,int(max_tile_work_ms*1000.0))
     if _publication!=null:
         _publication.begin_pump(tile_updates_per_frame)
     if _geometry_worker!=null:
@@ -562,6 +572,9 @@ func _build_pending_tiles(started: int = -1) -> void:
             if worker_stats["slots"]>=worker_stats["cap"]:
                 break
         var lod: int = int(_desired_tiles[key])
+        if _adaptive_work_active and lod>0 and not _work_budget.allows_optional(Time.get_ticks_usec()-started):
+            _work_budget.note_deferral()
+            continue
         if _publication_budget_active and _geometry_worker==null and not _publication.admit(lod):
             break
         var required: Array[Vector2i] = GEOMETRY.required_pages(_reader, key.x, key.y, lod)
@@ -604,6 +617,13 @@ func _build_pending_tiles(started: int = -1) -> void:
             # Focus only on the nearest pending tile. Otherwise page loads
             # for far tiles can evict this tile's required border samples.
             break
+        if _adaptive_work_active:
+            # Recheck after page bookkeeping; count attempted CPU work,
+            # including an unsuccessful build/submit, rather than only wins.
+            if lod>0 and not _work_budget.allows_optional(Time.get_ticks_usec()-started):
+                _work_budget.note_deferral()
+                continue
+            _work_budget.record(lod,Time.get_ticks_usec()-started)
         if _geometry_worker!=null:
             var accepted: Dictionary=_geometry_worker.submit(_reader,key,lod,_desired_tiles)
             var status: Error=int(accepted["error"])
@@ -644,7 +664,10 @@ func _publish_worker_results(started: int) -> void:
         var remaining: int=_publication.admission_bytes() if _publication_budget_active else -1
         if remaining==0:
             break
-        var polled: Dictionary=_geometry_worker.poll(_reader,_desired_tiles,remaining)
+        var critical_only: bool=_adaptive_work_active and not _work_budget.allows_optional(Time.get_ticks_usec()-started)
+        var polled: Dictionary=_geometry_worker.poll(_reader,_desired_tiles,remaining,critical_only)
+        if _adaptive_work_active and polled.get("deferred_optional",false):
+            _work_budget.note_deferral()
         if _publication_budget_active and polled.get("deferred_bytes",false):
             _publication.note_byte_deferral()
         var status: Error=int(polled["error"])
@@ -667,6 +690,8 @@ func _publish_worker_results(started: int) -> void:
         _queue_hist.add(float(result["queue_wait_us"])/1000.0)
         _worker_hist.add(float(result["build_elapsed_us"])/1000.0)
         _delivery_hist.add(float(result["delivery_wait_us"])/1000.0)
+        if _adaptive_work_active:
+            _work_budget.record(lod,Time.get_ticks_usec()-started)
         var publish_start: int=Time.get_ticks_usec()
         var publication_error: Error=_publish_geometry(key,lod,generated,started)
         if publication_error!=OK:
@@ -947,6 +972,9 @@ func set_adaptive_view_auto(enabled: bool) -> Error:
         _last_sync_msec=-100000
     return OK
 
+func adaptive_work_state() -> Dictionary:
+    return {"active":_adaptive_work_active,"controller":_work_budget.report() if _adaptive_work_active else {}}
+
 func adaptive_view_state() -> Dictionary:
     return {"active":_adaptive_view_active,"controller":_view_budget.report() if _adaptive_view_active else {},"far_candidates":_view_far_candidates,"far_admitted_candidates":_view_far_admitted}
 
@@ -1009,6 +1037,7 @@ func stats() -> Dictionary:
         "support": support_state(),
         "motion_prefetch": motion_prefetch_state(),
         "adaptive_view": adaptive_view_state(),
+        "adaptive_work": adaptive_work_state(),
         "writable": false
     }
 

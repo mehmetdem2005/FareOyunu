@@ -51,7 +51,7 @@ func _run() -> void:
     print("PASS: continuous physics cold seam admission and verified live support transfer, fixed cap and camera departure")
     quit(0)
 
-func _case(directory: String,format: int,mode: int,cap: int,speed: float,predictive: bool=false,paired_single_seam: bool=false,adaptive: bool=false,cache_pages: int=16) -> Dictionary:
+func _case(directory: String,format: int,mode: int,cap: int,speed: float,predictive: bool=false,paired_single_seam: bool=false,adaptive: bool=false,cache_pages: int=16,work_trial: int=-1) -> Dictionary:
     _p=P.new()
     _p.region_index_format=format
     _p.sampling_strategy=mode
@@ -63,6 +63,12 @@ func _case(directory: String,format: int,mode: int,cap: int,speed: float,predict
     _p.medium_detail_distance=80.0
     _p.view_distance=96.0
     _p.max_tile_work_ms=8.0
+    if work_trial>=0:
+        _p.enable_adaptive_view_budget=true
+        _p.enable_adaptive_work_budget=work_trial==1
+        _p.high_detail_distance=32.0
+        _p.view_distance=160.0
+        _p.tile_updates_per_frame=3
     root.add_child(_p)
     if _p.start_preview(directory,cache_pages,4)!=OK:
         return {"error":FAILED,"stage":"open"}
@@ -141,6 +147,11 @@ func _case(directory: String,format: int,mode: int,cap: int,speed: float,predict
     var goal_tick: int=-1
     for tick in range(TICKS):
         await physics_frame
+        if work_trial>=0:
+            # Both paired paths see the same deterministic pressure input;
+            # only the optional work governor differs.
+            if _p.sample_view_pressure(55.0 if tick<96 else 20.0)!=OK:
+                return {"error":FAILED,"stage":"work pressure"}
         var before: Vector3=_body.global_position
         var from=Vector2(before.x,before.z)
         # Fixed schedule, independent of IO completion. At 96 stop walking
@@ -247,6 +258,14 @@ func _case(directory: String,format: int,mode: int,cap: int,speed: float,predict
     report["peak_forecast"]=peak_forecast
     report["adaptive"]=adaptive
     report["cache_pages"]=cache_pages
+    if work_trial>=0:
+        report["work_trial"]=work_trial
+        report["adaptive_work"]=_p.adaptive_work_state()
+        report["adaptive_view"]=_p.adaptive_view_state()
+        if work_trial==1:
+            var work: Dictionary=report["adaptive_work"]["controller"]
+            if int(work["restricted_pumps"])<=0 or int(work["critical_attempts"])<=0 or int(work["optional_attempts"])<=0 or int(work["restricted_peak_optional"])>2 or int(work["tier2_peak_optional"])>1:
+                return {"error":FAILED,"stage":"adaptive work evidence","detail":report}
     if adaptive:
         var latency: Dictionary=_p.motion_prefetch_state()["latency"]
         if int(latency["samples"])<1 or float(latency["horizon_seconds"])<0.125 or float(latency["horizon_seconds"])>0.5 or int(_p.motion_prefetch_state()["pending_latency_samples"])!=0:
