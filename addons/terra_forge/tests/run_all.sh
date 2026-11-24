@@ -34,6 +34,7 @@ suite=(
   test_paged_height_source
   test_camera_page_prefetch
   test_async_page_io
+  test_paged_terrain_preview
   test_lod_policy
   test_surface_faces
   test_lod_normals
