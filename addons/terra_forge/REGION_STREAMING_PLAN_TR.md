@@ -1,4 +1,4 @@
-# TerraForge P1 — Bölgesel Float32 yükseklik belleği (v0.4.1-dev.1)
+# TerraForge P1 — Bölgesel Float32 yükseklik belleği (v0.4.1-dev.2)
 
 **Durum: API prototipi + regresyon testi; canlı Terrain3D mesh/çarpışma/fırça sistemine henüz entegre değil.**
 
@@ -26,10 +26,17 @@ Mevcut `.tfh`, `.tfl` ve `.tfl.bak` kayıtları **dokunulmadan korunuyor**.
 
 ## Kabul kapısı
 1. Godot 4.7.2 CI'da `test_region_store.gd`: sınır tek-sahipliği, LRU limit, dirty yazım, kaydet/aç, bozulma kontrolü, eksik sayfa için fail-closed.
-2. Yeni bir **dünya manifesti** (region listesi, schema/version, koordinat sistemi, checksums) ve başarısız dönüşüm için geri alma.
-3. Kaynak `.tfl` üzerinden **isteğe bağlı, tahribatsız dışa aktarım**. Kopyalama bitene kadar kaynağı değiştirip silme.
+2. **Tamamlanan prototip:** TFM1 manifest, world dimensions, region listesi ve bütün dosya SHA-256 kontrolü. Staging klasörü doğrulanmadan son dünyaya taşınmaz.
+3. **Tamamlanan prototip:** Eski TFH ve TFL1/TFL2 yüksekliğini kaynaktaki dosyaları değiştirmeden bölge dosyalarına aktarır. TFL katman yapısı sadece kaynağında korunur; bölge çıktısı görsel yüksekliğin düzleştirilmiş hâlidir.
 4. Mesh ve collision için asenkron/bütçeli region sampler ve sayfa ön yükleme. Godot node yaratma yalnız ana thread.
 5. Fırça/Undo/Redo için çok-sayfalı işlemlerin atomik kaydedilmesi, sınır testleri.
 6. Android üzerinde 10–30 dakika LOD ve RAM ölçümü; p95/p99 frame time ve kayıt süresi karşılaştırması.
 
 **Boyama, dokular, bitki ve obje yerleştirme bu aşamada yok.**
+## 0.4.1-dev.2 — Yayınlama ve veri bütünlüğü
+
+- Yeni `core/region_manifest.gd`: tüm TFR1 dosyalarını ve SHA-256 değerlerini içeren TFM1 manifest. Dünyanın büyüklüğü, Float32 sample aralığı, kaynak türü ve SHA-256 kimliği belirtilir.
+- `core/region_export.gd`: kaynak TFH/TFL1/TFL2 kompozitini **yeni** bir staging klasörüne tam Float32 hassasiyetle aktarır, **her bölgeyi** doğrular ve son olarak staging klasörünü dünya klasörüne taşır.
+- Çıktı klasörü zaten bulunuyorsa işlem reddedilir, eski dünya korunur. Başarısız dönüşümde son çıktı klasörü oluşturulmaz; staging klasörü teşhis için kalabilir.
+- `tests/test_region_export.gd` ile tam boyut/sınır örnekleri, görünür TFL kompoziti, bozulmuş/eksik bölge, kaynak dokunulmazlığı ve tekrarlı export engeli test edilir.
+- **Bu gerçek zamanlı streaming entegrasyonu değildir.** Mobilde RAM/CPU kazancı için sonraki aşamada bounded region sampler, mesh ve collision değişiklikleri gerekir.

@@ -30,6 +30,7 @@ suite=(
   test_layer_scene_roundtrip
   test_layer_integrity
   test_region_store
+  test_region_export
   test_lod_policy
   test_surface_faces
   test_lod_normals

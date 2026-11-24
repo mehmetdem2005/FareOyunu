@@ -234,6 +234,30 @@ func create_blank_page(key: Vector2i) -> Error:
         _lru.erase(key)
     return error
 
+## Explicit, whole-page write for lossless migration. Not a generic
+## overwrite API: a preexisting canonical page must never be replaced.
+## Padded samples outside the world border can be zero without duplication.
+func create_page_with_samples(key: Vector2i, samples: PackedFloat32Array) -> Error:
+    if not _valid_page(key) or samples.size() != PAGE_VALUES:
+        return ERR_INVALID_PARAMETER
+    for sample in samples:
+        if not is_finite(sample):
+            return ERR_INVALID_DATA
+    if _cache.has(key) or FileAccess.file_exists(_path_for(key)):
+        return ERR_ALREADY_EXISTS
+    var room: Error = _make_room()
+    if room != OK:
+        return room
+    _cache[key] = {"values": samples.duplicate(), "dirty": true}
+    _touch(key)
+    var result: Error = _save_page(key)
+    if result != OK:
+        # Failed initial page creation never becomes a visible clean page.
+        # The incomplete staging directory is not promoted as a world.
+        _cache.erase(key)
+        _lru.erase(key)
+    return result
+
 func read_height(x: int, z: int) -> Dictionary:
     if not _valid_sample(x, z):
         return {"error": ERR_INVALID_PARAMETER}
