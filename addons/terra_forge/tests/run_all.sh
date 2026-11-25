@@ -41,6 +41,7 @@ suite=(
   test_profile_scene
   test_io_pipeline
   test_reader_delivery_abba
+  test_poll_after_sync
   test_profile_fixture_builder
   test_region_index_v2
   test_region_fixture_v2
@@ -81,6 +82,8 @@ suite=(
   test_adaptive_motion_horizon
   test_adaptive_motion_horizon_v2
   test_motion_roundtrip
+  test_f1_motion_v1
+  test_f1_motion_v2
   test_motion_roundtrip_e
   test_motion_roundtrip_f
   test_motion_roundtrip_g

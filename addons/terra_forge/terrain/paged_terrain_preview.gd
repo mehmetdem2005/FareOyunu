@@ -48,6 +48,9 @@ var _requested_sampling_strategy: int = 0
 @export var hybrid_scalar_sampling: bool=false
 @export var hybrid_topology_cache: bool=false
 @export var hybrid_cropped_halo: bool=false
+## F1 experiment: one bounded reader poll, after camera sync, session-pinned.
+@export var hybrid_poll_after_sync: bool=false
+var _poll_after_sync_active: bool=false
 var _hybrid_cropped_halo_active: bool=false
 var _hybrid_cropped_submissions: int=0
 var _dense_payload_peak: int = 0
@@ -196,7 +199,7 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
         return _last_error
     var requested: int = resolved_sampling_strategy()
     # One worker, immutable session policy; never switch backend in flight.
-    if (requested!=7 and (hybrid_scalar_sampling or hybrid_topology_cache or hybrid_cropped_halo)) or (hybrid_topology_cache and not hybrid_scalar_sampling):
+    if (requested!=7 and (hybrid_scalar_sampling or hybrid_topology_cache or hybrid_cropped_halo or hybrid_poll_after_sync)) or (hybrid_topology_cache and not hybrid_scalar_sampling):
         _last_error=ERR_INVALID_PARAMETER
         return _last_error
     var selected: int = (6 if hybrid_topology_cache else (5 if hybrid_scalar_sampling else 4)) if requested==7 else requested
@@ -221,6 +224,7 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
         _last_error = status
         return status
     _reader = next
+    _poll_after_sync_active=requested==7 and hybrid_poll_after_sync
     _scalar_worker_cropped_halo_active=enable_scalar_worker_cropped_halo
     _camera_worker_cropped_halo_active=enable_camera_worker_cropped_halo
     _hybrid_cropped_halo_active=requested==7 and hybrid_cropped_halo
@@ -285,6 +289,7 @@ func resolved_sampling_strategy() -> int:
 
 func stop_preview() -> void:
     set_process(false)
+    _poll_after_sync_active=false
     _hybrid_cropped_halo_active=false
     _hybrid_cropped_submissions=0
     _camera_worker_cropped_halo_active=false
@@ -383,13 +388,15 @@ func pump_stream() -> Dictionary:
     var event: Variant=null
     if _pump_micro!=null:
         event=PUMP_MICRO.begin(_mesh_builds,_pending_tiles.size(),_geometry_jobs.size())
-    var completed: Dictionary = _reader.poll_results(max_background_jobs)
-    if event!=null:
-        PUMP_MICRO.mark(event,"io_accept")
-    if int(completed.get("error", ERR_FILE_CORRUPT)) != OK:
+    var completed: Dictionary={}
+    if not _poll_after_sync_active:
+        completed = _reader.poll_results(max_background_jobs)
         if event!=null:
-            _pump_micro.finish(event,int(completed.get("error",ERR_FILE_CORRUPT)),_mesh_builds,0)
-        return completed
+            PUMP_MICRO.mark(event,"io_accept")
+        if int(completed.get("error", ERR_FILE_CORRUPT)) != OK:
+            if event!=null:
+                _pump_micro.finish(event,int(completed.get("error",ERR_FILE_CORRUPT)),_mesh_builds,0)
+            return completed
     if _motion_active and _motion_tick>=0 and Engine.get_physics_frames()-_motion_tick>4:
         _motion_tick=-1
         _motion_velocity=Vector2.ZERO
@@ -403,6 +410,14 @@ func pump_stream() -> Dictionary:
         _last_sync_msec = current
     if event!=null:
         PUMP_MICRO.mark(event,"sync_and_eviction")
+    if _poll_after_sync_active:
+        completed = _reader.poll_results(max_background_jobs)
+        if event!=null:
+            PUMP_MICRO.mark(event,"io_accept")
+        if int(completed.get("error", ERR_FILE_CORRUPT)) != OK:
+            if event!=null:
+                _pump_micro.finish(event,int(completed.get("error",ERR_FILE_CORRUPT)),_mesh_builds,0)
+            return completed
     var started: int=Time.get_ticks_usec()
     if _adaptive_work_active:
         _work_budget.begin_pump(_view_budget.tier,int(max_tile_work_ms*1000.0))

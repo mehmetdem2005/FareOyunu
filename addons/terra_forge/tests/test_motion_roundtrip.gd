@@ -48,6 +48,9 @@ func _halo_variants() -> Array[bool]:
 func _hybrid_motion_policy() -> Dictionary:
     return {}
 
+func _f1_poll_after_sync() -> bool:
+    return false
+
 func _run() -> void:
     var format: int=_format()
     _builder=V1.new() if format==0 else V2.new()
@@ -100,6 +103,7 @@ func _case(directory: String,format: int,mode: int,cache: int,adaptive: bool,dia
     _p.region_index_format=format
     _p.resident_shard_limit=_shard_limit()
     _p.sampling_strategy=mode
+    _p.hybrid_poll_after_sync=_f1_poll_after_sync()
     var hybrid: Dictionary=_hybrid_motion_policy()
     _p.hybrid_scalar_sampling=bool(hybrid.get("scalar",false))
     _p.hybrid_topology_cache=bool(hybrid.get("topology",false))
@@ -338,6 +342,9 @@ func _case(directory: String,format: int,mode: int,cache: int,adaptive: bool,dia
     report["hybrid_policy"]=hybrid.duplicate()
     if mode==7:
         report["effective_sampling_strategy"]=final["effective_sampling_strategy"]
+    report["f1_after_sync"]=_f1_poll_after_sync()
+    for counter in ["submitted","accepted_results","cancelled_pending","cancelled_finished","cancelled_inflight","cache_hits","evictions"]:
+        report["io_"+counter]=int(final["source"][counter])-int(initial["source"][counter])
     report["peak_shards"]=peak_shards
     report["shard_loads"]=int(final["source"]["shard_loads"])-int(initial["source"]["shard_loads"])
     report["shard_evictions"]=int(final["source"]["shard_evictions"])-int(initial["source"]["shard_evictions"])
