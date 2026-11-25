@@ -63,6 +63,7 @@ suite=(
   test_hybrid_policy
   test_hybrid_i_v0_faults
   test_publication_comparison
+  test_idle_tile_pool
   test_physics_raycast
   test_dynamic_terrain_physics
   test_collision_footprint
