@@ -1,0 +1,112 @@
+{
+  "commit": "4513b8b0ef007428893d94741b9026c59217d61b",
+  "baseline_run": 45597461851,
+  "run": 45601037438,
+  "baseline_denied_total": 234,
+  "trials": [
+    {
+      "mode": 3,
+      "cache": 9,
+      "adaptive": false,
+      "denied": 3,
+      "reasons": {
+        "destination/lod-1/shapefalse/pending_pages": 2,
+        "destination/lod-1/shapefalse/worker_outstanding": 1
+      },
+      "reads": 250,
+      "missing": 0,
+      "air": 0
+    },
+    {
+      "mode": 3,
+      "cache": 9,
+      "adaptive": true,
+      "denied": 3,
+      "reasons": {
+        "destination/lod-1/shapefalse/pending_pages": 2,
+        "destination/lod-1/shapefalse/worker_outstanding": 1
+      },
+      "reads": 199,
+      "missing": 0,
+      "air": 0
+    },
+    {
+      "mode": 3,
+      "cache": 16,
+      "adaptive": true,
+      "denied": 2,
+      "reasons": {
+        "destination/lod-1/shapefalse/pending_pages": 1,
+        "destination/lod-1/shapefalse/worker_outstanding": 1
+      },
+      "reads": 138,
+      "missing": 0,
+      "air": 0
+    },
+    {
+      "mode": 3,
+      "cache": 16,
+      "adaptive": false,
+      "denied": 2,
+      "reasons": {
+        "destination/lod-1/shapefalse/pending_pages": 1,
+        "destination/lod-1/shapefalse/worker_outstanding": 1
+      },
+      "reads": 176,
+      "missing": 0,
+      "air": 0
+    },
+    {
+      "mode": 4,
+      "cache": 9,
+      "adaptive": false,
+      "denied": 3,
+      "reasons": {
+        "destination/lod-1/shapefalse/pending_pages": 2,
+        "destination/lod-1/shapefalse/worker_outstanding": 1
+      },
+      "reads": 250,
+      "missing": 0,
+      "air": 0
+    },
+    {
+      "mode": 4,
+      "cache": 9,
+      "adaptive": true,
+      "denied": 3,
+      "reasons": {
+        "destination/lod-1/shapefalse/pending_pages": 2,
+        "destination/lod-1/shapefalse/worker_outstanding": 1
+      },
+      "reads": 199,
+      "missing": 0,
+      "air": 0
+    },
+    {
+      "mode": 4,
+      "cache": 16,
+      "adaptive": true,
+      "denied": 2,
+      "reasons": {
+        "destination/lod-1/shapefalse/pending_pages": 1,
+        "destination/lod-1/shapefalse/worker_outstanding": 1
+      },
+      "reads": 138,
+      "missing": 0,
+      "air": 0
+    },
+    {
+      "mode": 4,
+      "cache": 16,
+      "adaptive": false,
+      "denied": 2,
+      "reasons": {
+        "destination/lod-1/shapefalse/pending_pages": 1,
+        "destination/lod-1/shapefalse/worker_outstanding": 1
+      },
+      "reads": 176,
+      "missing": 0,
+      "air": 0
+    }
+  ]
+}
