@@ -122,6 +122,7 @@ suite=(
   test_surface_faces
   test_lod_normals
   test_lod_seams
+  test_geometry_dirty_shadow
   test_edge_normals
   test_stream_budget
   test_brush_sampling
