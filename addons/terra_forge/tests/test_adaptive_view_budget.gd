@@ -60,8 +60,14 @@ func _run() -> void:
             _fail("resume auto")
             return
         checks+=1
+    if checks!=2:
+        _fail("policy preset coverage")
+        return
     var format: int=_format()
-    _builder=V1.new() if format==0 else V2.new()
+    if format==0:
+        _builder=V1.new()
+    else:
+        _builder=V2.new()
     var err: Error=_builder.start(Vector2i(576,576),true) if format==0 else _builder.start(Vector2i(576,576))
     if err!=OK:
         _fail("fixture start")

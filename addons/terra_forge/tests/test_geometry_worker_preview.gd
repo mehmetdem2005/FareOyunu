@@ -7,7 +7,11 @@ const W=preload("res://addons/terra_forge/core/geometry_worker.gd")
 
 func _initialize() -> void:
     for format in [0,1]:
-        var b: Variant=V1.new() if format==0 else V2.new()
+        var b: Variant
+        if format==0:
+            b=V1.new()
+        else:
+            b=V2.new()
         var err: Error=b.start(Vector2i(576,576),true) if format==0 else b.start(Vector2i(576,576))
         if err!=OK:
             _fail("fixture start",null,b)
@@ -102,13 +106,18 @@ func _initialize() -> void:
         var old_shape: Shape3D=p._tiles[origin]["collision"].shape
         # Cold missing page OR shard, only disposable fixture damaged.
         var path: String=folder.path_join("r_00000_00000.tfr" if format==0 else "s_00000_00000.tfs")
-        var bytes: PackedByteArray=FileAccess.get_file_as_bytes(path)
+        # Preserve the existing fixture read (OS cache may be warm); verify it.
+        if FileAccess.get_file_as_bytes(path).is_empty():
+            _fail("missing fixture before fault injection",p,b)
+            return
         # TFM2 shard cache must be cold: cap1 and remote shard load before
         # returning to origin, or use a cold page failure here. Dedicated
         # shard failure test below uses a fresh preview.
         if format==1:
             path=folder.path_join("r_00000_00000.tfr")
-            bytes=FileAccess.get_file_as_bytes(path)
+            if FileAccess.get_file_as_bytes(path).is_empty():
+                _fail("missing page before fault injection",p,b)
+                return
         if p._reader.release_outside(Vector2i(18,18),Vector2i(18,18))!=OK or DirAccess.remove_absolute(path)!=OK:
             _fail("cold missing setup",p,b)
             return
@@ -198,15 +207,15 @@ func _load(p,keys: Array[Vector2i]) -> bool:
     for step in range(4000):
         p._reader.poll_results(4)
         p._reader.prioritize_resident(keys)
-        var ready: bool=true
+        var pages_ready: bool=true
         for k in keys:
             var state: Error=p._reader.page_status(k)
             if state==ERR_BUSY:
-                ready=false
+                pages_ready=false
                 p._reader.request_page(k)
             elif state!=OK:
                 return false
-        if ready:
+        if pages_ready:
             return true
         OS.delay_msec(1)
     return false

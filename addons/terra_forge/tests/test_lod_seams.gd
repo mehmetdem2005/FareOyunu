@@ -35,7 +35,7 @@ func _initialize() -> void:
     var interpolated_count: int = 0
     for z in range(33):
         var fine_height: float = fine_vertices[z * 33 + 32].y
-        var coarse_index: int = int(z / 4)
+        var coarse_index: int = (z >> 2)
         var local_phase: int = z % 4
         var start_h: float = coarse_vertices[coarse_index * 9].y
         var expected: float = start_h

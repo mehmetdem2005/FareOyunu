@@ -20,8 +20,8 @@ func _initialize() -> void:
         terrain._rebuild_tile(0, 0, tile, lod)
         var arrays: Array = (tile["visual"] as MeshInstance3D).mesh.surface_get_arrays(0)
         var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
-        var width: int = int(32 / (1 << lod)) + 1
-        var mid: int = (width / 2) * width + (width / 2)
+        var width: int = (32 >> lod) + 1
+        var mid: int = (width >> 1) * width + (width >> 1)
         var normal: Vector3 = normals[mid]
         if normal.distance_to(expected) > 0.001:
             push_error("Wrong normal at LOD %d: %s expected %s" % [lod, normal, expected])

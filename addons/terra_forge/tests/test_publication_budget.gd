@@ -51,7 +51,11 @@ func _initialize() -> void:
         return
     print("PUBLICATION_POLICY_TRACE ",JSON.stringify(policy))
     for format in [0,1]:
-        var builder: Variant=V1.new() if format==0 else V2.new()
+        var builder: Variant
+        if format==0:
+            builder=V1.new()
+        else:
+            builder=V2.new()
         var err: Error=builder.start(Vector2i(576,576),true) if format==0 else builder.start(Vector2i(576,576))
         if err!=OK:
             _fail("fixture start",null,builder)
@@ -130,9 +134,9 @@ func _initialize() -> void:
                 if status["error"]!=OK:
                     _fail("pump",p,builder)
                     return
-                var pub: Dictionary=p.stats()["publication"]
-                var published: int=int(pub["publication_count"])-seen
-                var new_bytes: int=int(pub["total_source_bytes"])-previous_bytes
+                var pump_publication: Dictionary=p.stats()["publication"]
+                var published: int=int(pump_publication["publication_count"])-seen
+                var new_bytes: int=int(pump_publication["total_source_bytes"])-previous_bytes
                 # A slow pump may do no publication at all. The FIRST actual
                 # publication must still be the focus shape, alone.
                 if seen==0:
@@ -145,12 +149,12 @@ func _initialize() -> void:
                 # which guard (outer elapsed, count, publication time, byte)
                 # stopped the loop first. Oversized first item stands alone.
                 if published<0 or published>3 or new_bytes<0 or (new_bytes>65536 and (published!=1 or new_bytes!=116052)):
-                    _fail("per-pump admission invariant "+str(pub),p,builder)
+                    _fail("per-pump admission invariant "+str(pump_publication),p,builder)
                     return
                 if published==0 and wall_us>=8000:
                     outer_time_empty_pumps+=1
-                seen=int(pub["publication_count"])
-                previous_bytes=int(pub["total_source_bytes"])
+                seen=int(pump_publication["publication_count"])
+                previous_bytes=int(pump_publication["total_source_bytes"])
                 if p._pending_tiles.is_empty() and p._geometry_jobs.is_empty():
                     break
                 OS.delay_msec(1)
@@ -239,15 +243,15 @@ func _load(p,keys: Array[Vector2i]) -> bool:
     for step in range(4000):
         p._reader.poll_results(4)
         p._reader.prioritize_resident(keys)
-        var ready: bool=true
+        var pages_ready: bool=true
         for k in keys:
             var status: Error=p._reader.page_status(k)
             if status==ERR_BUSY:
-                ready=false
+                pages_ready=false
                 p._reader.request_page(k)
             elif status!=OK:
                 return false
-        if ready:
+        if pages_ready:
             return true
         OS.delay_msec(1)
     return false
