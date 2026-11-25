@@ -455,6 +455,8 @@ func _run_all() -> void:
             if t["status"]!="pass":
                 failures+=1
         if _smoke:
+            if not _diagnostics_negative_smoke():
+                failures+=1
             var destination:String=_run_dir.path_join("diagnostics_smoke.json")
             if not _write_diagnostics(destination):
                 failures+=1
@@ -466,6 +468,63 @@ func _run_all() -> void:
                     print("ANDROID_DIAGNOSTICS_EXPORT_VERIFIED")
         print("ANDROID_SUITE_COMPLETE ",JSON.stringify({"tests":_report["tests"].size(),"failures":failures}))
         get_tree().quit(1 if failures>0 or _report["tests"].size()!=_names.size() else 0)
+
+# CI-only deterministic failure and overflow checks. Never injected in a
+# user's timed run or added to their real diagnostic records.
+func _diagnostics_negative_smoke() -> bool:
+    var capture=CAPTURE.new()
+    var backtraces: Array[ScriptBacktrace]=[]
+    capture.begin()
+    capture._log_error("seed","fixture",1,"seed_error","expected synthetic error",false,0,backtraces)
+    for i in range(513):
+        capture._log_error("seed","fixture",i,"seed_warning","expected synthetic warning",false,1,backtraces)
+    capture._log_message("PASS: seed",false)
+    capture._log_message("x".repeat(8000000),false)
+    var result: Dictionary=capture.take()
+    if result["error_type_counts"].get("0",0)!=1 or result["error_type_counts"].get("1",0)!=513 or result["diagnostics"].size()!=512 or result["diagnostic_dropped"]!=2 or result["errors"].size()!=1 or result["message_dropped"]!=1 or not result["truncated"] or not result["pass_marker"]:
+        push_error("Diagnostic capture synthetic limits failed")
+        return false
+    capture.begin()
+    var reset: Dictionary=capture.take()
+    if not reset["diagnostics"].is_empty() or not reset["errors"].is_empty() or not reset["messages"].is_empty() or not reset["error_type_counts"].is_empty() or reset["diagnostic_dropped"]!=0 or reset["message_dropped"]!=0 or reset["truncated"] or reset["pass_marker"]:
+        push_error("Diagnostic scope did not reset")
+        return false
+    # Verify a real Godot warning traverses the registered Logger as well.
+    _log.begin()
+    push_warning("TF_DIAGNOSTIC_SMOKE_WARNING")
+    var actual: Dictionary=_log.take()
+    var observed: bool=false
+    for entry in actual["diagnostics"]:
+        if int(entry["type"])==1 and JSON.stringify(entry).contains("TF_DIAGNOSTIC_SMOKE_WARNING"):
+            observed=true
+    if not observed or not actual["errors"].is_empty():
+        push_error("Godot warning capture failed")
+        return false
+    var old_export: String=_export_path
+    var invalid_path: String=_run_dir.path_join("nonexistent_smoke_parent").path_join("report.json")
+    if _write_export(invalid_path,false) or _write_export(invalid_path,true) or _export_path!=old_export:
+        push_error("Invalid destination falsely reported success")
+        return false
+    # Exercise partial exports without changing the original session report.
+    var saved_report: Dictionary=_report
+    _report=saved_report.duplicate(true)
+    _report["diagnostic_scopes"].append({"name":"synthetic_missing","details":_run_dir.path_join("details").path_join("nonexistent_smoke.json"),"detail_saved":true})
+    var negative_path: String=_run_dir.path_join("diagnostics_negative_smoke.json")
+    var written: bool=_write_diagnostics(negative_path)
+    _report=saved_report
+    _export_path=old_export
+    if not written:
+        return false
+    var exported: Variant=JSON.parse_string(FileAccess.get_file_as_string(negative_path))
+    if not exported is Dictionary or exported.get("missing_detail_count",-1)!=1 or exported.get("detail_count",-1)!=_names.size()+1:
+        push_error("Missing detail was not represented accurately")
+        return false
+    var last: Dictionary=exported["details"][-1]
+    if last.get("issue")!="detail missing" or last.get("data")!=null:
+        push_error("Missing detail substituted fabricated data")
+        return false
+    print("ANDROID_DIAGNOSTICS_NEGATIVE_VERIFIED")
+    return true
 
 func _user_entries() -> Dictionary:
     var found := {}
