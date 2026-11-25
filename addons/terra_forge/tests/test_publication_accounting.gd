@@ -1,6 +1,7 @@
 extends SceneTree
 const A=preload("res://addons/terra_forge/core/publication_accounting.gd")
 const MICRO=preload("res://addons/terra_forge/core/publication_micro_profile.gd")
+const PUMP=preload("res://addons/terra_forge/core/pump_micro_profile.gd")
 const V1=preload("res://addons/terra_forge/core/profile_fixture_builder.gd")
 const V2=preload("res://addons/terra_forge/core/region_fixture_v2.gd")
 const P=preload("res://addons/terra_forge/terrain/paged_terrain_preview.gd")
@@ -33,6 +34,14 @@ func _initialize() -> void:
     if mr["success"]!=20 or mr["failed"]!=1 or mr["invalid_samples"]!=0 or mr["slow_events"].size()!=8 or mr["slow_events"][0]["total_us"]!=19200 or mr["slow_events"][7]["total_us"]!=12200 or mr["residual_ms"]["max_ms"]!=0.1:
         _fail("micro synthetic bounded events",null,null)
         return
+    var pm=PUMP.new()
+    var synthetic:Dictionary={"frame":1,"physics_tick":1,"builds_before":0,"pending_before":2,"jobs_before":0,"stages_us":{"io_accept":200,"sync_and_eviction":9000,"pending_build_submit":100},"stops":["build_outer_time"]}
+    for i in range(12):
+        pm.record(synthetic,10000+i,OK,1,9200)
+    var pr:Dictionary=pm.report()
+    if pr["invalid_samples"]!=0 or pr["total_ms"]["count"]!=12 or pr["slow_events"].size()!=8 or pr["slow_events"][0]["total_us"]!=10011 or pr["outer_stops"]["build_outer_time"]!=12 or pr["pre_budget_ms"]["mean_ms"]<9.19:
+        _fail("pump synthetic attribution",null,null)
+        return
     for format in [0,1]:
         var b: Variant=V1.new() if format==0 else V2.new()
         var err: Error=b.start(Vector2i(576,576),true) if format==0 else b.start(Vector2i(576,576))
@@ -55,6 +64,7 @@ func _initialize() -> void:
             p.sampling_strategy=mode
             p.observe_publication=true
             p.observe_publication_micro=true
+            p.observe_pump_micro=true
             p.max_visible_tiles=4
             p.tile_updates_per_frame=2
             p.max_tile_work_ms=8.0
@@ -96,6 +106,12 @@ func _initialize() -> void:
                 _fail("micro live stage conservation "+str(live_micro),p,b)
                 return
             print("PUBLICATION_MICRO_CASE ",JSON.stringify({"format":format+1,"mode":mode,"micro":live_micro}))
+            var pump_report:Dictionary=p.pump_micro_profile()
+            var pump_count:int=int(pump_report["total_ms"]["count"])
+            if pump_count<=0 or pump_count!=s["pumps"] or pump_report["invalid_samples"]!=0 or pump_report["errors"]!=0 or pump_report["stage_ms"]["io_accept"]["count"]!=pump_count or pump_report["stage_ms"]["pending_build_submit"]["count"]!=pump_count or pump_report["pre_budget_ms"]["count"]!=pump_count:
+                _fail("pump stage conservation "+str(pump_report),p,b)
+                return
+            print("PUMP_MICRO_CASE ",JSON.stringify({"format":format+1,"mode":mode,"pump":pump_report}))
             p.set_stream_center(Vector3(16,20,16))
             p._sync_tiles()
             if p.stats()["publication"]["resident"]["meshes"]!=0:
@@ -108,9 +124,13 @@ func _initialize() -> void:
             if not p.publication_micro_profile().is_empty():
                 _fail("micro stop reset",p,b)
                 return
+            if not p.pump_micro_profile().is_empty():
+                _fail("pump stop reset",p,b)
+                return
+            p.observe_pump_micro=false
             p.observe_publication_micro=false
             p.observe_publication=false
-            if p.start_preview(folder,16,4)!=OK or not p.stats()["publication"].is_empty() or not p.publication_micro_profile().is_empty():
+            if p.start_preview(folder,16,4)!=OK or not p.stats()["publication"].is_empty() or not p.publication_micro_profile().is_empty() or not p.pump_micro_profile().is_empty():
                 _fail("disabled reopen",p,b)
                 return
             p.stop_preview()
