@@ -60,6 +60,7 @@ static func run(directory: String,format: int,mode: int,cap: int,publication_opt
     p.hybrid_scalar_sampling=bool(hybrid_policy.get("scalar",false))
     p.hybrid_topology_cache=bool(hybrid_policy.get("topology",false))
     p.hybrid_cropped_halo=bool(hybrid_policy.get("crop",false))
+    p.hybrid_cooperative_cancel=bool(hybrid_policy.get("cancel",false))
     p.enable_scalar_worker_cropped_halo=scalar_crop
     p.enable_camera_worker_cropped_halo=camera_crop
     p.geometry_job_limit=cap
