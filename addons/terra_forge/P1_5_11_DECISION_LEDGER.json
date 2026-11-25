@@ -600,13 +600,100 @@
       },
       "decision": "Correctness passes; mixed small live gains, p95 upper unchanged .5ms, retain branch but do not merge pool or default change. Revisit on device evidence of node allocation churn/RSS and distinct benefit. E2/E4 remain conditional.",
       "limitation": "Stationary retained support, fixed camera route; no Android GPU/RSS, allocator bytes or full moving route."
+    },
+    {
+      "phase": "f1 controlled",
+      "pr": 45,
+      "head": "9607aa909f033ed958558b321cb87ffdc1a25d8b",
+      "ci": 45705528989,
+      "disposition": "PASS_KEEP_EXPERIMENT_LIVE_BENEFIT_PENDING",
+      "evidence": {
+        "tests": 108,
+        "arms": 8,
+        "old_ready_accepted_off_on": [
+          4,
+          0
+        ],
+        "old_ready_cancelled_off_on": [
+          0,
+          4
+        ],
+        "accepted_per_arm_off_on": [
+          17,
+          16
+        ],
+        "submitted_per_arm": 17,
+        "settle_ticks_off": [
+          21,
+          10,
+          17,
+          10
+        ],
+        "settle_ticks_on": [
+          10,
+          10,
+          10,
+          10
+        ],
+        "pump_mean_ms_by_arm_off": [
+          0.291047619,
+          0.6011,
+          0.351,
+          0.6047
+        ],
+        "pump_mean_ms_by_arm_on": [
+          0.5448,
+          0.5774,
+          0.5575,
+          0.5855
+        ],
+        "verified_center_rays": 8
+      },
+      "decision": "Keep opt-in isolated. Faster settle on average but more work per pump, unequal accepted reads; actual moving route and useful old-read reuse gate needed.",
+      "limitation": "Controlled camera jump, not Android or equal completed IO work."
+    },
+    {
+      "phase": "f4 center diagnostic",
+      "pr": 46,
+      "head": "6eb58251256ef1b2987ef8c34c9ba94b31d0c34b",
+      "ci": 45705604597,
+      "disposition": "ACCEPT_TEST_ONLY_FULL_FOOTPRINT_PENDING",
+      "evidence": {
+        "tests": 108,
+        "targets": 16,
+        "attach_to_ray_ticks": 1,
+        "gap_us_min": 12766,
+        "gap_us_max": 20515,
+        "request_to_ray_us_min": 77557,
+        "request_to_ray_us_max": 206930
+      },
+      "decision": "Center-ray diagnostic eligible for integration; full footprint readiness and moving cases remain required before F2 policy.",
+      "limitation": "Observed scheduling wall time, synthetic fixture, not full footprint or Android."
+    },
+    {
+      "phase": "g0 neighbor shadow",
+      "pr": 47,
+      "head": "2e4dc26bc99fb6aa661eaaaf8eeefd1b6439a35f",
+      "ci": 45705608395,
+      "disposition": "ACCEPT_TEST_ONLY_G1_CANDIDATE",
+      "evidence": {
+        "tests": 108,
+        "cases": 120,
+        "same_output": 48,
+        "normals_changed": 72,
+        "vertices_changed": 0,
+        "indices_changed": 0,
+        "collision_changed": 0
+      },
+      "decision": "Integrate shadow diagnostic; G1 test owned partial normal recompute versus full geometry on wider slopes and transitions; never infer unchanged collision for other cases.",
+      "limitation": "Same LOD, fixed fixture/key, full recomputation only; no speed gain yet."
     }
   ],
   "next": [
-    "F1 PR45 initial merge conflict fixed by merge commit 9607aa909f033ed958558b321cb87ffdc1a25d8b; exact CI and raw F1_POLL_ORDER; no promotion before live benefit.",
-    "F4 PR46 6eb58251256ef1b2987ef8c34c9ba94b31d0c34b first observed center ray diagnostic; no footprint claim.",
-    "G0 PR47 2e4dc26bc99fb6aa661eaaaf8eeefd1b6439a35f full rebuild dirty shadow; no incremental implementation yet.",
-    "F2 quantile/prediction depends on readiness evidence; E2/E4 conditional; g1 etc only after g0."
+    "Integrate F4/G0 test-only after reconciling runner, exact combined CI.",
+    "F1 moving route benefit and useful old read reuse; retain default-off until evidence.",
+    "F4 full footprint readiness extension, F2 bounded horizon only after verified evidence; G1 partial normal parity.",
+    "Remaining 16 numbered master plan items excluding F1/F4/G0: E2 E4 F2 F3 G1 G2 G3 H0 H1 H2 H3 I0 I1 I2 I3 I4; some conditional, no claim phase closed; device gate open."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
