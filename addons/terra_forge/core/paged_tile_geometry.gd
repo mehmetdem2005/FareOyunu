@@ -8,19 +8,24 @@ const LOD_POLICY = preload("res://addons/terra_forge/core/lod_policy.gd")
 const PAGE_WIDTH: int = 32
 const TILE_CELLS: int = 32
 
-static func required_pages(source, tx: int, tz: int, lod: int) -> Array[Vector2i]:
+static func normal_halo(key: Vector2i, lod: int, desired: Dictionary) -> int:
+    var mask := 0
+    const DIRECTIONS = [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]
+    for edge in range(DIRECTIONS.size()):
+        if desired.get(key + DIRECTIONS[edge], -1) == lod:
+            mask |= 1 << edge
+    return mask
+
+static func required_pages(source, tx: int, tz: int, lod: int, halo_mask: int = DENSE.FULL_HALO) -> Array[Vector2i]:
     var result: Array[Vector2i] = []
     if source == null or not source.is_open() or lod < 0 or lod > 2:
         return result
     var stride: int = LOD_POLICY.sample_stride(lod)
-    # A one-stride halo covers centered normals at same-LOD boundaries.
-    # Conservative up to 3x3 disk pages: never silently read absent pages.
-    var min_x: int = maxi(0, tx * TILE_CELLS - stride)
-    var min_z: int = maxi(0, tz * TILE_CELLS - stride)
-    var max_x: int = mini(source.cells.x, (tx + 1) * TILE_CELLS + stride)
-    var max_z: int = mini(source.cells.y, (tz + 1) * TILE_CELLS + stride)
-    for pz in range(int(min_z / PAGE_WIDTH), int(max_z / PAGE_WIDTH) + 1):
-        for px in range(int(min_x / PAGE_WIDTH), int(max_x / PAGE_WIDTH) + 1):
+    var bounds := DENSE.sample_bounds(source.cells, Vector2i(tx, tz), stride, halo_mask)
+    var first := bounds.position / PAGE_WIDTH
+    var last := (bounds.end - Vector2i.ONE) / PAGE_WIDTH
+    for pz in range(first.y, last.y + 1):
+        for px in range(first.x, last.x + 1):
             result.append(Vector2i(px, pz))
     return result
 

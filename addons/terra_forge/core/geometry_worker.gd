@@ -153,7 +153,7 @@ func _reservation_enforced() -> bool:
 
 ## Copy under a short main-thread lease, then release before enqueue.
 ## No caller receives the input object or can mutate worker-owned data.
-func submit(source,key: Vector2i,lod: int,desired: Dictionary) -> Dictionary:
+func submit(source,key: Vector2i,lod: int,desired: Dictionary, halo_mask: int = DENSE.FULL_HALO) -> Dictionary:
     var context: Error=_context(source)
     if context!=OK:
         return {"error":context}
@@ -171,10 +171,10 @@ func submit(source,key: Vector2i,lod: int,desired: Dictionary) -> Dictionary:
     if full or reserved:
         return {"error":ERR_BUSY,"reserved_critical":reserved}
     var copy_started: int=Time.get_ticks_usec()
-    var acquired: Dictionary=source.acquire_tile_view(G.required_pages(source,key.x,key.y,lod))
+    var acquired: Dictionary=source.acquire_tile_view(G.required_pages(source,key.x,key.y,lod,halo_mask))
     if acquired["error"]!=OK:
         return acquired
-    var copied: Dictionary=DENSE.build(acquired["view"],key.x,key.y,LOD.sample_stride(lod))
+    var copied: Dictionary=DENSE.build(acquired["view"],key.x,key.y,LOD.sample_stride(lod),halo_mask)
     var release: Error=source.release_tile_view(acquired["view"])
     if release!=OK:
         return {"error":release}
