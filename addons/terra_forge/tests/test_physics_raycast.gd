@@ -33,7 +33,7 @@ func _run() -> void:
             _fail("fixture")
             return
         var folder: String=made["directory"]
-        for variant in [[0,false],[3,false],[3,true],[4,false],[4,true],[5,false],[5,true],[6,false],[6,true]]:
+        for variant in [[0,false],[3,false],[3,true],[4,false],[4,true],[5,false],[5,true],[6,false],[6,true],[7,false]]:
             var mode: int=variant[0]
             var crop: bool=variant[1]
             _rays=0
@@ -43,6 +43,7 @@ func _run() -> void:
             _p=P.new()
             _p.region_index_format=format
             _p.sampling_strategy=mode
+            _p.hybrid_idle_pool_limit=4 if mode==7 else 0
             _p.enable_scalar_worker_cropped_halo=crop and mode>=5
             _p.enable_camera_worker_cropped_halo=crop and mode in [3,4]
             _p.max_visible_tiles=4
@@ -58,6 +59,7 @@ func _run() -> void:
                 _fail("open")
                 return
             _p.set_process(false)
+            _p.hybrid_idle_pool_limit=0
             if bool(_p.stats()["scalar_worker_cropped_halo_active"])!=(crop and mode>=5) or bool(_p.stats()["camera_worker_cropped_halo_active"])!=(crop and mode in [3,4]):
                 _fail("halo session flag")
                 return
@@ -130,17 +132,24 @@ func _run() -> void:
             if bool(_p.stats()["scalar_worker_cropped_halo_active"])!=(crop and mode>=5) or bool(_p.stats()["camera_worker_cropped_halo_active"])!=(crop and mode in [3,4]) or (crop and cropped_count<=0) or (not crop and cropped_count!=0):
                 _fail("halo flag pin or submission evidence")
                 return
+            var pool: Dictionary=_p.stats()["idle_pool"]
+            if (mode==7 and (pool["limit"]!=4 or pool["hits"]<=0 or pool["peak"]>4)) or (mode!=7 and pool["hits"]!=0):
+                _fail("pool evidence")
+                return
             # Stop removes actual physics bodies, not just dictionaries.
             _p.stop_preview()
             if _p.stats()["scalar_worker_cropped_halo_active"] or _p.stats()["scalar_worker_cropped_submissions"]!=0 or _p.stats()["camera_worker_cropped_halo_active"] or _p.stats()["camera_worker_cropped_submissions"]!=0:
                 _fail("halo stop reset")
+                return
+            if _p.stats()["idle_pool"]["idle"]!=0 or _p.stats()["idle_pool"]["limit"]!=0:
+                _fail("pool stop reset")
                 return
             await physics_frame
             await physics_frame
             if not _ray(Vector2(528.25,528.5)).is_empty():
                 _fail("collision after stop")
                 return
-            print("PHYSICS_CASE ",JSON.stringify({"format":format+1,"mode":mode,"scalar_crop":crop and mode>=5,"camera_crop":crop and mode in [3,4],"cropped_submissions":cropped_count,"rays_verified":_rays,"initial_rays":initial_rays,"max_error_to_either_diagonal":_max_error,"mesh_diagonal_mismatch_count":_mesh_mismatch,"max_mesh_height_delta":_max_mesh_delta,"teleport_eviction":true,"last_good_ray":true,"stop_no_hit":true}))
+            print("PHYSICS_CASE ",JSON.stringify({"format":format+1,"mode":mode,"idle_pool":pool,"scalar_crop":crop and mode>=5,"camera_crop":crop and mode in [3,4],"cropped_submissions":cropped_count,"rays_verified":_rays,"initial_rays":initial_rays,"max_error_to_either_diagonal":_max_error,"mesh_diagonal_mismatch_count":_mesh_mismatch,"max_mesh_height_delta":_max_mesh_delta,"teleport_eviction":true,"last_good_ray":true,"stop_no_hit":true}))
             _p.free()
             _p=null
         _builder.close()

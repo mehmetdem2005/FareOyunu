@@ -48,6 +48,13 @@ var _requested_sampling_strategy: int = 0
 @export var hybrid_scalar_sampling: bool=false
 @export var hybrid_topology_cache: bool=false
 @export var hybrid_cropped_halo: bool=false
+@export_range(0,8,1) var hybrid_idle_pool_limit: int=0
+var _idle_pool_limit: int=0
+var _idle_pool: Array[Dictionary]=[]
+var _pool_hits: int=0
+var _pool_misses: int=0
+var _pool_peak: int=0
+var _pool_releases: int=0
 var _hybrid_cropped_halo_active: bool=false
 var _hybrid_cropped_submissions: int=0
 var _dense_payload_peak: int = 0
@@ -196,7 +203,7 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
         return _last_error
     var requested: int = resolved_sampling_strategy()
     # One worker, immutable session policy; never switch backend in flight.
-    if (requested!=7 and (hybrid_scalar_sampling or hybrid_topology_cache or hybrid_cropped_halo)) or (hybrid_topology_cache and not hybrid_scalar_sampling):
+    if (requested!=7 and (hybrid_scalar_sampling or hybrid_topology_cache or hybrid_cropped_halo or hybrid_idle_pool_limit!=0)) or (hybrid_topology_cache and not hybrid_scalar_sampling):
         _last_error=ERR_INVALID_PARAMETER
         return _last_error
     var selected: int = (6 if hybrid_topology_cache else (5 if hybrid_scalar_sampling else 4)) if requested==7 else requested
@@ -224,6 +231,11 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
     _scalar_worker_cropped_halo_active=enable_scalar_worker_cropped_halo
     _camera_worker_cropped_halo_active=enable_camera_worker_cropped_halo
     _hybrid_cropped_halo_active=requested==7 and hybrid_cropped_halo
+    if hybrid_idle_pool_limit<0 or hybrid_idle_pool_limit>8:
+        stop_preview()
+        _last_error=ERR_INVALID_PARAMETER
+        return _last_error
+    _idle_pool_limit=hybrid_idle_pool_limit if requested==7 else 0
     _support_active = enable_support_retention
     _motion_active=enable_motion_prefetch and _support_active
     _motion_adaptive=_motion_active and enable_adaptive_motion_horizon
@@ -287,6 +299,14 @@ func stop_preview() -> void:
     set_process(false)
     _hybrid_cropped_halo_active=false
     _hybrid_cropped_submissions=0
+    for idle in _idle_pool:
+        idle["root"].free()
+    _idle_pool.clear()
+    _idle_pool_limit=0
+    _pool_hits=0
+    _pool_misses=0
+    _pool_peak=0
+    _pool_releases=0
     _camera_worker_cropped_halo_active=false
     _camera_worker_cropped_submissions=0
     _scalar_worker_cropped_halo_active=false
@@ -601,16 +621,53 @@ func _sync_tiles() -> void:
                 _pending_tiles[key]=true
     for key in _tiles.keys():
         if not new_desired.has(key):
-            var root: Node3D = _tiles[key]["root"]
-            if is_instance_valid(root):
-                root.free()
-            _tiles.erase(key)
+            _retire_tile(key)
     for key in _pending_tiles.keys():
         if not new_desired.has(key):
             _pending_tiles.erase(key)
             _blocked_tiles.erase(key)
 
+# Idle ownership contains only detached empty node shells, never a mesh,
+# shape, terrain identity, pending job or retained support lease.
+func _retire_tile(key: Vector2i) -> void:
+    var tile: Dictionary=_tiles[key]
+    _tiles.erase(key)
+    var root: Node3D=tile["root"]
+    if not is_instance_valid(root):
+        return
+    if _idle_pool_limit==0 or _idle_pool.size()>=_idle_pool_limit:
+        root.free()
+        return
+    remove_child(root)
+    var visual: MeshInstance3D=tile["visual"]
+    var collision: CollisionShape3D=tile["collision"]
+    visual.mesh=null
+    visual.material_override=null
+    collision.shape=null
+    _idle_pool.append({"root":root,"visual":visual,"collision":collision})
+    _pool_releases+=1
+    _pool_peak=maxi(_pool_peak,_idle_pool.size())
+
 func _create_tile(tx: int, tz: int, event: Variant=null) -> Dictionary:
+    if _idle_pool_limit>0:
+        if not _idle_pool.is_empty():
+            var tile: Dictionary=_idle_pool.pop_back()
+            var reused: Node3D=tile["root"]
+            reused.name="TF_Paged_%d_%d" % [tx,tz]
+            reused.position=Vector3(float(tx*TILE_CELLS)*_reader.spacing,0.0,float(tz*TILE_CELLS)*_reader.spacing)
+            var visual: MeshInstance3D=tile["visual"]
+            visual.material_override=_material
+            var collision: CollisionShape3D=tile["collision"]
+            collision.position=Vector3(float(TILE_CELLS)*_reader.spacing*0.5,0.0,float(TILE_CELLS)*_reader.spacing*0.5)
+            collision.scale=Vector3.ONE*_reader.spacing
+            tile["lod"]=-1
+            tile["vertex_count"]=0
+            add_child(reused,false,Node.INTERNAL_MODE_FRONT)
+            _pool_hits+=1
+            if event!=null:
+                MICRO.mark(event,"root_attach")
+            return tile
+        _pool_misses+=1
     var root: Node3D = Node3D.new()
     root.name = "TF_Paged_%d_%d" % [tx, tz]
     root.position = Vector3(
@@ -1280,6 +1337,7 @@ func stats() -> Dictionary:
         "effective_sampling_strategy": _active_sampling_strategy if _reader != null else ((6 if hybrid_topology_cache else (5 if hybrid_scalar_sampling else 4)) if resolved_sampling_strategy()==7 else resolved_sampling_strategy()),
         "dense_payload_peak_bytes": _dense_payload_peak,
         "hybrid_cropped_halo_active": _hybrid_cropped_halo_active,
+        "idle_pool":{"limit":_idle_pool_limit,"idle":_idle_pool.size(),"hits":_pool_hits,"misses":_pool_misses,"releases":_pool_releases,"peak":_pool_peak},
         "hybrid_cropped_submissions": _hybrid_cropped_submissions,
         "camera_worker_cropped_halo_active": _camera_worker_cropped_halo_active,
         "camera_worker_cropped_submissions": _camera_worker_cropped_submissions,
