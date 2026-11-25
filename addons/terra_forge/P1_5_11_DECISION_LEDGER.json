@@ -5,10 +5,10 @@
   "latest_code_merge": "e13cc688c21fe2e43cb117fd31abdcd40234cc0c",
   "recorded_parent": "0c96ed8a40cd36ffde3b7169dfb7613bf3d7fe15",
   "combined_ci": {
-    "head": "687092bb8f82e2b7f5e9ffc44cc90139ab7f64b6",
-    "ci": 45709229412,
+    "head": "0bb1af10277127e55f04374f35f2671b32a26c91",
+    "ci": 45712317005,
     "conclusion": "success",
-    "tests": 111
+    "tests": 113
   },
   "device_gate": {
     "status": "OPEN",
@@ -816,13 +816,49 @@
         "new_mean_horizon_seconds": 0.433333333333333
       },
       "limitation": "Historical tick replay at assumed 60Hz; no closed-loop IO or motion result."
+    },
+    {
+      "phase": "g1 owned resource",
+      "pr": 51,
+      "head": "c0f555a926b427e45c6c01d99b3c3219bda11d72",
+      "ci": 45712470239,
+      "disposition": "ACCEPT_TEST_ONLY_RUNTIME_OWNERSHIP_PENDING",
+      "evidence": {
+        "tests": 114,
+        "cases": 84,
+        "full_normals": 40852,
+        "patch_normals": 2300,
+        "full_us": 58311,
+        "patch_us": 4436,
+        "full_mesh_us": 2245,
+        "patch_mesh_us": 2179,
+        "common_copy_us": 1013,
+        "shape_data_matches": 28,
+        "zero_work": 12
+      },
+      "decision": "Merge test-only. Real verified dense fixture exact parity; next runtime identity ownership, bounded retained array memory and actual publication gates. No partial GPU update claim.",
+      "limitation": "Warm prebuilt base excluded, common copy measured separately, off-tree headless mesh construction; not actual worker scheduling or live physics publication."
+    },
+    {
+      "phase": "f2 live shadow first",
+      "pr": 52,
+      "head": "69d967d3e9bde7fb34310d551d351a787f0f62df",
+      "ci": 45712476020,
+      "disposition": "FIX_TEST_HARNESS_RETRY_PENDING",
+      "evidence": {
+        "tests": 115,
+        "passed": 113,
+        "failed": 2,
+        "reason": "inspect_collision_footprint typed Array[RID] argument mismatch in dynamic test call",
+        "fix": "b29a86c9dfce6c49326738d6af16834c060d8c8a"
+      },
+      "decision": "Explicit Array[RID] local passed to existing guard; no runtime guard changes, no valid live measurements yet."
     }
   ],
   "next": [
-    "G1/F2 isolated candidates and tests only; exact combined CI.",
-    "G1 real verified fixture, owned dense source and mesh resource publication parity/cost.",
-    "F2 live sampled guard shadow; no policy activation.",
-    "14 other numbered items remain, G1/F2 still open."
+    "Confirm F2 typed RID retry and inspect raw F2_LIVE_SHADOW; insufficient samples means no promotion.",
+    "G1 owned test merged; exact combined CI; runtime snapshot/array ownership, retained memory caps and actual physics publication gate still pending.",
+    "14 other numbered items remain, G1/F2 open."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
