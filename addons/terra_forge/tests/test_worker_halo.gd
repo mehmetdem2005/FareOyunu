@@ -145,8 +145,12 @@ func _threaded_boundaries(format: int) -> bool:
                             return false
                         # Drop source cache after enqueue. Owned input must
                         # survive independent of reader pages and their pins.
-                        if source.release_outside(Vector2i(4,4),Vector2i(4,4))!=OK:
+                        var outside := Vector2i(3 if key.x<2 else 0,3 if key.y<2 else 0)
+                        if full_pages.has(outside) or source.release_outside(outside,outside)!=OK:
                             return false
+                        for page in crop_pages:
+                            if source.page_status(page)==OK:
+                                return false
                         var received: Dictionary=_wait_worker(desired)
                         if received.get("error",FAILED)!=OK:
                             return false
