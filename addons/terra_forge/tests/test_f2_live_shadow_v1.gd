@@ -29,7 +29,8 @@ func _f2_shadow_tick(from: Vector2,intent: Vector2,tick: int) -> void:
     if not _watch.is_empty() and (_watch["tiles"]!=plan["tiles"] or _watch["generation"]!=generation):
         _counts["cancelled"]+=1
         _watch.clear()
-    var verdict: Dictionary=_p.inspect_collision_footprint(from,finish,RADIUS,[_body.get_rid()])
+    var exclude: Array[RID]=[_body.get_rid()]
+    var verdict: Dictionary=_p.inspect_collision_footprint(from,finish,RADIUS,exclude)
     _counts["probes"]+=1
     if _watch.is_empty():
         if verdict["ready"]:
