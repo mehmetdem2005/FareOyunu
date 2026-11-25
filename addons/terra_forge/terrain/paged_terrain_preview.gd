@@ -48,6 +48,9 @@ var _requested_sampling_strategy: int = 0
 @export var hybrid_scalar_sampling: bool=false
 @export var hybrid_topology_cache: bool=false
 @export var hybrid_cropped_halo: bool=false
+@export var hybrid_detached_publication: bool=false
+var _detached_publication_active: bool=false
+var _detached_publications: int=0
 var _hybrid_cropped_halo_active: bool=false
 var _hybrid_cropped_submissions: int=0
 var _dense_payload_peak: int = 0
@@ -196,7 +199,7 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
         return _last_error
     var requested: int = resolved_sampling_strategy()
     # One worker, immutable session policy; never switch backend in flight.
-    if (requested!=7 and (hybrid_scalar_sampling or hybrid_topology_cache or hybrid_cropped_halo)) or (hybrid_topology_cache and not hybrid_scalar_sampling):
+    if (requested!=7 and (hybrid_scalar_sampling or hybrid_topology_cache or hybrid_cropped_halo or hybrid_detached_publication)) or (hybrid_topology_cache and not hybrid_scalar_sampling):
         _last_error=ERR_INVALID_PARAMETER
         return _last_error
     var selected: int = (6 if hybrid_topology_cache else (5 if hybrid_scalar_sampling else 4)) if requested==7 else requested
@@ -224,6 +227,7 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
     _scalar_worker_cropped_halo_active=enable_scalar_worker_cropped_halo
     _camera_worker_cropped_halo_active=enable_camera_worker_cropped_halo
     _hybrid_cropped_halo_active=requested==7 and hybrid_cropped_halo
+    _detached_publication_active=requested==7 and hybrid_detached_publication
     _support_active = enable_support_retention
     _motion_active=enable_motion_prefetch and _support_active
     _motion_adaptive=_motion_active and enable_adaptive_motion_horizon
@@ -287,6 +291,8 @@ func stop_preview() -> void:
     set_process(false)
     _hybrid_cropped_halo_active=false
     _hybrid_cropped_submissions=0
+    _detached_publication_active=false
+    _detached_publications=0
     _camera_worker_cropped_halo_active=false
     _camera_worker_cropped_submissions=0
     _scalar_worker_cropped_halo_active=false
@@ -619,9 +625,10 @@ func _create_tile(tx: int, tz: int, event: Variant=null) -> Dictionary:
     )
     if event!=null:
         MICRO.mark(event,"root_allocate")
-    add_child(root, false, Node.INTERNAL_MODE_FRONT)
-    if event!=null:
-        MICRO.mark(event,"root_attach")
+    if not _detached_publication_active:
+        add_child(root, false, Node.INTERNAL_MODE_FRONT)
+        if event!=null:
+            MICRO.mark(event,"root_attach")
     var visual: MeshInstance3D = MeshInstance3D.new()
     visual.name = "Visual"
     visual.material_override = _material
@@ -921,9 +928,10 @@ func _publish_geometry(key: Vector2i,lod: int,generated: Dictionary,started: int
     var publish_start: int=Time.get_ticks_usec() if _publication!=null else 0
     # Fail-closed: don't allocate or replace any visible/collision tile
     # until ALL required Float32 data and geometry arrays are valid.
-    if not _tiles.has(key):
-        _tiles[key] = _create_tile(key.x, key.y,event)
-    var tile: Dictionary = _tiles[key]
+    var fresh: bool=not _tiles.has(key)
+    var tile: Dictionary=_create_tile(key.x,key.y,event) if fresh else _tiles[key]
+    if fresh and not _detached_publication_active:
+        _tiles[key]=tile
     if event!=null:
         MICRO.mark(event,"tile_lookup")
     var mesh_start: int=Time.get_ticks_usec() if _publication!=null else 0
@@ -964,6 +972,13 @@ func _publish_geometry(key: Vector2i,lod: int,generated: Dictionary,started: int
     if event!=null:
         MICRO.mark(event,"shape_assign_release")
     var shape_us: int=Time.get_ticks_usec()-shape_start if _publication!=null else 0
+    if fresh and _detached_publication_active:
+        # Attach the fully prepared subtree once. Existing/support tiles
+        # keep the original replacement path and are never detached.
+        add_child(tile["root"],false,Node.INTERNAL_MODE_FRONT)
+        _detached_publications+=1
+        if event!=null:
+            MICRO.mark(event,"root_attach")
     tile["lod"] = lod
     if _publication!=null:
         tile["publication_info"]=info
@@ -1280,6 +1295,8 @@ func stats() -> Dictionary:
         "effective_sampling_strategy": _active_sampling_strategy if _reader != null else ((6 if hybrid_topology_cache else (5 if hybrid_scalar_sampling else 4)) if resolved_sampling_strategy()==7 else resolved_sampling_strategy()),
         "dense_payload_peak_bytes": _dense_payload_peak,
         "hybrid_cropped_halo_active": _hybrid_cropped_halo_active,
+        "detached_publication_active":_detached_publication_active,
+        "detached_publications":_detached_publications,
         "hybrid_cropped_submissions": _hybrid_cropped_submissions,
         "camera_worker_cropped_halo_active": _camera_worker_cropped_halo_active,
         "camera_worker_cropped_submissions": _camera_worker_cropped_submissions,
