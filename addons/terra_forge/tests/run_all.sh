@@ -83,6 +83,8 @@ suite=(
   test_large_world_f
   test_large_world_v2_e
   test_large_world_v2_f
+  test_cold_shard_motion_e
+  test_cold_shard_motion_f
   test_motion_fault_recovery
   test_motion_fault_recovery_v2
   test_adaptive_view_budget

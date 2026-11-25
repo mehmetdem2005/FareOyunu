@@ -35,6 +35,12 @@ func _route_offset() -> Vector2i:
 func _cache_sizes() -> Array[int]:
     return [9,16]
 
+func _shard_limit() -> int:
+    return 4
+
+func _require_cold_shard() -> bool:
+    return false
+
 func _run() -> void:
     var format: int=_format()
     _builder=V1.new() if format==0 else V2.new()
@@ -61,6 +67,8 @@ func _run() -> void:
                 _fail(str([format,_mode(),cache,adaptive])+" "+str(outcome))
                 return
             var label: String = "ROUNDTRIP_TRACE " if _route_offset()==Vector2i.ZERO else "LARGE_WORLD_TRACE "
+            if _require_cold_shard():
+                label = "COLD_SHARD_TRACE "
             print(label,JSON.stringify({"format":format+1,"mode":_mode(),"cache":cache,"adaptive":adaptive,"world_cells":str(_fixture_cells()),"offset":str(_route_offset()),"metrics":outcome}))
     _builder.close()
     _builder=null
@@ -76,6 +84,7 @@ func _case(directory: String,format: int,mode: int,cache: int,adaptive: bool,dia
     var return_x: float = 470.0 + delta.x
     _p=P.new()
     _p.region_index_format=format
+    _p.resident_shard_limit=_shard_limit()
     _p.sampling_strategy=mode
     _p.enable_support_retention=true
     _p.enable_motion_prefetch=true
@@ -146,6 +155,8 @@ func _case(directory: String,format: int,mode: int,cache: int,adaptive: bool,dia
     var guard_hist=HIST.new()
     var sample_hist=HIST.new()
     var initial: Dictionary=_p.stats()
+    if _require_cold_shard() and (format!=1 or int(initial["source"]["shard_limit"])!=1 or int(initial["source"]["shard_resident"])!=1):
+        return {"error":FAILED,"stage":"cold shard setup","source":initial["source"]}
     var initial_capacity: Dictionary=_p.capacity_wait_profile()
     var initial_latency: Dictionary=_p.geometry_latency_profile()
     if diagnostics and (initial_capacity.is_empty() or initial_latency.is_empty()):
@@ -159,6 +170,8 @@ func _case(directory: String,format: int,mode: int,cache: int,adaptive: bool,dia
     var peak_tiles: int=0
     var peak_jobs: int=0
     var peak_shards: int=0
+    var moving_shard_loads: int=0
+    var moving_shard_evictions: int=0
     for tick in range(TICKS):
         await physics_frame
         var before: Vector3=_body.global_position
@@ -261,7 +274,10 @@ func _case(directory: String,format: int,mode: int,cache: int,adaptive: bool,dia
         peak_tiles=maxi(peak_tiles,int(stats["tiles"]))
         peak_jobs=maxi(peak_jobs,int(stats["geometry_reservations"]))
         peak_shards=maxi(peak_shards,int(stats["source"]["shard_resident"]))
-        if int(stats["source"]["shard_resident"])>int(stats["source"]["shard_limit"]):
+        if phase<3:
+            moving_shard_loads=int(stats["source"]["shard_loads"])-int(initial["source"]["shard_loads"])
+            moving_shard_evictions=int(stats["source"]["shard_evictions"])-int(initial["source"]["shard_evictions"])
+        if int(stats["source"]["shard_resident"])>int(stats["source"]["shard_limit"]) or int(stats["source"]["shard_resident_bytes"])>int(stats["source"]["shard_limit"])*8272:
             return {"error":FAILED,"stage":"shard cache bound","tick":tick}
         if peak_pages>cache or peak_tiles>4 or peak_jobs>2 or stats["motion_prefetch"]["selected"].size()>2 or int(stats["motion_prefetch"]["pending_latency_samples"])>2:
             return {"error":FAILED,"stage":"resource bounds","tick":tick}
@@ -290,6 +306,13 @@ func _case(directory: String,format: int,mode: int,cache: int,adaptive: bool,dia
     var report: Dictionary={"error":OK,"ticks":TICKS,"outbound_tick":outbound_tick,"reverse_tick":reverse_tick,"return_tick":return_tick,"finish_x":_body.global_position.x,"transfers":transfers,"visited_tiles":visited.size(),"denied_ticks":denied,"longest_stall_ticks":longest_stall,"denial_states":denial_states,"denial_tiles":denial_tiles,"denial_reasons":reasons,"missing_rays":0,"airborne_ticks":0,"max_denied_drift":max_drift,"peak_rays":peak_rays,"total_rays":total_rays,"peak_pages":peak_pages,"peak_tiles":peak_tiles,"peak_jobs":peak_jobs,"disk_reads":int(final["source"]["disk_reads"])-int(initial["source"]["disk_reads"]),"stale_discarded":int(final["source"]["stale_discarded"])-int(initial["source"]["stale_discarded"]),"builds":int(final["mesh_builds"])-int(initial["mesh_builds"]),"pump_ms":pump_hist.report(),"guard_ms":guard_hist.report(),"sample_ms":sample_hist.report(),"motion":motion}
     report["peak_shards"]=peak_shards
     report["shard_loads"]=int(final["source"]["shard_loads"])-int(initial["source"]["shard_loads"])
+    report["shard_evictions"]=int(final["source"]["shard_evictions"])-int(initial["source"]["shard_evictions"])
+    report["moving_shard_loads"]=moving_shard_loads
+    report["moving_shard_evictions"]=moving_shard_evictions
+    if _require_cold_shard() and (moving_shard_loads<2 or moving_shard_evictions<2 or peak_shards!=1):
+        report["error"]=FAILED
+        report["stage"]="cold shard evidence"
+        return report
     if outbound_tick<0 or reverse_tick<=outbound_tick or return_tick<=reverse_tick or return_tick>TICKS-10 or visited.size()!=3 or transfers!=8 or max_drift>0.05 or absf(_body.global_position.x-return_x)>0.05 or not motion["keys"].is_empty() or int(motion["expirations"])<1 or (adaptive and int(motion["latency"]["samples"])<2):
         report["error"]=FAILED
         report["stage"]="roundtrip evidence"
