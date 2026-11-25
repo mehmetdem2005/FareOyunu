@@ -26,10 +26,19 @@ func _format() -> int:
 func _mode() -> int:
     return 0
 
+func _fixture_cells() -> Vector2i:
+    return Vector2i(576,576)
+
+func _route_offset() -> Vector2i:
+    return Vector2i.ZERO
+
+func _cache_sizes() -> Array[int]:
+    return [9,16]
+
 func _run() -> void:
     var format: int=_format()
     _builder=V1.new() if format==0 else V2.new()
-    var err: Error=_builder.start(Vector2i(576,576),true) if format==0 else _builder.start(Vector2i(576,576))
+    var err: Error=_builder.start(_fixture_cells(),true) if format==0 else _builder.start(_fixture_cells())
     if err!=OK:
         _fail("fixture start")
         return
@@ -42,7 +51,7 @@ func _run() -> void:
     if made.get("error",FAILED)!=OK:
         _fail("fixture")
         return
-    for cache in [9,16]:
+    for cache in _cache_sizes():
         var order: Array[bool]=[false,true]
         if cache==16:
             order.reverse()
@@ -51,13 +60,20 @@ func _run() -> void:
             if outcome.get("error",FAILED)!=OK:
                 _fail(str([format,_mode(),cache,adaptive])+" "+str(outcome))
                 return
-            print("ROUNDTRIP_TRACE ",JSON.stringify({"format":format+1,"mode":_mode(),"cache":cache,"adaptive":adaptive,"metrics":outcome}))
+            var label: String = "ROUNDTRIP_TRACE " if _route_offset()==Vector2i.ZERO else "LARGE_WORLD_TRACE "
+            print(label,JSON.stringify({"format":format+1,"mode":_mode(),"cache":cache,"adaptive":adaptive,"world_cells":str(_fixture_cells()),"offset":str(_route_offset()),"metrics":outcome}))
     _builder.close()
     _builder=null
     print("PASS: sustained multi-seam roundtrip, reversal, expiry and verified relocation lifecycle")
     quit(0)
 
 func _case(directory: String,format: int,mode: int,cache: int,adaptive: bool,diagnostics: bool=false) -> Dictionary:
+    var offset: Vector2i = _route_offset()
+    var delta: Vector2 = Vector2(offset)
+    var delta3: Vector3 = Vector3(offset.x,0,offset.y)
+    var origin: Vector2i = ORIGIN + offset / 32
+    var goal_x: float = 536.0 + delta.x
+    var return_x: float = 470.0 + delta.x
     _p=P.new()
     _p.region_index_format=format
     _p.sampling_strategy=mode
@@ -75,19 +91,19 @@ func _case(directory: String,format: int,mode: int,cache: int,adaptive: bool,dia
     if _p.start_preview(directory,cache,4)!=OK:
         return {"error":FAILED,"stage":"open"}
     _p.set_process(false)
-    _p.set_stream_center(Vector3(480,0,512))
-    if not await _settle(ORIGIN,4):
+    _p.set_stream_center(Vector3(480,0,512)+delta3)
+    if not await _settle(origin,4):
         return {"error":FAILED,"stage":"warm origin"}
     await physics_frame
-    var start=Vector2(478,500)
+    var start=Vector2(478,500)+delta
     var state: Dictionary=_p.support_state()
     var session: int=state["session"]
     var claim: Dictionary=_p.update_support(start,RADIUS,session,state["revision"])
     if claim.get("error",FAILED)!=OK:
         return {"error":FAILED,"stage":"origin claim","detail":claim}
     var revision: int=claim["revision"]
-    _p.set_stream_center(Vector3(100,0,100))
-    if not await _settle(ORIGIN,4) or _p._tiles.has(Vector2i(15,15)):
+    _p.set_stream_center(Vector3(100,0,100)+delta3)
+    if not await _settle(origin,4) or _p._tiles.has(origin+Vector2i.RIGHT):
         return {"error":FAILED,"stage":"cold setup"}
     await physics_frame
     var ground: Dictionary=_ground(Vector3(start.x,0,start.y))
@@ -142,28 +158,29 @@ func _case(directory: String,format: int,mode: int,cache: int,adaptive: bool,dia
     var peak_pages: int=0
     var peak_tiles: int=0
     var peak_jobs: int=0
+    var peak_shards: int=0
     for tick in range(TICKS):
         await physics_frame
         var before: Vector3=_body.global_position
         var from=Vector2(before.x,before.z)
-        if phase==0 and from.x>=536.0-0.02:
+        if phase==0 and from.x>=goal_x-0.02:
             phase=1
             outbound_tick=tick
         if phase==1 and tick-outbound_tick>=20:
             phase=2
             reverse_tick=tick
-        if phase==2 and from.x<=470.0+0.02:
+        if phase==2 and from.x<=return_x+0.02:
             phase=3
             return_tick=tick
         if tick==100 or tick==340:
-            _p.set_stream_center(Vector3(96,0,420))
+            _p.set_stream_center(Vector3(96,0,420)+delta3)
         elif tick==220:
-            _p.set_stream_center(Vector3(100,0,100))
+            _p.set_stream_center(Vector3(100,0,100)+delta3)
         var command: float=0.0
         if phase==0:
-            command=minf(SPEED,maxf(0.0,(536.0-from.x)/dt))
+            command=minf(SPEED,maxf(0.0,(goal_x-from.x)/dt))
         elif phase==2:
-            command=-minf(SPEED,maxf(0.0,(from.x-470.0)/dt))
+            command=-minf(SPEED,maxf(0.0,(from.x-return_x)/dt))
         var intent=Vector2(command,0)
         var began: int=Time.get_ticks_usec()
         # One sample on each moving/hold tick. During final stationary
@@ -243,6 +260,9 @@ func _case(directory: String,format: int,mode: int,cache: int,adaptive: bool,dia
         peak_pages=maxi(peak_pages,int(stats["source"]["resident"]))
         peak_tiles=maxi(peak_tiles,int(stats["tiles"]))
         peak_jobs=maxi(peak_jobs,int(stats["geometry_reservations"]))
+        peak_shards=maxi(peak_shards,int(stats["source"]["shard_resident"]))
+        if int(stats["source"]["shard_resident"])>int(stats["source"]["shard_limit"]):
+            return {"error":FAILED,"stage":"shard cache bound","tick":tick}
         if peak_pages>cache or peak_tiles>4 or peak_jobs>2 or stats["motion_prefetch"]["selected"].size()>2 or int(stats["motion_prefetch"]["pending_latency_samples"])>2:
             return {"error":FAILED,"stage":"resource bounds","tick":tick}
         if _p.support_state()["tiles"]!=plan["tiles"]:
@@ -268,7 +288,9 @@ func _case(directory: String,format: int,mode: int,cache: int,adaptive: bool,dia
             return {"error":FAILED,"stage":"ownership integration","detail":latency_report}
     var motion: Dictionary=final["motion_prefetch"]
     var report: Dictionary={"error":OK,"ticks":TICKS,"outbound_tick":outbound_tick,"reverse_tick":reverse_tick,"return_tick":return_tick,"finish_x":_body.global_position.x,"transfers":transfers,"visited_tiles":visited.size(),"denied_ticks":denied,"longest_stall_ticks":longest_stall,"denial_states":denial_states,"denial_tiles":denial_tiles,"denial_reasons":reasons,"missing_rays":0,"airborne_ticks":0,"max_denied_drift":max_drift,"peak_rays":peak_rays,"total_rays":total_rays,"peak_pages":peak_pages,"peak_tiles":peak_tiles,"peak_jobs":peak_jobs,"disk_reads":int(final["source"]["disk_reads"])-int(initial["source"]["disk_reads"]),"stale_discarded":int(final["source"]["stale_discarded"])-int(initial["source"]["stale_discarded"]),"builds":int(final["mesh_builds"])-int(initial["mesh_builds"]),"pump_ms":pump_hist.report(),"guard_ms":guard_hist.report(),"sample_ms":sample_hist.report(),"motion":motion}
-    if outbound_tick<0 or reverse_tick<=outbound_tick or return_tick<=reverse_tick or return_tick>TICKS-10 or visited.size()!=3 or transfers!=8 or max_drift>0.05 or absf(_body.global_position.x-470.0)>0.05 or not motion["keys"].is_empty() or int(motion["expirations"])<1 or (adaptive and int(motion["latency"]["samples"])<2):
+    report["peak_shards"]=peak_shards
+    report["shard_loads"]=int(final["source"]["shard_loads"])-int(initial["source"]["shard_loads"])
+    if outbound_tick<0 or reverse_tick<=outbound_tick or return_tick<=reverse_tick or return_tick>TICKS-10 or visited.size()!=3 or transfers!=8 or max_drift>0.05 or absf(_body.global_position.x-return_x)>0.05 or not motion["keys"].is_empty() or int(motion["expirations"])<1 or (adaptive and int(motion["latency"]["samples"])<2):
         report["error"]=FAILED
         report["stage"]="roundtrip evidence"
         return report
@@ -283,17 +305,17 @@ func _case(directory: String,format: int,mode: int,cache: int,adaptive: bool,dia
     _body.free()
     _body=null
     _p.max_visible_tiles=8
-    _p.set_stream_center(Vector3(480,0,512))
-    if not await _settle(ORIGIN,8):
+    _p.set_stream_center(Vector3(480,0,512)+delta3)
+    if not await _settle(origin,8):
         return {"error":FAILED,"stage":"relocation warm"}
     await physics_frame
-    var near=Vector2(478,500)
+    var near=Vector2(478,500)+delta
     if _p.sample_motion_prefetch(near,Vector2.ZERO,Vector2(24,0),RADIUS,session,revision)!=OK:
         return {"error":FAILED,"stage":"relocation sample"}
     var prior: Dictionary=_p.motion_prefetch_state()
     if prior["keys"].is_empty():
         return {"error":FAILED,"stage":"relocation hint"}
-    var far=Vector2(500,530)
+    var far=Vector2(500,530)+delta
     var relocated: Dictionary=_p.update_support(far,RADIUS,session,revision)
     if relocated.get("error",FAILED)!=OK or not _p.motion_prefetch_state()["keys"].is_empty() or int(_p.motion_prefetch_state()["relocations"])!=1:
         return {"error":FAILED,"stage":"relocation revoke","detail":relocated}

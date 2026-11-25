@@ -79,6 +79,10 @@ suite=(
   test_motion_roundtrip_g
   test_motion_roundtrip_v2
   test_motion_roundtrip_v2_g
+  test_large_world_e
+  test_large_world_f
+  test_large_world_v2_e
+  test_large_world_v2_f
   test_motion_fault_recovery
   test_motion_fault_recovery_v2
   test_adaptive_view_budget
