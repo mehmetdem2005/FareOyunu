@@ -40,9 +40,16 @@ func _initialize() -> void:
         return
     a.end_pump(ZERO)
     var s: Dictionary=a.report(ZERO)
-    if s["first_item_byte_exceptions"]!=1 or s["over_byte_pumps"]!=1 or s["over_time_pumps"]!=1 or s["time_stop_checks"]!=1 or s["peak_pump_count"]!=2:
+    if s["first_item_byte_exceptions"]!=1 or s["over_byte_pumps"]!=1 or s["over_time_pumps"]!=1 or s["time_stop_checks"]!=1 or s["byte_deferral_checks"]!=3 or s["count_stop_checks"]!=0 or s["peak_pump_count"]!=2:
         _fail("policy accounting",null,null)
         return
+    # Isolate count, exact equality boundaries, precedence and disabled mode.
+    # record() takes injected measured durations: no dependence on host speed.
+    var policy: Dictionary=_deterministic_policy()
+    if policy["error"]!=OK:
+        _fail("deterministic policy "+str(policy),null,null)
+        return
+    print("PUBLICATION_POLICY_TRACE ",JSON.stringify(policy))
     for format in [0,1]:
         var builder: Variant=V1.new() if format==0 else V2.new()
         var err: Error=builder.start(Vector2i(576,576),true) if format==0 else builder.start(Vector2i(576,576))
@@ -110,23 +117,45 @@ func _initialize() -> void:
                     _fail("retained ready queue",p,builder)
                     return
             var seen: int=0
+            var previous_bytes: int=0
+            var empty_before_focus: int=0
+            var outer_time_empty_pumps: int=0
+            var max_wall_us: int=0
             for step in range(4000):
                 p._last_sync_msec=Time.get_ticks_msec()
+                var started_us: int=Time.get_ticks_usec()
                 var status: Dictionary=p.pump_stream()
+                var wall_us: int=Time.get_ticks_usec()-started_us
+                max_wall_us=maxi(max_wall_us,wall_us)
                 if status["error"]!=OK:
                     _fail("pump",p,builder)
                     return
                 var pub: Dictionary=p.stats()["publication"]
-                if step==0 and (pub["publication_count"]!=1 or not p._tiles.has(x) or not p.has_collision_at(Vector3(496,20,496))):
-                    _fail("focus first",p,builder)
+                var published: int=int(pub["publication_count"])-seen
+                var new_bytes: int=int(pub["total_source_bytes"])-previous_bytes
+                # A slow pump may do no publication at all. The FIRST actual
+                # publication must still be the focus shape, alone.
+                if seen==0:
+                    if published==0:
+                        empty_before_focus+=1
+                    elif published!=1 or not p._tiles.has(x) or not p.has_collision_at(Vector3(496,20,496)):
+                        _fail("focus first actual publication",p,builder)
+                        return
+                # Assert the effect of every budget decision, independent of
+                # which guard (outer elapsed, count, publication time, byte)
+                # stopped the loop first. Oversized first item stands alone.
+                if published<0 or published>3 or new_bytes<0 or (new_bytes>65536 and (published!=1 or new_bytes!=116052)):
+                    _fail("per-pump admission invariant "+str(pub),p,builder)
                     return
-                if pub["publication_count"]>seen:
-                    seen=pub["publication_count"]
+                if published==0 and wall_us>=8000:
+                    outer_time_empty_pumps+=1
+                seen=int(pub["publication_count"])
+                previous_bytes=int(pub["total_source_bytes"])
                 if p._pending_tiles.is_empty() and p._geometry_jobs.is_empty():
                     break
                 OS.delay_msec(1)
             var pub: Dictionary=p.stats()["publication"]
-            if seen!=4 or pub["publication_count"]!=4 or pub["first_item_byte_exceptions"]!=2 or pub["over_byte_pumps"]!=2 or pub["peak_pump_source_bytes"]!=116052 or pub["over_count_pumps"]!=0 or pub["resident"]["shapes"]!=2 or pub["byte_deferral_checks"]<1:
+            if seen!=4 or pub["publication_count"]!=4 or pub["first_item_byte_exceptions"]!=2 or pub["over_byte_pumps"]!=2 or pub["peak_pump_source_bytes"]!=116052 or pub["over_count_pumps"]!=0 or pub["resident"]["shapes"]!=2 or pub["resident"]["meshes"]!=4 or pub["total_source_bytes"]!=269384 or pub["lod_counts"]!=[2,1,1]:
                 _fail("bounded progress "+str(pub),p,builder)
                 return
             if mode==5 and (p._geometry_worker.stats()["submitted"]!=4 or p._geometry_worker.stats()["delivered"]!=4 or p._geometry_worker.stats()["slots"]!=0):
@@ -142,7 +171,9 @@ func _initialize() -> void:
                 if desired[k]==0 and tile["collision"].shape.map_data!=expected["collision_heights"]:
                     _fail("shape parity",p,builder)
                     return
-            print("PUBLICATION_BUDGET_CASE ",JSON.stringify({"format":format+1,"mode":mode,"publication":pub,"worker":p.stats()["geometry_worker"]}))
+            # Keep the real wall-time overrun in the evidence. This is not
+            # a hard realtime gate; a single native call is indivisible.
+            print("PUBLICATION_BUDGET_CASE ",JSON.stringify({"format":format+1,"mode":mode,"publication":pub,"worker":p.stats()["geometry_worker"],"empty_pumps_before_focus":empty_before_focus,"empty_pumps_wall_ge_8ms":outer_time_empty_pumps,"max_observed_pump_wall_us":max_wall_us,"integration_byte_deferral_observed":int(pub["byte_deferral_checks"])>0,"timing_note":"Wall-time diagnostic; reason for outer guard exit is not inferred."}))
             p.stop_preview()
             if not p.stats()["publication"].is_empty() or p._publication_budget_active:
                 _fail("reset",p,builder)
@@ -151,6 +182,58 @@ func _initialize() -> void:
         builder.close()
     print("PASS: optional publication budget, oversized first-item progress, measured time stop, retained worker ready IDs, priority and exact resource parity")
     quit(0)
+
+func _deterministic_policy() -> Dictionary:
+    var a=A.new()
+    var item: Dictionary=A.expected(2)
+    var size: int=int(item["total_bytes"])
+    # Count limit only.
+    a.configure_budget(true,65536,8000)
+    a.begin_pump(1)
+    if not a.admit(2):
+        return {"error":FAILED,"case":"count first"}
+    a.record(2,item,1,1,1)
+    if a.admit(2):
+        return {"error":FAILED,"case":"count bypass"}
+    a.end_pump(ZERO)
+    # Exact byte allowance: equal fits, next byte gate stops.
+    a.configure_budget(true,size*2,8000)
+    a.begin_pump(4)
+    a.record(2,item,1,1,1)
+    if a.admission_bytes()!=size or not a.admit(2):
+        return {"error":FAILED,"case":"equal byte allowance"}
+    a.record(2,item,1,1,1)
+    if a.admit(2):
+        return {"error":FAILED,"case":"exact byte boundary"}
+    a.end_pump(ZERO)
+    # Equality at time threshold, byte room remains.
+    a.configure_budget(true,65536,8000)
+    a.begin_pump(4)
+    a.record(2,item,1,1,8000)
+    if a.admit(2):
+        return {"error":FAILED,"case":"exact time boundary"}
+    a.end_pump(ZERO)
+    # Simulate the Android spike without waiting. Both limits reached;
+    # time has precedence over bytes, and actual overrun remains recorded.
+    a.configure_budget(true,65536,8000)
+    a.begin_pump(3)
+    if not a.admit(0):
+        return {"error":FAILED,"case":"oversize first"}
+    a.record(0,A.expected(0),526,197,128279)
+    if a.admit(2):
+        return {"error":FAILED,"case":"time-byte precedence"}
+    a.end_pump(ZERO)
+    var enabled: Dictionary=a.report(ZERO)
+    if enabled["count_stop_checks"]!=1 or enabled["time_stop_checks"]!=2 or enabled["byte_deferral_checks"]!=1 or enabled["over_time_pumps"]!=1 or enabled["max_time_excess_us"]!=120279 or enabled["first_item_byte_exceptions"]!=1 or enabled["over_byte_pumps"]!=1 or enabled["over_count_pumps"]!=0:
+        return {"error":FAILED,"case":"independent counter conservation","report":enabled}
+    # Disabled observation must not unexpectedly restrict work.
+    a.configure_budget(false,1,1)
+    a.begin_pump(1)
+    a.record(2,item,1,1,100)
+    if a.admission_bytes()!=-1 or not a.admit(0):
+        return {"error":FAILED,"case":"disabled mode"}
+    a.end_pump(ZERO)
+    return {"error":OK,"cases":5,"synthetic_android_spike_us":128279,"enabled_report":enabled,"disabled_unrestricted":true}
 
 func _load(p,keys: Array[Vector2i]) -> bool:
     for step in range(4000):
