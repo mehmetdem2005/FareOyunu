@@ -148,20 +148,19 @@ func _initialize() -> void:
             _fail("hybrid equal-work matrix",src,w,b)
             return
         b.close()
-    print("PASS: H topology private templates, independent copies, 14 exact worker cases, stale/close, 8 equal-work G/H runs and 8 cadence traces; 30 hybrid matched-work arms")
+    print("PASS: H topology private templates, independent copies, 14 exact worker cases, stale/close, 8 equal-work G/H runs and 8 cadence traces; 36 hybrid matched-work arms")
     quit(0)
 
-# First b3 slice: warm resident F reference, G/H full and cropped.
-# F camera crop will be added only after b2 lands; no dependency on that PR.
+# b3.1: compare identical full/cropped halo across all three backends.
 func _hybrid_equal(directory: String,format: int) -> bool:
-    var variants: Array=[[4,false],[5,false],[5,true],[6,false],[6,true]]
-    var orders: Array=[[0,1,2,3,4],[4,3,2,1,0],[2,0,4,1,3]]
+    var variants: Array=[[4,false],[5,false],[5,true],[6,false],[6,true],[4,true]]
+    var orders: Array=[[0,1,2,3,4,5],[5,4,3,2,1,0],[2,5,0,4,1,3]]
     var reference: Dictionary={}
     for block in range(orders.size()):
         for index in orders[block]:
             var mode: int=variants[index][0]
             var crop: bool=variants[index][1]
-            var result: Dictionary=EQUAL.run(directory,format,mode,2,{},crop)
+            var result: Dictionary=EQUAL.run(directory,format,mode,2,{},crop and mode>=5,crop and mode==4)
             if result.get("error",FAILED)!=OK or result.get("completed",0)!=32 or result.get("warmup_builds",0)!=4:
                 return false
             if not reference.is_empty() and result["fingerprints"]!=reference:
