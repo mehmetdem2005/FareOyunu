@@ -16,6 +16,7 @@ const ORIGIN: Vector2i=Vector2i(14,15)
 var _p
 var _builder
 var _body: CharacterBody3D
+var _test_scalar_crop: bool=false
 
 func _initialize() -> void:
     call_deferred("_run")
@@ -41,6 +42,9 @@ func _shard_limit() -> int:
 func _require_cold_shard() -> bool:
     return false
 
+func _halo_variants() -> Array[bool]:
+    return [false]
+
 func _run() -> void:
     var format: int=_format()
     _builder=V1.new() if format==0 else V2.new()
@@ -62,14 +66,21 @@ func _run() -> void:
         if cache==16:
             order.reverse()
         for adaptive in order:
-            var outcome: Dictionary=await _case(made["directory"],format,_mode(),cache,adaptive)
-            if outcome.get("error",FAILED)!=OK:
-                _fail(str([format,_mode(),cache,adaptive])+" "+str(outcome))
-                return
-            var label: String = "ROUNDTRIP_TRACE " if _route_offset()==Vector2i.ZERO else "LARGE_WORLD_TRACE "
-            if _require_cold_shard():
-                label = "COLD_SHARD_TRACE "
-            print(label,JSON.stringify({"format":format+1,"mode":_mode(),"cache":cache,"adaptive":adaptive,"world_cells":str(_fixture_cells()),"offset":str(_route_offset()),"metrics":outcome}))
+            var variants: Array[bool]=_halo_variants()
+            if adaptive:
+                variants.reverse()
+            for crop in variants:
+                _test_scalar_crop=crop
+                var outcome: Dictionary=await _case(made["directory"],format,_mode(),cache,adaptive)
+                if outcome.get("error",FAILED)!=OK:
+                    _fail(str([format,_mode(),cache,adaptive,crop])+" "+str(outcome))
+                    return
+                var label: String = "ROUNDTRIP_TRACE " if _route_offset()==Vector2i.ZERO else "LARGE_WORLD_TRACE "
+                if _require_cold_shard():
+                    label = "COLD_SHARD_TRACE "
+                if variants.size()>1:
+                    label="HYBRID_HALO_MOTION "
+                print(label,JSON.stringify({"format":format+1,"mode":_mode(),"cache":cache,"adaptive":adaptive,"scalar_crop":crop,"world_cells":str(_fixture_cells()),"offset":str(_route_offset()),"metrics":outcome}))
     _builder.close()
     _builder=null
     print("PASS: sustained multi-seam roundtrip, reversal, expiry and verified relocation lifecycle")
@@ -86,6 +97,7 @@ func _case(directory: String,format: int,mode: int,cache: int,adaptive: bool,dia
     _p.region_index_format=format
     _p.resident_shard_limit=_shard_limit()
     _p.sampling_strategy=mode
+    _p.enable_scalar_worker_cropped_halo=_test_scalar_crop
     _p.enable_support_retention=true
     _p.enable_motion_prefetch=true
     _p.enable_adaptive_motion_horizon=adaptive
@@ -155,6 +167,8 @@ func _case(directory: String,format: int,mode: int,cache: int,adaptive: bool,dia
     var guard_hist=HIST.new()
     var sample_hist=HIST.new()
     var initial: Dictionary=_p.stats()
+    if bool(initial["scalar_worker_cropped_halo_active"])!=_test_scalar_crop:
+        return {"error":FAILED,"stage":"halo session flag"}
     if _require_cold_shard() and (format!=1 or int(initial["source"]["shard_limit"])!=1 or int(initial["source"]["shard_resident"])!=1):
         return {"error":FAILED,"stage":"cold shard setup","source":initial["source"]}
     var initial_capacity: Dictionary=_p.capacity_wait_profile()
@@ -287,6 +301,9 @@ func _case(directory: String,format: int,mode: int,cache: int,adaptive: bool,dia
             if not _p._tiles.has(key) or _p._desired_tiles.get(key,-1)!=0:
                 return {"error":FAILED,"stage":"support eviction","tick":tick}
     var final: Dictionary=_p.stats()
+    var crop_submissions: int=int(final["scalar_worker_cropped_submissions"])-int(initial["scalar_worker_cropped_submissions"])
+    if (_test_scalar_crop and crop_submissions<=0) or (not _test_scalar_crop and crop_submissions!=0):
+        return {"error":FAILED,"stage":"halo submission evidence","count":crop_submissions}
     var capacity_report: Dictionary=_p.capacity_wait_profile()
     var latency_report: Dictionary=_p.geometry_latency_profile()
     if diagnostics:
@@ -304,6 +321,7 @@ func _case(directory: String,format: int,mode: int,cache: int,adaptive: bool,dia
             return {"error":FAILED,"stage":"ownership integration","detail":latency_report}
     var motion: Dictionary=final["motion_prefetch"]
     var report: Dictionary={"error":OK,"ticks":TICKS,"outbound_tick":outbound_tick,"reverse_tick":reverse_tick,"return_tick":return_tick,"finish_x":_body.global_position.x,"transfers":transfers,"visited_tiles":visited.size(),"denied_ticks":denied,"longest_stall_ticks":longest_stall,"denial_states":denial_states,"denial_tiles":denial_tiles,"denial_reasons":reasons,"missing_rays":0,"airborne_ticks":0,"max_denied_drift":max_drift,"peak_rays":peak_rays,"total_rays":total_rays,"peak_pages":peak_pages,"peak_tiles":peak_tiles,"peak_jobs":peak_jobs,"disk_reads":int(final["source"]["disk_reads"])-int(initial["source"]["disk_reads"]),"stale_discarded":int(final["source"]["stale_discarded"])-int(initial["source"]["stale_discarded"]),"builds":int(final["mesh_builds"])-int(initial["mesh_builds"]),"pump_ms":pump_hist.report(),"guard_ms":guard_hist.report(),"sample_ms":sample_hist.report(),"motion":motion}
+    report["scalar_cropped_submissions"]=crop_submissions
     report["peak_shards"]=peak_shards
     report["shard_loads"]=int(final["source"]["shard_loads"])-int(initial["source"]["shard_loads"])
     report["shard_evictions"]=int(final["source"]["shard_evictions"])-int(initial["source"]["shard_evictions"])

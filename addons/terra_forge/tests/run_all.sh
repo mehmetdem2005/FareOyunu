@@ -79,6 +79,10 @@ suite=(
   test_motion_roundtrip_g
   test_motion_roundtrip_v2
   test_motion_roundtrip_v2_g
+  test_hybrid_halo_motion_v1_g
+  test_hybrid_halo_motion_v1_h
+  test_hybrid_halo_motion_v2_g
+  test_hybrid_halo_motion_v2_h
   test_large_world_e
   test_large_world_f
   test_large_world_v2_e
