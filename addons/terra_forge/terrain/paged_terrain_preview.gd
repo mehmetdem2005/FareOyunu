@@ -33,12 +33,13 @@ const TILE_CELLS: int = 32
 ## Experimental A/B CPU sampling path. Default stays baseline until measured.
 @export var use_tile_read_view: bool = false
 ## -1 preserves serialized legacy bool. Explicit mode overrides it.
-@export_enum("Legacy flag:-1", "A direct:0", "B tile view:1", "C dense buffer:2", "E geometry worker:3", "F priority worker:4", "G scalar priority worker:5", "H cached topology worker:6") var sampling_strategy: int = -1
+@export_enum("Legacy flag:-1", "A direct:0", "B tile view:1", "C dense buffer:2", "E geometry worker:3", "F priority worker:4", "G scalar priority worker:5", "H cached topology worker:6", "I hybrid v0 (F equivalent):7") var sampling_strategy: int = -1
 ## Experimental G/H only; pinned at start, never changes E/F or A.
 @export var enable_scalar_worker_cropped_halo: bool=false
 var _scalar_worker_cropped_halo_active: bool=false
 var _scalar_worker_cropped_submissions: int=0
 var _active_sampling_strategy: int = 0
+var _requested_sampling_strategy: int = 0
 var _dense_payload_peak: int = 0
 @export_range(1,4,1) var geometry_job_limit: int = 2
 var _geometry_worker
@@ -183,13 +184,16 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
     if directory.is_empty():
         _last_error = ERR_INVALID_PARAMETER
         return _last_error
-    var selected: int = resolved_sampling_strategy()
+    var requested: int = resolved_sampling_strategy()
+    # I-v0 is deliberately F, not H; no hidden device selection or extra worker.
+    var selected: int = 4 if requested==7 else requested
     if selected < 0 or selected > 6 or (enable_scalar_worker_cropped_halo and selected not in [5,6]):
         _last_error = ERR_INVALID_PARAMETER
         return _last_error
     if enforce_publication_budget and (publication_byte_target<4096 or publication_byte_target>1048576 or publication_time_target_us<100 or publication_time_target_us>8000):
         _last_error=ERR_INVALID_PARAMETER
         return _last_error
+    _requested_sampling_strategy = requested
     _active_sampling_strategy = selected
     _dense_payload_peak = 0
     _ensure_material()
@@ -1249,7 +1253,8 @@ func stats() -> Dictionary:
         "source": source,
         "verify_pages_on_demand": verify_pages_on_demand,
         "use_tile_read_view": use_tile_read_view,
-        "sampling_strategy": _active_sampling_strategy if _reader != null else resolved_sampling_strategy(),
+        "sampling_strategy": _requested_sampling_strategy if _reader != null else resolved_sampling_strategy(),
+        "effective_sampling_strategy": _active_sampling_strategy if _reader != null else (4 if resolved_sampling_strategy()==7 else resolved_sampling_strategy()),
         "dense_payload_peak_bytes": _dense_payload_peak,
         "scalar_worker_cropped_halo_active": _scalar_worker_cropped_halo_active,
         "scalar_worker_cropped_submissions": _scalar_worker_cropped_submissions,

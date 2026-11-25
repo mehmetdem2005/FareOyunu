@@ -26,7 +26,7 @@ var _budget_toggle: CheckButton
 @export var observe_pump_micro: bool=false
 @export_range(4096,1048576,4096) var publication_byte_target: int=131072
 @export_range(100,8000,100) var publication_time_target_us: int=1000
-@export_enum("Legacy flag:-1", "A direct:0", "B tile view:1", "C dense buffer:2", "E geometry worker:3", "F priority worker:4", "G scalar priority worker:5", "H cached topology worker:6") var sampling_strategy: int = -1
+@export_enum("Legacy flag:-1", "A direct:0", "B tile view:1", "C dense buffer:2", "E geometry worker:3", "F priority worker:4", "G scalar priority worker:5", "H cached topology worker:6", "I hybrid v0 (F equivalent):7") var sampling_strategy: int = -1
 var _format: OptionButton
 var _fixture_size: OptionButton
 var _estimate: Label
@@ -113,8 +113,9 @@ func _ready() -> void:
     _sampling_choice.add_item("F priority worker (experimental)", 4)
     _sampling_choice.add_item("G scalar priority worker (experimental)", 5)
     _sampling_choice.add_item("H cached topology worker (experimental)", 6)
+    _sampling_choice.add_item("I hybrid v0 / F equivalent (experimental)", 7)
 
-    _sampling_choice.select(clampi((1 if use_tile_read_view else 0) if sampling_strategy == -1 else sampling_strategy, 0, 6))
+    _sampling_choice.select(clampi((1 if use_tile_read_view else 0) if sampling_strategy == -1 else sampling_strategy, 0, 7))
     _sampling_choice.item_selected.connect(func(index): sampling_strategy = _sampling_choice.get_item_id(index))
     ui.add_child(_sampling_choice)
     _budget_toggle=CheckButton.new()
@@ -318,6 +319,7 @@ func _begin(lazy: bool) -> void:
     _run_settings = {"page_limit": page_limit, "job_limit": job_limit, "shard_limit": shard_limit if _run_format == "TFM2" else 0, "view_distance": _preview.view_distance, "high_detail_distance": _preview.high_detail_distance, "medium_detail_distance": _preview.medium_detail_distance, "max_visible_tiles": _preview.max_visible_tiles, "tile_updates_per_frame": _preview.tile_updates_per_frame, "max_tile_work_ms": _preview.max_tile_work_ms, "viewport": [get_viewport().size.x, get_viewport().size.y]}
     _run_settings["use_tile_read_view"] = use_tile_read_view
     _run_settings["sampling_strategy"] = _preview.resolved_sampling_strategy()
+    _run_settings["effective_sampling_strategy"] = 4 if _preview.resolved_sampling_strategy()==7 else _preview.resolved_sampling_strategy()
     _run_settings["publication_micro"]=observe_publication_micro
     _run_settings["pump_micro"]=observe_pump_micro
     _run_settings["publication_budget"]=enforce_publication_budget

@@ -5,6 +5,9 @@ const PREVIEW=preload("res://addons/terra_forge/terrain/paged_terrain_preview.gd
 const G=preload("res://addons/terra_forge/core/paged_tile_geometry.gd")
 const W=preload("res://addons/terra_forge/core/geometry_worker.gd")
 
+func _mode() -> int:
+    return 3
+
 func _initialize() -> void:
     for format in [0,1]:
         var b: Variant
@@ -29,7 +32,7 @@ func _initialize() -> void:
         var folder: String=made["directory"]
         var p=PREVIEW.new()
         p.region_index_format=format
-        p.sampling_strategy=3
+        p.sampling_strategy=_mode()
         p.geometry_job_limit=2
         p.max_visible_tiles=6
         p.view_distance=96.0
@@ -149,7 +152,7 @@ func _initialize() -> void:
                 return
             p=PREVIEW.new()
             p.region_index_format=1
-            p.sampling_strategy=3
+            p.sampling_strategy=_mode()
             p.max_visible_tiles=1
             p.high_detail_distance=180.0
             if p.start_preview(folder,9,4)!=OK:
