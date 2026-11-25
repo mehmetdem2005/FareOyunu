@@ -679,6 +679,26 @@ func _build_pending_tiles(started: int = -1) -> void:
             continue
         if not all_resident:
             _waiting_tile_frames += 1
+            # Use remaining admission slots only when the full second halo
+            # fits alongside the leading tile. Keep publication order intact.
+            if _motion_active and submitted < max_background_jobs and _support_keys.has(key):
+                for ahead in _motion_selected:
+                    if not _pending_tiles.has(ahead) or _geometry_jobs.has(ahead) or _blocked_tiles.has(ahead):
+                        continue
+                    var next_pages := GEOMETRY.required_pages(_reader, ahead.x, ahead.y, 0)
+                    var extra: Array[Vector2i] = []
+                    for page in next_pages:
+                        if not required.has(page):
+                            extra.append(page)
+                    if required.size() + extra.size() > resident_page_limit:
+                        continue
+                    for page in extra:
+                        if submitted >= max_background_jobs:
+                            break
+                        if _reader.page_status(page) == ERR_BUSY and not _reader.is_requested(page):
+                            if _reader.request_page(page) == OK:
+                                submitted += 1
+                    break
             # Focus only on the nearest pending tile. Otherwise page loads
             # for far tiles can evict this tile's required border samples.
             break
