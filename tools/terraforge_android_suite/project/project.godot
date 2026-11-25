@@ -1,9 +1,10 @@
 config_version=5
 [application]
-config/name="TerraForge Android Test V3 Fresh"
+config/name="TerraForge Android Test V4 Manual"
 run/main_scene="res://main.tscn"
+boot_splash/show_image=false
 config/use_custom_user_dir=true
-config/custom_user_dir_name="TerraForge_Android_Test_V3_Fresh_20261125"
+config/custom_user_dir_name="TerraForge_Android_Test_V4_Manual"
 [display]
 window/size/viewport_width=960
 window/size/viewport_height=540

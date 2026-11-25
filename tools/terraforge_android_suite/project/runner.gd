@@ -1,10 +1,12 @@
 extends Node
 const CAPTURE = preload("res://capture.gd")
-const PROFILE = preload("res://addons/terra_forge/profiling/profile_scene.gd")
-const ADAPTER = preload("res://test_adapter.gd")
-const REPORT_A = "user://tf_android_report_a.json"
-const REPORT_B = "user://tf_android_report_b.json"
-const FULL_DIR = "user://tf_android_details"
+const PROFILE_PATH = "res://addons/terra_forge/profiling/profile_scene.gd"
+var _run_dir: String = ""
+var _start: Button
+var _retry: Button
+var _logger_installed := false
+var _idle_smoke := false
+var _starting := false
 var _log = CAPTURE.new()
 var _inventory: Dictionary
 var _report: Dictionary
@@ -31,13 +33,11 @@ var _last_sample: int = 0
 var _rss_peak: int = 0
 var _static_peak: int = 0
 
-func _init() -> void:
-    OS.add_logger(_log)
-
 func _ready() -> void:
     var args: PackedStringArray = OS.get_cmdline_user_args()
-    _ci = args.has("--ci") or args.has("--smoke")
-    _smoke = args.has("--smoke")
+    _idle_smoke = args.has("--idle-smoke")
+    _ci = args.has("--ci") or args.has("--smoke") or _idle_smoke
+    _smoke = args.has("--smoke") or _idle_smoke
     for arg in args:
         if arg.begins_with("--shard="):
             _shard = int(arg.get_slice("=",1))
@@ -58,64 +58,84 @@ func _ready() -> void:
             if i % 3 == _shard - 1:
                 selected.append(_names[i])
         _names = selected
-    DirAccess.make_dir_recursive_absolute(FULL_DIR)
-    if _ci:
-        _report = _new_report()
-    else:
-        _report = _load_checkpoint()
-        if _report.is_empty():
-            _report = _new_report()
-        # Keep old checkpoints from the first package when terrain and inventory match.
-        if not _report.has("interruptions"):
-            _report["interruptions"] = []
-        if not _report.has("runner_builds"):
-            _report["runner_builds"] = [_report.get("build_commit","")]
-        if not _report["runner_builds"].has(_inventory["build_commit"]):
-            _report["runner_builds"].append(_inventory["build_commit"])
-        _report["build_commit"] = _inventory["build_commit"]
-        if _report.get("active_test","") != "":
-            var interrupted: String = _report["active_test"]
-            _report["interruptions"].append({"name":interrupted,"reason":"Previous process ended before completion","utc":Time.get_datetime_string_from_system(true)})
-            _report["active_test"] = ""
-        if _report.get("active_profile","") != "":
-            _report["profile_interruptions"].append(_report["active_profile"])
-            _report["active_profile"] = ""
-    if not _ci:
-        # Migrate old interrupted records to the retry queue, retaining evidence.
-        var retained: Array = []
-        for t in _report["tests"]:
-            if t.get("status","") == "interrupted":
-                _report["interruptions"].append(t)
-                _report["state"]="running"
-            else:
-                retained.append(t)
-        _report["tests"]=retained
-    _save()
-    if _report.get("state","") == "complete":
-        _status.text = "Test tamamlandı. JSON kopyala."
-        _update_ui()
+    # No reads of historical reports. No fixture generation, logging or tests at launch.
+    _report = {}
+    _progress.max_value = _names.size()
+    _progress.value = 0
+    _status.text = "TerraForge V4 • Hazır"
+    _detail.text = "0/%d | Başlat'a bas. Eski kayıtlar yüklenmez." % _names.size()
+    _start.disabled = false
+    _copy.disabled = true
+    _stop.disabled = true
+    _restart.disabled = true
+    _retry.disabled = true
+    print("ANDROID_MANUAL_IDLE")
+    if _idle_smoke:
+        call_deferred("_verify_idle")
+    elif _ci:
+        call_deferred("_start_fresh")
+
+func _verify_idle() -> void:
+    # CI seeds the legacy reports before launch. No startup progress is allowed.
+    for i in range(8):
+        await get_tree().process_frame
+    if _busy or _starting or not _report.is_empty() or _progress.value != 0 or not _run_dir.is_empty():
+        push_error("Manual startup read old data or started tests")
+        get_tree().quit(1)
         return
-    call_deferred("_run_all")
+    print("ANDROID_IDLE_VERIFIED")
+    _start.pressed.emit()
+
+func _start_fresh() -> void:
+    if _busy or _starting or _inventory.is_empty():
+        return
+    _starting = true
+    _start.disabled = true
+    _copy.disabled = true
+    _status.text = "Yeni test oturumu hazırlanıyor..."
+    _progress.value = 0
+    _detail.text = "0/%d" % _names.size()
+    # Present the UI first; heavy scripts load only after the user starts.
+    await get_tree().process_frame
+    await get_tree().process_frame
+    var token: String = str(Time.get_unix_time_from_system()).replace(".","_") + "_" + str(Time.get_ticks_usec())
+    _run_dir = "user://tf_android_run_" + token
+    if DirAccess.make_dir_absolute(_run_dir) != OK:
+        _run_dir = ""
+        _starting = false
+        _start.disabled = false
+        _status.text = "Yeni oturum klasörü açılamadı."
+        return
+    if DirAccess.make_dir_absolute(_run_dir.path_join("details")) != OK:
+        _run_dir = ""
+        _starting = false
+        _start.disabled = false
+        _status.text = "Ayrıntı klasörü açılamadı."
+        return
+    _seq = 0
+    _paused = false
+    _restart_requested = false
+    _retry_requested = false
+    _stop.text = "Sıradaki testte dur"
+    _report = _new_report()
+    _report["session_id"] = token
+    if not _logger_installed:
+        OS.add_logger(_log)
+        _logger_installed = true
+    _save()
+    _starting = false
+    _run_all()
 
 func _new_report() -> Dictionary:
     return {"schema":"TF_ANDROID_SUITE_1","build_commit":_inventory["build_commit"],"terrain_commit":_inventory["terrain_commit"],"started_utc":Time.get_datetime_string_from_system(true),"device":{"model":OS.get_model_name(),"os":OS.get_name(),"os_version":OS.get_version(),"cpu":OS.get_processor_name(),"cores":OS.get_processor_count(),"godot":Engine.get_version_info().get("string",""),"renderer":RenderingServer.get_current_rendering_method(),"adapter":RenderingServer.get_video_adapter_name(),"display":DisplayServer.get_name(),"headless":DisplayServer.get_name()=="headless","viewport":[get_viewport().size.x,get_viewport().size.y],"physics_hz":Engine.physics_ticks_per_second},"planned_tests":_names.size(),"tests":[],"profiles":[],"profile_interruptions":[],"active_test":"","active_profile":"","state":"running","sequence":0,"notes":"SceneTree tests adapted to Node; shared process, not independent headless CI. Real renderer profiles separate. Timing includes scheduling, not GPU timestamp. Memory is sampled. No device identifier or game data."}
 
-func _load_checkpoint() -> Dictionary:
-    var best: Dictionary = {}
-    for path in [REPORT_A,REPORT_B]:
-        if not FileAccess.file_exists(path):
-            continue
-        var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-        if data is Dictionary and data.get("terrain_commit","")==_inventory["terrain_commit"] and int(data.get("planned_tests",-1))==_names.size() and int(data.get("sequence",-1))>int(best.get("sequence",-1)):
-            best = data
-    _seq = int(best.get("sequence",0))
-    return best
-
 func _save() -> void:
+    if _run_dir.is_empty() or _report.is_empty():
+        return
     _seq += 1
     _report["sequence"] = _seq
     _report["updated_utc"] = Time.get_datetime_string_from_system(true)
-    var path: String = REPORT_A if _seq % 2 == 0 else REPORT_B
+    var path: String = _run_dir.path_join("report_a.json" if _seq % 2 == 0 else "report_b.json")
     var file := FileAccess.open(path,FileAccess.WRITE)
     if file != null:
         file.store_string(JSON.stringify(_report))
@@ -137,7 +157,7 @@ func _make_ui() -> void:
     var v := VBoxContainer.new()
     panel.add_child(v)
     _status = Label.new()
-    _status.text = "TerraForge Android • otomatik test"
+    _status.text = "TerraForge V4 • manuel başlangıç"
     _status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     v.add_child(_status)
     _progress = ProgressBar.new()
@@ -146,6 +166,12 @@ func _make_ui() -> void:
     _detail = Label.new()
     _detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     v.add_child(_detail)
+    _start = Button.new()
+    _start.text = "BAŞLAT — SIFIRDAN"
+    _start.custom_minimum_size.y = 64
+    _start.disabled = true
+    v.add_child(_start)
+    _start.pressed.connect(_start_fresh)
     var row := HBoxContainer.new()
     v.add_child(row)
     _copy = Button.new()
@@ -164,11 +190,11 @@ func _make_ui() -> void:
     _restart.disabled=false
     row.add_child(_restart)
     _restart.pressed.connect(_request_reset)
-    var retry := Button.new()
-    retry.text = "Hatalıları tekrar dene"
-    retry.custom_minimum_size.y=44
-    v.add_child(retry)
-    retry.pressed.connect(_request_retry)
+    _retry = Button.new()
+    _retry.text = "Hatalıları tekrar dene (bu oturum)"
+    _retry.custom_minimum_size.y=44
+    v.add_child(_retry)
+    _retry.pressed.connect(_request_retry)
 
 func _export_json() -> void:
     if _report.is_empty() or _export_dialog_open:
@@ -227,6 +253,8 @@ func _request_reset() -> void:
     confirm.popup_centered(Vector2i(540,180))
 
 func _request_retry() -> void:
+    if _report.is_empty() or _starting:
+        return
     if _busy:
         _retry_requested=true
         _paused=false
@@ -257,14 +285,9 @@ func _toggle_pause() -> void:
     _stop.text = "Devam et" if _paused else "Sıradaki testte dur"
 
 func _reset() -> void:
-    if _busy:
+    if _busy or _starting:
         return
-    _report = _new_report()
-    _paused=false
-    _restart_requested=false
-    _retry_requested=false
-    _save()
-    call_deferred("_run_all")
+    _start_fresh()
 
 func _update_ui() -> void:
     _progress.max_value = _names.size()
@@ -273,13 +296,37 @@ func _update_ui() -> void:
     for t in _report["tests"]:
         counts[t["status"]] = int(counts.get(t["status"],0))+1
     _detail.text = "%d/%d | PASS %d | FAIL %d | Kesildi %d | Profil %d" % [_report["tests"].size(),_names.size(),counts.get("pass",0),counts.get("fail",0),counts.get("interrupted",0),_report["profiles"].size()]
-    _restart.disabled = false
+    _start.disabled = _busy or _starting
+    _copy.disabled = _report.is_empty()
+    _stop.disabled = not _busy
+    _restart.disabled = _starting
+    _retry.disabled = _report.is_empty() or _starting
 
 func _sample_memory() -> void:
-    var rss: Variant = PROFILE._rss()
+    var rss: Variant = _read_rss()
     if rss != null:
         _rss_peak = maxi(_rss_peak,int(rss))
     _static_peak = maxi(_static_peak,int(Performance.get_monitor(Performance.MEMORY_STATIC)))
+
+# Lightweight RSS sampling; no terrain/profile script preload at startup.
+func _read_rss() -> Variant:
+    if OS.get_name() not in ["Linux","Android"]:
+        return null
+    var f := FileAccess.open("/proc/self/status",FileAccess.READ)
+    if f == null:
+        return null
+    for i in range(128):
+        var line: String = f.get_line()
+        if line.begins_with("VmRSS:"):
+            f.close()
+            var parts := line.substr(6).strip_edges().replace("\t"," ").split(" ",false)
+            if parts.size()==2 and parts[0].is_valid_int() and parts[1]=="kB":
+                return int(parts[0])*1024
+            return null
+        if f.eof_reached():
+            break
+    f.close()
+    return null
 
 func _process(_dt: float) -> void:
     if _busy and Time.get_ticks_msec()-_last_sample>=500:
@@ -444,7 +491,7 @@ func _run_case(name: String) -> Dictionary:
                     if m.has(key):
                         c[key+"_p95"]=m[key].get("p95_upper_ms")
                 compact.append(c)
-    var detail_path: String=FULL_DIR.path_join(name+".json")
+    var detail_path: String=_run_dir.path_join("details").path_join(name+".json")
     var file := FileAccess.open(detail_path,FileAccess.WRITE)
     if file != null:
         file.store_string(JSON.stringify({"capture":capture,"traces":traces,"exit_code":exit_code}))
@@ -459,7 +506,11 @@ func _run_profiles() -> void:
     # Independent visible camera/terrain rendering, same fixture and AB-style order.
     _phase="profiles"
     var before := _user_entries()
-    var p = PROFILE.new()
+    var profile_script: Resource = load(PROFILE_PATH)
+    if not profile_script is GDScript or not profile_script.can_instantiate():
+        _report["profile_interruptions"].append("profile script unavailable")
+        return
+    var p = profile_script.new()
     p.duration_seconds=20.0
     p.page_limit=16
     p.shard_limit=4
