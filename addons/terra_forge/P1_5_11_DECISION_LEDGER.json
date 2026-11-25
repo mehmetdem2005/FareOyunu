@@ -3,7 +3,7 @@
   "date": "2026-11-25",
   "branch": "feat/terraforge-mobile-addon",
   "latest_code_merge": "e13cc688c21fe2e43cb117fd31abdcd40234cc0c",
-  "recorded_parent": "0b8059afe2f07b3565655a493420bcdc8b6e15b2",
+  "recorded_parent": "0c96ed8a40cd36ffde3b7169dfb7613bf3d7fe15",
   "combined_ci": {
     "run": 45692534576,
     "head": "e13cc688c21fe2e43cb117fd31abdcd40234cc0c",
@@ -386,13 +386,100 @@
       "ci": 45697785713,
       "disposition": "PENDING",
       "decision": "Detached fresh tile subtree vs baseline, 16 arms/1024 timed fresh tiles, real in-tree rays/ghost checks, existing/support path unchanged."
+    },
+    {
+      "phase": "d2 final",
+      "pr": 39,
+      "head": "13681625017e0c96324cd3ee58cf8b769a914439",
+      "ci": 45697883752,
+      "disposition": "KEEP_EXISTING_PARK_EXTRA_DEDUP",
+      "decision": "Close unmerged; current preview already filters duplicates. Revisit f3/new multi-producer only with actual duplicate incidence.",
+      "evidence": {
+        "equal_arms": 16,
+        "timed_tiles": 512,
+        "camera_traces": 32,
+        "off_on_meshes": [
+          808,
+          808
+        ],
+        "reads": [
+          2288,
+          2288
+        ],
+        "drops": [
+          136,
+          136
+        ],
+        "submits": [
+          944,
+          944
+        ],
+        "coalesced": [
+          0,
+          0
+        ],
+        "missing_shape_steps": [
+          512,
+          512
+        ],
+        "pump_median_ms_F": [
+          0.4066979167,
+          0.4111215278
+        ],
+        "pump_median_ms_H": [
+          0.4032395833,
+          0.4111979167
+        ]
+      },
+      "limitation": "Headless fixed camera route, not Android."
+    },
+    {
+      "phase": "e0 final",
+      "pr": 41,
+      "head": "e61827a2b2e2411bbd179a615965a4862e7c08d2",
+      "ci": 45697785713,
+      "disposition": "REJECT_STANDALONE_DETACHED_PUBLICATION",
+      "decision": "Close unmerged; no consistent benefit. Use e1 independent node-shell reuse instead.",
+      "evidence": {
+        "arms": 16,
+        "timed_tiles": 1024,
+        "uninstrumented_us_TFM1": [
+          97.3671875,
+          103.3359375
+        ],
+        "uninstrumented_us_TFM2": [
+          101.53125,
+          99.734375
+        ],
+        "instrumented_us_TFM1": [
+          151.0546875,
+          154.171875
+        ],
+        "instrumented_us_TFM2": [
+          151.8203125,
+          148.4453125
+        ],
+        "presence_checks": 1088,
+        "ghost_checks": 272,
+        "additional_streaming_rays": 324,
+        "max_height_delta": 0.0000095367431640625
+      },
+      "limitation": "Headless, two repetitions per arm, no GPU or Android attribution."
+    },
+    {
+      "phase": "e1 initial",
+      "pr": 42,
+      "head": "c6847f640418ad92e1a755672f385f46a029c2ee",
+      "ci": 45701042619,
+      "disposition": "PENDING",
+      "decision": "I-only session pinned cap0..8 empty detached shell pool; no cached mesh/shape; 16 arms/1024 measured fresh tiles, physics/ghost/stop safety.",
+      "limitation": "Four-tile benchmark does not exercise 8-cap saturation; cap overflow, support retention and actual route cost remain before promotion."
     }
   ],
   "next": [
-    "d2 evaluate raw DEDUP_EQUAL_WORK / DEDUP_CAMERA_WORK on exact head.",
-    "e0 evaluate DETACHED_PUBLICATION and PHYSICS_CASE on exact head.",
-    "d1 rejected, d3 parked, don't silently revive. c4 device gate open.",
-    "e1-e4 then f/g/h/i; no default promotion, P1.4R after device safety."
+    "e1 read raw IDLE_POOL_WORK and PHYSICS_CASE exact CI; if useful add cap overflow, live route, support gates.",
+    "e2 split publication only if evidence warrants; e3/e4; f/g/h/i.",
+    "Mandatory revisit register g0-g2 and i0/i3/i4; no silent revival or forgetting."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -425,6 +512,26 @@
         "status": "PARKED_RUNTIME_CACHE",
         "trigger": "g0-g2 residual redundant work and device repeat-use evidence justify byte-capped prototype; prove cross-epoch safety",
         "alternative": "avoid rebuild before storing geometry",
+        "review_status": "OPEN_REVIEW_NOT_IMPLEMENTATION"
+      },
+      {
+        "phase": "d2",
+        "branch": "exp/p1511d2-exact-coalescing",
+        "pr": 39,
+        "head": "13681625017e0c96324cd3ee58cf8b769a914439",
+        "ci": 45697883752,
+        "status": "PARKED",
+        "trigger": "f3 or new multi-producer architecture measures actual duplicate submissions",
+        "review_status": "OPEN_REVIEW_NOT_IMPLEMENTATION"
+      },
+      {
+        "phase": "e0",
+        "branch": "exp/p1511e0-detached-publication",
+        "pr": 41,
+        "head": "e61827a2b2e2411bbd179a615965a4862e7c08d2",
+        "ci": 45697785713,
+        "status": "REJECTED_STANDALONE",
+        "trigger": "Android stage attribution shows attach bottleneck and a distinct improvement hypothesis",
         "review_status": "OPEN_REVIEW_NOT_IMPLEMENTATION"
       }
     ]

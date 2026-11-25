@@ -2,6 +2,8 @@
 
 ## Zorunlu geri dönüş listesi — kapatılan deney, unutulan deney değildir
 
+**Yeni kayıtlar:** d2 [PR39](https://github.com/mehmetdem2005/FareOyunu/pull/39) exact1368162 CI45697883752: 0 canlı tekrar, f3/yeni çoklu üretici kanıtında tekrar aç. e0 [PR41](https://github.com/mehmetdem2005/FareOyunu/pull/41) exact e61827a CI45697785713: TFM1 +6.13% süre, TFM2 -1.77%, Android attach darboğazı ve yeni hipotez olmadan yeniden açma. İkisi de kapalı/birleştirilmedi, dalları koru.
+
 Reddedilen mevcut uygulamalar ve park edilen fikirler ayrı dallarda korunur; canlı motora sırf arşiv için eklenmez. Her kapatılan deneyin exact SHA/CI/PR kaydı, neden ve yeniden açma koşulu decision ledger içinde tutulur. Dalı silme. G0–G2 tamamlanırken ve I0/I3/I4 kapılarında bu listeyi tek tek incele, yeni kanıt varsa yeniden aç veya gerekçeli kapalı tut. Bu kontrol yapılmadan P1.5.11 kapanışı yazma.
 
 | Deney | Korunan dal / kanıt | Geri dönüş kapısı |
