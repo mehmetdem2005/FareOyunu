@@ -1,0 +1,145 @@
+{
+  "schema": "TF_HYBRID_BASELINE_1",
+  "source": "User-supplied Android V4 summary JSON, 25 Nov 2026; derived aggregate only, no device identifier or personal path",
+  "terrain_commit": "a30ca86df848e2360d0b1dcc328bbd9a660ce8db",
+  "runner_commit": "ad75c970778d898937ac8d0f2970234f198b9f85",
+  "device": {
+    "model": "Redmi Note 8 Pro",
+    "adapter": "Mali-G76 MC4",
+    "os": "Android 11",
+    "renderer": "mobile",
+    "godot": "4.7.2",
+    "viewport": [
+      1812,
+      883
+    ]
+  },
+  "tests": {
+    "total": 90,
+    "pass": 89,
+    "fail": 1,
+    "trace_count": 437,
+    "case_duration_sum_seconds": 1347.494,
+    "interruptions": 0
+  },
+  "profiles": [
+    {
+      "mode": "A",
+      "fps": 29.571,
+      "frame_p95_upper": 50,
+      "frame_max": 149.851,
+      "pump_mean": 16.7706981450253,
+      "pump_p95_upper": 50,
+      "pump_max": 110.442,
+      "published": 284,
+      "reads": 812,
+      "gap_frames": 0
+    },
+    {
+      "mode": "E",
+      "fps": 43.435,
+      "frame_p95_upper": 40,
+      "frame_max": 134.363,
+      "pump_mean": 5.3991,
+      "pump_p95_upper": 16.7,
+      "pump_max": 97.332,
+      "published": 277,
+      "reads": 1019,
+      "gap_frames": 20,
+      "submitted": 344,
+      "dropped": 66,
+      "worker_mean": 29.6313501805054
+    },
+    {
+      "mode": "F",
+      "fps": 53.1,
+      "frame_p95_upper": 33.4,
+      "frame_max": 117.796,
+      "pump_mean": 5.23416274694261,
+      "pump_p95_upper": 12,
+      "pump_max": 96.135,
+      "published": 250,
+      "reads": 997,
+      "gap_frames": 14,
+      "gap_max_ms": 160.511,
+      "submitted": 297,
+      "dropped": 47,
+      "pruned_finished": 35,
+      "worker_mean": 25.501872,
+      "static_peak_bytes": 80160933
+    },
+    {
+      "mode": "G",
+      "fps": 45.055,
+      "frame_p95_upper": 40,
+      "frame_max": 141.204,
+      "pump_mean": 6.38470842572062,
+      "pump_p95_upper": 16.7,
+      "pump_max": 105.609,
+      "published": 157,
+      "reads": 553,
+      "gap_frames": 96,
+      "submitted": 189,
+      "dropped": 31,
+      "worker_mean": 32.8843503184713
+    },
+    {
+      "mode": "H",
+      "fps": 45.039,
+      "frame_p95_upper": 40,
+      "frame_max": 138.967,
+      "pump_mean": 6.27191906873614,
+      "pump_p95_upper": 16.7,
+      "pump_max": 105.192,
+      "published": 160,
+      "reads": 547,
+      "gap_frames": 60,
+      "submitted": 184,
+      "dropped": 24,
+      "worker_mean": 29.40719375
+    },
+    {
+      "mode": "A-repeat",
+      "fps": 29.224,
+      "frame_p95_upper": 50,
+      "frame_max": 147.868,
+      "pump_mean": 17.3108276450512,
+      "pump_p95_upper": 50,
+      "pump_max": 123.185,
+      "published": 290,
+      "reads": 760,
+      "gap_frames": 0
+    }
+  ],
+  "failure": {
+    "name": "test_publication_budget",
+    "publications": 4,
+    "shapes": 2,
+    "byte_deferral_checks": 0,
+    "time_stop_checks": 0,
+    "peak_publish_ms": 128.279,
+    "mesh_max_ms": 0.526,
+    "shape_max_ms": 0.197,
+    "peak_source_bytes": 116052,
+    "time_target_ms": 8,
+    "hypothesis": "Outer soft time guard can prevent admission check; residual uninstrumented wall time, not proved GPU."
+  },
+  "motion": {
+    "routes": 36,
+    "ticks": 17280,
+    "denied": 36,
+    "max_contiguous_denied": 3,
+    "airborne": 0,
+    "missing_rays": 0,
+    "cold_shard_moving_loads": 117,
+    "cold_shard_moving_evictions": 117
+  },
+  "limitations": [
+    "RSS unavailable",
+    "GPU time and VRAM unavailable",
+    "thermal unavailable",
+    "20-second camera profiles not equal completed work; support/motion off; budget off",
+    "raw warnings and most traces not exported",
+    "single device session, editor mode not release"
+  ]
+}
