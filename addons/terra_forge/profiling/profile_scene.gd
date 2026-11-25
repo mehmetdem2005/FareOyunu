@@ -21,12 +21,15 @@ var _previous_strategy := -1
 var _previous_choice := 0
 var _sampling_choice: OptionButton
 var _budget_toggle: CheckButton
+@export var hybrid_scalar_sampling: bool=false
+@export var hybrid_topology_cache: bool=false
+@export var hybrid_cropped_halo: bool=false
 @export var enforce_publication_budget: bool=false
 @export var observe_publication_micro: bool=false
 @export var observe_pump_micro: bool=false
 @export_range(4096,1048576,4096) var publication_byte_target: int=131072
 @export_range(100,8000,100) var publication_time_target_us: int=1000
-@export_enum("Legacy flag:-1", "A direct:0", "B tile view:1", "C dense buffer:2", "E geometry worker:3", "F priority worker:4", "G scalar priority worker:5", "H cached topology worker:6", "I hybrid v0 (F equivalent):7") var sampling_strategy: int = -1
+@export_enum("Legacy flag:-1", "A direct:0", "B tile view:1", "C dense buffer:2", "E geometry worker:3", "F priority worker:4", "G scalar priority worker:5", "H cached topology worker:6", "I hybrid experimental:7") var sampling_strategy: int = -1
 var _format: OptionButton
 var _fixture_size: OptionButton
 var _estimate: Label
@@ -113,7 +116,7 @@ func _ready() -> void:
     _sampling_choice.add_item("F priority worker (experimental)", 4)
     _sampling_choice.add_item("G scalar priority worker (experimental)", 5)
     _sampling_choice.add_item("H cached topology worker (experimental)", 6)
-    _sampling_choice.add_item("I hybrid v0 / F equivalent (experimental)", 7)
+    _sampling_choice.add_item("I hybrid (experimental)", 7)
 
     _sampling_choice.select(clampi((1 if use_tile_read_view else 0) if sampling_strategy == -1 else sampling_strategy, 0, 7))
     _sampling_choice.item_selected.connect(func(index): sampling_strategy = _sampling_choice.get_item_id(index))
@@ -310,6 +313,9 @@ func _begin(lazy: bool) -> void:
     _preview.resident_shard_limit = shard_limit
     _preview.use_tile_read_view = use_tile_read_view
     _preview.sampling_strategy = sampling_strategy
+    _preview.hybrid_scalar_sampling=sampling_strategy==7 and hybrid_scalar_sampling
+    _preview.hybrid_topology_cache=sampling_strategy==7 and hybrid_topology_cache
+    _preview.hybrid_cropped_halo=sampling_strategy==7 and hybrid_cropped_halo
     _preview.observe_publication = true
     _preview.observe_publication_micro = observe_publication_micro
     _preview.observe_pump_micro = observe_pump_micro
@@ -319,7 +325,10 @@ func _begin(lazy: bool) -> void:
     _run_settings = {"page_limit": page_limit, "job_limit": job_limit, "shard_limit": shard_limit if _run_format == "TFM2" else 0, "view_distance": _preview.view_distance, "high_detail_distance": _preview.high_detail_distance, "medium_detail_distance": _preview.medium_detail_distance, "max_visible_tiles": _preview.max_visible_tiles, "tile_updates_per_frame": _preview.tile_updates_per_frame, "max_tile_work_ms": _preview.max_tile_work_ms, "viewport": [get_viewport().size.x, get_viewport().size.y]}
     _run_settings["use_tile_read_view"] = use_tile_read_view
     _run_settings["sampling_strategy"] = _preview.resolved_sampling_strategy()
-    _run_settings["effective_sampling_strategy"] = 4 if _preview.resolved_sampling_strategy()==7 else _preview.resolved_sampling_strategy()
+    _run_settings["effective_sampling_strategy"] = (6 if hybrid_topology_cache else (5 if hybrid_scalar_sampling else 4)) if sampling_strategy==7 else _preview.resolved_sampling_strategy()
+    _run_settings["hybrid_scalar_sampling"]=_preview.hybrid_scalar_sampling
+    _run_settings["hybrid_topology_cache"]=_preview.hybrid_topology_cache
+    _run_settings["hybrid_cropped_halo"]=_preview.hybrid_cropped_halo
     _run_settings["publication_micro"]=observe_publication_micro
     _run_settings["pump_micro"]=observe_pump_micro
     _run_settings["publication_budget"]=enforce_publication_budget

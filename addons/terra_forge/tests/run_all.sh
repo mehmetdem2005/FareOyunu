@@ -60,6 +60,7 @@ suite=(
   test_publication_budget
   test_topology_worker
   test_hybrid_i_v0
+  test_hybrid_policy
   test_hybrid_i_v0_faults
   test_publication_comparison
   test_physics_raycast
@@ -93,7 +94,12 @@ suite=(
   test_cold_shard_motion_e
   test_cold_shard_motion_f
   test_hybrid_i_v0_motion
+  test_hybrid_policy_motion_v1_g
+  test_hybrid_policy_motion_v1_h
+  test_hybrid_policy_motion_v2_g
+  test_hybrid_policy_motion_v2_h
   test_hybrid_i_v0_cold
+  test_hybrid_policy_cold_h
   test_motion_fault_recovery
   test_motion_fault_recovery_v2
   test_adaptive_view_budget
