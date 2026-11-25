@@ -43,7 +43,9 @@ func _run() -> void:
         return
     # One paired cache condition per format keeps within the 90s script
     # timeout. Counterbalance arm order between formats; not ABBA repeats.
-    var order: Array[bool]=[false,true] if format==0 else [true,false]
+    var order: Array[bool]=[false,true]
+    if format!=0:
+        order.reverse()
     var arms: Array[Dictionary]=[]
     for candidate in order:
         _candidate=candidate
