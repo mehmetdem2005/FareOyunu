@@ -31,6 +31,7 @@ static func run(directory: String, format: int, mode: int, cache: int, geometry_
     var p = PREVIEW.new()
     p.region_index_format = format
     p.sampling_strategy = mode
+    p.enable_camera_worker_cropped_halo=bool(publication_options.get("camera_crop",false))
     p.observe_publication=observe_publication
     p.enforce_publication_budget=bool(publication_options.get("enabled",false))
     p.publication_byte_target=int(publication_options.get("bytes",131072))
@@ -143,6 +144,7 @@ static func run(directory: String, format: int, mode: int, cache: int, geometry_
         "geometry_cap":geometry_cap if mode>=3 else 0,"geometry_peak":geometry_peak,"first_shape_step":first_shape_step,"geometry_worker":s["geometry_worker"],
         "geometry_copy_ms":s["geometry_copy_ms"],"geometry_queue_ms":s["geometry_queue_ms"],"geometry_worker_ms":s["geometry_worker_ms"],"geometry_delivery_ms":s["geometry_delivery_ms"],"geometry_publish_ms":s["geometry_publish_ms"],
         "publication":s.get("publication",{}),"publication_options":publication_options.duplicate(),
+        "camera_crop":s["camera_worker_cropped_halo_active"],"camera_cropped_submissions":s["camera_worker_cropped_submissions"],
         "recovery_ok":settled
     }
     return _close(p,report)
