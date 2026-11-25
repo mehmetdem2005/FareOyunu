@@ -50,6 +50,7 @@ suite=(
   test_sampling_stream_trace
   test_scalar_sampling_benchmark
   test_geometry_worker
+  test_cooperative_cancel
   test_worker_halo
   test_geometry_worker_preview
   test_geometry_worker_comparison

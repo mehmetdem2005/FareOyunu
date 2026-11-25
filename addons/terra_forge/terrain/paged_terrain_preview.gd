@@ -48,6 +48,7 @@ var _requested_sampling_strategy: int = 0
 @export var hybrid_scalar_sampling: bool=false
 @export var hybrid_topology_cache: bool=false
 @export var hybrid_cropped_halo: bool=false
+@export var hybrid_cooperative_cancel: bool=false
 var _hybrid_cropped_halo_active: bool=false
 var _hybrid_cropped_submissions: int=0
 var _dense_payload_peak: int = 0
@@ -196,7 +197,7 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
         return _last_error
     var requested: int = resolved_sampling_strategy()
     # One worker, immutable session policy; never switch backend in flight.
-    if (requested!=7 and (hybrid_scalar_sampling or hybrid_topology_cache or hybrid_cropped_halo)) or (hybrid_topology_cache and not hybrid_scalar_sampling):
+    if (requested!=7 and (hybrid_scalar_sampling or hybrid_topology_cache or hybrid_cropped_halo or hybrid_cooperative_cancel)) or (hybrid_topology_cache and not hybrid_scalar_sampling):
         _last_error=ERR_INVALID_PARAMETER
         return _last_error
     var selected: int = (6 if hybrid_topology_cache else (5 if hybrid_scalar_sampling else 4)) if requested==7 else requested
@@ -242,7 +243,7 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
     if selected>=3:
         _capacity_wait=CAPACITY_WAIT.new() if observe_capacity_wait else null
         _geometry_worker=WORKER.new()
-        status=_geometry_worker.start(_reader,geometry_job_limit,selected>=5,selected==6,_critical_reservation_active,_critical_lending_active,observe_geometry_latency)
+        status=_geometry_worker.start(_reader,geometry_job_limit,selected>=5,selected==6,_critical_reservation_active,_critical_lending_active,observe_geometry_latency,requested==7 and hybrid_cooperative_cancel)
         if status!=OK:
             stop_preview()
             _last_error=status

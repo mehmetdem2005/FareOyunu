@@ -36,6 +36,12 @@ var _inflight: int = 0
 var _running_id: int = 0
 var _running_lod: int=-1
 var _running_since_us: int=0
+var _cancel_enabled: bool=false
+var _running_identity: Dictionary={}
+var _running_cancel: bool=false
+var _reconcile_running_drops: int=0
+var _cooperative_aborts: int=0
+var _cancel_checks: int=0
 var _latency_profile
 var _reserve_critical: bool=false
 var _reservation_deferrals: int=0
@@ -81,7 +87,7 @@ func _record_discard(job: Dictionary,desired: Variant=null,cells: Vector2i=Vecto
                 reason="same_geometry_at_epoch"
     _discard_identity[reason]+=1
 
-func start(source, cap: int=2, scalar_sampling: bool=false,reuse_topology: bool=false,reserve_critical: bool=false,lend_critical: bool=false,profile_latency: bool=false) -> Error:
+func start(source, cap: int=2, scalar_sampling: bool=false,reuse_topology: bool=false,reserve_critical: bool=false,lend_critical: bool=false,profile_latency: bool=false,cooperative_cancel: bool=false) -> Error:
     close()
     if source==null or not source.is_open() or cap<1 or cap>4 or (reuse_topology and not scalar_sampling):
         return ERR_INVALID_PARAMETER
@@ -95,6 +101,7 @@ func start(source, cap: int=2, scalar_sampling: bool=false,reuse_topology: bool=
     _lend_critical=lend_critical and _reserve_critical
     _latency_profile=LATENCY.new() if profile_latency else null
     _scalar_sampling=scalar_sampling
+    _cancel_enabled=cooperative_cancel
     if reuse_topology:
         var started: int=Time.get_ticks_usec()
         _topology=TOPOLOGY.new()
@@ -259,6 +266,9 @@ func _loop() -> void:
             _running_id=job["id"]
             _running_lod=int(job["lod"])
             _running_since_us=Time.get_ticks_usec()
+            _running_cancel=false
+            if _cancel_enabled:
+                _running_identity={"key":job["key"],"lod":job["lod"],"levels":job["levels"]}
             _mutex.unlock()
             var started: int=Time.get_ticks_usec()
             job["queue_wait_us"]=started-int(job["queued_us"])
@@ -282,10 +292,18 @@ func _loop() -> void:
             _running_id=0
             _running_lod=-1
             _running_since_us=0
-            if _stop or job["epoch"]!=_epoch:
+            var invalidated: bool=_running_cancel
+            _running_cancel=false
+            _running_identity={}
+            if _stop or job["epoch"]!=_epoch or invalidated:
                 _dropped+=1
                 if not _stop:
-                    _epoch_running_drops+=1
+                    if job["epoch"]!=_epoch:
+                        _epoch_running_drops+=1
+                    else:
+                        _reconcile_running_drops+=1
+                    if generated.get("cancelled",false):
+                        _cooperative_aborts+=1
                     _record_discard(job)
             else:
                 _finished.append(job)
@@ -298,15 +316,29 @@ func _loop() -> void:
 ## without a runtime delay setting or a reference to source/scene objects.
 func _build_geometry(job: Dictionary) -> Dictionary:
     var key: Vector2i=job["key"]
-    return G.generate_owned_dense_scalar(job["buffer"],key.x,key.y,job["lod"],job["desired"],_topology) if _scalar_sampling else G.generate(job["buffer"],key.x,key.y,job["lod"],job["desired"])
+    var cancel: Callable=Callable(self,"_cancel_checkpoint").bind(int(job["epoch"])) if _cancel_enabled else Callable()
+    return G.generate_owned_dense_scalar(job["buffer"],key.x,key.y,job["lod"],job["desired"],_topology,cancel) if _scalar_sampling else G.generate(job["buffer"],key.x,key.y,job["lod"],job["desired"],cancel)
+
+# Worker-side checkpoint, bounded by four rows. The mutex is never held
+# while generating geometry, reading owned samples or invoking engine APIs.
+func _cancel_checkpoint(epoch: int) -> bool:
+    _mutex.lock()
+    _cancel_checks+=1
+    var stop: bool=_stop or epoch!=_epoch or _running_cancel
+    _mutex.unlock()
+    return stop
 
 ## Experimental F: main-thread reconciliation of bounded queues.
-## Never interrupt running computation or mutate its immutable input.
+## Optional cooperative cancellation, never mutate immutable input.
 func reconcile(source,desired: Dictionary,priority: Dictionary) -> Error:
     var context: Error=_context(source,desired)
     if context!=OK:
         return context
     _mutex.lock()
+    if _cancel_enabled and not _running_identity.is_empty():
+        var running_sig: Dictionary=signature(_running_identity["key"],_running_identity["lod"],desired,source.cells)
+        if running_sig.get("error",FAILED)!=OK or running_sig["levels"]!=_running_identity["levels"]:
+            _running_cancel=true
     for i in range(_pending.size()-1,-1,-1):
         var job: Dictionary=_pending[i]
         var sig: Dictionary=signature(job["key"],job["lod"],desired,source.cells)
@@ -412,8 +444,9 @@ func latency_profile() -> Dictionary:
 func stats() -> Dictionary:
     _mutex.lock()
     var result: Dictionary={"open":_open,"scalar_sampling":_scalar_sampling,"topology_cache_bytes":_topology_payload,"topology_setup_us":_topology_setup_us,"total_worker_payload_allowance_bytes":_cap*SLOT_BYTES+_topology_payload,"pending":_pending.size(),"inflight":_inflight,"finished":_finished.size(),"slots":_slots(),"cap":_cap,"critical_reservation":_reserve_critical,"reservation_enforced":_reservation_enforced(),"lend_critical":_lend_critical,"critical_demand":_critical_demand,"demand_changes":_demand_changes,"loan_admissions":_loan_admissions,"critical_full_denials":_critical_full_denials,"optional_slots":_optional_slots(),"reservation_deferrals":_reservation_deferrals,"reserved_payload_bytes":_slots()*SLOT_BYTES,"payload_cap_bytes":_cap*SLOT_BYTES,"peak_slots":_peak_slots,"pruned_pending":_pruned_pending,"pruned_finished":_pruned_finished,"submitted":_submitted,"delivered":_delivered,"dropped":_dropped,"epoch":_epoch}
-    result["discard_accounting"]={"epoch_pending":_epoch_pending_drops,"epoch_finished":_epoch_finished_drops,"epoch_running":_epoch_running_drops,"reconcile_pending":_pruned_pending,"reconcile_finished":_pruned_finished,"poll_stale":_poll_stale_drops,"copy_wall_us":_discarded_copy_us,"build_wall_us":_discarded_build_us,"classified":_epoch_pending_drops+_epoch_finished_drops+_epoch_running_drops+_pruned_pending+_pruned_finished+_poll_stale_drops}
+    result["discard_accounting"]={"epoch_pending":_epoch_pending_drops,"epoch_finished":_epoch_finished_drops,"epoch_running":_epoch_running_drops,"reconcile_pending":_pruned_pending,"reconcile_finished":_pruned_finished,"poll_stale":_poll_stale_drops,"copy_wall_us":_discarded_copy_us,"build_wall_us":_discarded_build_us,"reconcile_running":_reconcile_running_drops,"classified":_epoch_pending_drops+_epoch_finished_drops+_epoch_running_drops+_pruned_pending+_pruned_finished+_poll_stale_drops+_reconcile_running_drops}
     result["discard_identity"]=_discard_identity.duplicate()
+    result["cooperative_cancel"]={"enabled":_cancel_enabled,"checks":_cancel_checks,"aborted":_cooperative_aborts}
     _mutex.unlock()
     return result
 
@@ -439,6 +472,12 @@ func close() -> void:
     _running_id=0
     _running_lod=-1
     _running_since_us=0
+    _cancel_enabled=false
+    _running_identity={}
+    _running_cancel=false
+    _reconcile_running_drops=0
+    _cooperative_aborts=0
+    _cancel_checks=0
     _latency_profile=null
     _reserve_critical=false
     _lend_critical=false

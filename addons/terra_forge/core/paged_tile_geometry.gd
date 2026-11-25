@@ -183,17 +183,18 @@ static func generate_with_dense(source, tx: int, tz: int, lod: int, desired: Dic
     return result
 
 ## Worker-owned dense buffer, no reader or lease involved.
-static func generate_owned_dense_scalar(buffer,tx: int,tz: int,lod: int,desired: Dictionary,topology=null) -> Dictionary:
-    return _generate(buffer,tx,tz,lod,desired,true,topology)
+static func generate_owned_dense_scalar(buffer,tx: int,tz: int,lod: int,desired: Dictionary,topology=null,cancel: Callable=Callable()) -> Dictionary:
+    return _generate(buffer,tx,tz,lod,desired,true,topology,cancel)
 
-static func generate(source, tx: int, tz: int, lod: int, desired: Dictionary) -> Dictionary:
-    return _generate(source,tx,tz,lod,desired,false)
+static func generate(source, tx: int, tz: int, lod: int, desired: Dictionary,cancel: Callable=Callable()) -> Dictionary:
+    return _generate(source,tx,tz,lod,desired,false,null,cancel)
 
-static func _generate(source, tx: int, tz: int, lod: int, desired: Dictionary, scalar: bool,topology=null) -> Dictionary:
+static func _generate(source, tx: int, tz: int, lod: int, desired: Dictionary, scalar: bool,topology=null,cancel: Callable=Callable()) -> Dictionary:
     if source == null or not source.is_open() or lod < 0 or lod > 2:
         return {"error": ERR_INVALID_PARAMETER}
     if tx < 0 or tz < 0 or (tx + 1) * TILE_CELLS > source.cells.x or (tz + 1) * TILE_CELLS > source.cells.y:
         return {"error": ERR_INVALID_PARAMETER}
+    var cancellable: bool=cancel.is_valid()
     var stride: int = LOD_POLICY.sample_stride(lod)
     var width: int = int(TILE_CELLS / stride) + 1
     var spacing: float = source.spacing
@@ -206,6 +207,8 @@ static func _generate(source, tx: int, tz: int, lod: int, desired: Dictionary, s
     normals.resize(width * width)
     colors.resize(width * width)
     for z in range(width):
+        if cancellable and (z & 3)==0 and bool(cancel.call()):
+            return {"error":ERR_BUSY,"cancelled":true}
         for x in range(width):
             var sx: int = x * stride
             var sz: int = z * stride
@@ -234,6 +237,8 @@ static func _generate(source, tx: int, tz: int, lod: int, desired: Dictionary, s
     var north_same: bool = int(desired.get(Vector2i(tx, tz - 1), -1)) == lod
     var south_same: bool = int(desired.get(Vector2i(tx, tz + 1), -1)) == lod
     for z in range(width):
+        if cancellable and (z & 3)==0 and bool(cancel.call()):
+            return {"error":ERR_BUSY,"cancelled":true}
         for x in range(width):
             var i: int = z * width + x
             var west: int = maxi(0, x - 1)
@@ -298,12 +303,16 @@ static func _generate(source, tx: int, tz: int, lod: int, desired: Dictionary, s
             normals[i] = normal
             colors[i] = grass.lerp(stone, clampf((1.0 - normal.y) * 3.0, 0.0, 1.0))
 
+    if cancellable and bool(cancel.call()):
+        return {"error":ERR_BUSY,"cancelled":true}
     if topology!=null:
         indices=topology.copy_indices(lod)
         if indices.size()!=(width-1)*(width-1)*6:
             return {"error":ERR_INVALID_DATA}
     else:
         for z in range(width - 1):
+            if cancellable and (z & 3)==0 and bool(cancel.call()):
+                return {"error":ERR_BUSY,"cancelled":true}
             for x in range(width - 1):
                 var a: int = z * width + x
                 indices.append(a)
@@ -312,6 +321,8 @@ static func _generate(source, tx: int, tz: int, lod: int, desired: Dictionary, s
                 indices.append(a + 1)
                 indices.append(a + width + 1)
                 indices.append(a + width)
+    if cancellable and bool(cancel.call()):
+        return {"error":ERR_BUSY,"cancelled":true}
     var arrays: Array = []
     arrays.resize(Mesh.ARRAY_MAX)
     arrays[Mesh.ARRAY_VERTEX] = vertices
