@@ -979,6 +979,22 @@
       },
       "decision": "Retain only canonical local signature, remove redundant level array. No runtime activation. Combined exact CI pending; authoritative source identity and live publication gates open.",
       "limitation": "Old 16404 keys theoretical four-entry scenario; not measured RSS, transient overhead or natural hit rate."
+    },
+    {
+      "phase": "g1 verified reader authority",
+      "pr": 56,
+      "head": "4e6b59578b424881defc0d7d90959176ef370681",
+      "ci": 45722877848,
+      "disposition": "CI_PENDING",
+      "decision": "Review exact real reader parity and wrong/closed/reopened rejection. Isolated adapter only; worker publication, transient memory and live physics remain open."
+    },
+    {
+      "phase": "f2 paired actual horizon",
+      "pr": 57,
+      "head": "716d63f22be8d7f72a0645fe67b5466653b7178f",
+      "ci": 45722942419,
+      "disposition": "CI_PENDING",
+      "decision": "Review changed calls and actual matched route safety/resource costs; park if no net benefit; four-tile turns and Android remain open."
     }
   ],
   "next": [
