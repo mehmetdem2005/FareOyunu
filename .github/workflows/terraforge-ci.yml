@@ -6,7 +6,18 @@ on:
       - feat/terraforge-mobile-addon
     paths:
       - "addons/terra_forge/**"
+      # Only known non-runtime handoff/decision documents. Keep other JSON,
+      # fixtures, scenes, scripts and workflow changes eligible for CI.
+      - "!addons/terra_forge/HANDOFF_START_HERE_TR.md"
+      - "!addons/terra_forge/UNUTULMAYACAKLAR_TR.md"
+      - "!addons/terra_forge/P1_5_11_DECISION_LEDGER.json"
+      - "!addons/terra_forge/P1_5_11_HYBRID_MASTER_PLAN_TR.md"
+      - "!addons/terra_forge/ROADMAP_MASTER_TR.md"
+      - "!addons/terra_forge/STATUS_AND_CHANGELOG_TR.md"
+      - "!addons/terra_forge/RISKS_AND_DECISIONS_TR.md"
       - ".github/workflows/terraforge-ci.yml"
+  # PR checks stay conservative, including docs-only PRs, to avoid
+  # path-filtered required checks remaining pending.
   pull_request:
     paths:
       - "addons/terra_forge/**"
@@ -18,7 +29,9 @@ permissions:
 
 concurrency:
   group: terraforge-ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Protect the running integration check; rapid experiment updates still
+  # cancel superseded PR checks. GitHub may replace an older pending run.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/feat/terraforge-mobile-addon' }}
 
 jobs:
   godot-regressions:
