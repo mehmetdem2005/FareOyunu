@@ -1,5 +1,7 @@
 # TERRAFORGE — AÇIK DÜNYA TERRAIN MASTER ROADMAP (P0–P7)
 
+> **GÜNCEL DURUM İÇİN TEK KAYNAK:** [HANDOFF_START_HERE_TR.md](HANDOFF_START_HERE_TR.md) dosyasının en üstündeki TEK GÜNCEL DEVİR kaydı. Aşağıdaki tarihsel devirler, CI kanıtları ve planlar korunur; eski NEXT ifadeleri aktif görev değildir. P1.5.10 entegrasyonu tamamlanmadan P1.4R uygulamasına geçilmez. Bu belge tek başına güncel dal/CI durumunu göstermez.
+
 > **GÜNCEL DEVİR — P1.5.7e3 CI_VERIFIED (24 Kasım 2026):** b6610de889dd2bc93ac5c1c85a94990d95da55ae, [56/56 PASS](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45474716862), [ham JSON](P1_5_7E3_TRANSFER_CI.json). 16 ×150 actual physics ticks, zero missing ground or airborne, exactly two transfers, old eviction tick96, stalls24–30 ticks, resume32–34, max4 readiness rays/tick. Guard p95 upper0.138–0.248ms, pump A4.932–5ms / G1.432–2ms. Fixed synthetic camera return tick24; no production controller/device proof. NEXT P1.5.8a opt-in player motion corridor integrated, 16 paired traces cap4 and speeds12/24, CI_PENDING; no performance conclusion until logs. P1.4/P1.4R PARKED; A default unchanged.
 
 
