@@ -131,6 +131,29 @@ func _run() -> void:
         if trial["error"] != OK or trial["mode"] != "on_demand" or trial["comparison_step"] != step + 1 or trial["settings"]["sampling_strategy"] != [0,3,3,0][step]:
             _fail("Incorrect comparison run", p)
             return
+    for preset in range(6):
+        p._apply_hybrid_preset(preset)
+        if p._hybrid_preset()!=preset or p.hybrid_scalar_sampling!=(preset>=2) or p.hybrid_topology_cache!=(preset>=4) or p.hybrid_cropped_halo!=((preset & 1)==1):
+            _fail("I policy preset mapping",p)
+            return
+    p._apply_hybrid_preset(5)
+    p._compare_hybrid()
+    comparison_deadline=Time.get_ticks_msec()+20000
+    while p._comparison_step>=0 and Time.get_ticks_msec()<comparison_deadline:
+        await process_frame
+    if p._comparison_step>=0 or p.sampling_strategy!=original or p._hybrid_preset()!=5 or p._reports.size()!=8:
+        _fail("I comparison restore or bounded report",p)
+        return
+    for step in range(4):
+        var trial: Dictionary=p._reports[4+step]
+        var settings: Dictionary=trial["settings"]
+        var expected_backend: int=[4,6,6,4][step]
+        if trial["error"]!=OK or trial["comparison_kind"]!="I_F_vs_candidate_same_halo_ABBA" or trial["comparison_step"]!=step+1 or settings["sampling_strategy"]!=7 or settings["effective_sampling_strategy"]!=expected_backend or not settings["hybrid_cropped_halo"] or settings["hybrid_scalar_sampling"]!=(expected_backend==6) or settings["hybrid_topology_cache"]!=(expected_backend==6):
+            _fail("I ABBA policy mismatch",p)
+            return
+    if FileAccess.get_sha256(v2_manifest)!=v2_sha:
+        _fail("I comparison changed source",p)
+        return
     p._save_report()
     if not p._label.text.begins_with("Saved:"):
         _fail("JSON report export failed", p)
