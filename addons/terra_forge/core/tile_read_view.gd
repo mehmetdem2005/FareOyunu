@@ -46,6 +46,41 @@ func read_finite_or_nan(x: int, z: int) -> float:
     _reads += 1
     return values[(z & 31) * 32 + (x & 31)]
 
+## Snapshot a validated rectangle in page runs. The returned array belongs
+## to the caller and can outlive this lease.
+func copy_grid(first: Vector2i, extent: Vector2i, stride: int) -> PackedFloat32Array:
+    var result := PackedFloat32Array()
+    if not _open or stride not in [1, 2, 4] or extent.x < 1 or extent.y < 1 or extent.x > 35 or extent.y > 35:
+        return result
+    var last := first + (extent - Vector2i.ONE) * stride
+    var first_page := Vector2i(first.x >> 5, first.y >> 5) - _first
+    var last_page := Vector2i(last.x >> 5, last.y >> 5) - _first
+    if first.x < 0 or first.y < 0 or last.x > cells.x or last.y > cells.y:
+        return result
+    if first_page.x < 0 or first_page.y < 0 or last_page.x >= _extent.x or last_page.y >= _extent.y:
+        return result
+    if result.resize(extent.x * extent.y) != OK:
+        return PackedFloat32Array()
+    var out_index := 0
+    for row in range(extent.y):
+        var z := first.y + row * stride
+        var page_row := ((z >> 5) - _first.y) * _extent.x
+        var x := first.x
+        while x <= last.x:
+            var page := _pages[page_row + (x >> 5) - _first.x]
+            var offset := ((z & 31) << 5) + (x & 31)
+            var stop := mini(last.x + 1, ((x >> 5) + 1) << 5)
+            while x < stop:
+                var height := page[offset]
+                if not is_finite(height):
+                    return PackedFloat32Array()
+                result[out_index] = height
+                out_index += 1
+                offset += stride
+                x += stride
+    _reads += out_index
+    return result
+
 func page_count_held() -> int:
     return _pages.size()
 

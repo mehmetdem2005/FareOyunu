@@ -27,6 +27,11 @@ static func build(view, tx: int, tz: int, stride: int) -> Dictionary:
     buffer._first = first
     buffer._extent = extent
     buffer._stride = stride
+    if view.has_method("copy_grid"):
+        buffer._values = view.copy_grid(first, extent, stride)
+        if buffer._values.size() != extent.x * extent.y:
+            return {"error": ERR_FILE_CORRUPT}
+        return {"error": OK, "buffer": buffer}
     var resized: Error = buffer._values.resize(extent.x*extent.y)
     if resized != OK:
         return {"error": resized}

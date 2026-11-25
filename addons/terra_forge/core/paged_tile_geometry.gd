@@ -31,6 +31,8 @@ static func _seam(source, tx: int, tz: int, x: int, z: int, lod: int,
     var sample: Dictionary = source.get_height(gx, gz)
     if int(sample.get("error", ERR_FILE_CORRUPT)) != OK:
         return sample
+    if x > 0 and x < TILE_CELLS and z > 0 and z < TILE_CELLS:
+        return sample
     var neighbor: Vector2i = Vector2i(-100000, -100000)
     var along: int = 0
     var horizontal: bool = false
@@ -85,6 +87,8 @@ static func _seam_scalar(source, tx: int, tz: int, x: int, z: int, lod: int,
     var sample: float = source.read_finite_or_nan(gx, gz)
     if not is_finite(sample):
         return NAN
+    if x > 0 and x < TILE_CELLS and z > 0 and z < TILE_CELLS:
+        return sample
     var neighbor: Vector2i = Vector2i(-100000, -100000)
     var along: int = 0
     var horizontal: bool = false
@@ -194,6 +198,8 @@ static func _generate(source, tx: int, tz: int, lod: int, desired: Dictionary, s
     var colors: PackedColorArray = PackedColorArray()
     var indices: PackedInt32Array = PackedInt32Array()
     var collision_heights: PackedFloat32Array = PackedFloat32Array()
+    normals.resize(width * width)
+    colors.resize(width * width)
     for z in range(width):
         for x in range(width):
             var sx: int = x * stride
@@ -209,9 +215,7 @@ static func _generate(source, tx: int, tz: int, lod: int, desired: Dictionary, s
                     return {"error": int(value.get("error", ERR_FILE_CORRUPT))}
                 y = float(value["height"])
             vertices.append(Vector3(float(sx) * spacing, y, float(sz) * spacing))
-            normals.append(Vector3.UP)
             uv.append(Vector2(float(tx * TILE_CELLS + sx), float(tz * TILE_CELLS + sz)) * spacing * 0.125)
-            colors.append(Color.WHITE)
             if lod == 0:
                 collision_heights.append(y / spacing)
 
