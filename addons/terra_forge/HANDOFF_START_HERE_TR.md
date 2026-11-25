@@ -1,5 +1,7 @@
 # TerraForge Mobile — YENİ SOHBETTE BURADAN BAŞLA
 
+25 Kasım — Aktif faz P1.5.10. E/F için eğri TFM1 sınırında çalışan Godot fizik testi eklendi (`test_held_seam_transition.gd`). Komşu eklenirken eşdeğer yükseklikte yürüyüş kabulü ve şekil paylaşımı, LOD0 → LOD1 geçişinde bekleme, ardından yeni ara yüksekliğin yayınlanması ve yürüyüşün tekrar kabulü doğrulandı. Önceki sekiz rota ölçümü aşağıda. Soğuk hedef beklemesi, küçük önbellekte ek okumalar ve uzun Android ölçümü açık.
+
 25 Kasım — P1.5.10 korunan zemin düzeltmesi, [CI 82/82](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45601037438). E/F sekiz rota, 234 → 20 bekleme, kalanlar soğuk hedef. 3840 fizik adımında sıfır zemin kaybı. 9 sayfa/sabit öngörü okumaları 219 → 250. Android uzun süre deneyi açık. P1.4R tasarım incelemesi başladı; bkz. P1_4_RETURN_CHECKPOINT_TR.md ve P1_5_10_HELD_EDGE_CI.json.
 
 **25 Kasım 2026 — P1.5.9c4 CI_VERIFIED / PROMOTE.** [PR #12](https://github.com/mehmetdem2005/FareOyunu/pull/12), aa0aa3dd4b84ffac89cf603981584aa527667c01, [80/80](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45503339023). İki format × iki kapasite (2/4), her senaryoda 12 ardışık kritik teslim. Kritik öncelikli teslim süresince 1/3 hazır opsiyonel sonuç tutuldu ve seri sonunda sırasıyla teslim edildi. Sonuç kaybı yok. Sonlu seri sonrası toparlanma gösterildi; sürekli talepte bekleme üst sınırı ve canlı oyuncu rotasında doygunluk açık. Zamanlayıcı davranışı değişmedi. Sırada P1.5.10 gerçek cihaz ölçümü. P1.4/P1.4R parkta. Ham kayıt: P1_5_9C4_SATURATION_CI.json.

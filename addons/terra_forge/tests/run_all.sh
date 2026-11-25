@@ -61,6 +61,7 @@ suite=(
   test_physics_raycast
   test_dynamic_terrain_physics
   test_collision_footprint
+  test_held_seam_transition
   test_guarded_capsule
   test_support_tile_selection
   test_support_retention
