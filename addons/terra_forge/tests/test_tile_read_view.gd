@@ -3,6 +3,7 @@ const ASYNC = preload("res://addons/terra_forge/core/async_region_source.gd")
 const V1 = preload("res://addons/terra_forge/core/profile_fixture_builder.gd")
 const V2 = preload("res://addons/terra_forge/core/region_fixture_v2.gd")
 const G = preload("res://addons/terra_forge/core/paged_tile_geometry.gd")
+const DENSE = preload("res://addons/terra_forge/core/tile_dense_buffer.gd")
 const PREVIEW = preload("res://addons/terra_forge/terrain/paged_terrain_preview.gd")
 
 func _initialize() -> void:
@@ -52,6 +53,12 @@ func _initialize() -> void:
         total_view=stats["tile_view_page_touches"]
         if total_baseline<2000 or total_view!=36 or stats["tile_view_reads"]!=total_baseline or stats["tile_view_peak_pages"]!=9 or stats["tile_view_active_pages"]!=0:
             _fail("work counters "+str(stats),src,b)
+            return
+        if not _copy_matrix(src,version):
+            _fail("owned copy matrix",src,b)
+            return
+        if not _load(src,keys):
+            _fail("restore lease fixture",src,b)
             return
         var acquired: Dictionary=src.acquire_tile_view(keys)
         var view=acquired["view"]
@@ -133,6 +140,75 @@ func _compare(src,lod: int,desired: Dictionary) -> bool:
         if a["arrays"][slot]!=b["arrays"][slot]:
             return false
     return a["collision_heights"]==b["collision_heights"] and middle["lru_touches"]-before["lru_touches"]==middle["direct_height_reads"]-before["direct_height_reads"] and after["lru_touches"]-middle["lru_touches"]==9 and after["tile_view_reads"]-middle["tile_view_reads"]==middle["direct_height_reads"]-before["direct_height_reads"]
+
+# c3: compare current row-run copy with scalar lease access. Timings
+# exclude page IO/acquisition/release, never share leased pages with worker.
+func _copy_matrix(src,version: int) -> bool:
+    for lod in [0,1,2]:
+        var stride: int=1<<lod
+        var scalar_times: Array[int]=[]
+        var grid_times: Array[int]=[]
+        var samples: int=0
+        for mask in range(16):
+            var key:=Vector2i(1,1)
+            var pages: Array[Vector2i]=G.required_pages(src,key.x,key.y,lod,mask)
+            if not _load(src,pages):
+                return false
+            var bounds: Rect2i=DENSE.sample_bounds(src.cells,key,stride,mask)
+            var first: Vector2i=bounds.position
+            var extent: Vector2i=(bounds.size-Vector2i.ONE)/stride+Vector2i.ONE
+            var acquired: Dictionary=src.acquire_tile_view(pages)
+            if acquired["error"]!=OK:
+                return false
+            var view=acquired["view"]
+            var scalar: PackedFloat32Array
+            var grid: PackedFloat32Array
+            for trial in range(4):
+                var order: Array[int]=[0,1]
+                if (trial+mask)%2==1:
+                    order.reverse()
+                for method in order:
+                    var started: int=Time.get_ticks_usec()
+                    if method==0:
+                        scalar=_scalar_copy(view,first,extent,stride)
+                        scalar_times.append(Time.get_ticks_usec()-started)
+                    else:
+                        grid=view.copy_grid(first,extent,stride)
+                        grid_times.append(Time.get_ticks_usec()-started)
+                if scalar.size()!=extent.x*extent.y or scalar!=grid:
+                    src.release_tile_view(view)
+                    return false
+                samples+=scalar.size()
+            var owned: Dictionary=DENSE.build(view,key.x,key.y,stride,mask)
+            if src.release_tile_view(view)!=OK or owned["error"]!=OK or view.is_open() or src.stats()["tile_view_active_pages"]!=0:
+                return false
+            # Mutating returned copy cannot mutate the independent dense input.
+            var original: float=grid[0]
+            grid[0]=original+1000.0
+            if owned["buffer"].read_finite_or_nan(first.x,first.y)!=original:
+                return false
+            for z in range(extent.y):
+                for x in range(extent.x):
+                    if owned["buffer"].read_finite_or_nan(first.x+x*stride,first.y+z*stride)!=scalar[z*extent.x+x]:
+                        return false
+            if not view.copy_grid(first,extent,stride).is_empty():
+                return false
+        scalar_times.sort()
+        grid_times.sort()
+        print("OWNED_COPY_MATRIX ",JSON.stringify({"format":version,"lod":lod,"cases":16,"pairs":scalar_times.size(),"samples_per_method":samples,"scalar_p50_us":scalar_times[31],"grid_p50_us":grid_times[31],"scalar_p95_us":scalar_times[60],"grid_p95_us":grid_times[60],"note":"Warm lease copy only; no IO, acquisition, release, worker, render or Android timing."}))
+    return true
+
+func _scalar_copy(view,first: Vector2i,extent: Vector2i,stride: int) -> PackedFloat32Array:
+    var values:=PackedFloat32Array()
+    if values.resize(extent.x*extent.y)!=OK:
+        return PackedFloat32Array()
+    for z in range(extent.y):
+        for x in range(extent.x):
+            var value: float=view.read_finite_or_nan(first.x+x*stride,first.y+z*stride)
+            if not is_finite(value):
+                return PackedFloat32Array()
+            values[z*extent.x+x]=value
+    return values
 
 func _fail(msg: String,src,b) -> void:
     src.close()
