@@ -137,6 +137,8 @@ func _case(directory: String,format: int,mode: int,cache: int,adaptive: bool,dia
     if not diagnostics and (not initial_capacity.is_empty() or not initial_latency.is_empty()):
         return {"error":FAILED,"stage":"default diagnostic leak"}
     var reasons: Dictionary={}
+    var denial_states: Dictionary={}
+    var denial_tiles: Dictionary={}
     var peak_pages: int=0
     var peak_tiles: int=0
     var peak_jobs: int=0
@@ -185,6 +187,26 @@ func _case(directory: String,format: int,mode: int,cache: int,adaptive: bool,dia
             longest_stall=maxi(longest_stall,stall)
             var reason: String=admission["reason"]
             reasons[reason]=int(reasons.get(reason,0))+1
+            # Snapshot the first rejected tile before moving or pumping.
+            var rejected: Vector2i = admission["tile"]
+            var held: bool = _p._support_keys.has(rejected)
+            var tile: Dictionary = _p._tiles.get(rejected, {})
+            var stage: String = reason
+            if _p._blocked_tiles.has(rejected):
+                stage = "blocked"
+            elif _p._geometry_jobs.has(rejected):
+                stage = "worker_outstanding"
+            elif _p._pending_tiles.has(rejected):
+                var missing := 0
+                for page in _p.GEOMETRY.required_pages(_p._reader, rejected.x, rejected.y, 0):
+                    if _p._reader.page_status(page) != OK:
+                        missing += 1
+                stage = "pending_pages" if missing > 0 else "pending_resident"
+            var shape_ready: bool = not tile.is_empty() and tile["collision"].shape is HeightMapShape3D
+            var description := "%s/lod%d/shape%s/%s" % ["held" if held else "destination", int(tile.get("lod",-1)), str(shape_ready), stage]
+            denial_states[description] = int(denial_states.get(description,0)) + 1
+            var location := "%s/%s" % [str(rejected), "held" if held else "destination"]
+            denial_tiles[location] = int(denial_tiles.get(location,0)) + 1
             if reason!="missing_lod0" and reason!="unsettled" and reason!="physics_unconfirmed":
                 return {"error":FAILED,"stage":"unexpected denial","tick":tick,"detail":admission}
         else:
@@ -245,7 +267,7 @@ func _case(directory: String,format: int,mode: int,cache: int,adaptive: bool,dia
         if delivered_count!=int(ownership["delivered"]) or int(ownership["submitted"])!=int(ownership["delivered"])+int(ownership["dropped"])+int(ownership["owned"]) or int(ownership["owned"])!=0 or int(latency_report["critical"]["queue_ms"]["count"])<=0:
             return {"error":FAILED,"stage":"ownership integration","detail":latency_report}
     var motion: Dictionary=final["motion_prefetch"]
-    var report: Dictionary={"error":OK,"ticks":TICKS,"outbound_tick":outbound_tick,"reverse_tick":reverse_tick,"return_tick":return_tick,"finish_x":_body.global_position.x,"transfers":transfers,"visited_tiles":visited.size(),"denied_ticks":denied,"longest_stall_ticks":longest_stall,"denial_reasons":reasons,"missing_rays":0,"airborne_ticks":0,"max_denied_drift":max_drift,"peak_rays":peak_rays,"total_rays":total_rays,"peak_pages":peak_pages,"peak_tiles":peak_tiles,"peak_jobs":peak_jobs,"disk_reads":int(final["source"]["disk_reads"])-int(initial["source"]["disk_reads"]),"stale_discarded":int(final["source"]["stale_discarded"])-int(initial["source"]["stale_discarded"]),"builds":int(final["mesh_builds"])-int(initial["mesh_builds"]),"pump_ms":pump_hist.report(),"guard_ms":guard_hist.report(),"sample_ms":sample_hist.report(),"motion":motion}
+    var report: Dictionary={"error":OK,"ticks":TICKS,"outbound_tick":outbound_tick,"reverse_tick":reverse_tick,"return_tick":return_tick,"finish_x":_body.global_position.x,"transfers":transfers,"visited_tiles":visited.size(),"denied_ticks":denied,"longest_stall_ticks":longest_stall,"denial_states":denial_states,"denial_tiles":denial_tiles,"denial_reasons":reasons,"missing_rays":0,"airborne_ticks":0,"max_denied_drift":max_drift,"peak_rays":peak_rays,"total_rays":total_rays,"peak_pages":peak_pages,"peak_tiles":peak_tiles,"peak_jobs":peak_jobs,"disk_reads":int(final["source"]["disk_reads"])-int(initial["source"]["disk_reads"]),"stale_discarded":int(final["source"]["stale_discarded"])-int(initial["source"]["stale_discarded"]),"builds":int(final["mesh_builds"])-int(initial["mesh_builds"]),"pump_ms":pump_hist.report(),"guard_ms":guard_hist.report(),"sample_ms":sample_hist.report(),"motion":motion}
     if outbound_tick<0 or reverse_tick<=outbound_tick or return_tick<=reverse_tick or return_tick>TICKS-10 or visited.size()!=3 or transfers!=8 or max_drift>0.05 or absf(_body.global_position.x-470.0)>0.05 or not motion["keys"].is_empty() or int(motion["expirations"])<1 or (adaptive and int(motion["latency"]["samples"])<2):
         report["error"]=FAILED
         report["stage"]="roundtrip evidence"
