@@ -11,6 +11,10 @@ var _report: Dictionary
 var _status: Label
 var _progress: ProgressBar
 var _copy: Button
+var _export_dialog_open := false
+var _restart_requested := false
+var _retry_requested := false
+var _export_path: String = ""
 var _stop: Button
 var _restart: Button
 var _detail: Label
@@ -61,13 +65,31 @@ func _ready() -> void:
         _report = _load_checkpoint()
         if _report.is_empty():
             _report = _new_report()
+        # Keep old checkpoints from the first package when terrain and inventory match.
+        if not _report.has("interruptions"):
+            _report["interruptions"] = []
+        if not _report.has("runner_builds"):
+            _report["runner_builds"] = [_report.get("build_commit","")]
+        if not _report["runner_builds"].has(_inventory["build_commit"]):
+            _report["runner_builds"].append(_inventory["build_commit"])
+        _report["build_commit"] = _inventory["build_commit"]
         if _report.get("active_test","") != "":
             var interrupted: String = _report["active_test"]
-            _report["tests"].append({"name":interrupted,"status":"interrupted","reason":"Previous process ended before completion"})
+            _report["interruptions"].append({"name":interrupted,"reason":"Previous process ended before completion","utc":Time.get_datetime_string_from_system(true)})
             _report["active_test"] = ""
         if _report.get("active_profile","") != "":
             _report["profile_interruptions"].append(_report["active_profile"])
             _report["active_profile"] = ""
+    if not _ci:
+        # Migrate old interrupted records to the retry queue, retaining evidence.
+        var retained: Array = []
+        for t in _report["tests"]:
+            if t.get("status","") == "interrupted":
+                _report["interruptions"].append(t)
+                _report["state"]="running"
+            else:
+                retained.append(t)
+        _report["tests"]=retained
     _save()
     if _report.get("state","") == "complete":
         _status.text = "Test tamamlandı. JSON kopyala."
@@ -84,7 +106,7 @@ func _load_checkpoint() -> Dictionary:
         if not FileAccess.file_exists(path):
             continue
         var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-        if data is Dictionary and data.get("build_commit","")==_inventory["build_commit"] and int(data.get("sequence",-1))>int(best.get("sequence",-1)):
+        if data is Dictionary and data.get("terrain_commit","")==_inventory["terrain_commit"] and int(data.get("planned_tests",-1))==_names.size() and int(data.get("sequence",-1))>int(best.get("sequence",-1)):
             best = data
     _seq = int(best.get("sequence",0))
     return best
@@ -127,29 +149,108 @@ func _make_ui() -> void:
     var row := HBoxContainer.new()
     v.add_child(row)
     _copy = Button.new()
-    _copy.text = "JSON KOPYALA"
+    _copy.text = "JSON DOSYASINI KAYDET"
     _copy.custom_minimum_size.y=54
     _copy.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     row.add_child(_copy)
-    _copy.pressed.connect(_copy_json)
+    _copy.pressed.connect(_export_json)
     _stop = Button.new()
     _stop.text="Sıradaki testte dur"
     _stop.custom_minimum_size.y=54
     row.add_child(_stop)
     _stop.pressed.connect(_toggle_pause)
     _restart = Button.new()
-    _restart.text="Yeniden başlat"
-    _restart.disabled=true
+    _restart.text="Baştan başlat"
+    _restart.disabled=false
     row.add_child(_restart)
-    _restart.pressed.connect(_reset)
+    _restart.pressed.connect(_request_reset)
+    var retry := Button.new()
+    retry.text = "Hatalıları tekrar dene"
+    retry.custom_minimum_size.y=44
+    v.add_child(retry)
+    retry.pressed.connect(_request_retry)
 
-func _copy_json() -> void:
-    if _report.is_empty():
+func _export_json() -> void:
+    if _report.is_empty() or _export_dialog_open:
         return
     _save()
-    var payload := JSON.stringify(_report)
-    DisplayServer.clipboard_set(payload)
-    _detail.text = "JSON panoya kopyalandı. ChatGPT'ye yapıştır. (%d karakter)" % payload.length()
+    var filename: String = "TerraForge_Android_" + Time.get_datetime_string_from_system().replace(":","-") + ".json"
+    var downloads: String = OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS)
+    var target: String = downloads.path_join(filename) if not downloads.is_empty() else ""
+    # Direct Download write where the Android editor already has access.
+    if not target.is_empty() and _write_export(target):
+        return
+    # Android scoped storage: request just one destination through the native SAF picker.
+    _export_dialog_open=true
+    var status: Error=DisplayServer.file_dialog_show("TerraForge raporunu kaydet",downloads,filename,false,DisplayServer.FILE_DIALOG_MODE_SAVE_FILE,PackedStringArray(["*.json ; JSON raporu"]),_export_selected)
+    if status!=OK:
+        _export_dialog_open=false
+        _detail.text="Download yazılamadı; Godot dosya erişimini kontrol et. İç kayıt korundu."
+
+func _export_selected(ok: bool, paths: PackedStringArray, _filter: int) -> void:
+    _export_dialog_open=false
+    if not ok or paths.is_empty():
+        _detail.text="Kaydetme iptal edildi; test kayıtları korundu."
+        return
+    if not _write_export(paths[0]):
+        _detail.text="Dosya yazılamadı. Android dosya seçicisinde Download seçip tekrar dene."
+
+func _write_export(path: String) -> bool:
+    var file := FileAccess.open(path,FileAccess.WRITE)
+    if file == null:
+        return false
+    var payload: String=JSON.stringify(_report,"  ")
+    file.store_string(payload)
+    file.flush()
+    var status: Error=file.get_error()
+    file.close()
+    if status!=OK:
+        return false
+    _export_path=path
+    _detail.text="JSON dosyası kaydedildi: "+path.get_file()
+    return true
+
+func _request_reset() -> void:
+    var confirm := ConfirmationDialog.new()
+    confirm.title="Baştan başlat"
+    confirm.dialog_text="Mevcut sonuçlar önce dışa aktarılabilir. Tüm testler yeniden çalışsın mı?"
+    confirm.confirmed.connect(func():
+        if _busy:
+            _restart_requested=true
+            _paused=false
+            _status.text="Mevcut test bitince baştan başlanacak."
+        else:
+            _reset()
+        confirm.queue_free())
+    confirm.canceled.connect(confirm.queue_free)
+    add_child(confirm)
+    confirm.popup_centered(Vector2i(540,180))
+
+func _request_retry() -> void:
+    if _busy:
+        _retry_requested=true
+        _paused=false
+        _status.text="Mevcut test bitince hatalı testler yeniden denenecek."
+    else:
+        _retry_failed()
+
+func _retry_failed() -> void:
+    if _busy:
+        return
+    var retained: Array = []
+    if not _report.has("previous_attempts"):
+        _report["previous_attempts"]=[]
+    for t in _report["tests"]:
+        if t["status"]=="pass":
+            retained.append(t)
+        else:
+            _report["previous_attempts"].append(t)
+    _report["tests"]=retained
+    _report["state"]="running"
+    _paused=false
+    _save()
+    call_deferred("_run_all")
+
 
 func _toggle_pause() -> void:
     _paused = not _paused
@@ -160,6 +261,8 @@ func _reset() -> void:
         return
     _report = _new_report()
     _paused=false
+    _restart_requested=false
+    _retry_requested=false
     _save()
     call_deferred("_run_all")
 
@@ -170,7 +273,7 @@ func _update_ui() -> void:
     for t in _report["tests"]:
         counts[t["status"]] = int(counts.get(t["status"],0))+1
     _detail.text = "%d/%d | PASS %d | FAIL %d | Kesildi %d | Profil %d" % [_report["tests"].size(),_names.size(),counts.get("pass",0),counts.get("fail",0),counts.get("interrupted",0),_report["profiles"].size()]
-    _restart.disabled = _busy
+    _restart.disabled = false
 
 func _sample_memory() -> void:
     var rss: Variant = PROFILE._rss()
@@ -195,8 +298,8 @@ func _run_all() -> void:
     for name in _names:
         if done.has(name):
             continue
-        while _paused:
-            _status.text="Duraklatıldı. JSON kopyalayabilir veya devam edebilirsin."
+        while _paused or _export_dialog_open:
+            _status.text="Duraklatıldı. Rapor kaydedebilir veya devam edebilirsin."
             await get_tree().process_frame
         _status.text = "Test: "+str(name)
         _report["active_test"]=name
@@ -209,14 +312,30 @@ func _run_all() -> void:
         _update_ui()
         print("ANDROID_CASE ",JSON.stringify({"name":name,"status":result["status"],"ms":result["duration_ms"]}))
         await get_tree().process_frame
+        if _restart_requested or _retry_requested:
+            _busy=false
+            if _restart_requested:
+                _reset()
+            else:
+                _retry_requested=false
+                _retry_failed()
+            return
     if not _ci:
         await _run_profiles()
+    if _restart_requested or _retry_requested:
+        _busy=false
+        if _restart_requested:
+            _reset()
+        else:
+            _retry_requested=false
+            _retry_failed()
+        return
     _report["state"]="complete"
     _report["active_test"]=""
     _report["active_profile"]=""
     _save()
     _busy=false
-    _status.text="Bitti. JSON KOPYALA'ya bas."
+    _status.text="Bitti. JSON DOSYASINI KAYDET'e bas."
     _update_ui()
     if _ci:
         var failures:=0
@@ -366,7 +485,7 @@ func _run_profiles() -> void:
     for i in range(order.size()):
         if i<_report["profiles"].size():
             continue
-        while _paused:
+        while _paused or _export_dialog_open:
             await get_tree().process_frame
         _status.text="Gerçek render profili %d/6 • strateji %d" % [i+1,order[i]]
         _report["active_profile"]=str(i+1)
@@ -386,5 +505,7 @@ func _run_profiles() -> void:
         _save()
         _update_ui()
         await get_tree().create_timer(1.0).timeout
+        if _restart_requested or _retry_requested:
+            break
     p.free()
     _clean_case_files(before)
