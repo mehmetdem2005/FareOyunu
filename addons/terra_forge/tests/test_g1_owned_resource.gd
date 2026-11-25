@@ -6,6 +6,8 @@ const G=preload("res://addons/terra_forge/core/paged_tile_geometry.gd")
 const D=preload("res://addons/terra_forge/core/tile_dense_buffer.gd")
 const L=preload("res://addons/terra_forge/core/lod_policy.gd")
 const C=preload("res://addons/terra_forge/core/normal_edge_candidate.gd")
+const BOUND=preload("res://addons/terra_forge/core/normal_verified_cache_candidate.gd")
+const READER=preload("res://addons/terra_forge/core/async_region_source.gd")
 const EQ=preload("res://addons/terra_forge/core/geometry_worker_comparison.gd")
 var p
 var builder
@@ -124,6 +126,9 @@ func _run() -> void:
             _fail("session or lease")
             return
         print("G1_OWNED_RESOURCE ",JSON.stringify({"format":format+1,"counts":counts,"note":"Warm same-snapshot owned dense buffer, headless ArrayMesh construction; no GPU/render, no runtime cache or physics publication"}))
+        if not _verify_bound_cache(made["directory"],format):
+            _fail("bound cache authority")
+            return
         p.stop_preview()
         p.free()
         p=null
@@ -131,6 +136,43 @@ func _run() -> void:
         builder=null
     print("PASS: G1 verified TFM1/TFM2 owned dense scalar and mesh resource parity, 84 variants, no mutation")
     quit(0)
+
+func _verify_bound_cache(directory: String,format: int) -> bool:
+    var bound=BOUND.new()
+    var reader=p._reader
+    var other=READER.new()
+    var key=Vector2i(5,5)
+    var before: Dictionary={key:0}
+    for dir in C.DIRS:
+        before[key+dir]=0
+    var after: Dictionary=before.duplicate()
+    after.erase(key+Vector2i.LEFT)
+    var pages: Array[Vector2i]=G.required_pages(reader,key.x,key.y,0)
+    if not EQ._load(p,pages) or bound.begin(reader)!=OK or bound.retain(reader,key,0,before)!=OK:
+        return false
+    var full: Dictionary=G.generate(reader,key.x,key.y,0,after)
+    var patched: Dictionary=bound.patch(reader,key,0,after)
+    if full.get("error",FAILED)!=OK or patched.get("error",FAILED)!=OK or full["arrays"]!=patched["arrays"] or full["collision_heights"]!=patched["collision_heights"]:
+        return false
+    var opened: Error=other.open(directory,16,4,false) if format==0 else other.open_v2(directory,16,4,false)
+    if opened!=OK:
+        return false
+    var rejected_other: bool=bound.patch(other,key,0,after)["error"]==ERR_UNAVAILABLE and bound.retain(other,key,0,before)==ERR_UNAVAILABLE
+    other.close()
+    if not rejected_other:
+        return false
+    # Dedicated reader lifecycle; preserve preview teardown contract.
+    var serial: int=reader.session_serial()
+    p.stop_preview()
+    var rejected_closed: bool=bound.patch(reader,key,0,after)["error"]==ERR_UNAVAILABLE
+    opened=reader.open(directory,16,4,false) if format==0 else reader.open_v2(directory,16,4,false)
+    if opened!=OK:
+        return false
+    var rejected_reopen: bool=reader.session_serial()>serial and bound.patch(reader,key,0,after)["error"]==ERR_UNAVAILABLE and bound.retain(reader,key,0,before)==ERR_UNAVAILABLE
+    reader.close()
+    bound.clear()
+    print("G1_VERIFIED_AUTHORITY ",JSON.stringify({"format":format+1,"parity":true,"wrong_reader_rejected":rejected_other,"closed_rejected":rejected_closed,"reopen_rejected":rejected_reopen,"clear_bytes":bound.report()["bytes"],"note":"Isolated real reader adapter; no worker publication or runtime activation"}))
+    return rejected_closed and rejected_reopen and bound.report()["bytes"]==0
 
 func _fail(msg: String) -> void:
     if p!=null:
