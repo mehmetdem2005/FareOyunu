@@ -5,10 +5,10 @@
   "latest_code_merge": "e13cc688c21fe2e43cb117fd31abdcd40234cc0c",
   "recorded_parent": "0c96ed8a40cd36ffde3b7169dfb7613bf3d7fe15",
   "combined_ci": {
-    "head": "fbfed32ade7f21b8fd08c21d91af3a9d755b6e24",
-    "ci": 45703937754,
+    "head": "bf0fc2b1515cd49b6affad17568242f3b9fe860f",
+    "ci": 45707594234,
     "conclusion": "success",
-    "tests": 107
+    "tests": 109
   },
   "device_gate": {
     "status": "OPEN",
@@ -687,12 +687,102 @@
       },
       "decision": "Integrate shadow diagnostic; G1 test owned partial normal recompute versus full geometry on wider slopes and transitions; never infer unchanged collision for other cases.",
       "limitation": "Same LOD, fixed fixture/key, full recomputation only; no speed gain yet."
+    },
+    {
+      "phase": "f1 live final",
+      "pr": 45,
+      "head": "d6684629c0f17841f110d12fc04adfe60ddbfec9",
+      "ci": 45707610525,
+      "disposition": "PARK_RUNTIME_KEEP_EXISTING_ORDER",
+      "evidence": {
+        "tests": 112,
+        "routes": 8,
+        "physics_ticks": 3840,
+        "off_on_return_tick": [
+          332,
+          332
+        ],
+        "off_on_reads": [
+          240,
+          240
+        ],
+        "off_on_builds": [
+          120,
+          120
+        ],
+        "off_on_denied": [
+          0,
+          0
+        ],
+        "off_on_cancelled": [
+          0,
+          0
+        ],
+        "off_on_missing_rays": [
+          0,
+          0
+        ],
+        "off_on_airborne": [
+          0,
+          0
+        ],
+        "off_on_mean_pump_ms": [
+          0.123976041666667,
+          0.125302604166667
+        ],
+        "p95_upper_ms": 0.5
+      },
+      "decision": "No saved reads, builds, or denied ticks on equal moving routes; mixed pump deltas and slightly worse aggregate. Keep existing order, retain experimental branch, revisit only if actual device evidence shows obsolete ready results and net benefit.",
+      "limitation": "Linux synthetic guarded routes, no Android or rendered GPU, no cancellation events in measured moving traces."
+    },
+    {
+      "phase": "f4 full sampled footprint",
+      "pr": 48,
+      "head": "44b087c0637b2889c47c2906443da21180ca0044",
+      "ci": 45707686900,
+      "disposition": "ACCEPT_TEST_ONLY",
+      "evidence": {
+        "tests": 111,
+        "targets": 16,
+        "single_tile_targets": 8,
+        "four_tile_targets": 8,
+        "gap_ticks": 1,
+        "gap_us_min": 12599,
+        "gap_us_max": 20669,
+        "single_guard_us_min": 70880,
+        "single_guard_us_max": 199956,
+        "four_guard_us_min": 365270,
+        "four_guard_us_max": 475799
+      },
+      "decision": "Integrate diagnostic. Existing guard requires all tile center rays, use observed multi-tile readiness in later F2 design only after user authorization.",
+      "limitation": "One center ray per required tile, not continuous sweep, cache9/16, reader cap1 and synthetic Linux scheduling."
+    },
+    {
+      "phase": "g0 curved final",
+      "pr": 48,
+      "head": "44b087c0637b2889c47c2906443da21180ca0044",
+      "ci": 45707686900,
+      "disposition": "ACCEPT_TEST_ONLY",
+      "evidence": {
+        "tests": 111,
+        "cases": 180,
+        "same_output": 108,
+        "normal_or_color_only": 48,
+        "vertices_changed": 24,
+        "normals_changed": 72,
+        "colors_changed": 72,
+        "collision_changed": 16,
+        "indices_changed": 0,
+        "uv_changed": 0,
+        "interior_vertex_changed": 0
+      },
+      "decision": "Integrate diagnostic. Preserve full rebuild for shape-changing cases; G1/G2 must establish exact parity, no new phases yet.",
+      "limitation": "Analytic synthetic profiles, same LOD and immutable heights; not real terrain or measured optimization."
     }
   ],
   "next": [
-    "F4/G0 verified initial diagnostics integration exact CI pending.",
-    "F1 paired moving route, F4 full sampled footprint and G0 nonlinear/colour shadow extension only; user requests stop before other numbered phases.",
-    "Do not start G1/F2/E2/E4/F3 or later until user explicitly requests next steps."
+    "Exact combined CI for F4/G0 final test-only integration; confirm regression and stop.",
+    "16 numbered steps remain; do not start G1/F2/E2/E4/F3 or later until explicit user instruction. F1 parked, F4/G0 diagnostics accepted, Android gate open."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -755,6 +845,16 @@
         "ci": 45703959444,
         "status": "PARKED_RUNTIME_POOL",
         "trigger": "i0/i3 actual device node churn and memory evidence justify pool; compare moving routes and equal work, never infer allocator cost from shells",
+        "review_status": "OPEN_REVIEW_NOT_IMPLEMENTATION"
+      },
+      {
+        "phase": "f1",
+        "branch": "exp/p1511f1-poll-after-sync",
+        "pr": 45,
+        "head": "d6684629c0f17841f110d12fc04adfe60ddbfec9",
+        "ci": 45707610525,
+        "status": "PARKED_RUNTIME_ORDER",
+        "trigger": "Actual device obsolete ready result frequency and matched net work reduction; no change solely on controlled jump.",
         "review_status": "OPEN_REVIEW_NOT_IMPLEMENTATION"
       }
     ]
