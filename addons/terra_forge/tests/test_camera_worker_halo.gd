@@ -39,7 +39,9 @@ func _initialize() -> void:
         p.free()
         for mode in [3,4]:
             for cache in [9,16]:
-                var order: Array[bool]=[false,true,true,false] if cache==9 else [true,false,false,true]
+                var order: Array[bool]=[false,true,true,false]
+                if cache==16:
+                    order=[true,false,false,true]
                 for trial in range(order.size()):
                     var crop: bool=order[trial]
                     var result: Dictionary=TRACE.run(directory,format,mode,cache,2,8000,false,{"camera_crop":crop})
