@@ -75,6 +75,10 @@ func _initialize() -> void:
             if w.stats()["slots"]==0:
                 break
             OS.delay_msec(1)
+        var poll_stats: Dictionary=w.stats()["discard_accounting"]
+        if poll_stats["poll_stale"]!=2 or poll_stats["classified"]!=2 or poll_stats["copy_wall_us"]<=0 or poll_stats["build_wall_us"]<=0:
+            _fail("stale poll accounting",src,w,b)
+            return
         if w.stats()["slots"]!=0 or w.stats()["dropped"]!=2:
             _fail("neighbor discard",src,w,b)
             return
@@ -92,6 +96,10 @@ func _initialize() -> void:
         if stats["slots"]!=0 or stats["dropped"]!=4 or stats["submitted"]!=stats["delivered"]+stats["dropped"] or stats["peak_slots"]!=2:
             _fail("conservation "+str(stats),src,w,b)
             return
+        var discarded_stats: Dictionary=stats["discard_accounting"]
+        if discarded_stats["classified"]!=4 or discarded_stats["epoch_pending"]+discarded_stats["epoch_finished"]+discarded_stats["epoch_running"]!=2 or discarded_stats["poll_stale"]!=2 or discarded_stats["copy_wall_us"]<poll_stats["copy_wall_us"] or discarded_stats["build_wall_us"]<poll_stats["build_wall_us"]:
+            _fail("epoch discard accounting",src,w,b)
+            return
         if w.submit(src,key,0,desired)["error"]!=OK:
             _fail("reopen setup",src,w,b)
             return
@@ -102,7 +110,7 @@ func _initialize() -> void:
             return
         print("GEOMETRY_WORKER ",JSON.stringify({"format":version,"parity_cases":7,"worker_build_elapsed_sum_us":elapsed,"stats_before_reopen":stats}))
         w.close()
-        if w.stats()["slots"]!=0 or w.stats()["open"]:
+        if w.stats()["slots"]!=0 or w.stats()["open"] or w.stats()["discard_accounting"]["classified"]!=0:
             _fail("close",src,w,b)
             return
         src.close()
