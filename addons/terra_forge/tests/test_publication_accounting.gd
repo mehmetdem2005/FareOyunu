@@ -144,9 +144,109 @@ func _initialize() -> void:
                 _fail("trace conservation",null,b)
                 return
             print("PUBLICATION_CASE ",JSON.stringify(measured))
+        if not _calibrate_micro(folder,format):
+            _fail("fixed-work micro calibration",null,b)
+            return
         b.close()
     print("PASS: publication source bytes and resource counts, LOD replacement/eviction, invalid geometry last-good, synthetic overshoot, 6 observed streaming traces")
     quit(0)
+
+## Isolate observation costs without conflating worker IO or different
+## amounts of completed geometry. Keep ordinary accounting on in all arms.
+## This is a Linux/off-tree wall-time diagnostic, not a device threshold.
+func _calibrate_micro(folder: String,format: int) -> bool:
+    var reference: Dictionary={}
+    var orders: Array=[[0,1,3,2],[2,3,1,0],[3,0,2,1]]
+    for block in range(orders.size()):
+        for flags in orders[block]:
+            var measured: Dictionary=_calibration_trial(folder,format,int(flags))
+            if measured.get("error",FAILED)!=OK:
+                return false
+            var signature: Dictionary=measured["signature"]
+            if reference.is_empty():
+                reference=signature
+            elif reference!=signature:
+                return false
+            measured.erase("signature")
+            measured["format"]=format+1
+            measured["block"]=block
+            measured["flags"]=flags
+            print("MICRO_OVERHEAD_FIXED ",JSON.stringify(measured))
+    return true
+
+func _calibration_trial(folder: String,format: int,flags: int) -> Dictionary:
+    var p=P.new()
+    p.region_index_format=format
+    p.sampling_strategy=0
+    p.observe_publication=true
+    p.observe_publication_micro=(flags&1)!=0
+    p.observe_pump_micro=(flags&2)!=0
+    p.max_visible_tiles=1
+    p.tile_updates_per_frame=1
+    p.max_tile_work_ms=8.0
+    if p.start_preview(folder,16,4)!=OK:
+        return _calibration_close(p,{"error":FAILED})
+    var key:=Vector2i(15,15)
+    p._desired_tiles={key:0}
+    p._pending_tiles={key:true}
+    if not _settle(p):
+        return _calibration_close(p,{"error":FAILED})
+    var generated: Dictionary=G.generate(p._reader,key.x,key.y,0,p._desired_tiles)
+    if generated.get("error",FAILED)!=OK:
+        return _calibration_close(p,{"error":FAILED})
+    var first: Dictionary=p.stats()["publication"]
+    var pub_before: int=0
+    var pump_before: int=0
+    if flags&1:
+        pub_before=int(p.publication_micro_profile()["success"])
+    if flags&2:
+        pump_before=int(p.pump_micro_profile()["total_ms"]["count"])
+    var pub_us: Array[int]=[]
+    var idle_us: Array[int]=[]
+    # Same precomputed owned arrays in every arm; no asynchronous work
+    # inside these timed calls. Include the profiler's final record cost.
+    for i in range(32):
+        p._publication.begin_pump(1)
+        var started: int=Time.get_ticks_usec()
+        var status: Error=p._publish_geometry(key,0,generated,started)
+        pub_us.append(Time.get_ticks_usec()-started)
+        p._publication.end_pump(p._publication_resident())
+        if status!=OK:
+            return _calibration_close(p,{"error":FAILED})
+    for i in range(64):
+        p._last_sync_msec=Time.get_ticks_msec()
+        var started: int=Time.get_ticks_usec()
+        var result: Dictionary=p.pump_stream()
+        idle_us.append(Time.get_ticks_usec()-started)
+        if result.get("error",FAILED)!=OK or not p._pending_tiles.is_empty():
+            return _calibration_close(p,{"error":FAILED})
+    var last: Dictionary=p.stats()["publication"]
+    if int(last["publication_count"])-int(first["publication_count"])!=32 or int(last["pumps"])-int(first["pumps"])!=96 or last["resident"]!=first["resident"]:
+        return _calibration_close(p,{"error":FAILED})
+    if flags&1:
+        var pub: Dictionary=p.publication_micro_profile()
+        if int(pub["success"])-pub_before!=32 or pub["invalid_samples"]!=0:
+            return _calibration_close(p,{"error":FAILED})
+    elif not p.publication_micro_profile().is_empty():
+        return _calibration_close(p,{"error":FAILED})
+    if flags&2:
+        var pump: Dictionary=p.pump_micro_profile()
+        if int(pump["total_ms"]["count"])-pump_before!=64 or pump["invalid_samples"]!=0:
+            return _calibration_close(p,{"error":FAILED})
+    elif not p.pump_micro_profile().is_empty():
+        return _calibration_close(p,{"error":FAILED})
+    var tile: Dictionary=p._tiles[key]
+    var mesh: Mesh=tile["visual"].mesh
+    var shape: HeightMapShape3D=tile["collision"].shape
+    if shape==null:
+        return _calibration_close(p,{"error":FAILED})
+    var signature: Dictionary={"arrays":mesh.surface_get_arrays(0),"heights":shape.map_data,"width":shape.map_width,"depth":shape.map_depth}
+    return _calibration_close(p,{"error":OK,"publications":32,"idle_pumps":64,"publication_us":pub_us,"idle_pump_us":idle_us,"signature":signature,"note":"Off-tree fixed work; no GPU, Android or worker overhead inference."})
+
+func _calibration_close(p,result: Dictionary) -> Dictionary:
+    p.stop_preview()
+    p.free()
+    return result
 
 func _settle(p) -> bool:
     for step in range(4000):
