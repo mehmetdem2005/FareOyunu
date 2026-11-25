@@ -21,6 +21,10 @@ var _previous_strategy := -1
 var _previous_choice := 0
 var _sampling_choice: OptionButton
 var _budget_toggle: CheckButton
+var _hybrid_choice: OptionButton
+var _comparison_kind: String=""
+var _comparison_candidate: int=0
+var _previous_hybrid_preset: int=0
 @export var hybrid_scalar_sampling: bool=false
 @export var hybrid_topology_cache: bool=false
 @export var hybrid_cropped_halo: bool=false
@@ -121,6 +125,13 @@ func _ready() -> void:
     _sampling_choice.select(clampi((1 if use_tile_read_view else 0) if sampling_strategy == -1 else sampling_strategy, 0, 7))
     _sampling_choice.item_selected.connect(func(index): sampling_strategy = _sampling_choice.get_item_id(index))
     ui.add_child(_sampling_choice)
+    _hybrid_choice=OptionButton.new()
+    for backend in ["F","G","H"]:
+        _hybrid_choice.add_item("I "+backend+" / full halo")
+        _hybrid_choice.add_item("I "+backend+" / cropped halo")
+    _hybrid_choice.select(_hybrid_preset())
+    _hybrid_choice.item_selected.connect(_apply_hybrid_preset)
+    ui.add_child(_hybrid_choice)
     _budget_toggle=CheckButton.new()
     _budget_toggle.text="Publication budget (experimental)"
     _budget_toggle.button_pressed=enforce_publication_budget
@@ -139,6 +150,7 @@ func _ready() -> void:
     _button(ui, "Run strict full verification", func(): _begin(false))
     _button(ui, "Run lazy on-demand", func(): _begin(true))
     _button(ui, "Compare A / E (lazy)", _compare_strategies)
+    _button(ui, "Compare I-F / selected I (ABBA)", _compare_hybrid)
     _button(ui, "Copy JSON report to clipboard", _copy_report)
     _button(ui, "Save / show JSON report", _save_report)
     _label = Label.new()
@@ -162,6 +174,7 @@ func _set_busy(busy: bool) -> void:
     _fixture_size.disabled = busy
     _format.disabled = busy
     _sampling_choice.disabled = busy
+    _hybrid_choice.disabled = busy
     _budget_toggle.disabled = busy
 
 func _refresh_sizes() -> void:
@@ -260,6 +273,39 @@ func _memory() -> void:
     if stat > 0:
         _static_peak = int(stat) if _static_peak == null else maxi(int(_static_peak), int(stat))
 
+# Explicit diagnostic policy only. No implicit per-device selection or
+# benchmark at gameplay startup. Same halo is held across the ABBA pair.
+func _hybrid_preset() -> int:
+    if hybrid_topology_cache and not hybrid_scalar_sampling:
+        return -1
+    return (4 if hybrid_topology_cache else (2 if hybrid_scalar_sampling else 0))+(1 if hybrid_cropped_halo else 0)
+
+func _apply_hybrid_preset(index: int) -> void:
+    if index<0 or index>5:
+        return
+    hybrid_scalar_sampling=index>=2
+    hybrid_topology_cache=index>=4
+    hybrid_cropped_halo=(index & 1)==1
+    _hybrid_choice.select(index)
+
+func _compare_hybrid() -> void:
+    if _running or _fixture!=null or _comparison_step>=0:
+        return
+    if _path.text.strip_edges().is_empty():
+        _label.text="Create an isolated sample first."
+        return
+    var candidate: int=_hybrid_preset()
+    if candidate<2:
+        _label.text="Select I-G or I-H for comparison."
+        return
+    _previous_strategy=sampling_strategy
+    _previous_choice=_sampling_choice.selected
+    _previous_hybrid_preset=candidate
+    _comparison_candidate=candidate
+    _comparison_kind="I_F_vs_candidate_same_halo_ABBA"
+    _comparison_step=0
+    _begin_comparison_step()
+
 func _compare_strategies() -> void:
     if _running or _fixture != null or _comparison_step >= 0:
         return
@@ -268,11 +314,17 @@ func _compare_strategies() -> void:
         return
     _previous_strategy = sampling_strategy
     _previous_choice = _sampling_choice.selected
+    _comparison_kind="A_E_ABBA"
     _comparison_step = 0
     _begin_comparison_step()
 
 func _begin_comparison_step() -> void:
-    sampling_strategy = COMPARISON_ORDER[_comparison_step]
+    if _comparison_kind=="I_F_vs_candidate_same_halo_ABBA":
+        sampling_strategy=7
+        var preset: int=(_comparison_candidate & 1) if _comparison_step==0 or _comparison_step==3 else _comparison_candidate
+        _apply_hybrid_preset(preset)
+    else:
+        sampling_strategy=COMPARISON_ORDER[_comparison_step]
     _sampling_choice.select(_sampling_choice.get_item_index(sampling_strategy))
     _begin(true)
 
@@ -505,6 +557,7 @@ func _finish(status: Error) -> void:
         _reports.pop_front()
     if _comparison_step >= 0:
         report["comparison_step"] = _comparison_step + 1
+        report["comparison_kind"]=_comparison_kind
     _reports.append(report)
     _set_busy(false)
     _label.text = "%s: %s | open %.2f ms | collision %s ms\nSave JSON for complete report." % [_mode, error_string(status), _open_ms, str(_first_collision)]
@@ -517,8 +570,12 @@ func _finish(status: Error) -> void:
             _comparison_step = -1
             sampling_strategy = _previous_strategy
             _sampling_choice.select(_previous_choice)
+            var hybrid_comparison: bool=_comparison_kind=="I_F_vs_candidate_same_halo_ABBA"
+            if hybrid_comparison:
+                _apply_hybrid_preset(_previous_hybrid_preset)
+            _comparison_kind=""
             if status == OK:
-                _label.text = "A / E comparison complete. Copy JSON report."
+                _label.text = ("I comparison complete. Copy JSON report." if hybrid_comparison else "A / E comparison complete. Copy JSON report.")
 
 func report_document() -> Dictionary:
     return {
