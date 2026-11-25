@@ -23,7 +23,7 @@ func _initialize() -> void:
         for backend in [4,6]:
             for cap in [1,2]:
                 var reference: Dictionary={}
-                var order: Array[bool]=[false,true,true,false] if (format+backend+cap)%2==0 else [true,false,false,true]
+                var order: Array=[false,true,true,false] if (format+backend+cap)%2==0 else [true,false,false,true]
                 for trial in range(4):
                     var policy: Dictionary={"scalar":backend==6,"topology":backend==6,"crop":true,"cancel":order[trial]}
                     var result: Dictionary=EQ.run(made["directory"],format,7,cap,{},false,false,policy)
@@ -38,7 +38,7 @@ func _initialize() -> void:
                     result["trial"]=trial
                     print("CANCEL_EQUAL_WORK ",JSON.stringify(result))
             for cache in [9,16]:
-                var order: Array[bool]=[false,true,true,false] if (format+cache)%2==0 else [true,false,false,true]
+                var order: Array=[false,true,true,false] if (format+cache)%2==0 else [true,false,false,true]
                 for trial in range(4):
                     var policy: Dictionary={"scalar":backend==6,"topology":backend==6,"crop":true,"cancel":order[trial]}
                     var result: Dictionary=TRACE.run(made["directory"],format,7,cache,2,8000,false,policy)
