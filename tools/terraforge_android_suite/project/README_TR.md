@@ -1,5 +1,8 @@
-# TerraForge Android V4 — manuel başlangıç
+# TerraForge Android V5 Diagnostics — manuel başlangıç
 
-Tek ZIP'i yeni bir klasöre çıkar. Godot proje yöneticisinden yeni klasördeki project.godot'u içe aktar. Play (F5) ile aç. Ekranda **TerraForge V4 • Hazır**, %0 ve **BAŞLAT — SIFIRDAN** görünür. Başlat'a basmadan test çalışmaz; eski kontrol noktaları asla okunmaz. Her başlangıç yeni, benzersiz bir oturum dizini oluşturur. Eski sonuçlar silinmez.
+Tek ZIP'i yeni bir klasöre çıkar. Godot proje yöneticisinden yeni klasördeki project.godot'u içe aktar. Play (F5) ile aç. Ekranda **TerraForge V5 Diagnostics • Hazır**, %0 ve **BAŞLAT — SIFIRDAN** görünür. Başlat'a basmadan test çalışmaz; eski kontrol noktaları asla okunmaz. Her başlangıç yeni, benzersiz bir oturum dizini oluşturur. Eski sonuçlar silinmez.
 
 90 regresyon ve 6 gerçek renderer profili. JSON DOSYASINI KAYDET Download'a yazmayı dener; izin yoksa sistem dosya seçicisinde Download seç. Telefon yazma izni gerçek cihazda doğrulanmalıdır. Kesinti olursa eski oturum otomatik devam etmez. Baştan başlat yeni oturum açar; hatalıları tekrar dene yalnız açık oturumu kullanır. Duraklatma ve yeniden başlatma test sınırında uygulanır. Aşırı ısınmada durdur. Godot 4.7.2 Mobile Renderer; başlatıldıktan sonra eski eşzamanlı testler ana iş parçacığını geçici bloke edebilir. GPU süreleri veya sıcaklık doğrudan ölçülmez.
+
+
+Özet JSON mevcut biçimde kalır. Ayrıntılı JSON düğmesi yalnız oturum bitince etkinleşir; bütün kaydedilmiş test izlerini, test mesajlarını, beklenen/beklenmeyen hataları ve profil kapsamlarının debugger kayıtlarını ayrı dosyada birleştirir. Her kapsam için 8 MB UTF-8 mesaj, 512 yapılandırılmış hata/uyarı ve 2 MB yapılandırılmış kayıt sınırı; düşürülen kayıt sayaçları görünür. Bir ayrıntı dosyası en fazla 32 MiB olarak dışa aktarılır, eksik/bozuk/büyük dosya açıkça bildirilir. Tam stack içeriği ve test dışındaki editör debugger kayıtları henüz alınmaz. Yeniden denemeler benzersiz ayrıntı dosyası kullanır. Bu dal eski a30ca86 terrain tabanını korur; yeni mikro-profil kodu bu pakete henüz taşınmadı. Cihazda yeniden çalıştırma isteği yok; sonraki birleşik pakette hedefli ölçüm yapılacak.
