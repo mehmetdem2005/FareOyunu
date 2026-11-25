@@ -10,6 +10,17 @@ func _initialize() -> void:
     call_deferred("_run")
 
 func _run() -> void:
+    for edge in range(4):
+        for old_level in [-1,0,1,2]:
+            for new_level in [-1,0,1,2]:
+                var old_edges := [0,0,0,0]
+                var new_edges := [0,0,0,0]
+                old_edges[edge] = old_level
+                new_edges[edge] = new_level
+                var safe: bool = old_level == new_level or (old_level <= 0 and new_level <= 0)
+                if P._same_lod0_height_edges(old_edges,new_edges) != safe:
+                    _fail("LOD0 edge classification")
+                    return
     var extent=Vector2(576,576)
     var one: Dictionary=F.plan(Vector2(500,500),Vector2(501,501),0.25,extent,32)
     var four: Dictionary=F.plan(Vector2(511.8,511.8),Vector2(512.2,512.2),0.25,extent,32)

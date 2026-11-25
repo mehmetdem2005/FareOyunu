@@ -886,6 +886,21 @@ func has_collision_at(global_position: Vector3) -> bool:
 ## before proposing horizontal movement, with local XZ and local radius.
 ## Does NOT pin tiles, stream data, move a body, freeze gravity, or guarantee
 ## a capsule sweep. Recheck immediately before movement; caller owns policy.
+## For this read-only source, absent and same-detail neighbors both use
+## canonical LOD0 edge heights. They can change normals. A coarser
+## neighbor may interpolate heights, so every coarse edge must match.
+static func _same_lod0_height_edges(published: Array, desired: Array) -> bool:
+    if published.size() != 4 or desired.size() != 4:
+        return false
+    for edge in range(4):
+        var before: int = published[edge]
+        var after: int = desired[edge]
+        if before < -1 or after < -1 or before > 2 or after > 2:
+            return false
+        if maxi(0, before) != maxi(0, after):
+            return false
+    return true
+
 func inspect_collision_footprint(start: Vector2,finish: Vector2,radius: float,exclude: Array[RID]=[]) -> Dictionary:
     if _reader==null or not is_inside_tree() or not Engine.is_in_physics_frame():
         return {"ready":false,"reason":"physics_context"}
@@ -899,8 +914,14 @@ func inspect_collision_footprint(start: Vector2,finish: Vector2,radius: float,ex
         if int(_desired_tiles.get(key,-1))!=0 or not _tiles.has(key):
             return {"ready":false,"reason":"missing_lod0","tile":key,"tiles":keys,"ray_count":0}
         var tile: Dictionary=_tiles[key]
-        if _blocked_tiles.has(key) or _pending_tiles.has(key) or int(tile["lod"])!=0:
+        if _blocked_tiles.has(key) or int(tile["lod"])!=0:
             return {"ready":false,"reason":"unsettled","tile":key,"tiles":keys,"ray_count":0}
+        if _pending_tiles.has(key):
+            if not _support_active or not _support_keys.has(key):
+                return {"ready":false,"reason":"unsettled","tile":key,"tiles":keys,"ray_count":0}
+            var signature: Dictionary = WORKER.signature(key, 0, _desired_tiles, _reader.cells)
+            if not _same_lod0_height_edges(tile.get("levels", []), signature.get("levels", [])):
+                return {"ready":false,"reason":"unsettled","tile":key,"tiles":keys,"ray_count":0}
         var collision: CollisionShape3D=tile["collision"]
         if not is_instance_valid(collision) or collision.disabled or not collision.shape is HeightMapShape3D or not is_instance_valid(tile["visual"].mesh):
             return {"ready":false,"reason":"missing_shape","tile":key,"tiles":keys,"ray_count":0}
