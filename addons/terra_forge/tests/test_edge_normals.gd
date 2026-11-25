@@ -33,7 +33,6 @@ func _initialize() -> void:
         var b: Array = (right["visual"] as MeshInstance3D).mesh.surface_get_arrays(0)
         var normals_a: PackedVector3Array = a[Mesh.ARRAY_NORMAL]
         var normals_b: PackedVector3Array = b[Mesh.ARRAY_NORMAL]
-        var stride: int = 1 << lod
         var width: int = (32 >> lod) + 1
         for z in range(1, width - 1):
             var index_a: int = z * width + width - 1
