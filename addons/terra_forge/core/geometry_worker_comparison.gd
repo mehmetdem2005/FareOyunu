@@ -51,12 +51,13 @@ static func _fingerprints(p) -> Dictionary:
         result[str(key)]=hash.finish().hex_encode()
     return result
 
-static func run(directory: String,format: int,mode: int,cap: int,publication_options: Dictionary={}) -> Dictionary:
-    if mode not in [2,3,4,5,6] or cap not in [1,2,4] or format not in [0,1]:
+static func run(directory: String,format: int,mode: int,cap: int,publication_options: Dictionary={},scalar_crop: bool=false) -> Dictionary:
+    if mode not in [2,3,4,5,6] or cap not in [1,2,4] or format not in [0,1] or (scalar_crop and mode not in [5,6]):
         return {"error":ERR_INVALID_PARAMETER}
     var p=P.new()
     p.region_index_format=format
     p.sampling_strategy=mode
+    p.enable_scalar_worker_cropped_halo=scalar_crop
     p.geometry_job_limit=cap
     p.tile_updates_per_frame=int(publication_options.get("updates",2))
     p.observe_publication=not publication_options.is_empty()
@@ -130,10 +131,14 @@ static func run(directory: String,format: int,mode: int,cap: int,publication_opt
             return _close(p,{"error":ERR_INVALID_DATA,"stage":"resource parity"})
         reference=hashes
     var s: Dictionary=p.stats()
+    if bool(s["scalar_worker_cropped_halo_active"])!=scalar_crop or int(s["scalar_worker_cropped_submissions"])!=((BATCHES+1)*4 if scalar_crop else 0):
+        return _close(p,{"error":ERR_BUG,"stage":"scalar crop evidence"})
     var after: Dictionary=p._reader.stats()
     if before["disk_reads"]!=after["disk_reads"] or before["evictions"]!=after["evictions"] or before["submitted"]!=after["submitted"]:
         return _close(p,{"error":ERR_BUG,"stage":"unexpected IO"})
     var result: Dictionary={"error":OK,"format":format+1,"mode":mode,"cap":cap if mode>=3 else 0,"completed":BATCHES*4,"warmup_builds":4,"pages":pages.size(),"main_total_us":total_main_us,"wall_total_us":total_wall_us,"main_us_per_tile":float(total_main_us)/(BATCHES*4),"wall_us_per_tile":float(total_wall_us)/(BATCHES*4),"pumps":pump_count,"main_ms":main.report(),"batch_wall_ms":batch_wall.report(),"fingerprints":reference,"worker":s["geometry_worker"],"copy_ms_including_warmup":s["geometry_copy_ms"],"queue_ms_including_warmup":s["geometry_queue_ms"],"build_ms_including_warmup":s["geometry_worker_ms"],"delivery_ms_including_warmup":s["geometry_delivery_ms"],"publish_ms_including_warmup":s["geometry_publish_ms"]}
+    result["scalar_crop"]=scalar_crop
+    result["scalar_cropped_submissions"]=s["scalar_worker_cropped_submissions"]
     result["publication"]=s.get("publication",{})
     result["publication_options"]=publication_options.duplicate()
     # Teardown with outstanding work: submit then close immediately.
