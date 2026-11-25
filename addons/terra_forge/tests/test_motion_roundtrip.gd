@@ -45,6 +45,9 @@ func _require_cold_shard() -> bool:
 func _halo_variants() -> Array[bool]:
     return [false]
 
+func _hybrid_motion_policy() -> Dictionary:
+    return {}
+
 func _run() -> void:
     var format: int=_format()
     _builder=V1.new() if format==0 else V2.new()
@@ -97,6 +100,10 @@ func _case(directory: String,format: int,mode: int,cache: int,adaptive: bool,dia
     _p.region_index_format=format
     _p.resident_shard_limit=_shard_limit()
     _p.sampling_strategy=mode
+    var hybrid: Dictionary=_hybrid_motion_policy()
+    _p.hybrid_scalar_sampling=bool(hybrid.get("scalar",false))
+    _p.hybrid_topology_cache=bool(hybrid.get("topology",false))
+    _p.hybrid_cropped_halo=bool(hybrid.get("crop",false))
     _p.enable_scalar_worker_cropped_halo=_test_scalar_crop
     _p.enable_support_retention=true
     _p.enable_motion_prefetch=true
@@ -167,6 +174,8 @@ func _case(directory: String,format: int,mode: int,cache: int,adaptive: bool,dia
     var guard_hist=HIST.new()
     var sample_hist=HIST.new()
     var initial: Dictionary=_p.stats()
+    if mode==7 and (initial["sampling_strategy"]!=7 or initial["effective_sampling_strategy"]!=(6 if _p.hybrid_topology_cache else (5 if _p.hybrid_scalar_sampling else 4)) or initial["hybrid_cropped_halo_active"]!=_p.hybrid_cropped_halo):
+        return {"error":FAILED,"stage":"I motion pinned policy"}
     if bool(initial["scalar_worker_cropped_halo_active"])!=_test_scalar_crop:
         return {"error":FAILED,"stage":"halo session flag"}
     if _require_cold_shard() and (format!=1 or int(initial["source"]["shard_limit"])!=1 or int(initial["source"]["shard_resident"])!=1):
@@ -301,6 +310,9 @@ func _case(directory: String,format: int,mode: int,cache: int,adaptive: bool,dia
             if not _p._tiles.has(key) or _p._desired_tiles.get(key,-1)!=0:
                 return {"error":FAILED,"stage":"support eviction","tick":tick}
     var final: Dictionary=_p.stats()
+    var hybrid_submissions: int=int(final["hybrid_cropped_submissions"])-int(initial["hybrid_cropped_submissions"])
+    if (bool(hybrid.get("crop",false)) and hybrid_submissions<=0) or (not bool(hybrid.get("crop",false)) and hybrid_submissions!=0):
+        return {"error":FAILED,"stage":"I motion halo evidence","count":hybrid_submissions}
     var crop_submissions: int=int(final["scalar_worker_cropped_submissions"])-int(initial["scalar_worker_cropped_submissions"])
     if (_test_scalar_crop and crop_submissions<=0) or (not _test_scalar_crop and crop_submissions!=0):
         return {"error":FAILED,"stage":"halo submission evidence","count":crop_submissions}
@@ -322,6 +334,10 @@ func _case(directory: String,format: int,mode: int,cache: int,adaptive: bool,dia
     var motion: Dictionary=final["motion_prefetch"]
     var report: Dictionary={"error":OK,"ticks":TICKS,"outbound_tick":outbound_tick,"reverse_tick":reverse_tick,"return_tick":return_tick,"finish_x":_body.global_position.x,"transfers":transfers,"visited_tiles":visited.size(),"denied_ticks":denied,"longest_stall_ticks":longest_stall,"denial_states":denial_states,"denial_tiles":denial_tiles,"denial_reasons":reasons,"missing_rays":0,"airborne_ticks":0,"max_denied_drift":max_drift,"peak_rays":peak_rays,"total_rays":total_rays,"peak_pages":peak_pages,"peak_tiles":peak_tiles,"peak_jobs":peak_jobs,"disk_reads":int(final["source"]["disk_reads"])-int(initial["source"]["disk_reads"]),"stale_discarded":int(final["source"]["stale_discarded"])-int(initial["source"]["stale_discarded"]),"builds":int(final["mesh_builds"])-int(initial["mesh_builds"]),"pump_ms":pump_hist.report(),"guard_ms":guard_hist.report(),"sample_ms":sample_hist.report(),"motion":motion}
     report["scalar_cropped_submissions"]=crop_submissions
+    report["hybrid_cropped_submissions"]=hybrid_submissions
+    report["hybrid_policy"]=hybrid.duplicate()
+    if mode==7:
+        report["effective_sampling_strategy"]=final["effective_sampling_strategy"]
     report["peak_shards"]=peak_shards
     report["shard_loads"]=int(final["source"]["shard_loads"])-int(initial["source"]["shard_loads"])
     report["shard_evictions"]=int(final["source"]["shard_evictions"])-int(initial["source"]["shard_evictions"])
