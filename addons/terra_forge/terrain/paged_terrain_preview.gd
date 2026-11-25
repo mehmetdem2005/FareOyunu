@@ -33,7 +33,7 @@ const TILE_CELLS: int = 32
 ## Experimental A/B CPU sampling path. Default stays baseline until measured.
 @export var use_tile_read_view: bool = false
 ## -1 preserves serialized legacy bool. Explicit mode overrides it.
-@export_enum("Legacy flag:-1", "A direct:0", "B tile view:1", "C dense buffer:2", "E geometry worker:3", "F priority worker:4", "G scalar priority worker:5", "H cached topology worker:6", "I hybrid v0 (F equivalent):7") var sampling_strategy: int = -1
+@export_enum("Legacy flag:-1", "A direct:0", "B tile view:1", "C dense buffer:2", "E geometry worker:3", "F priority worker:4", "G scalar priority worker:5", "H cached topology worker:6", "I hybrid experimental:7") var sampling_strategy: int = -1
 ## Experimental G/H only; pinned at start, never changes E/F or A.
 @export var enable_scalar_worker_cropped_halo: bool=false
 var _scalar_worker_cropped_halo_active: bool=false
@@ -44,6 +44,12 @@ var _camera_worker_cropped_halo_active: bool=false
 var _camera_worker_cropped_submissions: int=0
 var _active_sampling_strategy: int = 0
 var _requested_sampling_strategy: int = 0
+## I-only session policy; conservative defaults preserve F-v0.
+@export var hybrid_scalar_sampling: bool=false
+@export var hybrid_topology_cache: bool=false
+@export var hybrid_cropped_halo: bool=false
+var _hybrid_cropped_halo_active: bool=false
+var _hybrid_cropped_submissions: int=0
 var _dense_payload_peak: int = 0
 @export_range(1,4,1) var geometry_job_limit: int = 2
 var _geometry_worker
@@ -189,9 +195,12 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
         _last_error = ERR_INVALID_PARAMETER
         return _last_error
     var requested: int = resolved_sampling_strategy()
-    # I-v0 deliberately maps to F. No hidden backend selection.
-    var selected: int = 4 if requested==7 else requested
-    if selected < 0 or selected > 6 or (enable_scalar_worker_cropped_halo and selected not in [5,6]) or (enable_camera_worker_cropped_halo and requested not in [3,4]):
+    # One worker, immutable session policy; never switch backend in flight.
+    if (requested!=7 and (hybrid_scalar_sampling or hybrid_topology_cache or hybrid_cropped_halo)) or (hybrid_topology_cache and not hybrid_scalar_sampling):
+        _last_error=ERR_INVALID_PARAMETER
+        return _last_error
+    var selected: int = (6 if hybrid_topology_cache else (5 if hybrid_scalar_sampling else 4)) if requested==7 else requested
+    if selected < 0 or selected > 6 or (enable_scalar_worker_cropped_halo and requested not in [5,6]) or (enable_camera_worker_cropped_halo and requested not in [3,4]):
         _last_error = ERR_INVALID_PARAMETER
         return _last_error
     if enforce_publication_budget and (publication_byte_target<4096 or publication_byte_target>1048576 or publication_time_target_us<100 or publication_time_target_us>8000):
@@ -214,6 +223,7 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
     _reader = next
     _scalar_worker_cropped_halo_active=enable_scalar_worker_cropped_halo
     _camera_worker_cropped_halo_active=enable_camera_worker_cropped_halo
+    _hybrid_cropped_halo_active=requested==7 and hybrid_cropped_halo
     _support_active = enable_support_retention
     _motion_active=enable_motion_prefetch and _support_active
     _motion_adaptive=_motion_active and enable_adaptive_motion_horizon
@@ -275,6 +285,8 @@ func resolved_sampling_strategy() -> int:
 
 func stop_preview() -> void:
     set_process(false)
+    _hybrid_cropped_halo_active=false
+    _hybrid_cropped_submissions=0
     _camera_worker_cropped_halo_active=false
     _camera_worker_cropped_submissions=0
     _scalar_worker_cropped_halo_active=false
@@ -699,7 +711,7 @@ func _has_pending_critical() -> bool:
     return false
 
 func _tile_halo(key: Vector2i, lod: int) -> int:
-    if ((_motion_active or _camera_worker_cropped_halo_active) and _active_sampling_strategy in [3, 4]) or _scalar_worker_cropped_halo_active:
+    if ((_motion_active or _camera_worker_cropped_halo_active) and _active_sampling_strategy in [3, 4]) or _scalar_worker_cropped_halo_active or _hybrid_cropped_halo_active:
         return GEOMETRY.normal_halo(key, lod, _desired_tiles)
     return GEOMETRY.DENSE.FULL_HALO
 
@@ -801,6 +813,8 @@ func _build_pending_tiles(started: int = -1, event: Variant=null) -> void:
                     _scalar_worker_cropped_submissions+=1
                 if _camera_worker_cropped_halo_active and not _motion_active and halo_mask!=GEOMETRY.DENSE.FULL_HALO:
                     _camera_worker_cropped_submissions+=1
+                if _hybrid_cropped_halo_active and halo_mask!=GEOMETRY.DENSE.FULL_HALO:
+                    _hybrid_cropped_submissions+=1
                 _copy_hist.add(float(accepted["copy_elapsed_us"])/1000.0)
                 _dense_payload_peak=maxi(_dense_payload_peak,int(accepted["input_bytes"]))
                 max_builds-=1
@@ -1263,8 +1277,10 @@ func stats() -> Dictionary:
         "verify_pages_on_demand": verify_pages_on_demand,
         "use_tile_read_view": use_tile_read_view,
         "sampling_strategy": _requested_sampling_strategy if _reader != null else resolved_sampling_strategy(),
-        "effective_sampling_strategy": _active_sampling_strategy if _reader != null else (4 if resolved_sampling_strategy()==7 else resolved_sampling_strategy()),
+        "effective_sampling_strategy": _active_sampling_strategy if _reader != null else ((6 if hybrid_topology_cache else (5 if hybrid_scalar_sampling else 4)) if resolved_sampling_strategy()==7 else resolved_sampling_strategy()),
         "dense_payload_peak_bytes": _dense_payload_peak,
+        "hybrid_cropped_halo_active": _hybrid_cropped_halo_active,
+        "hybrid_cropped_submissions": _hybrid_cropped_submissions,
         "camera_worker_cropped_halo_active": _camera_worker_cropped_halo_active,
         "camera_worker_cropped_submissions": _camera_worker_cropped_submissions,
         "scalar_worker_cropped_halo_active": _scalar_worker_cropped_halo_active,
