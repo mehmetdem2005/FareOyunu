@@ -26,11 +26,15 @@ static func _close(p,result: Dictionary) -> Dictionary:
     return result
 
 static func run(directory: String, format: int, mode: int, cache: int, geometry_cap: int=2, cadence_us: int=0, observe_publication: bool=false, publication_options: Dictionary={}) -> Dictionary:
-    if format not in [0,1] or mode not in [0,1,2,3,4,5,6] or cache not in [9,16] or geometry_cap not in [1,2,4] or cadence_us not in [0,4000,8000]:
+    if format not in [0,1] or mode not in [0,1,2,3,4,5,6,7] or cache not in [9,16] or geometry_cap not in [1,2,4] or cadence_us not in [0,4000,8000]:
         return {"error": ERR_INVALID_PARAMETER}
     var p = PREVIEW.new()
     p.region_index_format = format
     p.sampling_strategy = mode
+    p.hybrid_scalar_sampling=bool(publication_options.get("scalar",false))
+    p.hybrid_topology_cache=bool(publication_options.get("topology",false))
+    p.hybrid_cropped_halo=bool(publication_options.get("crop",false))
+    p.hybrid_deduplicate=bool(publication_options.get("dedup",false))
     p.enable_camera_worker_cropped_halo=bool(publication_options.get("camera_crop",false))
     p.observe_publication=observe_publication
     p.enforce_publication_budget=bool(publication_options.get("enabled",false))

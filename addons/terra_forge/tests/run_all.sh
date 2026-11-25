@@ -51,6 +51,7 @@ suite=(
   test_scalar_sampling_benchmark
   test_geometry_worker
   test_worker_dedup
+  test_worker_dedup_comparison
   test_worker_halo
   test_geometry_worker_preview
   test_geometry_worker_comparison
