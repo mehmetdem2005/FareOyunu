@@ -36,6 +36,25 @@ var _inflight: int = 0
 var _running_id: int = 0
 var _running_lod: int=-1
 var _running_since_us: int=0
+var _dedup_enabled: bool=false
+var _dedup_running: Dictionary={}
+var _coalesced: int=0
+
+# Caller holds mutex. Session and snapshot were verified by _context.
+# Epoch is deliberately part of the identity; no cross-generation reuse.
+func _same_request(job: Dictionary,key: Vector2i,lod: int,levels: Array,halo: int) -> bool:
+    return not job.is_empty() and job["epoch"]==_epoch and job["key"]==key and job["lod"]==lod and job["levels"]==levels and job["halo_mask"]==halo
+
+func _existing_request(key: Vector2i,lod: int,levels: Array,halo: int) -> int:
+    if _same_request(_dedup_running,key,lod,levels,halo):
+        return int(_dedup_running["id"])
+    for job in _pending:
+        if _same_request(job,key,lod,levels,halo):
+            return int(job["id"])
+    for job in _finished:
+        if _same_request(job,key,lod,levels,halo):
+            return int(job["id"])
+    return 0
 var _latency_profile
 var _reserve_critical: bool=false
 var _reservation_deferrals: int=0
@@ -81,7 +100,7 @@ func _record_discard(job: Dictionary,desired: Variant=null,cells: Vector2i=Vecto
                 reason="same_geometry_at_epoch"
     _discard_identity[reason]+=1
 
-func start(source, cap: int=2, scalar_sampling: bool=false,reuse_topology: bool=false,reserve_critical: bool=false,lend_critical: bool=false,profile_latency: bool=false) -> Error:
+func start(source, cap: int=2, scalar_sampling: bool=false,reuse_topology: bool=false,reserve_critical: bool=false,lend_critical: bool=false,profile_latency: bool=false,deduplicate: bool=false) -> Error:
     close()
     if source==null or not source.is_open() or cap<1 or cap>4 or (reuse_topology and not scalar_sampling):
         return ERR_INVALID_PARAMETER
@@ -95,6 +114,7 @@ func start(source, cap: int=2, scalar_sampling: bool=false,reuse_topology: bool=
     _lend_critical=lend_critical and _reserve_critical
     _latency_profile=LATENCY.new() if profile_latency else null
     _scalar_sampling=scalar_sampling
+    _dedup_enabled=deduplicate
     if reuse_topology:
         var started: int=Time.get_ticks_usec()
         _topology=TOPOLOGY.new()
@@ -197,6 +217,14 @@ func submit(source,key: Vector2i,lod: int,desired: Dictionary, halo_mask: int = 
     if sig["error"]!=OK:
         return sig
     _mutex.lock()
+    if _dedup_enabled:
+        var existing: int=_existing_request(key,lod,sig["levels"],halo_mask)
+        if existing!=0:
+            _coalesced+=1
+            _mutex.unlock()
+            # One result for the original ID, not a second publication.
+            # No lease acquisition, copy, slot or submitted increment.
+            return {"error":OK,"id":existing,"coalesced":true,"copy_elapsed_us":0,"input_bytes":0}
     var full: bool=_slots()>=_cap
     var reserved: bool=_reservation_enforced() and lod>0 and _optional_slots()>=_cap-1
     if full and lod==0 and _lend_critical:
@@ -225,7 +253,7 @@ func submit(source,key: Vector2i,lod: int,desired: Dictionary, halo_mask: int = 
         _loan_admissions+=1
     _next_id+=1
     var id: int=_next_id
-    var job: Dictionary={"id":id,"epoch":_epoch,"key":key,"lod":lod,"levels":sig["levels"],"desired":sig["desired"],"buffer":buffer,"input_bytes":buffer.payload_bytes(),"copy_elapsed_us":copy_elapsed,"queued_us":Time.get_ticks_usec()}
+    var job: Dictionary={"id":id,"epoch":_epoch,"key":key,"lod":lod,"levels":sig["levels"],"halo_mask":halo_mask,"desired":sig["desired"],"buffer":buffer,"input_bytes":buffer.payload_bytes(),"copy_elapsed_us":copy_elapsed,"queued_us":Time.get_ticks_usec()}
     if _reserve_critical and lod==0:
         var index: int=0
         while index<_pending.size() and int(_pending[index]["lod"])==0:
@@ -259,6 +287,8 @@ func _loop() -> void:
             _running_id=job["id"]
             _running_lod=int(job["lod"])
             _running_since_us=Time.get_ticks_usec()
+            if _dedup_enabled:
+                _dedup_running={"id":job["id"],"epoch":job["epoch"],"key":job["key"],"lod":job["lod"],"levels":job["levels"],"halo_mask":job["halo_mask"]}
             _mutex.unlock()
             var started: int=Time.get_ticks_usec()
             job["queue_wait_us"]=started-int(job["queued_us"])
@@ -282,6 +312,7 @@ func _loop() -> void:
             _running_id=0
             _running_lod=-1
             _running_since_us=0
+            _dedup_running={}
             if _stop or job["epoch"]!=_epoch:
                 _dropped+=1
                 if not _stop:
@@ -414,6 +445,7 @@ func stats() -> Dictionary:
     var result: Dictionary={"open":_open,"scalar_sampling":_scalar_sampling,"topology_cache_bytes":_topology_payload,"topology_setup_us":_topology_setup_us,"total_worker_payload_allowance_bytes":_cap*SLOT_BYTES+_topology_payload,"pending":_pending.size(),"inflight":_inflight,"finished":_finished.size(),"slots":_slots(),"cap":_cap,"critical_reservation":_reserve_critical,"reservation_enforced":_reservation_enforced(),"lend_critical":_lend_critical,"critical_demand":_critical_demand,"demand_changes":_demand_changes,"loan_admissions":_loan_admissions,"critical_full_denials":_critical_full_denials,"optional_slots":_optional_slots(),"reservation_deferrals":_reservation_deferrals,"reserved_payload_bytes":_slots()*SLOT_BYTES,"payload_cap_bytes":_cap*SLOT_BYTES,"peak_slots":_peak_slots,"pruned_pending":_pruned_pending,"pruned_finished":_pruned_finished,"submitted":_submitted,"delivered":_delivered,"dropped":_dropped,"epoch":_epoch}
     result["discard_accounting"]={"epoch_pending":_epoch_pending_drops,"epoch_finished":_epoch_finished_drops,"epoch_running":_epoch_running_drops,"reconcile_pending":_pruned_pending,"reconcile_finished":_pruned_finished,"poll_stale":_poll_stale_drops,"copy_wall_us":_discarded_copy_us,"build_wall_us":_discarded_build_us,"classified":_epoch_pending_drops+_epoch_finished_drops+_epoch_running_drops+_pruned_pending+_pruned_finished+_poll_stale_drops}
     result["discard_identity"]=_discard_identity.duplicate()
+    result["deduplication"]={"enabled":_dedup_enabled,"coalesced":_coalesced}
     _mutex.unlock()
     return result
 
@@ -439,6 +471,9 @@ func close() -> void:
     _running_id=0
     _running_lod=-1
     _running_since_us=0
+    _dedup_enabled=false
+    _dedup_running={}
+    _coalesced=0
     _latency_profile=null
     _reserve_critical=false
     _lend_critical=false
