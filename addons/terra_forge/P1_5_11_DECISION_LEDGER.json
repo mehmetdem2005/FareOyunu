@@ -5,10 +5,10 @@
   "latest_code_merge": "e13cc688c21fe2e43cb117fd31abdcd40234cc0c",
   "recorded_parent": "0c96ed8a40cd36ffde3b7169dfb7613bf3d7fe15",
   "combined_ci": {
-    "head": "bf0fc2b1515cd49b6affad17568242f3b9fe860f",
-    "ci": 45707594234,
+    "head": "687092bb8f82e2b7f5e9ffc44cc90139ab7f64b6",
+    "ci": 45709229412,
     "conclusion": "success",
-    "tests": 109
+    "tests": 111
   },
   "device_gate": {
     "status": "OPEN",
@@ -778,11 +778,51 @@
       },
       "decision": "Integrate diagnostic. Preserve full rebuild for shape-changing cases; G1/G2 must establish exact parity, no new phases yet.",
       "limitation": "Analytic synthetic profiles, same LOD and immutable heights; not real terrain or measured optimization."
+    },
+    {
+      "phase": "g1 initial candidate",
+      "pr": 49,
+      "head": "836c98ee379e3bc38501f12df0d3356389eed770",
+      "ci": 45710130138,
+      "disposition": "ACCEPT_ISOLATED_TEST_ONLY_EXTEND",
+      "evidence": {
+        "tests": 112,
+        "matched": 252,
+        "fallback": 72,
+        "zero_work": 72,
+        "full_normals": 98364,
+        "patch_normals": 4290,
+        "full_reads": 111504,
+        "patch_reads": 324,
+        "full_us": 292794,
+        "patch_us": 15711
+      },
+      "limitation": "Synthetic analytic source; warm base not charged, no GPU, runtime identity guard pending."
+    },
+    {
+      "phase": "f2 initial shadow",
+      "pr": 50,
+      "head": "bbb74e6ca7428cf2dc5f7cab7d4ffadad52c8a3f",
+      "ci": 45710136810,
+      "disposition": "ACCEPT_ISOLATED_TEST_ONLY_EXTEND",
+      "evidence": {
+        "tests": 112,
+        "replay_samples": 16,
+        "qualified_predictions": 8,
+        "cold_fallback": 8,
+        "old_short_predictions": 0,
+        "new_short_predictions": 0,
+        "old_mean_horizon_seconds": 0.485416666666667,
+        "new_mean_horizon_seconds": 0.433333333333333
+      },
+      "limitation": "Historical tick replay at assumed 60Hz; no closed-loop IO or motion result."
     }
   ],
   "next": [
-    "Exact combined CI for F4/G0 final test-only integration; confirm regression and stop.",
-    "16 numbered steps remain; do not start G1/F2/E2/E4/F3 or later until explicit user instruction. F1 parked, F4/G0 diagnostics accepted, Android gate open."
+    "G1/F2 isolated candidates and tests only; exact combined CI.",
+    "G1 real verified fixture, owned dense source and mesh resource publication parity/cost.",
+    "F2 live sampled guard shadow; no policy activation.",
+    "14 other numbered items remain, G1/F2 still open."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
