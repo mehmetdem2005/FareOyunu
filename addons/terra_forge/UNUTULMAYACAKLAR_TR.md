@@ -1,5 +1,16 @@
 # TerraForge — UNUTULMAYACAKLAR / Deney, karar ve doğrulama defteri
 
+## Zorunlu geri dönüş listesi — kapatılan deney, unutulan deney değildir
+
+Reddedilen mevcut uygulamalar ve park edilen fikirler ayrı dallarda korunur; canlı motora sırf arşiv için eklenmez. Her kapatılan deneyin exact SHA/CI/PR kaydı, neden ve yeniden açma koşulu decision ledger içinde tutulur. Dalı silme. G0–G2 tamamlanırken ve I0/I3/I4 kapılarında bu listeyi tek tek incele, yeni kanıt varsa yeniden aç veya gerekçeli kapalı tut. Bu kontrol yapılmadan P1.5.11 kapanışı yazma.
+
+| Deney | Korunan dal / kanıt | Geri dönüş kapısı |
+|---|---|---|
+| d1 erken iptal | [PR37](https://github.com/mehmetdem2005/FareOyunu/pull/37), `exp/p1511d1-cooperative-cancel`, exact 019268b576b07aed09bfc1bb598be9e3f0a71d88, CI45695425052 | f0/f4 veya Android i1/i2 gerçek rota ölçümlerinde anlamlı çalışan-iş invalidasyonu ortaya çıkarsa, daha kaba stage kontrolleri ya da kritik iş önceliğiyle yeni hipotez. Eşit işte net yarar ve güvenlik şartı olmadan birleştirme. Önceki 19456 kontrol/0 abort sonucu korunur. |
+| d3 sonuç önbelleği | [PR40](https://github.com/mehmetdem2005/FareOyunu/pull/40), `exp/p1511d3-discard-cache-shadow`, exact 5830e7f3654b79d27579b95b28212de22ddde9be, CI45694627652 | g0–g2 sonrasında kalan tekrar işi ölç; f/i cihaz verileri anlamlı tekrar kullanım gösterirse byte-cap'li küçük prototip, immutable source/session/snapshot + yayınlama doğrulaması, exact parity ve transient RAM hesabı. 512KiB modelde 88/1512 potansiyel isabetin tümü cross-epoch; gerçek cache kazancı değil. |
+ 
+Geri dönüş incelemesi, otomatik yeniden CI veya otomatik kabul demek değildir. Yeni kanıt yoksa gerekçeyi yaz ve kapalı tut. Aynı kurala gelecekteki bütün REJECTED/PARKED kayıtları dahildir.
+
 ## 25 Kasım 2026 — P1.5.11 karar özeti (güncel)
 
 **Tek giriş:** [HANDOFF_START_HERE_TR.md](HANDOFF_START_HERE_TR.md). Sayısal kanıt ve kararların makine-okunabilir kaydı: [P1_5_11_DECISION_LEDGER.json](P1_5_11_DECISION_LEDGER.json). Ana geliştirme dalı `feat/terraforge-mobile-addon`, son kod birleşimi `5d53e17e365fb396e5813340489143bd1e05565c`. #26–35 kabul edilen deneyler birleştirildi; birleşik CI sonucu yeni head'den kontrol edilmeli. Android teşhis dalı ayrı tutulur.

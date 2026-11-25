@@ -394,5 +394,39 @@
     "d1 rejected, d3 parked, don't silently revive. c4 device gate open.",
     "e1-e4 then f/g/h/i; no default promotion, P1.4R after device safety."
   ],
-  "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization."
+  "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
+  "revisit_register": {
+    "required_review_gates": [
+      "g0-g2 completion",
+      "i0 integration",
+      "i3 promotion",
+      "i4 closure"
+    ],
+    "require_disposition_each_gate": true,
+    "retain_branch_and_exact_evidence": true,
+    "entries": [
+      {
+        "phase": "d1",
+        "branch": "exp/p1511d1-cooperative-cancel",
+        "pr": 37,
+        "head": "019268b576b07aed09bfc1bb598be9e3f0a71d88",
+        "ci": 45695425052,
+        "status": "REJECTED_CURRENT_IMPLEMENTATION",
+        "trigger": "f0/f4 or Android i1/i2 show material in-flight invalidation, new hypothesis and equal-work benefit",
+        "alternative": "coarser stage checkpoint or priority scheduling",
+        "review_status": "OPEN_REVIEW_NOT_IMPLEMENTATION"
+      },
+      {
+        "phase": "d3",
+        "branch": "exp/p1511d3-discard-cache-shadow",
+        "pr": 40,
+        "head": "5830e7f3654b79d27579b95b28212de22ddde9be",
+        "ci": 45694627652,
+        "status": "PARKED_RUNTIME_CACHE",
+        "trigger": "g0-g2 residual redundant work and device repeat-use evidence justify byte-capped prototype; prove cross-epoch safety",
+        "alternative": "avoid rebuild before storing geometry",
+        "review_status": "OPEN_REVIEW_NOT_IMPLEMENTATION"
+      }
+    ]
+  }
 }
