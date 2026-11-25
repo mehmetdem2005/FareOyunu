@@ -10,6 +10,7 @@ const WORKER = preload("res://addons/terra_forge/core/geometry_worker.gd")
 const HIST = preload("res://addons/terra_forge/core/profile_histogram.gd")
 const PUBLICATION = preload("res://addons/terra_forge/core/publication_accounting.gd")
 const MICRO = preload("res://addons/terra_forge/core/publication_micro_profile.gd")
+const PUMP_MICRO = preload("res://addons/terra_forge/core/pump_micro_profile.gd")
 const FOOTPRINT = preload("res://addons/terra_forge/core/collision_footprint.gd")
 const SUPPORT = preload("res://addons/terra_forge/core/support_tile_selection.gd")
 const MOTION = preload("res://addons/terra_forge/core/motion_prefetch.gd")
@@ -48,6 +49,8 @@ var _publish_peak_per_pump: int = 0
 @export var observe_publication: bool = false
 @export var observe_publication_micro: bool = false
 var _publication_micro
+@export var observe_pump_micro: bool=false
+var _pump_micro
 @export var enforce_publication_budget: bool = false
 @export_range(4096,1048576,4096) var publication_byte_target: int = 131072
 @export_range(100,8000,100) var publication_time_target_us: int = 1000
@@ -228,6 +231,7 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
     _publish_peak_per_pump=0
     _publication_budget_active=enforce_publication_budget
     _publication_micro=MICRO.new() if observe_publication_micro else null
+    _pump_micro=PUMP_MICRO.new() if observe_pump_micro else null
     _publication=PUBLICATION.new() if observe_publication or _publication_budget_active or observe_publication_micro else null
     if _publication!=null:
         _publication.configure_budget(_publication_budget_active,publication_byte_target if _publication_budget_active else PUBLICATION.BYTE_TARGET,publication_time_target_us if _publication_budget_active else PUBLICATION.TIME_TARGET_US)
@@ -303,6 +307,7 @@ func stop_preview() -> void:
     _geometry_jobs.clear()
     _publication=null
     _publication_micro=null
+    _pump_micro=null
     _publication_budget_active=false
     for item in _tiles.values():
         var root: Node3D = item["root"]
@@ -345,23 +350,36 @@ func _process(_delta: float) -> void:
 func pump_stream() -> Dictionary:
     if _reader == null or not _reader.is_open():
         return {"error": ERR_UNCONFIGURED}
+    var event: Variant=null
+    if _pump_micro!=null:
+        event=PUMP_MICRO.begin(_mesh_builds,_pending_tiles.size(),_geometry_jobs.size())
     var completed: Dictionary = _reader.poll_results(max_background_jobs)
+    if event!=null:
+        PUMP_MICRO.mark(event,"io_accept")
     if int(completed.get("error", ERR_FILE_CORRUPT)) != OK:
+        if event!=null:
+            _pump_micro.finish(event,int(completed.get("error",ERR_FILE_CORRUPT)),_mesh_builds,0)
         return completed
     if _motion_active and _motion_tick>=0 and Engine.get_physics_frames()-_motion_tick>4:
         _motion_tick=-1
         _motion_velocity=Vector2.ZERO
         _motion_expirations+=1
         _set_motion_keys([])
+    if event!=null:
+        PUMP_MICRO.mark(event,"motion_expiry")
     var current: int = Time.get_ticks_msec()
     if current - _last_sync_msec > 220:
         _sync_tiles()
         _last_sync_msec = current
+    if event!=null:
+        PUMP_MICRO.mark(event,"sync_and_eviction")
     var started: int=Time.get_ticks_usec()
     if _adaptive_work_active:
         _work_budget.begin_pump(_view_budget.tier,int(max_tile_work_ms*1000.0))
     if _publication!=null:
         _publication.begin_pump(tile_updates_per_frame)
+    if event!=null:
+        PUMP_MICRO.mark(event,"budget_setup")
     if _geometry_worker!=null:
         if _active_sampling_strategy>=4 or _publication_budget_active or _support_active:
             var reconciled: Error=_geometry_worker.reconcile(_reader,_desired_tiles,_priority_ranks())
@@ -369,7 +387,12 @@ func pump_stream() -> Dictionary:
                 _last_error=reconciled
                 if _publication!=null:
                     _publication.end_pump(_publication_resident())
+                if event!=null:
+                    PUMP_MICRO.mark(event,"reconcile_error")
+                    _pump_micro.finish(event,reconciled,_mesh_builds,started)
                 return {"error":reconciled}
+        if event!=null:
+            PUMP_MICRO.mark(event,"worker_reconcile")
         if _critical_lending_active:
             var demand: bool=_has_pending_critical()
             var demand_error: Error=_geometry_worker.set_critical_demand(_reader,demand)
@@ -377,27 +400,46 @@ func pump_stream() -> Dictionary:
                 _last_error=demand_error
                 if _publication!=null:
                     _publication.end_pump(_publication_resident())
+                if event!=null:
+                    PUMP_MICRO.mark(event,"lending_error")
+                    _pump_micro.finish(event,demand_error,_mesh_builds,started)
                 return {"error":demand_error}
             if demand:
                 _critical_demand_pumps+=1
                 var capacity: Dictionary=_geometry_worker.stats()
                 if int(capacity["optional_slots"])>=int(capacity["cap"]):
                     _critical_saturated_pumps+=1
-        _publish_worker_results(started)
+        if event!=null:
+            PUMP_MICRO.mark(event,"critical_demand")
+        _publish_worker_results(started,event)
+        if event!=null:
+            PUMP_MICRO.mark(event,"worker_delivery_publish")
         _observe_capacity_gate()
-    _build_pending_tiles(started)
+        if event!=null:
+            PUMP_MICRO.mark(event,"capacity_observe")
+    _build_pending_tiles(started,event)
+    if event!=null:
+        PUMP_MICRO.mark(event,"pending_build_submit")
     # A stale in-flight job may drop after the pre-submit ID snapshot.
     # Reconcile after submissions too: the worker never creates new IDs.
     if _geometry_worker!=null:
         _prune_geometry_reservations()
+    if event!=null:
+        PUMP_MICRO.mark(event,"post_submit_prune")
     if _publication!=null:
         _publication.end_pump(_publication_resident())
-    return {
+    if event!=null:
+        PUMP_MICRO.mark(event,"publication_accounting")
+    var result: Dictionary={
         "error": _last_error,
         "resident_tiles": _tiles.size(),
         "pending_tiles": _pending_tiles.size(),
         "resident_pages": int(_reader.stats()["resident"])
     }
+    if event!=null:
+        PUMP_MICRO.mark(event,"result_stats")
+        _pump_micro.finish(event,_last_error,_mesh_builds,started)
+    return result
 
 func _sync_tiles() -> void:
     if _reader == null or not _anchor_valid:
@@ -643,7 +685,7 @@ func _tile_halo(key: Vector2i, lod: int) -> int:
         return GEOMETRY.normal_halo(key, lod, _desired_tiles)
     return GEOMETRY.DENSE.FULL_HALO
 
-func _build_pending_tiles(started: int = -1) -> void:
+func _build_pending_tiles(started: int = -1, event: Variant=null) -> void:
     if _pending_tiles.is_empty():
         return
     var keys: Array = _pending_tiles.keys().filter(func(key: Variant) -> bool:
@@ -661,7 +703,13 @@ func _build_pending_tiles(started: int = -1) -> void:
     if started<0:
         started=Time.get_ticks_usec()
     for key in keys:
-        if max_builds <= 0 or float(Time.get_ticks_usec() - started) >= max_tile_work_ms * 1000.0:
+        if max_builds <= 0:
+            if event!=null:
+                PUMP_MICRO.stop(event,"build_count")
+            break
+        if float(Time.get_ticks_usec() - started) >= max_tile_work_ms * 1000.0:
+            if event!=null:
+                PUMP_MICRO.stop(event,"build_outer_time")
             break
         var lod: int = int(_desired_tiles[key])
         if _geometry_worker!=null:
@@ -763,9 +811,13 @@ func _build_pending_tiles(started: int = -1) -> void:
 
 ## Poll before submission, share same soft main-thread time budget.
 ## One result is transferred/published synchronously, never accumulated.
-func _publish_worker_results(started: int) -> void:
+func _publish_worker_results(started: int,event: Variant=null) -> void:
     var count: int=0
-    while count<maxi(1,tile_updates_per_frame) and float(Time.get_ticks_usec()-started)<max_tile_work_ms*1000.0:
+    while count<maxi(1,tile_updates_per_frame):
+        if float(Time.get_ticks_usec()-started)>=max_tile_work_ms*1000.0:
+            if event!=null:
+                PUMP_MICRO.stop(event,"delivery_outer_time")
+            break
         var remaining: int=_publication.admission_bytes() if _publication_budget_active else -1
         if remaining==0:
             break
@@ -804,6 +856,8 @@ func _publish_worker_results(started: int) -> void:
             continue
         _publish_hist.add(float(Time.get_ticks_usec()-publish_start)/1000.0)
         count+=1
+    if event!=null and count>=maxi(1,tile_updates_per_frame):
+        PUMP_MICRO.stop(event,"delivery_count")
     _publish_peak_per_pump=maxi(_publish_peak_per_pump,count)
     _prune_geometry_reservations()
 
@@ -901,6 +955,9 @@ func _publish_geometry(key: Vector2i,lod: int,generated: Dictionary,started: int
         MICRO.mark(event,"accounting")
         _publication_micro.finish(event,OK,int(info["total_bytes"]))
     return OK
+
+func pump_micro_profile() -> Dictionary:
+    return _pump_micro.report() if _pump_micro!=null else {}
 
 func publication_micro_profile() -> Dictionary:
     return _publication_micro.report() if _publication_micro!=null else {}
