@@ -5,10 +5,10 @@
   "latest_code_merge": "e13cc688c21fe2e43cb117fd31abdcd40234cc0c",
   "recorded_parent": "0c96ed8a40cd36ffde3b7169dfb7613bf3d7fe15",
   "combined_ci": {
-    "run": 45692534576,
-    "head": "e13cc688c21fe2e43cb117fd31abdcd40234cc0c",
-    "status_at_recording": "success",
-    "note": "Later named documentation-only pushes excluded; no runtime source change."
+    "head": "fbfed32ade7f21b8fd08c21d91af3a9d755b6e24",
+    "ci": 45703937754,
+    "conclusion": "success",
+    "tests": 107
   },
   "device_gate": {
     "status": "OPEN",
@@ -554,13 +554,59 @@
       },
       "decision": "Integrate deterministic admission regression; no runtime budget change.",
       "limitation": "Modeled critical-first order; not live scheduler or Android performance."
+    },
+    {
+      "phase": "e1 extension",
+      "pr": 42,
+      "head": "7ec8b3da7ee5de379cf3b87c8b890ebf146f9589",
+      "ci": 45703959444,
+      "disposition": "PARK_RUNTIME_POOL_KEEP_BRANCH",
+      "evidence": {
+        "tests": 110,
+        "overflow_publications": 432,
+        "overflow_rays": 864,
+        "overflow_hits_caps_0_4_8": [
+          0,
+          44,
+          88
+        ],
+        "support_traces": 8,
+        "support_ticks": 960,
+        "missing_rays": 0,
+        "airborne_ticks": 0,
+        "changed_support_body": 0,
+        "matched_build_counts": [
+          22,
+          46,
+          22,
+          46
+        ],
+        "pump_mean_ms_TFM1_cap4": [
+          0.16315,
+          0.168983333333333
+        ],
+        "pump_mean_ms_TFM1_cap8": [
+          0.291666666666667,
+          0.282275
+        ],
+        "pump_mean_ms_TFM2_cap4": [
+          0.175541666666667,
+          0.169358333333333
+        ],
+        "pump_mean_ms_TFM2_cap8": [
+          0.28975,
+          0.283133333333333
+        ]
+      },
+      "decision": "Correctness passes; mixed small live gains, p95 upper unchanged .5ms, retain branch but do not merge pool or default change. Revisit on device evidence of node allocation churn/RSS and distinct benefit. E2/E4 remain conditional.",
+      "limitation": "Stationary retained support, fixed camera route; no Android GPU/RSS, allocator bytes or full moving route."
     }
   ],
   "next": [
-    "Verify combined F0/E3 test-only integration CI on exact head.",
-    "E1 safety extension: overflow and actual retained support, no promotion without consistent benefit.",
-    "F1 opt-in single poll after camera sync, controlled old-result cancellation and true ray readiness; quantify lost useful reads before promotion.",
-    "E2/E4 only evidence justified; f2/f4 after F1; g/h/i gates."
+    "F1 PR45 initial merge conflict fixed by merge commit 9607aa909f033ed958558b321cb87ffdc1a25d8b; exact CI and raw F1_POLL_ORDER; no promotion before live benefit.",
+    "F4 PR46 6eb58251256ef1b2987ef8c34c9ba94b31d0c34b first observed center ray diagnostic; no footprint claim.",
+    "G0 PR47 2e4dc26bc99fb6aa661eaaaf8eeefd1b6439a35f full rebuild dirty shadow; no incremental implementation yet.",
+    "F2 quantile/prediction depends on readiness evidence; E2/E4 conditional; g1 etc only after g0."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -613,6 +659,16 @@
         "ci": 45697785713,
         "status": "REJECTED_STANDALONE",
         "trigger": "Android stage attribution shows attach bottleneck and a distinct improvement hypothesis",
+        "review_status": "OPEN_REVIEW_NOT_IMPLEMENTATION"
+      },
+      {
+        "phase": "e1",
+        "branch": "exp/p1511e1-idle-tile-pool",
+        "pr": 42,
+        "head": "7ec8b3da7ee5de379cf3b87c8b890ebf146f9589",
+        "ci": 45703959444,
+        "status": "PARKED_RUNTIME_POOL",
+        "trigger": "i0/i3 actual device node churn and memory evidence justify pool; compare moving routes and equal work, never infer allocator cost from shells",
         "review_status": "OPEN_REVIEW_NOT_IMPLEMENTATION"
       }
     ]
