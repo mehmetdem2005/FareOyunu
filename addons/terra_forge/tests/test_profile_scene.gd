@@ -113,6 +113,20 @@ func _run() -> void:
     if p.report_document()["schema"] != "TF_PROFILE_3" or p._reports.size() != 4 or FileAccess.get_sha256(v2_manifest) != v2_sha:
         _fail("V2 profile identity or report", p)
         return
+    p.duration_seconds = 0.8
+    var original: int = p.sampling_strategy
+    p._compare_strategies()
+    var comparison_deadline := Time.get_ticks_msec() + 20000
+    while p._comparison_step >= 0 and Time.get_ticks_msec() < comparison_deadline:
+        await process_frame
+    if p._comparison_step >= 0 or p.sampling_strategy != original or p._reports.size() != 8:
+        _fail("Incomplete comparison or settings not restored", p)
+        return
+    for step in range(4):
+        var trial: Dictionary = p._reports[4 + step]
+        if trial["error"] != OK or trial["mode"] != "on_demand" or trial["comparison_step"] != step + 1 or trial["settings"]["sampling_strategy"] != [0,3,3,0][step]:
+            _fail("Incorrect comparison run", p)
+            return
     p._save_report()
     if not p._label.text.begins_with("Saved:"):
         _fail("JSON report export failed", p)

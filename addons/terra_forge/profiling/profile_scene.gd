@@ -15,6 +15,10 @@ var _label: Label
 var _buttons: Array[Button] = []
 @export_range(1, 16, 1) var shard_limit: int = 4
 @export var use_tile_read_view: bool = false
+const COMPARISON_ORDER := [0, 3, 3, 0]
+var _comparison_step := -1
+var _previous_strategy := -1
+var _previous_choice := 0
 var _sampling_choice: OptionButton
 var _budget_toggle: CheckButton
 @export var enforce_publication_budget: bool=false
@@ -125,6 +129,7 @@ func _ready() -> void:
     ui.add_child(_cancel_button)
     _button(ui, "Run strict full verification", func(): _begin(false))
     _button(ui, "Run lazy on-demand", func(): _begin(true))
+    _button(ui, "Compare A / E (lazy)", _compare_strategies)
     _button(ui, "Copy JSON report to clipboard", _copy_report)
     _button(ui, "Save / show JSON report", _save_report)
     _label = Label.new()
@@ -245,6 +250,22 @@ func _memory() -> void:
     var stat: float = Performance.get_monitor(Performance.MEMORY_STATIC)
     if stat > 0:
         _static_peak = int(stat) if _static_peak == null else maxi(int(_static_peak), int(stat))
+
+func _compare_strategies() -> void:
+    if _running or _fixture != null or _comparison_step >= 0:
+        return
+    if _path.text.strip_edges().is_empty():
+        _label.text = "Create an isolated sample first."
+        return
+    _previous_strategy = sampling_strategy
+    _previous_choice = _sampling_choice.selected
+    _comparison_step = 0
+    _begin_comparison_step()
+
+func _begin_comparison_step() -> void:
+    sampling_strategy = COMPARISON_ORDER[_comparison_step]
+    _sampling_choice.select(_sampling_choice.get_item_index(sampling_strategy))
+    _begin(true)
 
 func _begin(lazy: bool) -> void:
     if _running or _fixture != null or _path.text.strip_edges().is_empty():
@@ -443,9 +464,22 @@ func _finish(status: Error) -> void:
     # Keep reports bounded for long phone sessions.
     if _reports.size() >= 8:
         _reports.pop_front()
+    if _comparison_step >= 0:
+        report["comparison_step"] = _comparison_step + 1
     _reports.append(report)
     _set_busy(false)
     _label.text = "%s: %s | open %.2f ms | collision %s ms\nSave JSON for complete report." % [_mode, error_string(status), _open_ms, str(_first_collision)]
+
+    if _comparison_step >= 0:
+        _comparison_step += 1
+        if status == OK and _comparison_step < COMPARISON_ORDER.size():
+            _begin_comparison_step()
+        else:
+            _comparison_step = -1
+            sampling_strategy = _previous_strategy
+            _sampling_choice.select(_previous_choice)
+            if status == OK:
+                _label.text = "A / E comparison complete. Copy JSON report."
 
 func report_document() -> Dictionary:
     return {
@@ -471,7 +505,6 @@ func _save_report() -> void:
     if _running or _reports.is_empty():
         return
     var report_text: String = _report_json()
-    DisplayServer.clipboard_set(report_text)
     var path: String = "user://tf_profile_report_" + str(Time.get_unix_time_from_system()).replace(".", "_") + "_" + str(Time.get_ticks_usec()) + ".json"
     var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
     if file == null:
@@ -481,7 +514,10 @@ func _save_report() -> void:
     file.flush()
     var result: Error = file.get_error()
     file.close()
-    _label.text = ("Saved and copied. Paste JSON into ChatGPT. " + ProjectSettings.globalize_path(path)) if result == OK else "Copied JSON, but report file write failed."
+    _label.text = "Saved: " + ProjectSettings.globalize_path(path) if result == OK else "Report write failed."
+    if result == OK and DisplayServer.has_feature(DisplayServer.FEATURE_CLIPBOARD):
+        DisplayServer.clipboard_set(report_text)
+        _label.text += "\nJSON copied."
 
 func _exit_tree() -> void:
     if _fixture != null:
