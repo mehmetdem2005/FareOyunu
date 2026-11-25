@@ -28,10 +28,15 @@ func _initialize() -> void:
             for d in C.DIRS:
                 before[key+d]=lod
             var base: Dictionary=G.generate(source,key.x,key.y,lod,before)
+            # Real scheduler maps may have many unrelated tiles. Retain only the
+            # canonical local signature; irrelevant entries must not scale cache memory.
+            for j in range(4096):
+                before[Vector2i(100+j%64,100+j/64)]=0
             if base["error"]!=OK or k.retain("verified-a",1,key,lod,source.spacing,source.cells,before,base)!=OK:
                 _fail("retain")
                 return
             var after: Dictionary=before.duplicate()
+            before.clear()
             after.erase(key+Vector2i.LEFT)
             var full: Dictionary=G.generate(source,key.x,key.y,lod,after)
             var result: Dictionary=k.patch("verified-a",1,source,key,lod,after)
@@ -61,19 +66,19 @@ func _initialize() -> void:
             source.spacing=1.0
             rejected+=1
             var r: Dictionary=k.report()
-            if r["entries"]>K.MAX_ENTRIES or r["bytes"]>K.MAX_BYTES or r["peak_bytes"]>K.MAX_BYTES:
+            if r["entries"]>K.MAX_ENTRIES or r["bytes"]>K.MAX_BYTES or r["peak_bytes"]>K.MAX_BYTES or r["metadata_keys"]!=r["entries"]*5 or r["metadata_keys"]>K.MAX_ENTRIES*5:
                 _fail("bound")
                 return
             cases+=1
     var report: Dictionary=k.report()
-    if report["evictions"]<=0 or k.begin("verified-b",2)!=OK or k.report()["entries"]!=0 or k.patch("verified-a",1,source,key,2,{key:2})["error"]==OK:
+    if report["evictions"]<=0 or k.begin("verified-b",2)!=OK or k.report()["entries"]!=0 or k.report()["metadata_keys"]!=0 or k.patch("verified-a",1,source,key,2,{key:2})["error"]==OK:
         _fail("evict/reset")
         return
     k.clear()
     if k.report()["bytes"]!=0:
         _fail("clear")
         return
-    print("G1_BASE_CACHE ",JSON.stringify({"cases":cases,"identity_rejections":rejected,"report":report,"cap_bytes":K.MAX_BYTES,"cap_entries":K.MAX_ENTRIES,"note":"Conservative raw geometry payload only, no RSS, worker transfer or GPU, caller must supply authoritative identity."}))
+    print("G1_BASE_CACHE ",JSON.stringify({"cases":cases,"identity_rejections":rejected,"report":report,"cap_bytes":K.MAX_BYTES,"cap_entries":K.MAX_ENTRIES,"unrelated_desired_keys_per_retain":4096,"note":"Conservative raw geometry payload only; local metadata entry count bounded separately. No RSS, worker transfer or GPU; caller must supply authoritative identity."}))
     print("PASS: G1 bounded owned base cache, exact arrays, alias isolation, identity rejection and lifecycle")
     quit(0)
 

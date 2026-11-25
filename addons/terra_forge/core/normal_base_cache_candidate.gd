@@ -37,7 +37,10 @@ func clear() -> void:
     evictions=0
 
 func report() -> Dictionary:
-    return {"entries":_entries.size(),"bytes":_bytes,"peak_bytes":peak_bytes,"hits":hits,"misses":misses,"evictions":evictions}
+    var metadata_keys: int=0
+    for entry in _entries.values():
+        metadata_keys+=entry["desired"].size()
+    return {"entries":_entries.size(),"bytes":_bytes,"peak_bytes":peak_bytes,"hits":hits,"misses":misses,"evictions":evictions,"metadata_keys":metadata_keys,"max_metadata_keys":MAX_ENTRIES*5}
 
 static func payload(result: Dictionary) -> int:
     var a: Array=result.get("arrays",[])
@@ -74,7 +77,7 @@ func retain(snapshot: String,session: int,key: Vector2i,lod: int,spacing: float,
         evictions+=1
     # Store only whitelisted geometry, owned copies; no node or resource.
     var owned: Dictionary={"error":OK,"arrays":result["arrays"].duplicate(true),"collision_heights":result["collision_heights"].duplicate(),"width":result["width"],"vertex_count":result["vertex_count"]}
-    _entries[key]={"lod":lod,"spacing":spacing,"cells":cells,"levels":signature["levels"].duplicate(),"desired":desired.duplicate(),"geometry":owned,"bytes":bytes}
+    _entries[key]={"lod":lod,"spacing":spacing,"cells":cells,"desired":signature["desired"],"geometry":owned,"bytes":bytes}
     _order.append(key)
     _bytes+=bytes
     peak_bytes=maxi(peak_bytes,_bytes)
