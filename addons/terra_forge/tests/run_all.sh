@@ -85,6 +85,8 @@ suite=(
   test_motion_roundtrip
   test_f2_live_shadow_v1
   test_f2_live_shadow_v2
+  test_f2_long_shadow_v1
+  test_f2_long_shadow_v2
   test_motion_roundtrip_e
   test_motion_roundtrip_f
   test_motion_roundtrip_g
@@ -131,6 +133,7 @@ suite=(
   test_geometry_dirty_curved
   test_normal_edge_candidate
   test_g1_owned_resource
+  test_g1_base_cache
   test_edge_normals
   test_stream_budget
   test_brush_sampling

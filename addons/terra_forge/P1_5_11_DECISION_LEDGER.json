@@ -5,10 +5,10 @@
   "latest_code_merge": "e13cc688c21fe2e43cb117fd31abdcd40234cc0c",
   "recorded_parent": "0c96ed8a40cd36ffde3b7169dfb7613bf3d7fe15",
   "combined_ci": {
-    "head": "34113f8b88ebc0b6d86765ff012491e9d1d6c041",
-    "ci": 45713767615,
+    "head": "08c5097a32df9170aa3a478f60d63fbaf5cd3afe",
+    "ci": 45715409790,
     "conclusion": "success",
-    "tests": 114
+    "tests": 116
   },
   "device_gate": {
     "status": "OPEN",
@@ -902,13 +902,69 @@
       },
       "decision": "Typed RID fix verified. Merge diagnostic only; no horizon activation, no prediction benefit claim. Per-session per-bucket minimum four observations reached only at end, no qualified prediction. Next repeat multiple loops in same session with matched boundary/turn traces including four-tile intersections and explicit insufficient-evidence gate. Do not pool across sessions or treat cancellation as completed latency.",
       "limitation": "Fixed 0.5s probe is not the actual prediction policy; no qualified predictions, no causal RAM or frame claim."
+    },
+    {
+      "phase": "g1 bounded base cache",
+      "pr": 54,
+      "head": "803c1d4448ba7cdb9720b37f637d036690ac0aac",
+      "ci": 45716687532,
+      "disposition": "ACCEPT_ISOLATED_TEST_ONLY_RUNTIME_GATE_OPEN",
+      "evidence": {
+        "tests": 117,
+        "cases": 36,
+        "identity_rejections": 144,
+        "forced_hits": 72,
+        "misses": 144,
+        "evictions": 32,
+        "final_entries": 4,
+        "final_bytes": 32064,
+        "peak_bytes": 261368,
+        "cap_bytes": 262144,
+        "cap_entries": 4
+      },
+      "decision": "Merge isolated candidate + regression only. Before actual runtime activation verify authoritative snapshot ownership (not caller token alone), real memory and transient allocation accounting, bounded metadata, actual worker publication and collision ray safety. Forced lookups not a natural hit rate."
+    },
+    {
+      "phase": "f2 long shadow",
+      "pr": 53,
+      "head": "bc9cac8abdcc0666b6c4c80dd5de029b4c7ba562",
+      "ci": 45716682357,
+      "disposition": "ACCEPT_DIAGNOSTIC_ONLY_CLOSED_LOOP_REQUIRED",
+      "evidence": {
+        "tests": 118,
+        "sessions": 4,
+        "laps": 16,
+        "ticks": 7680,
+        "probes": 5232,
+        "already_ready": 3512,
+        "started": 84,
+        "resolved": 64,
+        "cancelled": 20,
+        "cancel_reasons": {
+          "footprint_change": 16,
+          "generation": 4
+        },
+        "unresolved": 0,
+        "invalid": 0,
+        "qualified": 48,
+        "old_short": 48,
+        "new_short": 0,
+        "old_mean_horizon_s": 0.125,
+        "new_mean_horizon_s": 0.475,
+        "all_resolved_two_tile": 64,
+        "max_ticks": 27,
+        "denied": 0,
+        "missing_rays": 0,
+        "return_tick": 1508
+      },
+      "decision": "Merge diagnostic only. New shadow recommendation covered all 48 qualified observations at 3.8x average horizon; no causal improvement, current runtime already zero denials, fixed 0.5s probe. Need closed-loop matched old/new with actual policy, disk/geometry/evictions/latency and four-tile direction changes. Do not enable by default."
     }
   ],
   "next": [
-    "Exact combined CI for F2 live shadow diagnostic + G1 owned regression.",
-    "F2 repeat same-session traces with enough qualified observations across footprint classes, or park candidate; retain current runtime policy.",
-    "G1 runtime snapshot identity, owned arrays memory cap and actual physics publication gate still open.",
-    "14 other numbered items remain; G1/F2 open."
+    "Exact combined CI for isolated G1 bounded cache + F2 long shadow.",
+    "G1 authoritative source/snapshot ownership and bounded metadata, actual worker/publication integration only after parity and physics safety; track transient memory and natural reuse.",
+    "F2 closed-loop paired comparison incl turning/four-tile traces, resource cost and safety; park if no net gain.",
+    "14 other numbered items remain; G1/F2 still open."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
