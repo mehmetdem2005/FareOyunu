@@ -381,6 +381,10 @@ func pump_stream() -> Dictionary:
         _publish_worker_results(started)
         _observe_capacity_gate()
     _build_pending_tiles(started)
+    # A stale in-flight job may drop after the pre-submit ID snapshot.
+    # Reconcile after submissions too: the worker never creates new IDs.
+    if _geometry_worker!=null:
+        _prune_geometry_reservations()
     if _publication!=null:
         _publication.end_pump(_publication_resident())
     return {
@@ -568,9 +572,15 @@ func _priority_ranks() -> Dictionary:
         var has_shape: bool=_tiles.has(key) and _tiles[key]["collision"].shape is HeightMapShape3D
         classes[key]=0 if key==focus and int(_desired_tiles[key])==0 and not has_shape else (1 if int(_desired_tiles[key])==0 and not has_shape else 2)
         if _support_active and _support_keys.has(key):
-            classes[key]=-2 if _motion_active else -1
+            classes[key]=-4 if _motion_active else -1
+            if _motion_active and has_shape and _pending_tiles.has(key) and not _blocked_tiles.has(key):
+                var desired := WORKER.signature(key, 0, _desired_tiles, _reader.cells)
+                if _same_lod0_height_edges(_tiles[key].get("levels", []), desired.get("levels", [])):
+                    # A height-equivalent held rebuild can wait for a first
+                    # forecast shape, but still precedes ordinary camera work.
+                    classes[key] = -2
         elif _motion_active and _motion_selected.has(key):
-            classes[key]=-1
+            classes[key] = -1 if has_shape else -3
     keys.sort_custom(func(a: Variant,b: Variant)->bool:
         if classes[a]!=classes[b]:
             return int(classes[a])<int(classes[b])
@@ -774,6 +784,9 @@ func _publish_worker_results(started: int) -> void:
         _publish_hist.add(float(Time.get_ticks_usec()-publish_start)/1000.0)
         count+=1
     _publish_peak_per_pump=maxi(_publish_peak_per_pump,count)
+    _prune_geometry_reservations()
+
+func _prune_geometry_reservations() -> void:
     # Only release reservations for jobs that no longer exist. Worker can
     # finish during this snapshot but cannot create a new job on its own.
     var active: Array[int]=_geometry_worker.active_ids()
