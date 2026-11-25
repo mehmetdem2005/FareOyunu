@@ -48,6 +48,9 @@ func _halo_variants() -> Array[bool]:
 func _hybrid_motion_policy() -> Dictionary:
     return {}
 
+func _f2_shadow_tick(_from: Vector2,_intent: Vector2,_tick: int) -> void:
+    pass
+
 func _run() -> void:
     var format: int=_format()
     _builder=V1.new() if format==0 else V2.new()
@@ -229,6 +232,7 @@ func _case(directory: String,format: int,mode: int,cache: int,adaptive: bool,dia
             if tick==0:
                 if _p.sample_motion_prefetch(from,actual_velocity,intent,RADIUS,session,revision)!=ERR_BUSY:
                     return {"error":FAILED,"stage":"duplicate sample"}
+        _f2_shadow_tick(from,intent,tick)
         began=Time.get_ticks_usec()
         var admission: Dictionary=_p.inspect_support_step(from,from+intent*dt,RADIUS,session,revision,exclude)
         guard_hist.add(float(Time.get_ticks_usec()-began)/1000.0)

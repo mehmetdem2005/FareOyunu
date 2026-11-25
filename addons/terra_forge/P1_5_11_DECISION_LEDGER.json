@@ -5,10 +5,10 @@
   "latest_code_merge": "e13cc688c21fe2e43cb117fd31abdcd40234cc0c",
   "recorded_parent": "0c96ed8a40cd36ffde3b7169dfb7613bf3d7fe15",
   "combined_ci": {
-    "head": "0bb1af10277127e55f04374f35f2671b32a26c91",
-    "ci": 45712317005,
+    "head": "34113f8b88ebc0b6d86765ff012491e9d1d6c041",
+    "ci": 45713767615,
     "conclusion": "success",
-    "tests": 113
+    "tests": 114
   },
   "device_gate": {
     "status": "OPEN",
@@ -853,12 +853,62 @@
         "fix": "b29a86c9dfce6c49326738d6af16834c060d8c8a"
       },
       "decision": "Explicit Array[RID] local passed to existing guard; no runtime guard changes, no valid live measurements yet."
+    },
+    {
+      "phase": "g1 owned resource combined repeat",
+      "head": "34113f8b88ebc0b6d86765ff012491e9d1d6c041",
+      "ci": 45713767615,
+      "disposition": "REPEAT_PASS_RUNTIME_GATE_OPEN",
+      "evidence": {
+        "tests": 114,
+        "cases": 84,
+        "full_normals": 40852,
+        "patch_normals": 2300,
+        "full_us": 47127,
+        "patch_us": 3667,
+        "full_mesh_us": 1997,
+        "patch_mesh_us": 1954,
+        "common_copy_us": 829,
+        "shape_data_matches": 28,
+        "zero_work": 12
+      },
+      "limitation": "Warm prebuilt base, headless resource generation, no live worker or GPU measurement."
+    },
+    {
+      "phase": "f2 live shadow retry",
+      "pr": 52,
+      "head": "b29a86c9dfce6c49326738d6af16834c060d8c8a",
+      "ci": 45713733516,
+      "disposition": "ACCEPT_DIAGNOSTIC_ONLY_INSUFFICIENT_QUALIFIED_SAMPLES",
+      "evidence": {
+        "tests": 115,
+        "routes": 4,
+        "physics_ticks": 1920,
+        "probes": 1248,
+        "already_ready": 864,
+        "started": 24,
+        "resolved": 16,
+        "cancelled": 8,
+        "unresolved": 0,
+        "invalid": 0,
+        "qualified": 0,
+        "observed_two_tile": 16,
+        "observed_one_tile": 0,
+        "observed_four_tile": 0,
+        "max_ticks": 27,
+        "return_tick": 332,
+        "denied": 0,
+        "missing_rays": 0
+      },
+      "decision": "Typed RID fix verified. Merge diagnostic only; no horizon activation, no prediction benefit claim. Per-session per-bucket minimum four observations reached only at end, no qualified prediction. Next repeat multiple loops in same session with matched boundary/turn traces including four-tile intersections and explicit insufficient-evidence gate. Do not pool across sessions or treat cancellation as completed latency.",
+      "limitation": "Fixed 0.5s probe is not the actual prediction policy; no qualified predictions, no causal RAM or frame claim."
     }
   ],
   "next": [
-    "Confirm F2 typed RID retry and inspect raw F2_LIVE_SHADOW; insufficient samples means no promotion.",
-    "G1 owned test merged; exact combined CI; runtime snapshot/array ownership, retained memory caps and actual physics publication gate still pending.",
-    "14 other numbered items remain, G1/F2 open."
+    "Exact combined CI for F2 live shadow diagnostic + G1 owned regression.",
+    "F2 repeat same-session traces with enough qualified observations across footprint classes, or park candidate; retain current runtime policy.",
+    "G1 runtime snapshot identity, owned arrays memory cap and actual physics publication gate still open.",
+    "14 other numbered items remain; G1/F2 open."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
