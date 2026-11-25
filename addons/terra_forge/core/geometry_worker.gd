@@ -50,6 +50,18 @@ var _dropped: int = 0
 var _peak_slots: int = 0
 var _pruned_pending: int = 0
 var _pruned_finished: int = 0
+# d0: reason accounting only. Updated under the existing ownership mutex.
+# No timer calls added to the hot loop; reuse measured copy/build wall times.
+var _epoch_pending_drops: int=0
+var _epoch_finished_drops: int=0
+var _epoch_running_drops: int=0
+var _poll_stale_drops: int=0
+var _discarded_copy_us: int=0
+var _discarded_build_us: int=0
+
+func _record_discard(job: Dictionary) -> void:
+    _discarded_copy_us+=int(job.get("copy_elapsed_us",0))
+    _discarded_build_us+=int(job.get("build_elapsed_us",0))
 
 func start(source, cap: int=2, scalar_sampling: bool=false,reuse_topology: bool=false,reserve_critical: bool=false,lend_critical: bool=false,profile_latency: bool=false) -> Error:
     close()
@@ -97,6 +109,12 @@ func _context(source) -> Error:
     if epoch!=_epoch:
         _epoch=epoch
         _dropped+=_pending.size()+_finished.size()
+        _epoch_pending_drops+=_pending.size()
+        _epoch_finished_drops+=_finished.size()
+        for job in _pending:
+            _record_discard(job)
+        for job in _finished:
+            _record_discard(job)
         _pending.clear()
         _finished.clear()
     _mutex.unlock()
@@ -248,6 +266,9 @@ func _loop() -> void:
             _running_since_us=0
             if _stop or job["epoch"]!=_epoch:
                 _dropped+=1
+                if not _stop:
+                    _epoch_running_drops+=1
+                    _record_discard(job)
             else:
                 _finished.append(job)
             # No retained local references after publishing.
@@ -275,6 +296,7 @@ func reconcile(source,desired: Dictionary,priority: Dictionary) -> Error:
             _pending.remove_at(i)
             _dropped+=1
             _pruned_pending+=1
+            _record_discard(job)
     for i in range(_finished.size()-1,-1,-1):
         var job: Dictionary=_finished[i]
         var sig: Dictionary=signature(job["key"],job["lod"],desired,source.cells)
@@ -282,6 +304,7 @@ func reconcile(source,desired: Dictionary,priority: Dictionary) -> Error:
             _finished.remove_at(i)
             _dropped+=1
             _pruned_finished+=1
+            _record_discard(job)
     # Deterministic tie-break by unique job ID. Priority is main-owned
     # and never retained or read by worker outside this mutex.
     var less=func(a: Dictionary,b: Dictionary)->bool:
@@ -308,6 +331,8 @@ func poll(source,desired: Dictionary,max_source_bytes: int=-1,critical_only: boo
         if result["epoch"]!=_epoch or sig["error"]!=OK or sig["levels"]!=result["levels"]:
             _finished.remove_at(index)
             _dropped+=1
+            _poll_stale_drops+=1
+            _record_discard(result)
             continue
         # Keep optional outputs in existing bounded worker slots; scan
         # for a valid LOD0 result rather than blocking it behind a far one.
@@ -369,6 +394,7 @@ func latency_profile() -> Dictionary:
 func stats() -> Dictionary:
     _mutex.lock()
     var result: Dictionary={"open":_open,"scalar_sampling":_scalar_sampling,"topology_cache_bytes":_topology_payload,"topology_setup_us":_topology_setup_us,"total_worker_payload_allowance_bytes":_cap*SLOT_BYTES+_topology_payload,"pending":_pending.size(),"inflight":_inflight,"finished":_finished.size(),"slots":_slots(),"cap":_cap,"critical_reservation":_reserve_critical,"reservation_enforced":_reservation_enforced(),"lend_critical":_lend_critical,"critical_demand":_critical_demand,"demand_changes":_demand_changes,"loan_admissions":_loan_admissions,"critical_full_denials":_critical_full_denials,"optional_slots":_optional_slots(),"reservation_deferrals":_reservation_deferrals,"reserved_payload_bytes":_slots()*SLOT_BYTES,"payload_cap_bytes":_cap*SLOT_BYTES,"peak_slots":_peak_slots,"pruned_pending":_pruned_pending,"pruned_finished":_pruned_finished,"submitted":_submitted,"delivered":_delivered,"dropped":_dropped,"epoch":_epoch}
+    result["discard_accounting"]={"epoch_pending":_epoch_pending_drops,"epoch_finished":_epoch_finished_drops,"epoch_running":_epoch_running_drops,"reconcile_pending":_pruned_pending,"reconcile_finished":_pruned_finished,"poll_stale":_poll_stale_drops,"copy_wall_us":_discarded_copy_us,"build_wall_us":_discarded_build_us,"classified":_epoch_pending_drops+_epoch_finished_drops+_epoch_running_drops+_pruned_pending+_pruned_finished+_poll_stale_drops}
     _mutex.unlock()
     return result
 
@@ -408,6 +434,12 @@ func close() -> void:
     _peak_slots=0
     _pruned_pending=0
     _pruned_finished=0
+    _epoch_pending_drops=0
+    _epoch_finished_drops=0
+    _epoch_running_drops=0
+    _poll_stale_drops=0
+    _discarded_copy_us=0
+    _discarded_build_us=0
     _next_id=0
     _source_id=0
     _serial=0

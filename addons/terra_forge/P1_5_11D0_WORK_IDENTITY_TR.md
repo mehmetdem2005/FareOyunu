@@ -1,0 +1,7 @@
+# P1.5.11d0 — Worker identity audit and discard accounting
+
+Current acceptance identity is source instance + session serial + snapshot + camera generation + tile key + LOD + cardinal neighbor levels. The worker owns the copied dense buffer. Source/session/snapshot mismatch is an error, never a reason to reuse. Generation change currently drops pending and finished jobs wholesale; running jobs finish and are dropped if old generation. Reconcile drops changed signatures, poll verifies again. Preview separately tracks job IDs and publication ownership. This is conservative but may waste valid work.
+
+This slice does not alter scheduling or acceptance. It adds bounded counters under the existing mutex: epoch pending/finished/running, reconcile pending/finished, stale poll; accumulated already measured copy and build elapsed for discarded jobs. These are wall-clock stage times, not CPU utilization. Close resets stats (session teardown drops are not a live metric). Pending drops have no build time. Count classified = dropped in an open session after synchronization; a worker result delivered but rejected by preview is outside this ledger.
+
+Next: capture a real equal route with these counters; determine whether discarded work is genuinely avoidable. Then design optional bounded logical identity reuse that preserves source/snapshot validation, job IDs and signature, not a blanket removal of epoch checks. Test each stage with existing gated worker seam; no locks in long compute; no new thread. Do not change cancellation until evidence supports it.
