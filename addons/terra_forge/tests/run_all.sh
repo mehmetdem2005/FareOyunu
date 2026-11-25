@@ -55,6 +55,7 @@ suite=(
   test_geometry_worker_comparison
   test_camera_worker_halo
   test_worker_priority
+  test_discard_cache_shadow
   test_scalar_worker
   test_publication_accounting
   test_publication_budget
