@@ -613,6 +613,11 @@ func _has_pending_critical() -> bool:
             return true
     return false
 
+func _tile_halo(key: Vector2i, lod: int) -> int:
+    if _motion_active and _active_sampling_strategy in [3, 4]:
+        return GEOMETRY.normal_halo(key, lod, _desired_tiles)
+    return GEOMETRY.DENSE.FULL_HALO
+
 func _build_pending_tiles(started: int = -1) -> void:
     if _pending_tiles.is_empty():
         return
@@ -648,7 +653,8 @@ func _build_pending_tiles(started: int = -1) -> void:
             continue
         if _publication_budget_active and _geometry_worker==null and not _publication.admit(lod):
             break
-        var required: Array[Vector2i] = GEOMETRY.required_pages(_reader, key.x, key.y, lod)
+        var halo_mask := _tile_halo(key, lod)
+        var required: Array[Vector2i] = GEOMETRY.required_pages(_reader, key.x, key.y, lod, halo_mask)
         # Keep every already-loaded member of this tile's height/normal
         # halo hotter than unrelated pages before new IO completions
         # evict anything. The reader still enforces its exact page cap.
@@ -696,7 +702,7 @@ func _build_pending_tiles(started: int = -1) -> void:
                 continue
             _work_budget.record(lod,Time.get_ticks_usec()-started)
         if _geometry_worker!=null:
-            var accepted: Dictionary=_geometry_worker.submit(_reader,key,lod,_desired_tiles)
+            var accepted: Dictionary=_geometry_worker.submit(_reader,key,lod,_desired_tiles,halo_mask)
             var status: Error=int(accepted["error"])
             if status==OK:
                 _geometry_jobs[key]=accepted["id"]

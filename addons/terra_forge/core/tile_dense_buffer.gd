@@ -11,14 +11,32 @@ var _extent: Vector2i
 var _stride: int
 var _values: PackedFloat32Array = PackedFloat32Array()
 
-static func build(view, tx: int, tz: int, stride: int) -> Dictionary:
+# Rectangular sample window shared by the IO planner and owned buffer copy.
+# The four bits follow the worker signature order (west, east, north, south).
+const FULL_HALO: int = 15
+static func sample_bounds(cells: Vector2i, key: Vector2i, stride: int, halo_mask: int) -> Rect2i:
+    var first := key * 32
+    var last := first + Vector2i(32, 32)
+    if halo_mask & 1:
+        first.x -= stride
+    if halo_mask & 2:
+        last.x += stride
+    if halo_mask & 4:
+        first.y -= stride
+    if halo_mask & 8:
+        last.y += stride
+    first = first.max(Vector2i.ZERO)
+    last = last.min(cells)
+    return Rect2i(first, last - first + Vector2i.ONE)
+
+static func build(view, tx: int, tz: int, stride: int, halo_mask: int = FULL_HALO) -> Dictionary:
     if view == null or not view.is_open() or stride not in [1,2,4]:
         return {"error": ERR_INVALID_PARAMETER}
     if tx < 0 or tz < 0 or (tx+1)*32 > view.cells.x or (tz+1)*32 > view.cells.y:
         return {"error": ERR_INVALID_PARAMETER}
-    var first: Vector2i = Vector2i(maxi(0,tx*32-stride),maxi(0,tz*32-stride))
-    var last: Vector2i = Vector2i(mini(view.cells.x,(tx+1)*32+stride),mini(view.cells.y,(tz+1)*32+stride))
-    var extent: Vector2i = (last-first)/stride + Vector2i.ONE
+    var bounds := sample_bounds(view.cells, Vector2i(tx, tz), stride, halo_mask)
+    var first: Vector2i = bounds.position
+    var extent: Vector2i = (bounds.size - Vector2i.ONE) / stride + Vector2i.ONE
     if extent.x <= 0 or extent.y <= 0 or extent.x*extent.y > MAX_SAMPLES:
         return {"error": ERR_INVALID_PARAMETER}
     var buffer = new()

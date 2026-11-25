@@ -198,7 +198,7 @@ func _case(directory: String,format: int,mode: int,cache: int,adaptive: bool,dia
                 stage = "worker_outstanding"
             elif _p._pending_tiles.has(rejected):
                 var missing := 0
-                for page in _p.GEOMETRY.required_pages(_p._reader, rejected.x, rejected.y, 0):
+                for page in _p.GEOMETRY.required_pages(_p._reader, rejected.x, rejected.y, 0, _p._tile_halo(rejected, 0)):
                     if _p._reader.page_status(page) != OK:
                         missing += 1
                 stage = "pending_pages" if missing > 0 else "pending_resident"

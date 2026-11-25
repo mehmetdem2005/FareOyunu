@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # TerraForge P0 regression suite for real Godot 4.7.2 (desktop/CI).
-# Usage: bash addons/terra_forge/tests/run_all.sh /project/path [godot_binary]
+# Usage: bash addons/terra_forge/tests/run_all.sh /project/path [godot_binary] [shard_number shard_count]
 set -u
 
 PROJECT_PATH="${1:-}"
@@ -50,6 +50,7 @@ suite=(
   test_sampling_stream_trace
   test_scalar_sampling_benchmark
   test_geometry_worker
+  test_worker_halo
   test_geometry_worker_preview
   test_geometry_worker_comparison
   test_worker_priority
@@ -107,8 +108,20 @@ suite=(
   test_shape_quality
   test_drainage_analysis
 )
+# Interleave adjacent physics scenarios across independent CI runners.
+shard_number="${3:-1}"
+shard_count="${4:-1}"
+if [[ ! "$shard_number" =~ ^[1-9][0-9]*$ || ! "$shard_count" =~ ^[1-9][0-9]*$ ]] ||
+    (( shard_number > shard_count || shard_count > ${#suite[@]} )); then
+  echo "Invalid test shard: $shard_number/$shard_count" >&2
+  exit 2
+fi
+selected=()
+for ((index=shard_number-1; index<${#suite[@]}; index+=shard_count)); do
+  selected+=("${suite[index]}")
+done
 failures=0
-for name in "${suite[@]}"; do
+for name in "${selected[@]}"; do
   echo "=== $name ==="
   log="$LOG_DIR/$name.log"
   # A GDScript parse failure can sometimes exit 0, or hang with a failed
@@ -145,5 +158,5 @@ for name in "${suite[@]}"; do
     echo "PASS $name"
   fi
 done
-echo "Total: ${#suite[@]} | Fails: $failures"
+echo "Total: ${#selected[@]} | Fails: $failures"
 if (( failures != 0 )); then exit 1; fi
