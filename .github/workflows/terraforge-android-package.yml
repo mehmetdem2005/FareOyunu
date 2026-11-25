@@ -1,0 +1,76 @@
+name: TerraForge Android test package
+on:
+  push:
+    branches: [tools/terraforge-android-suite]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: solarlabyrinth/action-setup-godot@v3
+        with:
+          version: 4.7.2-stable
+          export-templates: false
+          name: godot
+      - name: Assemble standalone project and ZIP
+        run: python3 tools/terraforge_android_suite/build.py --output "$RUNNER_TEMP/tf-android" --zip "$RUNNER_TEMP/TerraForge_Android_Test.zip"
+      - name: Parse the project
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --rendering-method gl_compatibility --path "$RUNNER_TEMP/tf-android" --editor --import 2>&1 | tee "$RUNNER_TEMP/import.log"
+          if grep -E 'SCRIPT ERROR:|Parse Error:|Parser Error:|Compile Error:|Failed to load script' "$RUNNER_TEMP/import.log"; then exit 1; fi
+      - name: Smoke test adapter and JSON capture
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 180s godot --headless --rendering-method gl_compatibility --path "$RUNNER_TEMP/tf-android" -- --smoke 2>&1 | tee "$RUNNER_TEMP/smoke.log"
+          grep -F 'ANDROID_SUITE_COMPLETE' "$RUNNER_TEMP/smoke.log"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TerraForge_Android_Test
+          path: ${{ runner.temp }}/TerraForge_Android_Test.zip
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Android_package_validation
+          path: |
+            ${{ runner.temp }}/import.log
+            ${{ runner.temp }}/smoke.log
+          if-no-files-found: ignore
+  adapter-regressions:
+    needs: package
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1,2,3]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: solarlabyrinth/action-setup-godot@v3
+        with:
+          version: 4.7.2-stable
+          export-templates: false
+          name: godot
+      - uses: actions/download-artifact@v4
+        with:
+          name: TerraForge_Android_Test
+      - run: unzip -q TerraForge_Android_Test.zip
+      - run: godot --headless --rendering-method gl_compatibility --path TerraForge_Android_Test --editor --import
+      - name: Run converted tests in one process
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 1800s godot --headless --rendering-method gl_compatibility --path TerraForge_Android_Test -- --ci --shard=${{ matrix.shard }} 2>&1 | tee adapter.log
+          grep -F 'ANDROID_SUITE_COMPLETE' adapter.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Android_adapter_group_${{ matrix.shard }}
+          path: adapter.log
+          if-no-files-found: ignore

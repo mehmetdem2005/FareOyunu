@@ -1,0 +1,19 @@
+config_version=5
+[application]
+config/name="TerraForge Android Test"
+run/main_scene="res://main.tscn"
+config/use_custom_user_dir=true
+config/custom_user_dir_name="TerraForge_Android_Test_90"
+[display]
+window/size/viewport_width=960
+window/size/viewport_height=540
+window/stretch/mode="canvas_items"
+window/handheld/orientation=0
+[rendering]
+renderer/rendering_method="mobile"
+renderer/rendering_method.mobile="mobile"
+textures/default_filters/use_nearest_mipmap_filter=false
+[physics]
+common/physics_ticks_per_second=60
+[debug]
+settings/gdscript/always_track_call_stacks=true
