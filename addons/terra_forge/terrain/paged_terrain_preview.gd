@@ -9,6 +9,7 @@ const GEOMETRY = preload("res://addons/terra_forge/core/paged_tile_geometry.gd")
 const WORKER = preload("res://addons/terra_forge/core/geometry_worker.gd")
 const HIST = preload("res://addons/terra_forge/core/profile_histogram.gd")
 const PUBLICATION = preload("res://addons/terra_forge/core/publication_accounting.gd")
+const MICRO = preload("res://addons/terra_forge/core/publication_micro_profile.gd")
 const FOOTPRINT = preload("res://addons/terra_forge/core/collision_footprint.gd")
 const SUPPORT = preload("res://addons/terra_forge/core/support_tile_selection.gd")
 const MOTION = preload("res://addons/terra_forge/core/motion_prefetch.gd")
@@ -45,6 +46,8 @@ var _publish_hist = HIST.new()
 var _publish_peak_per_pump: int = 0
 ## Optional observation only; pinned on open. Not a GPU budget.
 @export var observe_publication: bool = false
+@export var observe_publication_micro: bool = false
+var _publication_micro
 @export var enforce_publication_budget: bool = false
 @export_range(4096,1048576,4096) var publication_byte_target: int = 131072
 @export_range(100,8000,100) var publication_time_target_us: int = 1000
@@ -224,7 +227,8 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
     _publish_hist=HIST.new()
     _publish_peak_per_pump=0
     _publication_budget_active=enforce_publication_budget
-    _publication=PUBLICATION.new() if observe_publication or _publication_budget_active else null
+    _publication_micro=MICRO.new() if observe_publication_micro else null
+    _publication=PUBLICATION.new() if observe_publication or _publication_budget_active or observe_publication_micro else null
     if _publication!=null:
         _publication.configure_budget(_publication_budget_active,publication_byte_target if _publication_budget_active else PUBLICATION.BYTE_TARGET,publication_time_target_us if _publication_budget_active else PUBLICATION.TIME_TARGET_US)
     region_directory = directory
@@ -298,6 +302,7 @@ func stop_preview() -> void:
         _geometry_worker=null
     _geometry_jobs.clear()
     _publication=null
+    _publication_micro=null
     _publication_budget_active=false
     for item in _tiles.values():
         var root: Node3D = item["root"]
@@ -533,21 +538,33 @@ func _sync_tiles() -> void:
             _pending_tiles.erase(key)
             _blocked_tiles.erase(key)
 
-func _create_tile(tx: int, tz: int) -> Dictionary:
+func _create_tile(tx: int, tz: int, event: Variant=null) -> Dictionary:
     var root: Node3D = Node3D.new()
     root.name = "TF_Paged_%d_%d" % [tx, tz]
     root.position = Vector3(
         float(tx * TILE_CELLS) * _reader.spacing,
         0.0, float(tz * TILE_CELLS) * _reader.spacing
     )
+    if event!=null:
+        MICRO.mark(event,"root_allocate")
     add_child(root, false, Node.INTERNAL_MODE_FRONT)
+    if event!=null:
+        MICRO.mark(event,"root_attach")
     var visual: MeshInstance3D = MeshInstance3D.new()
     visual.name = "Visual"
     visual.material_override = _material
+    if event!=null:
+        MICRO.mark(event,"visual_allocate")
     root.add_child(visual)
+    if event!=null:
+        MICRO.mark(event,"visual_attach")
     var physics: StaticBody3D = StaticBody3D.new()
     physics.name = "Physics"
+    if event!=null:
+        MICRO.mark(event,"body_allocate")
     root.add_child(physics)
+    if event!=null:
+        MICRO.mark(event,"body_attach")
     var collision: CollisionShape3D = CollisionShape3D.new()
     collision.name = "HeightCollision"
     collision.position = Vector3(
@@ -555,7 +572,11 @@ func _create_tile(tx: int, tz: int) -> Dictionary:
         float(TILE_CELLS) * _reader.spacing * 0.5
     )
     collision.scale = Vector3.ONE * _reader.spacing
+    if event!=null:
+        MICRO.mark(event,"collision_node_allocate")
     physics.add_child(collision)
+    if event!=null:
+        MICRO.mark(event,"collision_node_attach")
     return {
         "root": root, "visual": visual, "collision": collision,
         "lod": -1, "vertex_count": 0
@@ -795,21 +816,34 @@ func _prune_geometry_reservations() -> void:
             _geometry_jobs.erase(key)
 
 func _publish_geometry(key: Vector2i,lod: int,generated: Dictionary,started: int) -> Error:
+    var event: Variant=null
+    if _publication_micro!=null:
+        event=MICRO.begin(key,lod,not _tiles.has(key))
     var info: Dictionary={}
     if _publication!=null:
         info=PUBLICATION.describe(generated,lod)
+        if event!=null:
+            MICRO.mark(event,"validate")
         if info["error"]!=OK:
+            if event!=null:
+                _publication_micro.finish(event,int(info["error"]),0)
             return int(info["error"])
     var publish_start: int=Time.get_ticks_usec() if _publication!=null else 0
     # Fail-closed: don't allocate or replace any visible/collision tile
     # until ALL required Float32 data and geometry arrays are valid.
     if not _tiles.has(key):
-        _tiles[key] = _create_tile(key.x, key.y)
+        _tiles[key] = _create_tile(key.x, key.y,event)
     var tile: Dictionary = _tiles[key]
+    if event!=null:
+        MICRO.mark(event,"tile_lookup")
     var mesh_start: int=Time.get_ticks_usec() if _publication!=null else 0
     var mesh: ArrayMesh = ArrayMesh.new()
     mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, generated["arrays"])
+    if event!=null:
+        MICRO.mark(event,"mesh_create_surface")
     (tile["visual"] as MeshInstance3D).mesh = mesh
+    if event!=null:
+        MICRO.mark(event,"mesh_assign")
     var mesh_us: int=Time.get_ticks_usec()-mesh_start if _publication!=null else 0
     var shape_start: int=Time.get_ticks_usec() if _publication!=null else 0
     var collision: CollisionShape3D = tile["collision"]
@@ -821,22 +855,32 @@ func _publish_geometry(key: Vector2i,lod: int,generated: Dictionary,started: int
         # Changed seam data still gets a real replacement, never a fake shape.
         if protected and old_shape!=null and old_shape.map_width==width and old_shape.map_depth==width and old_shape.map_data==generated["collision_heights"]:
             _support_shape_reuses+=1
+            if event!=null:
+                MICRO.mark(event,"shape_compare_reuse")
         else:
+            if event!=null:
+                MICRO.mark(event,"shape_compare_reuse")
             var shape: HeightMapShape3D=HeightMapShape3D.new()
             shape.map_width=width
             shape.map_depth=width
             shape.map_data=generated["collision_heights"]
+            if event!=null:
+                MICRO.mark(event,"shape_create_data")
             collision.shape=shape
             if protected:
                 _support_shape_replacements+=1
     else:
         collision.shape = null
+    if event!=null:
+        MICRO.mark(event,"shape_assign_release")
     var shape_us: int=Time.get_ticks_usec()-shape_start if _publication!=null else 0
     tile["lod"] = lod
     if _publication!=null:
         tile["publication_info"]=info
     if _geometry_worker!=null or _support_active:
         tile["levels"]=WORKER.signature(key,lod,_desired_tiles,_reader.cells)["levels"]
+    if event!=null:
+        MICRO.mark(event,"metadata_signature")
     tile["vertex_count"] = int(generated["vertex_count"])
     _tiles[key] = tile
     _pending_tiles.erase(key)
@@ -849,9 +893,17 @@ func _publish_geometry(key: Vector2i,lod: int,generated: Dictionary,started: int
             _motion_wait_started.erase(key)
     _last_build_ms = float(Time.get_ticks_usec() - started) / 1000.0
     _max_build_ms = maxf(_max_build_ms, _last_build_ms)
+    if event!=null:
+        MICRO.mark(event,"bookkeeping")
     if _publication!=null:
         _publication.record(lod,info,mesh_us,shape_us,Time.get_ticks_usec()-publish_start)
+    if event!=null:
+        MICRO.mark(event,"accounting")
+        _publication_micro.finish(event,OK,int(info["total_bytes"]))
     return OK
+
+func publication_micro_profile() -> Dictionary:
+    return _publication_micro.report() if _publication_micro!=null else {}
 
 func _publication_resident() -> Dictionary:
     var result: Dictionary={"vertices":0,"triangles":0,"mesh_bytes":0,"shape_bytes":0,"total_bytes":0,"meshes":0,"shapes":0}
