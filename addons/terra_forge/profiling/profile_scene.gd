@@ -36,6 +36,9 @@ var _run_settings: Dictionary = {}
 var _shard_peak: int = 0
 var _shard_bytes_peak: int = 0
 var _gap_start: int = -1
+var _startup_missing_frames := 0
+var _movement_gap_max_us := 0
+var _movement_gap_count := 0
 var _gap_max_us: int = 0
 var _mesh_hist
 var _last_mesh_builds: int = 0
@@ -284,6 +287,9 @@ func _begin(lazy: bool) -> void:
     _shard_peak = 0
     _shard_bytes_peak = 0
     _gap_start = -1
+    _startup_missing_frames = 0
+    _movement_gap_max_us = 0
+    _movement_gap_count = 0
     _gap_max_us = 0
     _first_collision = null
     _extent = Vector2.ZERO
@@ -362,12 +368,18 @@ func _process(_delta: float) -> void:
     _coverage_frames += 1
     if _preview.has_collision_at(focus):
         if _gap_start >= 0:
+            if _first_collision != null:
+                _movement_gap_max_us = maxi(_movement_gap_max_us, now - _gap_start)
             _gap_max_us = maxi(_gap_max_us, now - _gap_start)
             _gap_start = -1
         if _first_collision == null:
             _first_collision = float(Time.get_ticks_usec() - _started) / 1000.0
     else:
         _missing_frames += 1
+        if _first_collision == null:
+            _startup_missing_frames += 1
+        elif _gap_start < 0:
+            _movement_gap_count += 1
         if _gap_start < 0:
             _gap_start = now
     if now >= _next_memory_sample:
@@ -406,6 +418,8 @@ func _finish(status: Error) -> void:
     var pipeline: Dictionary = _preview.pipeline_profile()
     var end: int = Time.get_ticks_usec()
     if _gap_start >= 0:
+        if _first_collision != null:
+            _movement_gap_max_us = maxi(_movement_gap_max_us, end - _gap_start)
         _gap_max_us = maxi(_gap_max_us, end - _gap_start)
     var rss_end: Variant = _rss()
     _preview.stop_preview()
@@ -433,6 +447,10 @@ func _finish(status: Error) -> void:
         "shard_loads": src.get("shard_loads", 0), "shard_evictions": src.get("shard_evictions", 0),
         "verification_bitmap_bytes": src.get("verification_bitmap_bytes", 0), "terminal_error_bytes": src.get("terminal_error_bytes", 0),
         "mesh_build_pump_sample_ms": _mesh_hist.report(), "mesh_builds": s.get("mesh_builds", 0),
+        "startup_frames_without_shape": _startup_missing_frames,
+        "post_ready_frames_without_shape": _missing_frames - _startup_missing_frames,
+        "post_ready_shape_gap_count": _movement_gap_count,
+        "longest_post_ready_shape_gap_ms": float(_movement_gap_max_us) / 1000.0 if _first_collision != null else null,
         "longest_sampled_collision_shape_gap_ms": float(_gap_max_us) / 1000.0 if _coverage_frames > 0 else null,
         "rss_end_before_shutdown_bytes": rss_end,
         "requested_seconds": _run_seconds, "actual_stream_seconds": float(end - _opened) / 1000000.0,

@@ -72,6 +72,8 @@ suite=(
   test_adaptive_motion_horizon
   test_adaptive_motion_horizon_v2
   test_motion_roundtrip
+  test_motion_roundtrip_e
+  test_motion_roundtrip_f
   test_motion_roundtrip_g
   test_motion_roundtrip_v2
   test_motion_roundtrip_v2_g

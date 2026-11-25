@@ -124,6 +124,10 @@ func _run() -> void:
         return
     for step in range(4):
         var trial: Dictionary = p._reports[4 + step]
+        if trial["startup_frames_without_shape"] + trial["post_ready_frames_without_shape"] != trial["focus_frames_without_collision_shape"] or trial["post_ready_shape_gap_count"] > trial["post_ready_frames_without_shape"]:
+            _fail("Collision coverage phase accounting", p)
+            return
+        print("PROFILE_COVERAGE ", JSON.stringify({"strategy": trial["settings"]["sampling_strategy"], "startup_missing": trial["startup_frames_without_shape"], "post_ready_missing": trial["post_ready_frames_without_shape"], "post_ready_max_ms": trial["longest_post_ready_shape_gap_ms"]}))
         if trial["error"] != OK or trial["mode"] != "on_demand" or trial["comparison_step"] != step + 1 or trial["settings"]["sampling_strategy"] != [0,3,3,0][step]:
             _fail("Incorrect comparison run", p)
             return
