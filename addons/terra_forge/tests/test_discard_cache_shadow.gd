@@ -89,8 +89,10 @@ func _trace(folder: String,format: int,mode: int,cache: int,trial: int) -> Dicti
             return _close(p,{"error":ERR_BUG,"stage":"bounds","step":step})
         if not p.has_collision_at(focus):
             missing+=1
-    var stats: Dictionary=worker.stats()
+    # Shadow snapshot first: a worker can finish/discard between reads;
+    # later worker totals are monotonic, and no new submit occurs here.
     var model: Dictionary=worker.shadow_report()
+    var stats: Dictionary=worker.stats()
     if stats["submitted"]!=stats["delivered"]+stats["dropped"]+stats["slots"] or stats["discard_accounting"]["classified"]!=stats["dropped"] or model["ready_offers"]>stats["dropped"]:
         return _close(p,{"error":ERR_BUG,"stage":"ownership"})
     for item in model["models"]:
