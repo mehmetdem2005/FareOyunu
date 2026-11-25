@@ -139,6 +139,7 @@ func _save() -> void:
     _seq += 1
     _report["sequence"] = _seq
     _report["updated_utc"] = Time.get_datetime_string_from_system(true)
+    _report["diagnostic_integrity"]=_diagnostic_integrity()
     var path: String = _run_dir.path_join("report_a.json" if _seq % 2 == 0 else "report_b.json")
     var file := FileAccess.open(path,FileAccess.WRITE)
     if file != null:
@@ -224,13 +225,35 @@ func _export_json(full:bool=false) -> void:
         _export_dialog_open=false
         _detail.text="Download yazılamadı; Godot dosya erişimini kontrol et. İç kayıt korundu."
 
+## Test outcome and evidence integrity are independent. Historical failed
+## attempts remain part of the evidence, even after a successful retry.
+func _diagnostic_integrity() -> Dictionary:
+    var total: int=0
+    var incomplete: int=0
+    var records_dropped: int=0
+    var messages_dropped: int=0
+    var unsaved: int=0
+    for group in ["tests","previous_attempts","diagnostic_scopes"]:
+        for item in _report.get(group,[]):
+            total+=1
+            records_dropped+=int(item.get("diagnostic_dropped",0))
+            messages_dropped+=int(item.get("message_dropped",0))
+            if not bool(item.get("detail_saved",false)):
+                unsaved+=1
+            if not bool(item.get("diagnostic_complete",false)):
+                incomplete+=1
+    return {"scopes":total,"incomplete_scopes":incomplete,"diagnostic_dropped":records_dropped,"message_dropped":messages_dropped,"unsaved_details":unsaved,"recorded_evidence_complete":incomplete==0 and unsaved==0,"session_complete":_report.get("state")=="complete","notes":"Recorded capture only; full export additionally checks detail files. Script backtrace counts, not full stack frames."}
+
 ## Stream each bounded detail separately rather than materializing the entire suite.
 ## Missing, corrupt or oversized detail is reported, never silently omitted.
 func _write_diagnostics(path:String) -> bool:
     var file:=FileAccess.open(path,FileAccess.WRITE)
     if file==null:
         return false
-    file.store_string('{"schema":"TF_ANDROID_DIAGNOSTICS_1","summary":'+JSON.stringify(_report)+',"details":[')
+    var summary: Dictionary=_report.duplicate(true)
+    var integrity: Dictionary=_diagnostic_integrity()
+    summary["diagnostic_integrity"]=integrity
+    file.store_string('{"schema":"TF_ANDROID_DIAGNOSTICS_1","summary":'+JSON.stringify(summary)+',"details":[')
     var entries:Array=[]
     for group in ["tests","previous_attempts","diagnostic_scopes"]:
         for item in _report.get(group,[]):
@@ -265,14 +288,15 @@ func _write_diagnostics(path:String) -> bool:
             file.store_string(",")
         file.store_string(JSON.stringify({"group":entry["group"],"name":item.get("name",""),"source":source.get_file(),"issue":issue,"data":detail}))
         emitted+=1
-    file.store_string('],"detail_count":'+str(emitted)+',"missing_detail_count":'+str(missing)+'}')
+    var export_complete: bool=missing==0 and bool(integrity["recorded_evidence_complete"])
+    file.store_string('],"detail_count":'+str(emitted)+',"missing_detail_count":'+str(missing)+',"exported_evidence_complete":'+JSON.stringify(export_complete)+'}')
     file.flush()
     var status:Error=file.get_error()
     file.close()
     if status!=OK:
         return false
     _export_path=path
-    _detail.text="Ayrıntılı JSON kaydedildi: "+path.get_file()+" | eksik ayrıntı: "+str(missing)
+    _detail.text="Ayrıntılı JSON kaydedildi: "+path.get_file()+" | eksik ayrıntı: "+str(missing)+" | kayıt bütünlüğü: "+("tam" if export_complete else "eksik")
     return true
 
 func _export_selected(ok: bool, paths: PackedStringArray, _filter: int) -> void:
@@ -462,7 +486,7 @@ func _run_all() -> void:
                 failures+=1
             else:
                 var exported:Variant=JSON.parse_string(FileAccess.get_file_as_string(destination))
-                if not exported is Dictionary or exported.get("detail_count",-1)!=_names.size() or exported.get("missing_detail_count",-1)!=0:
+                if not exported is Dictionary or exported.get("detail_count",-1)!=_names.size() or exported.get("missing_detail_count",-1)!=0 or not exported.get("exported_evidence_complete",false):
                     failures+=1
                 else:
                     print("ANDROID_DIAGNOSTICS_EXPORT_VERIFIED")
@@ -484,9 +508,20 @@ func _diagnostics_negative_smoke() -> bool:
     if result["error_type_counts"].get("0",0)!=1 or result["error_type_counts"].get("1",0)!=513 or result["diagnostics"].size()!=512 or result["diagnostic_dropped"]!=2 or result["errors"].size()!=1 or result["message_dropped"]!=1 or not result["truncated"] or not result["pass_marker"]:
         push_error("Diagnostic capture synthetic limits failed")
         return false
+    if result["diagnostic_complete"]:
+        return false
+    capture.begin()
+    for i in range(513):
+        capture._log_error("seed","fixture",i,"seed_warning","warning only",false,1,backtraces)
+    capture._log_message("PASS: seed",false)
+    var warnings: Dictionary=capture.take()
+    # Legacy pass semantics remain untouched, but evidence is incomplete.
+    if warnings["diagnostic_dropped"]!=1 or warnings["truncated"] or warnings["diagnostic_complete"] or not warnings["errors"].is_empty() or not warnings["pass_marker"]:
+        push_error("Warning-only loss not visible")
+        return false
     capture.begin()
     var reset: Dictionary=capture.take()
-    if not reset["diagnostics"].is_empty() or not reset["errors"].is_empty() or not reset["messages"].is_empty() or not reset["error_type_counts"].is_empty() or reset["diagnostic_dropped"]!=0 or reset["message_dropped"]!=0 or reset["truncated"] or reset["pass_marker"]:
+    if not reset["diagnostics"].is_empty() or not reset["errors"].is_empty() or not reset["messages"].is_empty() or not reset["error_type_counts"].is_empty() or reset["diagnostic_dropped"]!=0 or reset["message_dropped"]!=0 or reset["truncated"] or reset["pass_marker"] or not reset["diagnostic_complete"]:
         push_error("Diagnostic scope did not reset")
         return false
     # Verify a real Godot warning traverses the registered Logger as well.
@@ -516,7 +551,7 @@ func _diagnostics_negative_smoke() -> bool:
     if not written:
         return false
     var exported: Variant=JSON.parse_string(FileAccess.get_file_as_string(negative_path))
-    if not exported is Dictionary or exported.get("missing_detail_count",-1)!=1 or exported.get("detail_count",-1)!=_names.size()+1:
+    if not exported is Dictionary or exported.get("missing_detail_count",-1)!=1 or exported.get("detail_count",-1)!=_names.size()+1 or exported.get("exported_evidence_complete",true):
         push_error("Missing detail was not represented accurately")
         return false
     var last: Dictionary=exported["details"][-1]
@@ -631,7 +666,7 @@ func _run_case(name: String) -> Dictionary:
     var detail_path: String=_run_dir.path_join("details").path_join("%s_%d.json" % [name,_seq])
     var detail_saved: bool=_store_detail(detail_path,{"capture":capture,"traces":traces,"exit_code":exit_code,"expected_errors":expected,"unexpected_errors":unexpected})
     var success: bool=exit_code==0 and bool(capture["pass_marker"]) and unexpected.is_empty() and not bool(capture["truncated"])
-    var result := {"name":name,"status":"pass" if success else "fail","exit_code":exit_code,"duration_ms":Time.get_ticks_msec()-start,"pass_marker":capture["pass_marker"],"unexpected_errors":unexpected,"expected_errors":expected,"error_type_counts":capture["error_type_counts"],"diagnostic_dropped":capture["diagnostic_dropped"],"message_dropped":capture["message_dropped"],"detail_saved":detail_saved,"capture_truncated":capture["truncated"],"rss_peak_sampled_bytes":_rss_peak if _rss_peak>0 else null,"static_peak_sampled_bytes":_static_peak,"trace_count":traces.size(),"motion_traces":compact,"details":detail_path}
+    var result := {"name":name,"status":"pass" if success else "fail","exit_code":exit_code,"duration_ms":Time.get_ticks_msec()-start,"pass_marker":capture["pass_marker"],"unexpected_errors":unexpected,"expected_errors":expected,"error_type_counts":capture["error_type_counts"],"diagnostic_dropped":capture["diagnostic_dropped"],"message_dropped":capture["message_dropped"],"detail_saved":detail_saved,"diagnostic_complete":capture["diagnostic_complete"] and detail_saved,"capture_truncated":capture["truncated"],"rss_peak_sampled_bytes":_rss_peak if _rss_peak>0 else null,"static_peak_sampled_bytes":_static_peak,"trace_count":traces.size(),"motion_traces":compact,"details":detail_path}
     _clean_case_files(before)
     return result
 
@@ -649,7 +684,7 @@ func _finish_scope(scope:String) -> void:
     var captured:Dictionary=_log.take()
     var path:String=_run_dir.path_join("details").path_join("scope_%s_%d.json" % [scope,_seq])
     var saved:bool=_store_detail(path,{"capture":captured,"scope":scope})
-    _report["diagnostic_scopes"].append({"name":scope,"details":path,"detail_saved":saved,"error_type_counts":captured["error_type_counts"],"unexpected_errors":captured["errors"],"diagnostic_dropped":captured["diagnostic_dropped"],"message_dropped":captured["message_dropped"],"capture_truncated":captured["truncated"]})
+    _report["diagnostic_scopes"].append({"name":scope,"details":path,"detail_saved":saved,"diagnostic_complete":captured["diagnostic_complete"] and saved,"error_type_counts":captured["error_type_counts"],"unexpected_errors":captured["errors"],"diagnostic_dropped":captured["diagnostic_dropped"],"message_dropped":captured["message_dropped"],"capture_truncated":captured["truncated"]})
 
 func _run_profiles() -> void:
     # Independent visible camera/terrain rendering, same fixture and AB-style order.

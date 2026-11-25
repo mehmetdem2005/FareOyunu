@@ -6,3 +6,7 @@ Tek ZIP'i yeni bir klasöre çıkar. Godot proje yöneticisinden yeni klasördek
 
 
 Özet JSON mevcut biçimde kalır. Ayrıntılı JSON düğmesi yalnız oturum bitince etkinleşir; bütün kaydedilmiş test izlerini, test mesajlarını, beklenen/beklenmeyen hataları ve profil kapsamlarının debugger kayıtlarını ayrı dosyada birleştirir. Her kapsam için 8 MB UTF-8 mesaj, 512 yapılandırılmış hata/uyarı ve 2 MB yapılandırılmış kayıt sınırı; düşürülen kayıt sayaçları görünür. Bir ayrıntı dosyası en fazla 32 MiB olarak dışa aktarılır, eksik/bozuk/büyük dosya açıkça bildirilir. Tam stack içeriği ve test dışındaki editör debugger kayıtları henüz alınmaz. Yeniden denemeler benzersiz ayrıntı dosyası kullanır. Bu dal eski a30ca86 terrain tabanını korur; yeni mikro-profil kodu bu pakete henüz taşınmadı. Cihazda yeniden çalıştırma isteği yok; sonraki birleşik pakette hedefli ölçüm yapılacak.
+
+
+### Teşhis kayıt bütünlüğü (V5 ek kontrol)
+Test PASS sonucu, teşhis kaydının eksiksiz olduğunu garanti etmez. `diagnostic_integrity` alanı mevcut ve önceki denemelerin/scope'ların eksik kayıt, atılan uyarı/mesaj ve yazılamayan ayrıntı sayılarını ayrı gösterir. Tam dışa aktarımda `exported_evidence_complete` ayrıca ayrıntı dosyalarının okunabilirliğini kontrol eder. Bu alan oturumun tamamlanması veya tüm testlerin geçmesiyle eş anlamlı değildir. Script stack frame içerikleri henüz tutulmaz, yalnızca sayısı kaydedilir. Eski V4 PASS koşulları korunur.

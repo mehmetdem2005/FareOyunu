@@ -65,6 +65,6 @@ func _log_error(function: String, file: String, line: int, code: String, rationa
 func take() -> Dictionary:
     _lock.lock()
     _active = false
-    var data := {"messages": _lines.duplicate(), "errors": _errors.duplicate(), "pass_marker": _passed, "truncated": _truncated,"diagnostics":_records.duplicate(true),"error_type_counts":_types.duplicate(),"diagnostic_dropped":_record_dropped,"message_dropped":_message_dropped}
+    var data := {"messages": _lines.duplicate(), "errors": _errors.duplicate(), "pass_marker": _passed, "truncated": _truncated,"diagnostics":_records.duplicate(true),"error_type_counts":_types.duplicate(),"diagnostic_dropped":_record_dropped,"message_dropped":_message_dropped,"diagnostic_complete":not _truncated and _record_dropped==0 and _message_dropped==0}
     _lock.unlock()
     return data
