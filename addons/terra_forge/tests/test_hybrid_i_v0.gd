@@ -37,6 +37,12 @@ func _initialize() -> void:
             _fail(b,"invalid mode accepted")
             return
         p.sampling_strategy=7
+        p.enable_camera_worker_cropped_halo=true
+        if p.start_preview(folder,9,4)!=ERR_INVALID_PARAMETER or p.stats()["active"]:
+            p.free()
+            _fail(b,"I-v0 camera flag must stay independent")
+            return
+        p.enable_camera_worker_cropped_halo=false
         if p.start_preview(folder,9,4)!=OK:
             p.free()
             _fail(b,"I open")
