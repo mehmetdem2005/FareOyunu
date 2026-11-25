@@ -144,9 +144,39 @@ func _initialize() -> void:
                     _fail("trace "+str(result),src,w,b)
                     return
                 print("TOPOLOGY_TRACE ",JSON.stringify(result))
+        if not _hybrid_equal(directory,version-1):
+            _fail("hybrid equal-work matrix",src,w,b)
+            return
         b.close()
-    print("PASS: H topology private templates, independent copies, 14 exact worker cases, stale/close, 8 equal-work G/H runs and 8 cadence traces")
+    print("PASS: H topology private templates, independent copies, 14 exact worker cases, stale/close, 8 equal-work G/H runs and 8 cadence traces; 30 hybrid matched-work arms")
     quit(0)
+
+# First b3 slice: warm resident F reference, G/H full and cropped.
+# F camera crop will be added only after b2 lands; no dependency on that PR.
+func _hybrid_equal(directory: String,format: int) -> bool:
+    var variants: Array=[[4,false],[5,false],[5,true],[6,false],[6,true]]
+    var orders: Array=[[0,1,2,3,4],[4,3,2,1,0],[2,0,4,1,3]]
+    var reference: Dictionary={}
+    for block in range(orders.size()):
+        for index in orders[block]:
+            var mode: int=variants[index][0]
+            var crop: bool=variants[index][1]
+            var result: Dictionary=EQUAL.run(directory,format,mode,2,{},crop)
+            if result.get("error",FAILED)!=OK or result.get("completed",0)!=32 or result.get("warmup_builds",0)!=4:
+                return false
+            if not reference.is_empty() and result["fingerprints"]!=reference:
+                return false
+            reference=result["fingerprints"]
+            var stats: Dictionary=result["worker"]
+            if stats["submitted"]!=36 or stats["delivered"]!=36 or stats["dropped"]!=0 or stats["slots"]!=0:
+                return false
+            if stats["topology_cache_bytes"]!=(32256 if mode==6 else 0):
+                return false
+            result["block"]=block
+            result["variant"]=index
+            result["note"]="Identical resident completed work, no measured disk reads, off-tree; not Android or camera trace speed."
+            print("HYBRID_EQUAL_WORK ",JSON.stringify(result))
+    return true
 
 func _wait(w,src,desired: Dictionary) -> Dictionary:
     for step in range(4000):
