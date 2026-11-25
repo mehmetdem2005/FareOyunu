@@ -690,10 +690,9 @@
     }
   ],
   "next": [
-    "Integrate F4/G0 test-only after reconciling runner, exact combined CI.",
-    "F1 moving route benefit and useful old read reuse; retain default-off until evidence.",
-    "F4 full footprint readiness extension, F2 bounded horizon only after verified evidence; G1 partial normal parity.",
-    "Remaining 16 numbered master plan items excluding F1/F4/G0: E2 E4 F2 F3 G1 G2 G3 H0 H1 H2 H3 I0 I1 I2 I3 I4; some conditional, no claim phase closed; device gate open."
+    "F4/G0 verified initial diagnostics integration exact CI pending.",
+    "F1 paired moving route, F4 full sampled footprint and G0 nonlinear/colour shadow extension only; user requests stop before other numbered phases.",
+    "Do not start G1/F2/E2/E4/F3 or later until user explicitly requests next steps."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {

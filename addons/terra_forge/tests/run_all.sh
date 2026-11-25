@@ -66,6 +66,7 @@ suite=(
   test_hybrid_i_v0_faults
   test_publication_comparison
   test_physics_raycast
+  test_physics_ready_latency
   test_dynamic_terrain_physics
   test_collision_footprint
   test_held_seam_transition
@@ -122,6 +123,7 @@ suite=(
   test_surface_faces
   test_lod_normals
   test_lod_seams
+  test_geometry_dirty_shadow
   test_edge_normals
   test_stream_budget
   test_brush_sampling
