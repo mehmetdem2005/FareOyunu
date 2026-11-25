@@ -38,6 +38,10 @@ const TILE_CELLS: int = 32
 @export var enable_scalar_worker_cropped_halo: bool=false
 var _scalar_worker_cropped_halo_active: bool=false
 var _scalar_worker_cropped_submissions: int=0
+## Independent E/F camera-only opt-in. Existing motion halo stays unchanged.
+@export var enable_camera_worker_cropped_halo: bool=false
+var _camera_worker_cropped_halo_active: bool=false
+var _camera_worker_cropped_submissions: int=0
 var _active_sampling_strategy: int = 0
 var _dense_payload_peak: int = 0
 @export_range(1,4,1) var geometry_job_limit: int = 2
@@ -184,7 +188,7 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
         _last_error = ERR_INVALID_PARAMETER
         return _last_error
     var selected: int = resolved_sampling_strategy()
-    if selected < 0 or selected > 6 or (enable_scalar_worker_cropped_halo and selected not in [5,6]):
+    if selected < 0 or selected > 6 or (enable_scalar_worker_cropped_halo and selected not in [5,6]) or (enable_camera_worker_cropped_halo and selected not in [3,4]):
         _last_error = ERR_INVALID_PARAMETER
         return _last_error
     if enforce_publication_budget and (publication_byte_target<4096 or publication_byte_target>1048576 or publication_time_target_us<100 or publication_time_target_us>8000):
@@ -205,6 +209,7 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
         return status
     _reader = next
     _scalar_worker_cropped_halo_active=enable_scalar_worker_cropped_halo
+    _camera_worker_cropped_halo_active=enable_camera_worker_cropped_halo
     _support_active = enable_support_retention
     _motion_active=enable_motion_prefetch and _support_active
     _motion_adaptive=_motion_active and enable_adaptive_motion_horizon
@@ -266,6 +271,8 @@ func resolved_sampling_strategy() -> int:
 
 func stop_preview() -> void:
     set_process(false)
+    _camera_worker_cropped_halo_active=false
+    _camera_worker_cropped_submissions=0
     _scalar_worker_cropped_halo_active=false
     _scalar_worker_cropped_submissions=0
     # Explicit shutdown revokes even a held support lease. Camera epochs do not.
@@ -688,7 +695,7 @@ func _has_pending_critical() -> bool:
     return false
 
 func _tile_halo(key: Vector2i, lod: int) -> int:
-    if (_motion_active and _active_sampling_strategy in [3, 4]) or _scalar_worker_cropped_halo_active:
+    if ((_motion_active or _camera_worker_cropped_halo_active) and _active_sampling_strategy in [3, 4]) or _scalar_worker_cropped_halo_active:
         return GEOMETRY.normal_halo(key, lod, _desired_tiles)
     return GEOMETRY.DENSE.FULL_HALO
 
@@ -788,6 +795,8 @@ func _build_pending_tiles(started: int = -1, event: Variant=null) -> void:
                 _geometry_jobs[key]=accepted["id"]
                 if _scalar_worker_cropped_halo_active and halo_mask!=GEOMETRY.DENSE.FULL_HALO:
                     _scalar_worker_cropped_submissions+=1
+                if _camera_worker_cropped_halo_active and not _motion_active and halo_mask!=GEOMETRY.DENSE.FULL_HALO:
+                    _camera_worker_cropped_submissions+=1
                 _copy_hist.add(float(accepted["copy_elapsed_us"])/1000.0)
                 _dense_payload_peak=maxi(_dense_payload_peak,int(accepted["input_bytes"]))
                 max_builds-=1
@@ -1251,6 +1260,8 @@ func stats() -> Dictionary:
         "use_tile_read_view": use_tile_read_view,
         "sampling_strategy": _active_sampling_strategy if _reader != null else resolved_sampling_strategy(),
         "dense_payload_peak_bytes": _dense_payload_peak,
+        "camera_worker_cropped_halo_active": _camera_worker_cropped_halo_active,
+        "camera_worker_cropped_submissions": _camera_worker_cropped_submissions,
         "scalar_worker_cropped_halo_active": _scalar_worker_cropped_halo_active,
         "scalar_worker_cropped_submissions": _scalar_worker_cropped_submissions,
         "publication": _publication.report(_publication_resident()) if _publication!=null else {},

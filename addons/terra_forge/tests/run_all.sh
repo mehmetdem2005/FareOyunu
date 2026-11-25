@@ -53,6 +53,7 @@ suite=(
   test_worker_halo
   test_geometry_worker_preview
   test_geometry_worker_comparison
+  test_camera_worker_halo
   test_worker_priority
   test_scalar_worker
   test_publication_accounting
