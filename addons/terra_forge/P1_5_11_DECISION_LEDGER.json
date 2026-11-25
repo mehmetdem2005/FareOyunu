@@ -2,13 +2,13 @@
   "schema": "TF_ENGINE_DECISION_LEDGER_1",
   "date": "2026-11-25",
   "branch": "feat/terraforge-mobile-addon",
-  "latest_code_merge": "5d53e17e365fb396e5813340489143bd1e05565c",
-  "recorded_parent": "91aa9843d898e80d62a53323757d4c744b7612e2",
+  "latest_code_merge": "e13cc688c21fe2e43cb117fd31abdcd40234cc0c",
+  "recorded_parent": "0b8059afe2f07b3565655a493420bcdc8b6e15b2",
   "combined_ci": {
-    "run": 45686118380,
-    "head": "91aa9843d898e80d62a53323757d4c744b7612e2",
-    "status_at_recording": "in_progress",
-    "note": "Documentation push can cancel this run; verify newest exact branch head before reporting integration PASS."
+    "run": 45692534576,
+    "head": "e13cc688c21fe2e43cb117fd31abdcd40234cc0c",
+    "status_at_recording": "success",
+    "note": "Later named documentation-only pushes excluded; no runtime source change."
   },
   "device_gate": {
     "status": "OPEN",
@@ -268,13 +268,131 @@
       "disposition": "VERIFIED_SEPARATE_TOOLS_BRANCH",
       "decision": "Distinguish test PASS from evidence completeness; keep capture bounded. Terrain pin a30ca86 until new package intentionally qualifies.",
       "limitation": "Full script stack frames not captured; no new phone test."
+    },
+    {
+      "phase": "c4 diagnostic",
+      "pr": 38,
+      "head": "f692289ee14e8afd771c10df3eeb6990b9b869aa",
+      "ci": 45690648790,
+      "disposition": "MERGED_DIAGNOSTIC_ONLY",
+      "decision": "Six explicit I presets and same-halo ABBA; no automatic backend promotion.",
+      "limitation": "Per-device/per-LOD qualification open."
+    },
+    {
+      "phase": "d1",
+      "pr": 37,
+      "head": "019268b576b07aed09bfc1bb598be9e3f0a71d88",
+      "ci": 45695425052,
+      "disposition": "REJECTED_CURRENT_IMPLEMENTATION",
+      "decision": "Closed unmerged, branch retained; no aborts in matched camera traces, extra checks without useful work reduction.",
+      "evidence": {
+        "equal_arms": 32,
+        "measured_tiles": 1024,
+        "camera_traces": 32,
+        "per_arm_group_off_on_builds": [
+          808,
+          808
+        ],
+        "reads": [
+          2288,
+          2288
+        ],
+        "dropped": [
+          136,
+          136
+        ],
+        "missing_shape_steps": [
+          512,
+          512
+        ],
+        "checks": [
+          0,
+          19456
+        ],
+        "aborts": [
+          0,
+          0
+        ],
+        "discard_build_wall_us_F": [
+          225827,
+          219420
+        ],
+        "discard_build_wall_us_H": [
+          164491,
+          168781
+        ]
+      },
+      "limitation": "Headless fixed cadence; not actual Android or CPU timing; only revisit with device evidence of meaningful running invalidation."
+    },
+    {
+      "phase": "d2",
+      "pr": 39,
+      "head": "a6b972b98216d6e9234844350ede17d73dd0daee",
+      "ci": 45693366027,
+      "disposition": "SAFETY_PASS_BENEFIT_PENDING",
+      "evidence": {
+        "controlled_requests": 24,
+        "admitted": 14,
+        "coalesced": 10,
+        "delivered": 8,
+        "dropped": 6,
+        "owned_end": 0
+      },
+      "decision": "New comparison head13681625017e0c96324cd3ee58cf8b769a914439: 16 equal arms/512 timed tiles,32 camera traces; retain isolated until cost and live duplicate incidence measured."
+    },
+    {
+      "phase": "d3",
+      "pr": 40,
+      "head": "5830e7f3654b79d27579b95b28212de22ddde9be",
+      "ci": 45694627652,
+      "disposition": "PARKED_RUNTIME_CACHE",
+      "decision": "Closed unmerged, branch retained. No runtime cached arrays; all hypothetical hits cross epoch. Prefer g0-g2 avoiding full rebuilds.",
+      "evidence": {
+        "traces": 16,
+        "submitted": 1512,
+        "discarded_ready": 160,
+        "budgets_bytes": [
+          131072,
+          262144,
+          524288
+        ],
+        "hypothetical_hits": [
+          16,
+          40,
+          88
+        ],
+        "cross_epoch_hits": [
+          16,
+          40,
+          88
+        ],
+        "prior_discarded_build_wall_us": [
+          30730,
+          55034,
+          114290
+        ],
+        "peak_modeled_payload": [
+          116052,
+          261368,
+          406684
+        ]
+      },
+      "limitation": "No saved CPU, no publication safety proof, no real device benefit."
+    },
+    {
+      "phase": "e0",
+      "pr": 41,
+      "head": "e61827a2b2e2411bbd179a615965a4862e7c08d2",
+      "ci": 45697785713,
+      "disposition": "PENDING",
+      "decision": "Detached fresh tile subtree vs baseline, 16 arms/1024 timed fresh tiles, real in-tree rays/ghost checks, existing/support path unchanged."
     }
   ],
   "next": [
-    "Verify newest combined exact CI head.",
-    "c4: explicit conservative session policy; per-LOD/device evidence required before automatic selection.",
-    "d1/d2: controlled identity/cancellation/dedup proof, preserve source/session/snapshot, exact signature and ownership; no speculative reuse.",
-    "e/f: measure before pool or polling changes; g optional if no win; device i qualification; P1.4R return after safety gate."
+    "d2 evaluate raw DEDUP_EQUAL_WORK / DEDUP_CAMERA_WORK on exact head.",
+    "e0 evaluate DETACHED_PUBLICATION and PHYSICS_CASE on exact head.",
+    "d1 rejected, d3 parked, don't silently revive. c4 device gate open.",
+    "e1-e4 then f/g/h/i; no default promotion, P1.4R after device safety."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization."
 }
