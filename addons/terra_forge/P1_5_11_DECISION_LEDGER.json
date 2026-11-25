@@ -1,6 +1,6 @@
 {
   "schema": "TF_ENGINE_DECISION_LEDGER_1",
-  "date": "2026-11-25",
+  "date": "2026-11-26",
   "branch": "feat/terraforge-mobile-addon",
   "latest_code_merge": "e13cc688c21fe2e43cb117fd31abdcd40234cc0c",
   "recorded_parent": "0c96ed8a40cd36ffde3b7169dfb7613bf3d7fe15",
@@ -474,12 +474,93 @@
       "disposition": "PENDING",
       "decision": "I-only session pinned cap0..8 empty detached shell pool; no cached mesh/shape; 16 arms/1024 measured fresh tiles, physics/ghost/stop safety.",
       "limitation": "Four-tile benchmark does not exercise 8-cap saturation; cap overflow, support retention and actual route cost remain before promotion."
+    },
+    {
+      "phase": "e1 initial final",
+      "pr": 42,
+      "head": "c6847f640418ad92e1a755672f385f46a029c2ee",
+      "ci": 45701042619,
+      "disposition": "SAFETY_PASS_EXTEND_NOT_PROMOTED",
+      "evidence": {
+        "tests": 106,
+        "arms": 16,
+        "timed_tiles": 1024,
+        "cap4_tfm1_us": [
+          107.46875,
+          115.09375
+        ],
+        "cap4_tfm2_us": [
+          122.4921875,
+          102.8984375
+        ],
+        "cap8_tfm1_us": [
+          112.328125,
+          100.9375
+        ],
+        "cap8_tfm2_us": [
+          101.40625,
+          107.765625
+        ],
+        "pool_hits": 512,
+        "ghost_checks": 272,
+        "presence_checks": 1088
+      },
+      "decision": "Mixed result; peak idle only 4 even in cap8 arms. Require saturation, real support, and full lifecycle; do not promote.",
+      "limitation": "No Android GPU/RSS or measured allocator bytes."
+    },
+    {
+      "phase": "f0 diagnostic",
+      "pr": 43,
+      "head": "924235009cb0e58f6b432904273d1b43aeb72d6d",
+      "ci": 45702051120,
+      "disposition": "ACCEPT_TEST_ONLY",
+      "evidence": {
+        "tests": 106,
+        "arms": 16,
+        "accepted": 256,
+        "cancelled_ready": 16,
+        "ready_hold_ms": [
+          0,
+          12
+        ],
+        "delivery_mean_ms_range_no_hold": [
+          0.7800833333,
+          0.967875
+        ],
+        "delivery_mean_ms_range_hold": [
+          13.4107083333,
+          13.594875
+        ]
+      },
+      "decision": "Integrate regression only. Test single poll after camera epoch reconciliation as separate opt-in; useful old reads may be lost.",
+      "limitation": "Injected hold, not device speed."
+    },
+    {
+      "phase": "e3 oracle",
+      "pr": 44,
+      "head": "75a17dadad193c141c0cceba4cf21e100a6fcdc1",
+      "ci": 45702061016,
+      "disposition": "ACCEPT_TEST_ONLY",
+      "evidence": {
+        "tests": 106,
+        "cases": 512,
+        "attempts": 6144,
+        "published": 547,
+        "count_stops": 1572,
+        "time_stops": 2368,
+        "byte_stops": 1657,
+        "first_oversize": 410,
+        "over_time": 182
+      },
+      "decision": "Integrate deterministic admission regression; no runtime budget change.",
+      "limitation": "Modeled critical-first order; not live scheduler or Android performance."
     }
   ],
   "next": [
-    "e1 read raw IDLE_POOL_WORK and PHYSICS_CASE exact CI; if useful add cap overflow, live route, support gates.",
-    "e2 split publication only if evidence warrants; e3/e4; f/g/h/i.",
-    "Mandatory revisit register g0-g2 and i0/i3/i4; no silent revival or forgetting."
+    "Verify combined F0/E3 test-only integration CI on exact head.",
+    "E1 safety extension: overflow and actual retained support, no promotion without consistent benefit.",
+    "F1 opt-in single poll after camera sync, controlled old-result cancellation and true ray readiness; quantify lost useful reads before promotion.",
+    "E2/E4 only evidence justified; f2/f4 after F1; g/h/i gates."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {

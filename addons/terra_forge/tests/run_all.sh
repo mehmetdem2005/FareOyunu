@@ -40,6 +40,7 @@ suite=(
   test_paged_failure_isolation
   test_profile_scene
   test_io_pipeline
+  test_reader_delivery_abba
   test_profile_fixture_builder
   test_region_index_v2
   test_region_fixture_v2
@@ -58,6 +59,7 @@ suite=(
   test_scalar_worker
   test_publication_accounting
   test_publication_budget
+  test_publication_budget_oracle
   test_topology_worker
   test_hybrid_i_v0
   test_hybrid_policy
