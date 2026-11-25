@@ -22,7 +22,14 @@ concurrency:
 
 jobs:
   godot-regressions:
-    name: Godot 4.7.2 / GDScript regression suite
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    name: Godot 4.7.2 / regression group ${{ matrix.shard }}
+    env:
+      SHARD_NUMBER: ${{ matrix.shard }}
+      SHARD_COUNT: ${{ strategy.job-total }}
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
@@ -87,11 +94,11 @@ jobs:
             exit 1
           fi
 
-      - name: Run all TerraForge Godot regression tests
+      - name: Run assigned TerraForge Godot regression tests
         shell: bash
         run: |
           set -euo pipefail
-          bash "$TEST_PROJECT/addons/terra_forge/tests/run_all.sh" "$TEST_PROJECT" godot | tee "$RUNNER_TEMP/terraforge-test.log"
+          bash "$TEST_PROJECT/addons/terra_forge/tests/run_all.sh" "$TEST_PROJECT" godot "$SHARD_NUMBER" "$SHARD_COUNT" | tee "$RUNNER_TEMP/terraforge-test.log"
 
       - name: Publish run summary
         if: always()
@@ -119,7 +126,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: terraforge-godot-4-7-2-logs
+          name: terraforge-godot-4-7-2-logs-${{ matrix.shard }}
           path: |
             ${{ runner.temp }}/terraforge-import.log
             ${{ runner.temp }}/terraforge-editor.log
