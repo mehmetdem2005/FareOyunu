@@ -68,6 +68,7 @@ suite=(
   test_physics_raycast
   test_physics_ready_latency
   test_physics_footprint_latency
+  test_readiness_horizon_candidate
   test_dynamic_terrain_physics
   test_collision_footprint
   test_held_seam_transition
