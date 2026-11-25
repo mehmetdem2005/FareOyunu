@@ -2,11 +2,11 @@
   "schema": "TF_ENGINE_DECISION_LEDGER_1",
   "date": "2026-11-26",
   "branch": "feat/terraforge-mobile-addon",
-  "latest_code_merge": "f6428b38fc93d1f323eb76fef7bb7f9ea1288c7f",
-  "recorded_parent": "f6428b38fc93d1f323eb76fef7bb7f9ea1288c7f",
+  "latest_code_merge": "9bc8416d3657b5d446a5f23a3a4a6ecf401bab7b",
+  "recorded_parent": "9bc8416d3657b5d446a5f23a3a4a6ecf401bab7b",
   "combined_ci": {
-    "run_id": 45721870376,
-    "head": "f6428b38fc93d1f323eb76fef7bb7f9ea1288c7f",
+    "head": "9bc8416d3657b5d446a5f23a3a4a6ecf401bab7b",
+    "ci": 45724197931,
     "status": "PENDING_EXACT_VERIFICATION"
   },
   "device_gate": {
@@ -985,20 +985,38 @@
       "pr": 56,
       "head": "4e6b59578b424881defc0d7d90959176ef370681",
       "ci": 45722877848,
-      "disposition": "CI_PENDING",
-      "decision": "Review exact real reader parity and wrong/closed/reopened rejection. Isolated adapter only; worker publication, transient memory and live physics remain open."
+      "disposition": "MERGED_ISOLATED_CANDIDATE_ONLY",
+      "decision": "Review exact real reader parity and wrong/closed/reopened rejection. Isolated adapter only; worker publication, transient memory and live physics remain open.",
+      "evidence": {
+        "tests": 119,
+        "formats": 2,
+        "parity": true,
+        "wrong_reader_rejected": true,
+        "closed_rejected": true,
+        "reopen_rejected": true,
+        "clear_bytes": 0
+      },
+      "merge": "9bc8416d3657b5d446a5f23a3a4a6ecf401bab7b"
     },
     {
       "phase": "f2 paired actual horizon",
       "pr": 57,
       "head": "716d63f22be8d7f72a0645fe67b5466653b7178f",
       "ci": 45722942419,
-      "disposition": "CI_PENDING",
-      "decision": "Review changed calls and actual matched route safety/resource costs; park if no net benefit; four-tile turns and Android remain open."
+      "disposition": "FIX_TEST_HARNESS_RETRY_PENDING",
+      "decision": "Review changed calls and actual matched route safety/resource costs; park if no net benefit; four-tile turns and Android remain open.",
+      "evidence": {
+        "tests": 121,
+        "passed": 119,
+        "failed": 2,
+        "reason": "typed Array[bool] ternary assignment",
+        "fix": "2eb7068a31c6662812203289f6aaec4800e49b60",
+        "retry_ci": 45724196861
+      }
     }
   ],
   "next": [
-    "Exact combined CI for G1 bounded local metadata merge f6428b38fc93d1f323eb76fef7bb7f9ea1288c7f run 45721870376.",
+    "Exact combined G1 authority CI 45724197931 and F2 harness retry 45724196861.",
     "G1 authoritative source/snapshot ownership and bounded metadata, actual worker/publication integration only after parity and physics safety; track transient memory and natural reuse.",
     "F2 closed-loop paired comparison incl turning/four-tile traces, resource cost and safety; park if no net gain.",
     "14 other numbered items remain; G1/F2 still open."
