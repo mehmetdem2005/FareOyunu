@@ -58,6 +58,7 @@ suite=(
   test_scalar_worker
   test_publication_accounting
   test_publication_budget
+  test_publication_budget_oracle
   test_topology_worker
   test_hybrid_i_v0
   test_hybrid_policy
