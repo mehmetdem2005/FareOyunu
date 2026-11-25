@@ -40,6 +40,7 @@ suite=(
   test_paged_failure_isolation
   test_profile_scene
   test_io_pipeline
+  test_reader_delivery_abba
   test_profile_fixture_builder
   test_region_index_v2
   test_region_fixture_v2
