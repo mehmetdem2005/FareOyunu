@@ -2,13 +2,12 @@
   "schema": "TF_ENGINE_DECISION_LEDGER_1",
   "date": "2026-11-26",
   "branch": "feat/terraforge-mobile-addon",
-  "latest_code_merge": "e13cc688c21fe2e43cb117fd31abdcd40234cc0c",
-  "recorded_parent": "0c96ed8a40cd36ffde3b7169dfb7613bf3d7fe15",
+  "latest_code_merge": "f6428b38fc93d1f323eb76fef7bb7f9ea1288c7f",
+  "recorded_parent": "f6428b38fc93d1f323eb76fef7bb7f9ea1288c7f",
   "combined_ci": {
-    "head": "08c5097a32df9170aa3a478f60d63fbaf5cd3afe",
-    "ci": 45715409790,
-    "conclusion": "success",
-    "tests": 116
+    "run_id": 45721870376,
+    "head": "f6428b38fc93d1f323eb76fef7bb7f9ea1288c7f",
+    "status": "PENDING_EXACT_VERIFICATION"
   },
   "device_gate": {
     "status": "OPEN",
@@ -958,10 +957,32 @@
         "return_tick": 1508
       },
       "decision": "Merge diagnostic only. New shadow recommendation covered all 48 qualified observations at 3.8x average horizon; no causal improvement, current runtime already zero denials, fixed 0.5s probe. Need closed-loop matched old/new with actual policy, disk/geometry/evictions/latency and four-tile direction changes. Do not enable by default."
+    },
+    {
+      "phase": "g1 bounded local metadata",
+      "pr": 55,
+      "head": "994f8a19b056bc37ca0edf492d6a19e59ee9a67c",
+      "ci": 45719611531,
+      "disposition": "MERGED_ISOLATED_CANDIDATE_ONLY",
+      "evidence": {
+        "tests": 119,
+        "cases": 36,
+        "identity_rejections": 144,
+        "forced_hits": 72,
+        "evictions": 32,
+        "unrelated_keys_per_retain": 4096,
+        "metadata_keys": 20,
+        "max_metadata_keys": 20,
+        "peak_bytes": 261368,
+        "cap_bytes": 262144,
+        "final_bytes": 32064
+      },
+      "decision": "Retain only canonical local signature, remove redundant level array. No runtime activation. Combined exact CI pending; authoritative source identity and live publication gates open.",
+      "limitation": "Old 16404 keys theoretical four-entry scenario; not measured RSS, transient overhead or natural hit rate."
     }
   ],
   "next": [
-    "Exact combined CI for isolated G1 bounded cache + F2 long shadow.",
+    "Exact combined CI for G1 bounded local metadata merge f6428b38fc93d1f323eb76fef7bb7f9ea1288c7f run 45721870376.",
     "G1 authoritative source/snapshot ownership and bounded metadata, actual worker/publication integration only after parity and physics safety; track transient memory and natural reuse.",
     "F2 closed-loop paired comparison incl turning/four-tile traces, resource cost and safety; park if no net gain.",
     "14 other numbered items remain; G1/F2 still open."

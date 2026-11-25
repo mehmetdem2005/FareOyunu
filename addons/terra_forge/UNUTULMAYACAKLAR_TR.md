@@ -1,5 +1,7 @@
 # TerraForge — UNUTULMAYACAKLAR / Deney, karar ve doğrulama defteri
 
+**26 Kasım — G1 local metadata: PR #55 exact994f8a19b056bc37ca0edf492d6a19e59ee9a67c CI45719611531 119/119 PASS (40+39+40), merged f6428b38fc93d1f323eb76fef7bb7f9ea1288c7f. 36 exact geometry cases, 144 identity rejects, 72 forced hits, 32 evictions, 4096 unrelated keys/retain, 20/20 retained local metadata keys, peak raw payload 261368/262144 bytes, final 32064 bytes. Old hypothetical 16404 keys for four full dictionaries vs measured 20; not RSS/actual device savings. Candidate only, no runtime/default activation. Combined CI 45721870376 requires exact result. G1 authoritative source identity, transient memory and live worker/ray safety still open; F2 closed-loop matched turn/four-tile remains open; 16 steps incl G1/F2. F2 shadow repeated 48 old short→0 new short, no causal benefit; current policy zero denials. **
+
 ## Zorunlu geri dönüş listesi — kapatılan deney, unutulan deney değildir
 
 **Yeni kayıtlar:** d2 [PR39](https://github.com/mehmetdem2005/FareOyunu/pull/39) exact1368162 CI45697883752: 0 canlı tekrar, f3/yeni çoklu üretici kanıtında tekrar aç. e0 [PR41](https://github.com/mehmetdem2005/FareOyunu/pull/41) exact e61827a CI45697785713: TFM1 +6.13% süre, TFM2 -1.77%, Android attach darboğazı ve yeni hipotez olmadan yeniden açma. İkisi de kapalı/birleştirilmedi, dalları koru.
