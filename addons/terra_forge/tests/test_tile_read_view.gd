@@ -8,7 +8,11 @@ const PREVIEW = preload("res://addons/terra_forge/terrain/paged_terrain_preview.
 func _initialize() -> void:
     var src = ASYNC.new()
     for version in [1,2]:
-        var b: Variant = V1.new() if version == 1 else V2.new()
+        var b: Variant
+        if version == 1:
+            b=V1.new()
+        else:
+            b=V2.new()
         var err: Error = b.start(Vector2i(96,96),true) if version == 1 else b.start(Vector2i(96,96))
         if err != OK:
             _fail("fixture start",src,b)
@@ -51,11 +55,11 @@ func _initialize() -> void:
             return
         var acquired: Dictionary=src.acquire_tile_view(keys)
         var view=acquired["view"]
-        var duplicate: Array[Vector2i]=[keys[0],keys[0]]
+        var repeated_keys: Array[Vector2i]=[keys[0],keys[0]]
         if src.acquire_tile_view(keys)["error"]!=ERR_BUSY or view.get_height(-1,0).has("height") or view.get_height(96,96).has("height"):
             _fail("lease bounds/exclusive",src,b)
             return
-        if src.set_generation(1)!=OK or view.is_open() or view.page_count_held()!=0 or view.get_height(32,32).has("height") or src.release_tile_view(view)==OK or src.acquire_tile_view(duplicate)["error"]==OK:
+        if src.set_generation(1)!=OK or view.is_open() or view.page_count_held()!=0 or view.get_height(32,32).has("height") or src.release_tile_view(view)==OK or src.acquire_tile_view(repeated_keys)["error"]==OK:
             _fail("stale lease",src,b)
             return
         view=src.acquire_tile_view(keys)["view"]
@@ -104,15 +108,15 @@ func _load(src,keys: Array[Vector2i]) -> bool:
     for attempt in range(3000):
         src.poll_results(4)
         src.prioritize_resident(keys)
-        var ready: bool=true
+        var pages_ready: bool=true
         for key in keys:
             var status: Error=src.page_status(key)
             if status==ERR_BUSY:
-                ready=false
+                pages_ready=false
                 src.request_page(key)
             elif status!=OK:
                 return false
-        if ready:
+        if pages_ready:
             return true
         OS.delay_msec(1)
     return false

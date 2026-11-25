@@ -34,7 +34,7 @@ func _initialize() -> void:
         var normals_a: PackedVector3Array = a[Mesh.ARRAY_NORMAL]
         var normals_b: PackedVector3Array = b[Mesh.ARRAY_NORMAL]
         var stride: int = 1 << lod
-        var width: int = int(32 / stride) + 1
+        var width: int = (32 >> lod) + 1
         for z in range(1, width - 1):
             var index_a: int = z * width + width - 1
             var index_b: int = z * width

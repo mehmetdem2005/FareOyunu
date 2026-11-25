@@ -21,7 +21,10 @@ func _formats() -> Array[int]:
 
 func _run() -> void:
     for format in _formats():
-        _builder=V1.new() if format==0 else V2.new()
+        if format==0:
+            _builder=V1.new()
+        else:
+            _builder=V2.new()
         var err: Error=_builder.start(Vector2i(576,576),true) if format==0 else _builder.start(Vector2i(576,576))
         if err!=OK:
             _fail("fixture start")
@@ -153,7 +156,7 @@ func _case(directory: String,format: int,mode: int,cap: int,held: bool) -> Dicti
         max_drift=maxf(max_drift,Vector2(_body.global_position.x-origin.x,_body.global_position.z-origin.z).length())
         if held and _p._pending_tiles.has(Vector2i(15,15)):
             pending_support_ticks+=1
-        _p.set_stream_center(trace[int(tick/24)])
+        _p.set_stream_center(trace[floori(float(tick)/24.0)])
         var begin: int=Time.get_ticks_usec()
         var pumped: Dictionary=_p.pump_stream()
         pump_hist.add(float(Time.get_ticks_usec()-begin)/1000.0)
