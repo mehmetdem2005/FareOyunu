@@ -126,6 +126,7 @@ suite=(
   test_lod_seams
   test_geometry_dirty_shadow
   test_geometry_dirty_curved
+  test_normal_edge_candidate
   test_edge_normals
   test_stream_budget
   test_brush_sampling
