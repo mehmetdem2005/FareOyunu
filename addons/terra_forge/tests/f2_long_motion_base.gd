@@ -54,6 +54,10 @@ func _f2_shadow_tick(_from: Vector2,_intent: Vector2,_tick: int) -> void:
 func _roundtrip_laps() -> int:
     return 1
 
+# Test-only seam: production preview still owns all actual scheduling.
+func _sample_motion(from: Vector2,actual: Vector2,intent: Vector2,session: int,revision: int) -> Error:
+    return _p.sample_motion_prefetch(from,actual,intent,RADIUS,session,revision)
+
 func _run() -> void:
     var format: int=_format()
     _builder=V1.new() if format==0 else V2.new()
@@ -235,7 +239,7 @@ func _case(directory: String,format: int,mode: int,cache: int,adaptive: bool,dia
         # One sample on each moving/hold tick. During final stationary
         # phase cease submissions to exercise expiry of the session hint.
         if phase!=3 or tick==return_tick:
-            var status: Error=_p.sample_motion_prefetch(from,actual_velocity,intent,RADIUS,session,revision)
+            var status: Error=_sample_motion(from,actual_velocity,intent,session,revision)
             if status!=OK:
                 return {"error":FAILED,"stage":"sample","tick":tick,"status":status}
             sample_hist.add(float(Time.get_ticks_usec()-began)/1000.0)
