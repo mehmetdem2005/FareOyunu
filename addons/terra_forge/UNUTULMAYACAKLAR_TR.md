@@ -1,5 +1,25 @@
 # TerraForge — UNUTULMAYACAKLAR / Deney, karar ve doğrulama defteri
 
+## 25 Kasım 2026 — P1.5.11 karar özeti (güncel)
+
+**Tek giriş:** [HANDOFF_START_HERE_TR.md](HANDOFF_START_HERE_TR.md). Sayısal kanıt ve kararların makine-okunabilir kaydı: [P1_5_11_DECISION_LEDGER.json](P1_5_11_DECISION_LEDGER.json). Ana geliştirme dalı `feat/terraforge-mobile-addon`, son kod birleşimi `5d53e17e365fb396e5813340489143bd1e05565c`. #26–35 kabul edilen deneyler birleştirildi; birleşik CI sonucu yeni head'den kontrol edilmeli. Android teşhis dalı ayrı tutulur.
+
+| Deney | Karar | Neden / maliyet |
+|---|---|---|
+| #27 mikro profil | Teşhis için, varsayılan kapalı | İzole ölçümde %5 üstü gözlem maliyeti; performans ölçümlerini kirletme. |
+| #26 G/H halo | Opt-in kod alındı | Sabit/adaptif okumalar 237→102 / 184→86; 16 rota, zemin kaybı yok. Eşit iş değil. |
+| #28 E/F halo | Opt-in kod alındı | 3480→2216 kabul edilen okuma, 668→812 mesh; 2916 raycast uyuşmazlık 0. Kamera kapsaması gerçek zemin kaybı değildir. İlk tipli dizi hatası düzeltildi, yeni CI başarılı. |
+| #29/#31 F/G/H | Ölçüm alındı, otomatik seçim yok | Eşit halo H worker süresi F'den yaklaşık üçte bir düşük; TFM2 ana iş parçacığında G 305.66us, H 311.56us. Topoloji 32256 bayt ek yük; Android kapısı açık. |
+| #30/#32 I | Opt-in kod alındı | Mode7, tek worker, üç bağımsız oturum seçeneği; 1152 eşit geometri, 4800 fizik adımı, 0 zemin kaybı/denial. A varsayılan. |
+| #34 kopyalama | Mevcut yöntem korunuyor; gereksiz yeniden yazım reddedildi | 384 çift, TFM2 LOD0 scalar 413us / row-run 74us; LOD1 114/25, LOD2 36/10. Yalnız kopya maliyeti. |
+| #33/#35 iş kaybı | Teşhis kodu alındı, iptal algoritması henüz değişmedi | 40 kayıp: 23 komşu, 11 LOD, 5 aynı geometri/epoch, 1 artık gereksiz. Geçersiz geometriyi tekrar yayınlama. d1/d2 kesin kimlik kanıtına bağlı. |
+| Android V5 | Ayrı araç dalında doğrulandı | PASS ve kayıt bütünlüğü ayrıldı; tam stack frame eksik, eski terrain pin korunuyor. |
+
+### Kullanıcının çalışma kuralı — sonuçlar koda dönüşmeli
+- Deney başlamadan hipotez, referans, hedef metrik ve güvenlik şartını belirle. Aynı soruyu yalnızca yeni hipotez, farklı koşul veya entegrasyon gerektirdiğinde yeniden ölç.
+- Deney sonunda zorunlu karar: MERGED_OPT_IN_CODE / KEEP_EXISTING / REJECT / PARK / DIAGNOSTIC_ONLY. Başarılı CI tek başına performans kanıtı değildir; gerçek kod kazanımı ile test-only değişikliği ayrı yaz. Kabul edilen dalı doğru bağımlılık sırasıyla exact-SHA CI sonrası ana geliştirme dalına taşı; birleşik CI'yı kontrol et. Başarısız veya pahalı özellikleri nedenleriyle sakla, tekrar unutup yazma.
+- Her devirde kesin SHA, CI run, ölçüm, bedel, sınırlama, karar, sıradaki iş ve değişen dosyalar kaydedilmeli. Kanıtlanmamış cihaz performansı yazma. c4/d1/d2 henüz açık; Android cihaz kapısı açık; eski NEXT ifadeleri tarihsel. P1.4R unutulmasın; gerçek veri ve main korunur.
+
 **25 Kasım 2026 — P1.5.9c4 CI_VERIFIED / PROMOTE.** [PR #12](https://github.com/mehmetdem2005/FareOyunu/pull/12), aa0aa3dd4b84ffac89cf603981584aa527667c01, [80/80](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45503339023). İki format × iki kapasite (2/4), her senaryoda 12 ardışık kritik teslim. Kritik öncelikli teslim süresince 1/3 hazır opsiyonel sonuç tutuldu ve seri sonunda sırasıyla teslim edildi. Sonuç kaybı yok. Sonlu seri sonrası toparlanma gösterildi; sürekli talepte bekleme üst sınırı ve canlı oyuncu rotasında doygunluk açık. Zamanlayıcı davranışı değişmedi. Sırada P1.5.10 gerçek cihaz ölçümü. P1.4/P1.4R parkta. Ham kayıt: P1_5_9C4_SATURATION_CI.json.
 
 > **GÜNCEL DEVİR — 25 Kasım 2026 TR | P1.5.9c1–c3 CI_VERIFIED / PROMOTE:** c1 5e606e8 [76/76](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45495469967); c2 6c24091 [77/77](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45496484971); c3 12d92877ca0a33a4af8e43f19150a71f285fdbcb [79/79](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45497558472). Exact chain c1→c2→c3 (ahead 2, behind 0), accepted for integration into feat/terraforge-mobile-addon. PRs #10/#11, preserve branch history. Raw records P1_5_9C1_QUEUE_LATENCY_CI.json, P1_5_9C2_CAPACITY_WAIT_CI.json, P1_5_9C3_LIVE_DIAGNOSTICS_CI.json. c1 eight gated cases: correct drops/ownership/parity, no stale result. c2 deterministic synthetic timestamps: critical 2 episodes mean4ms, optional1 mean3ms, four cancelled, NOT device timing. c3 eight 480-tick actual roundtrips: both groups denied108, reads698, builds118, zero ground gaps, all endpoints reached; observed full gate episodes=0, no evidence of live saturation. Mean pump off 0.199546ms/on 0.217650ms, p95 upper1ms both, nonzero observation cost; no speed gain or Android claim. Diagnostic flags default off, no scheduler changes. USER RULE: integrate accepted successful experiments promptly, exact SHA and dependency gates, no force push, preserve failures and evidence, never forget pending branch dispositions. NEXT P1.5.9c4 workload with controlled saturation and fairness measurement, then device gates P1.5.10; changed-height seams and exact IO attribution remain open. P1.4/P1.4R PARKED.

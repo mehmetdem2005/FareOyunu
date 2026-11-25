@@ -1,0 +1,280 @@
+{
+  "schema": "TF_ENGINE_DECISION_LEDGER_1",
+  "date": "2026-11-25",
+  "branch": "feat/terraforge-mobile-addon",
+  "latest_code_merge": "5d53e17e365fb396e5813340489143bd1e05565c",
+  "recorded_parent": "91aa9843d898e80d62a53323757d4c744b7612e2",
+  "combined_ci": {
+    "run": 45686118380,
+    "head": "91aa9843d898e80d62a53323757d4c744b7612e2",
+    "status_at_recording": "in_progress",
+    "note": "Documentation push can cancel this run; verify newest exact branch head before reporting integration PASS."
+  },
+  "device_gate": {
+    "status": "OPEN",
+    "baseline": "P1_5_11_ANDROID_BASELINE.json",
+    "note": "No new Android FPS measurement. Linux CI is not device qualification."
+  },
+  "experiments": [
+    {
+      "phase": "a1.3",
+      "pr": 27,
+      "head": "1878e193268ac45ff38b0fc067d24995dfb067c9",
+      "ci": 45663380732,
+      "disposition": "MERGED_DIAGNOSTIC_ONLY",
+      "decision": "Keep expensive micro profiling off in comparative timing; targeted attribution only.",
+      "evidence": {
+        "arms": 24,
+        "publications": 768,
+        "idle_pumps": 1536,
+        "tfm1_publication_median_us": [
+          80,
+          93,
+          78,
+          95
+        ],
+        "tfm1_idle_median_us": [
+          12,
+          12,
+          23,
+          23
+        ],
+        "tfm2_publication_median_us": [
+          78,
+          93,
+          78.5,
+          93
+        ],
+        "tfm2_idle_median_us": [
+          12,
+          12,
+          24,
+          24
+        ],
+        "flag_order": [
+          "none",
+          "publication",
+          "pump",
+          "both"
+        ]
+      },
+      "limitation": "Off-tree fixed work; >5% isolated observation cost, not Android FPS."
+    },
+    {
+      "phase": "b1.2",
+      "pr": 26,
+      "head": "92919a52f0730e3f7fe27f885b48fa8304e2f31f",
+      "ci": 45663185939,
+      "disposition": "MERGED_OPT_IN_CODE",
+      "decision": "Independent G/H cropped halo; retain full-halo rollback and exact parity.",
+      "evidence": {
+        "motion_routes": 16,
+        "ticks_per_route": 480,
+        "denied_total_before_after": [
+          8,
+          0
+        ],
+        "fixed_reads_before_after": [
+          237,
+          102
+        ],
+        "adaptive_reads_before_after": [
+          184,
+          86
+        ],
+        "fixed_builds_before_after": [
+          36,
+          37
+        ],
+        "adaptive_builds_before_after": [
+          26,
+          29
+        ],
+        "ray_checks": 1620,
+        "mesh_diagonal_mismatch": 0
+      },
+      "limitation": "Different completed work, Linux only."
+    },
+    {
+      "phase": "b2",
+      "pr": 28,
+      "head": "f3d85ff89b341c0c110385b5fbb9899749a00209",
+      "ci": 45677307828,
+      "failed_ci": 45673545834,
+      "disposition": "MERGED_OPT_IN_CODE",
+      "decision": "Retain independent E/F camera crop flag; typed-array test bug fixed; no default promotion.",
+      "evidence": {
+        "camera_traces": 32,
+        "accepted_reads_before_after": [
+          3480,
+          2216
+        ],
+        "mesh_builds_before_after": [
+          668,
+          812
+        ],
+        "sampled_missing_shape_steps_before_after": [
+          560,
+          544
+        ],
+        "ray_checks": 2916,
+        "mesh_diagonal_mismatch": 0
+      },
+      "limitation": "Corrected prior aggregate: 812 builds, not 820. Camera shape samples are not actual floor loss; unequal work."
+    },
+    {
+      "phase": "b3.1",
+      "pr": 31,
+      "head": "474b6917480a5f9eab7d89ef2428a76b6e783317",
+      "ci": 45679790196,
+      "disposition": "MERGED_TEST_EVIDENCE",
+      "decision": "Select backend only after equal-halo and device evidence; H compute faster, G can have lower main time. No blanket H default.",
+      "evidence": {
+        "arms": 36,
+        "timed_tiles": 1152,
+        "cropped_backends": [
+          "F",
+          "G",
+          "H"
+        ],
+        "tfm1_worker_median_mean_ms": [
+          1.39741666666667,
+          0.989972222222222,
+          0.935888888888889
+        ],
+        "tfm2_worker_median_mean_ms": [
+          1.42588888888889,
+          0.995,
+          0.934472222222222
+        ],
+        "tfm2_main_us_per_tile": [
+          356.5625,
+          305.65625,
+          311.5625
+        ]
+      },
+      "limitation": "Warm resident off-tree; no timed IO or Android."
+    },
+    {
+      "phase": "c0",
+      "pr": 30,
+      "head": "55fe550c21c008363016cf6992a765011f10a740",
+      "ci": 45681705460,
+      "integrated_ci": 45683065709,
+      "disposition": "MERGED_OPT_IN_CODE",
+      "decision": "I=7 uses existing worker, initial F equivalent, legacy IDs stable, requested/effective distinguish; A remains default."
+    },
+    {
+      "phase": "c1/c2",
+      "pr": 32,
+      "head": "052d67e2fe0d60e429b5eba998830420fd9346a0",
+      "ci": 45681984773,
+      "disposition": "MERGED_OPT_IN_CODE_DEVICE_PENDING",
+      "decision": "Independent I scalar/topology/crop session flags. Topology requires scalar. Reject flags on non-I. No mid-flight backend change.",
+      "evidence": {
+        "arms": 36,
+        "timed_tiles": 1152,
+        "motion_routes": 10,
+        "ticks": 4800,
+        "denied": 0,
+        "airborne": 0,
+        "missing_rays": 0,
+        "return_tick": 332,
+        "topology_payload_bytes": 32256
+      },
+      "limitation": "Linux; device and per-LOD policy still open."
+    },
+    {
+      "phase": "c3",
+      "pr": 34,
+      "head": "4b2b639415cf5f5c64b744ec2b04807567dd8b29",
+      "ci": 45683043768,
+      "disposition": "KEEP_EXISTING_NO_RUNTIME_REWRITE",
+      "decision": "Existing row-run lease copy already beats scalar access; do not build another copy system absent evidence. Preserve short ownership lease, independent packed buffer.",
+      "evidence": {
+        "paired_copies": 384,
+        "lods": [
+          0,
+          1,
+          2
+        ],
+        "tfm1_scalar_p50_us": [
+          389,
+          112,
+          36
+        ],
+        "tfm1_grid_p50_us": [
+          72,
+          25,
+          10
+        ],
+        "tfm2_scalar_p50_us": [
+          413,
+          114,
+          36
+        ],
+        "tfm2_grid_p50_us": [
+          74,
+          25,
+          10
+        ]
+      },
+      "limitation": "Only warm lease copy; no IO/worker/render/device timing."
+    },
+    {
+      "phase": "d0",
+      "pr": 33,
+      "head": "ce9d4f9a614e1f63be98a5971be03d788cd4a7f0",
+      "ci": 45681883038,
+      "disposition": "MERGED_DIAGNOSTIC_CODE",
+      "decision": "Record drop stages and wasted elapsed stage time; finished pruning is dominant; do not assume in-flight cancellation solves all.",
+      "evidence": {
+        "f_traces": 8,
+        "submitted": 376,
+        "dropped": 45,
+        "reconcile_finished": 39,
+        "epoch_finished": 4,
+        "epoch_running": 2,
+        "discarded_copy_wall_us": 5389,
+        "discarded_build_wall_us": 76477
+      },
+      "limitation": "Synthetic Linux traces, wall time not thread CPU; preview rejects outside worker ledger."
+    },
+    {
+      "phase": "d0.1",
+      "pr": 35,
+      "head": "68f401b189d5fd19fcdfcf721ef529fe504c90f8",
+      "ci": 45683321264,
+      "disposition": "MERGED_DIAGNOSTIC_CODE",
+      "decision": "Prioritize exact neighbor/LOD identity, quantify avoidable same-geometry epoch drop. No broad epoch bypass. Do not interpret changed signatures as reusable outputs.",
+      "evidence": {
+        "f_traces": 8,
+        "submitted": 378,
+        "dropped": 40,
+        "changed_neighbors": 23,
+        "changed_lod": 11,
+        "removed_key": 1,
+        "same_geometry_at_epoch": 5,
+        "unknown": 0,
+        "invalid_signature": 0
+      },
+      "limitation": "Separate run from d0; different total work, cannot compare drop count as speed gain. d1/d2 not implemented."
+    },
+    {
+      "phase": "a0.3 Android",
+      "branch": "tools/terraforge-android-diagnostics",
+      "head": "5e4eb63d3c508097d5b9e0051bef194387031c4b",
+      "ci": 45674358112,
+      "disposition": "VERIFIED_SEPARATE_TOOLS_BRANCH",
+      "decision": "Distinguish test PASS from evidence completeness; keep capture bounded. Terrain pin a30ca86 until new package intentionally qualifies.",
+      "limitation": "Full script stack frames not captured; no new phone test."
+    }
+  ],
+  "next": [
+    "Verify newest combined exact CI head.",
+    "c4: explicit conservative session policy; per-LOD/device evidence required before automatic selection.",
+    "d1/d2: controlled identity/cancellation/dedup proof, preserve source/session/snapshot, exact signature and ownership; no speculative reuse.",
+    "e/f: measure before pool or polling changes; g optional if no win; device i qualification; P1.4R return after safety gate."
+  ],
+  "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization."
+}

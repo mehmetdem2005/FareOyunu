@@ -1,5 +1,7 @@
 # TerraForge Hybrid Engine — P1.5.11 MASTER PLAN (TR)
-25 Kasım 2026 | PLAN_APPROVED_DIRECTION / IMPLEMENTATION_NOT_STARTED
+25 Kasım 2026 | IMPLEMENTATION_IN_PROGRESS — c4/d1/d2 next; Android qualification pending
+
+> **Current status authority:** [handoff](HANDOFF_START_HERE_TR.md) and [decision ledger](P1_5_11_DECISION_LEDGER.json). This document retains original baseline and plan; historical NEXT entries are not active. b1/b2/b3.1, c0 and opt-in c1/c2 merged, c3 existing row-run retained, d0/d0.1 diagnostic code merged. c4/d1/d2 pending, actual Android validation open. Combined exact CI must be checked. Every experiment ends in an explicit adopt/keep/reject/park/diagnostic-only decision.
 Baseline terrain: a30ca86df848e2360d0b1dcc328bbd9a660ce8db; runner V4 ad75c970778d898937ac8d0f2970234f198b9f85.
 Scope: read-only terrain geometry, paging, collision, scheduling, profiling. No paint, objects, water, gameplay integration, second data system, or production data migration. main protected. A remains default until explicit promotion. I is a provisional opt-in mode (proposed numeric 7; inspect serialization/UI first, never renumber 0..6). This is a plan, not implemented features or promised gains.
 
