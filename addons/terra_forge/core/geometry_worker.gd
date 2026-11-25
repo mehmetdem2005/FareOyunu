@@ -58,10 +58,28 @@ var _epoch_running_drops: int=0
 var _poll_stale_drops: int=0
 var _discarded_copy_us: int=0
 var _discarded_build_us: int=0
+var _discard_identity: Dictionary={"removed_key":0,"changed_lod":0,"changed_neighbors":0,"invalid_signature":0,"same_geometry_at_epoch":0,"unknown":0}
 
-func _record_discard(job: Dictionary) -> void:
+# Diagnostic identity only: a matching cardinal signature is not yet
+# permission to publish across epochs. Running work has unknown identity here.
+func _record_discard(job: Dictionary,desired: Variant=null,cells: Vector2i=Vector2i.ZERO,checked: Dictionary={}) -> void:
     _discarded_copy_us+=int(job.get("copy_elapsed_us",0))
     _discarded_build_us+=int(job.get("build_elapsed_us",0))
+    var reason: String="unknown"
+    if desired is Dictionary:
+        if not desired.has(job["key"]):
+            reason="removed_key"
+        elif desired[job["key"]]!=job["lod"]:
+            reason="changed_lod"
+        else:
+            var sig: Dictionary=checked if not checked.is_empty() else signature(job["key"],job["lod"],desired,cells)
+            if sig.get("error",FAILED)!=OK:
+                reason="invalid_signature"
+            elif sig["levels"]!=job["levels"]:
+                reason="changed_neighbors"
+            else:
+                reason="same_geometry_at_epoch"
+    _discard_identity[reason]+=1
 
 func start(source, cap: int=2, scalar_sampling: bool=false,reuse_topology: bool=false,reserve_critical: bool=false,lend_critical: bool=false,profile_latency: bool=false) -> Error:
     close()
@@ -96,7 +114,7 @@ func start(source, cap: int=2, scalar_sampling: bool=false,reuse_topology: bool=
     _open=true
     return OK
 
-func _context(source) -> Error:
+func _context(source,desired: Variant=null) -> Error:
     if not _open or source==null or not source.is_open():
         return ERR_UNCONFIGURED
     if source.get_instance_id()!=_source_id or source.session_serial()!=_serial:
@@ -112,9 +130,9 @@ func _context(source) -> Error:
         _epoch_pending_drops+=_pending.size()
         _epoch_finished_drops+=_finished.size()
         for job in _pending:
-            _record_discard(job)
+            _record_discard(job,desired,source.cells)
         for job in _finished:
-            _record_discard(job)
+            _record_discard(job,desired,source.cells)
         _pending.clear()
         _finished.clear()
     _mutex.unlock()
@@ -172,7 +190,7 @@ func _reservation_enforced() -> bool:
 ## Copy under a short main-thread lease, then release before enqueue.
 ## No caller receives the input object or can mutate worker-owned data.
 func submit(source,key: Vector2i,lod: int,desired: Dictionary, halo_mask: int = DENSE.FULL_HALO) -> Dictionary:
-    var context: Error=_context(source)
+    var context: Error=_context(source,desired)
     if context!=OK:
         return {"error":context}
     var sig: Dictionary=signature(key,lod,desired,source.cells)
@@ -285,7 +303,7 @@ func _build_geometry(job: Dictionary) -> Dictionary:
 ## Experimental F: main-thread reconciliation of bounded queues.
 ## Never interrupt running computation or mutate its immutable input.
 func reconcile(source,desired: Dictionary,priority: Dictionary) -> Error:
-    var context: Error=_context(source)
+    var context: Error=_context(source,desired)
     if context!=OK:
         return context
     _mutex.lock()
@@ -296,7 +314,7 @@ func reconcile(source,desired: Dictionary,priority: Dictionary) -> Error:
             _pending.remove_at(i)
             _dropped+=1
             _pruned_pending+=1
-            _record_discard(job)
+            _record_discard(job,desired,source.cells,sig)
     for i in range(_finished.size()-1,-1,-1):
         var job: Dictionary=_finished[i]
         var sig: Dictionary=signature(job["key"],job["lod"],desired,source.cells)
@@ -304,7 +322,7 @@ func reconcile(source,desired: Dictionary,priority: Dictionary) -> Error:
             _finished.remove_at(i)
             _dropped+=1
             _pruned_finished+=1
-            _record_discard(job)
+            _record_discard(job,desired,source.cells,sig)
     # Deterministic tie-break by unique job ID. Priority is main-owned
     # and never retained or read by worker outside this mutex.
     var less=func(a: Dictionary,b: Dictionary)->bool:
@@ -319,7 +337,7 @@ func reconcile(source,desired: Dictionary,priority: Dictionary) -> Error:
 ## Only transfer one result per call. Recheck current source session,
 ## epoch, requested LOD and four-neighbor signature before delivery.
 func poll(source,desired: Dictionary,max_source_bytes: int=-1,critical_only: bool=false) -> Dictionary:
-    var context: Error=_context(source)
+    var context: Error=_context(source,desired)
     if context!=OK:
         return {"error":context}
     _mutex.lock()
@@ -332,7 +350,7 @@ func poll(source,desired: Dictionary,max_source_bytes: int=-1,critical_only: boo
             _finished.remove_at(index)
             _dropped+=1
             _poll_stale_drops+=1
-            _record_discard(result)
+            _record_discard(result,desired,source.cells,sig)
             continue
         # Keep optional outputs in existing bounded worker slots; scan
         # for a valid LOD0 result rather than blocking it behind a far one.
@@ -395,6 +413,7 @@ func stats() -> Dictionary:
     _mutex.lock()
     var result: Dictionary={"open":_open,"scalar_sampling":_scalar_sampling,"topology_cache_bytes":_topology_payload,"topology_setup_us":_topology_setup_us,"total_worker_payload_allowance_bytes":_cap*SLOT_BYTES+_topology_payload,"pending":_pending.size(),"inflight":_inflight,"finished":_finished.size(),"slots":_slots(),"cap":_cap,"critical_reservation":_reserve_critical,"reservation_enforced":_reservation_enforced(),"lend_critical":_lend_critical,"critical_demand":_critical_demand,"demand_changes":_demand_changes,"loan_admissions":_loan_admissions,"critical_full_denials":_critical_full_denials,"optional_slots":_optional_slots(),"reservation_deferrals":_reservation_deferrals,"reserved_payload_bytes":_slots()*SLOT_BYTES,"payload_cap_bytes":_cap*SLOT_BYTES,"peak_slots":_peak_slots,"pruned_pending":_pruned_pending,"pruned_finished":_pruned_finished,"submitted":_submitted,"delivered":_delivered,"dropped":_dropped,"epoch":_epoch}
     result["discard_accounting"]={"epoch_pending":_epoch_pending_drops,"epoch_finished":_epoch_finished_drops,"epoch_running":_epoch_running_drops,"reconcile_pending":_pruned_pending,"reconcile_finished":_pruned_finished,"poll_stale":_poll_stale_drops,"copy_wall_us":_discarded_copy_us,"build_wall_us":_discarded_build_us,"classified":_epoch_pending_drops+_epoch_finished_drops+_epoch_running_drops+_pruned_pending+_pruned_finished+_poll_stale_drops}
+    result["discard_identity"]=_discard_identity.duplicate()
     _mutex.unlock()
     return result
 
@@ -440,6 +459,8 @@ func close() -> void:
     _poll_stale_drops=0
     _discarded_copy_us=0
     _discarded_build_us=0
+    for reason in _discard_identity:
+        _discard_identity[reason]=0
     _next_id=0
     _source_id=0
     _serial=0

@@ -83,9 +83,37 @@ func _queue_case(folder: String,format: int) -> bool:
                 ok=first["result"]["id"]==y["id"] and second["result"]["id"]==x["id"] and B.equal(first["result"]["geometry"],G.generate(src,b.x,b.y,1,desired)) and B.equal(second["result"]["geometry"],G.generate(src,a.x,a.y,0,desired))
             var stats: Dictionary=w.stats()
             ok=ok and stats["pruned_finished"]==1 and stats["dropped"]==1 and stats["slots"]==0 and stats["submitted"]==stats["delivered"]+stats["dropped"]
+            ok=ok and stats["discard_identity"]["changed_neighbors"]==1
+        if ok:
+            # Ready job with unchanged geometry: still drop on generation change.
+            ok=w.submit(src,a,0,desired)["error"]==OK and _wait_ready(w,1)
+            ok=ok and src.set_generation(1)==OK and w.reconcile(src,desired,{})==OK
+            var same: Dictionary=w.stats()["discard_identity"]
+            ok=ok and same["same_geometry_at_epoch"]==1 and w.stats()["slots"]==0
+        if ok:
+            ok=_load(src,keys)
+            for tile in desired:
+                if not ok:
+                    break
+                ok=w.submit(src,tile,desired[tile],desired)["error"]==OK
+            ok=ok and _wait_ready(w,3)
+            var changed: Dictionary={a:0,b:2}
+            ok=ok and src.set_generation(2)==OK and w.reconcile(src,changed,{})==OK
+            var final: Dictionary=w.stats()
+            var identity: Dictionary=final["discard_identity"]
+            ok=ok and final["slots"]==0 and final["dropped"]==5 and final["discard_accounting"]["classified"]==5 and final["submitted"]==final["delivered"]+final["dropped"]
+            ok=ok and identity["removed_key"]==1 and identity["changed_lod"]==1 and identity["changed_neighbors"]==2 and identity["same_geometry_at_epoch"]==1 and identity["unknown"]==0 and identity["invalid_signature"]==0
+            print("DISCARD_IDENTITY_CASE ",JSON.stringify({"format":format+1,"worker":final}))
     w.close()
     src.close()
     return ok
+
+func _wait_ready(w,count: int) -> bool:
+    for attempt in range(4000):
+        if w.stats()["finished"]==count:
+            return true
+        OS.delay_msec(1)
+    return false
 
 func _load(src,keys: Array[Vector2i]) -> bool:
     for step in range(4000):
