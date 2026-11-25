@@ -22,6 +22,7 @@ var _previous_choice := 0
 var _sampling_choice: OptionButton
 var _budget_toggle: CheckButton
 @export var enforce_publication_budget: bool=false
+@export var observe_publication_micro: bool=false
 @export_range(4096,1048576,4096) var publication_byte_target: int=131072
 @export_range(100,8000,100) var publication_time_target_us: int=1000
 @export_enum("Legacy flag:-1", "A direct:0", "B tile view:1", "C dense buffer:2", "E geometry worker:3", "F priority worker:4", "G scalar priority worker:5", "H cached topology worker:6") var sampling_strategy: int = -1
@@ -308,12 +309,14 @@ func _begin(lazy: bool) -> void:
     _preview.use_tile_read_view = use_tile_read_view
     _preview.sampling_strategy = sampling_strategy
     _preview.observe_publication = true
+    _preview.observe_publication_micro = observe_publication_micro
     _preview.enforce_publication_budget=enforce_publication_budget
     _preview.publication_byte_target=publication_byte_target
     _preview.publication_time_target_us=publication_time_target_us
     _run_settings = {"page_limit": page_limit, "job_limit": job_limit, "shard_limit": shard_limit if _run_format == "TFM2" else 0, "view_distance": _preview.view_distance, "high_detail_distance": _preview.high_detail_distance, "medium_detail_distance": _preview.medium_detail_distance, "max_visible_tiles": _preview.max_visible_tiles, "tile_updates_per_frame": _preview.tile_updates_per_frame, "max_tile_work_ms": _preview.max_tile_work_ms, "viewport": [get_viewport().size.x, get_viewport().size.y]}
     _run_settings["use_tile_read_view"] = use_tile_read_view
     _run_settings["sampling_strategy"] = _preview.resolved_sampling_strategy()
+    _run_settings["publication_micro"]=observe_publication_micro
     _run_settings["publication_budget"]=enforce_publication_budget
     _run_settings["publication_byte_target"]=publication_byte_target
     _run_settings["publication_time_target_us"]=publication_time_target_us
@@ -416,6 +419,7 @@ func _finish(status: Error) -> void:
     var src: Dictionary = s.get("source", {})
     var io: Dictionary = _preview.io_profile()
     var pipeline: Dictionary = _preview.pipeline_profile()
+    var micro: Dictionary = _preview.publication_micro_profile()
     var end: int = Time.get_ticks_usec()
     if _gap_start >= 0:
         if _first_collision != null:
@@ -434,6 +438,7 @@ func _finish(status: Error) -> void:
         "root_index_bytes": src.get("root_index_bytes", 0),
         "dense_payload_peak_bytes": s.get("dense_payload_peak_bytes", 0),
         "publication": s.get("publication", {}),
+        "publication_micro": micro,
         "geometry_worker": s.get("geometry_worker", {}),
         "geometry_copy_ms": s.get("geometry_copy_ms", {}), "geometry_queue_ms": s.get("geometry_queue_ms", {}),
         "geometry_worker_ms": s.get("geometry_worker_ms", {}), "geometry_delivery_ms": s.get("geometry_delivery_ms", {}),

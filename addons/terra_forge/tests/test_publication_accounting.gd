@@ -1,5 +1,6 @@
 extends SceneTree
 const A=preload("res://addons/terra_forge/core/publication_accounting.gd")
+const MICRO=preload("res://addons/terra_forge/core/publication_micro_profile.gd")
 const V1=preload("res://addons/terra_forge/core/profile_fixture_builder.gd")
 const V2=preload("res://addons/terra_forge/core/region_fixture_v2.gd")
 const P=preload("res://addons/terra_forge/terrain/paged_terrain_preview.gd")
@@ -24,6 +25,14 @@ func _initialize() -> void:
     if report["publication_count"]!=2 or report["over_byte_pumps"]!=1 or report["over_time_pumps"]!=1 or report["over_count_pumps"]!=1 or report["max_byte_excess"]!=101032 or report["max_time_excess_us"]!=300 or report["pumps"]!=2 or report["active_pumps"]!=1 or report["gpu_time_ms"]!=null or report["gpu_resident_bytes"]!=null:
         _fail("synthetic overshoot",null,null)
         return
+    var micro=MICRO.new()
+    for i in range(20):
+        micro.record({"key":[i,0],"lod":0,"new_tile":true,"frame":i,"physics_tick":i,"stages_us":{"root_attach":i*1000,"mesh_assign":100}},i*1000+200,OK,116052)
+    micro.record({"key":[0,0],"lod":0,"new_tile":true,"frame":0,"physics_tick":0,"stages_us":{"validate":50}},100,ERR_INVALID_DATA,0)
+    var mr: Dictionary=micro.report()
+    if mr["success"]!=20 or mr["failed"]!=1 or mr["invalid_samples"]!=0 or mr["slow_events"].size()!=8 or mr["slow_events"][0]["total_us"]!=19200 or mr["slow_events"][7]["total_us"]!=12200 or mr["residual_ms"]["max_ms"]!=0.1:
+        _fail("micro synthetic bounded events",null,null)
+        return
     for format in [0,1]:
         var b: Variant=V1.new() if format==0 else V2.new()
         var err: Error=b.start(Vector2i(576,576),true) if format==0 else b.start(Vector2i(576,576))
@@ -45,6 +54,7 @@ func _initialize() -> void:
             p.region_index_format=format
             p.sampling_strategy=mode
             p.observe_publication=true
+            p.observe_publication_micro=true
             p.max_visible_tiles=4
             p.tile_updates_per_frame=2
             p.max_tile_work_ms=8.0
@@ -81,6 +91,11 @@ func _initialize() -> void:
             if p._publish_geometry(key,2,{"error":OK,"arrays":[]},Time.get_ticks_usec())!=ERR_INVALID_DATA or p._tiles[key]["visual"].mesh!=old or p.stats()["publication"]["publication_count"]!=count:
                 _fail("invalid publication counted/replaced",p,b)
                 return
+            var live_micro: Dictionary=p.publication_micro_profile()
+            if live_micro["success"]!=5 or live_micro["failed"]!=1 or live_micro["invalid_samples"]!=0 or live_micro["total_ms"]["count"]!=6 or live_micro["stage_ms"]["root_attach"]["count"]!=4 or live_micro["stage_ms"]["mesh_assign"]["count"]!=5 or live_micro["stage_ms"]["validate"]["count"]!=6:
+                _fail("micro live stage conservation "+str(live_micro),p,b)
+                return
+            print("PUBLICATION_MICRO_CASE ",JSON.stringify({"format":format+1,"mode":mode,"micro":live_micro}))
             p.set_stream_center(Vector3(16,20,16))
             p._sync_tiles()
             if p.stats()["publication"]["resident"]["meshes"]!=0:
@@ -90,8 +105,12 @@ func _initialize() -> void:
             if not p.stats()["publication"].is_empty():
                 _fail("close reset",p,b)
                 return
+            if not p.publication_micro_profile().is_empty():
+                _fail("micro stop reset",p,b)
+                return
+            p.observe_publication_micro=false
             p.observe_publication=false
-            if p.start_preview(folder,16,4)!=OK or not p.stats()["publication"].is_empty():
+            if p.start_preview(folder,16,4)!=OK or not p.stats()["publication"].is_empty() or not p.publication_micro_profile().is_empty():
                 _fail("disabled reopen",p,b)
                 return
             p.stop_preview()
