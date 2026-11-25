@@ -83,6 +83,8 @@ suite=(
   test_adaptive_motion_horizon
   test_adaptive_motion_horizon_v2
   test_motion_roundtrip
+  test_f2_live_shadow_v1
+  test_f2_live_shadow_v2
   test_motion_roundtrip_e
   test_motion_roundtrip_f
   test_motion_roundtrip_g
