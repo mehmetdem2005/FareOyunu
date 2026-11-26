@@ -1855,25 +1855,28 @@
     {
       "phase": "I2 targeted Android runner",
       "branch": "tools/terraforge-android-i2",
-      "head": "cbcd8eab9a57789c08e846f1add531f4cdb69918",
-      "ci": 45797885308,
-      "disposition": "CI_PENDING_KNOWN_PROFILE_HISTORY_FIX_REQUIRED",
-      "decision": "Pinned integrated terrain exact tree; quick 4 tests/8 profiles; full 137 tests/24 profiles; manual start. Found existing profile scene caps internal reports at eight; base runner would fail at profile9. Do not distribute before render-smoke fix integrated and package rerun."
+      "head": "33af355b9c3f6487217b1119da617965d4f1b025",
+      "ci": 45798161522,
+      "disposition": "RETRY_CI_PENDING",
+      "decision": "Initial packaging failed unsupported inherited test_f2_long_shadow_v1 (base f2_long_motion_base.gd). Recursive strict inheritance adaptation, profile history fix and completeness guard integrated into tools branch. Retry both package and rendered smoke; no artifact distribution until verified.",
+      "failed_ci": 45797885308,
+      "failed_head": "cbcd8eab9a57789c08e846f1add531f4cdb69918"
     },
     {
       "phase": "I2 rendered runner smoke",
       "branch": "tools/terraforge-android-i2-render-smoke",
-      "head": "92a3319c599f080f378695ac96e15629f7bfe776",
-      "ci": 45798007939,
-      "disposition": "CI_PENDING",
-      "decision": "Clear bounded internal report history before each independent profile, retain runner reports; reject failed/no-sample profiles and incomplete session, preserve retry selection. 12 actual software Mobile profiles x5s to cross history cap; no Android performance claim."
+      "head": "33af355b9c3f6487217b1119da617965d4f1b025",
+      "ci": 45798137933,
+      "disposition": "RETRY_CI_PENDING",
+      "decision": "Clear bounded internal report history before each independent profile, retain runner reports; reject failed/no-sample profiles and incomplete session, preserve retry selection. 12 actual software Mobile profiles x5s to cross history cap; no Android performance claim. First smoke blocked at same packaging failure; strict recursive inheritance adaptation applied, retry exact new head.",
+      "failed_ci": 45798007939,
+      "failed_head": "92a3319c599f080f378695ac96e15629f7bfe776"
     }
   ],
   "next": [
-    "Verify integrated I0/I1 CI45797739044.",
-    "Verify Android package CI45797885308 and independent rendered smoke 45798007939.",
-    "If smoke succeeds, fast-forward I2 tools branch to fixed head, rerun package and adapter CI before sharing artifact.",
-    "Actual device quick/full, 30-minute soak, OS background/resume and export qualification remain open. No promotion."
+    "Check combined I0/I1 CI45797739044.",
+    "Check exact corrected I2 package CI45798161522 and rendered profile smoke CI45798137933; same tools head 33af355b9c3f6487217b1119da617965d4f1b025.",
+    "Do not share package before both succeed; actual Android lifecycle/soak/export remain device gates."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
