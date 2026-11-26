@@ -149,7 +149,7 @@ jobs:
           retention-days: 7
 
   e4-renderer-capability:
-    if: ${{ (github.event_name == 'pull_request' && startsWith(github.head_ref, 'exp/p1511e4-')) || (github.event_name == 'push' && github.ref == 'refs/heads/feat/terraforge-mobile-addon') || github.event_name == 'workflow_dispatch' }}
+    if: ${{ (github.event_name == 'pull_request' && (startsWith(github.head_ref, 'exp/p1511e4-') || startsWith(github.head_ref, 'exp/p1511i1-'))) || (github.event_name == 'push' && github.ref == 'refs/heads/feat/terraforge-mobile-addon') || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -194,6 +194,11 @@ jobs:
               if ! timeout 180s xvfb-run -a godot --path "$project" --display-driver x11 --audio-driver Dummy --rendering-method "$method" --rendering-driver "$driver" --resolution 640x480 --script "res://addons/terra_forge/tests/$probe.gd" -- --require-renderer="$method" 2>&1 | tee "$log"; then status=1; fi
               if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' "$log" || ! grep -q 'PASS: E4' "$log"; then status=1; fi
             done
+            if [[ -f "$project/addons/terra_forge/tests/test_i1_rendered_terrain.gd" ]]; then
+              log="$RUNNER_TEMP/e4-$method-i1-rendered-terrain.log"
+              if ! timeout 300s xvfb-run -a godot --path "$project" --display-driver x11 --audio-driver Dummy --rendering-method "$method" --rendering-driver "$driver" --resolution 640x480 --script "res://addons/terra_forge/tests/test_i1_rendered_terrain.gd" -- --require-renderer="$method" 2>&1 | tee "$log"; then status=1; fi
+              if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' "$log" || ! grep -q 'PASS: I1' "$log"; then status=1; fi
+            fi
           done
           exit "$status"
       - uses: actions/upload-artifact@v4

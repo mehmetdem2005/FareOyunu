@@ -125,6 +125,8 @@ suite=(
   test_h2_multiseam_route_v2
   test_h3_capacity_matrix
   test_h3_capacity_matrix_v2
+  test_i0_integrated_route
+  test_i0_integrated_route_v2
   test_critical_worker_reservation
   test_critical_worker_reservation_v2
   test_critical_slot_lending
