@@ -18,16 +18,33 @@ mobile.mkdir()
 suite=(repo/"addons/terra_forge/tests/run_all.sh").read_text()
 names=re.findall(r"^\s+(test_\w+)\s*$",suite.split("suite=(\n",1)[1].split("\n)",1)[0],re.M)
 if len(names)!=len(set(names)) or len(names)<90: raise SystemExit("Unexpected regression inventory")
-for name in names:
-    s=(repo/"addons/terra_forge/tests"/(name+".gd")).read_text()
-    s,n=re.subn(r'(?m)^extends SceneTree\s*$', 'extends "res://test_adapter.gd"',s,count=1)
+# Walk only declared test inheritance, including shared non-test_ bases.
+# Reject cycles or unknown paths rather than leaving SceneTree scripts in Node runner.
+done=set()
+active=set()
+def adapt(relative):
+    if relative in done: return
+    if relative in active: raise SystemExit("Cyclic test inheritance: "+relative)
+    if not re.fullmatch(r"[A-Za-z0-9_]+(?:/[A-Za-z0-9_]+)*\.gd", relative):
+        raise SystemExit("Unsupported test path: "+relative)
+    active.add(relative)
+    s=(repo/"addons/terra_forge/tests"/relative).read_text()
+    s,n=re.subn(r'(?m)^extends SceneTree[ \t]*$', 'extends "res://test_adapter.gd"',s,count=1)
     if not n:
-        s,n=re.subn(r'(?m)^extends "res://addons/terra_forge/tests/(test_\w+\.gd)"',r'extends "res://mobile_tests/\1"',s,count=1)
-    if n!=1: raise SystemExit("Unsupported test inheritance: "+name)
-    # Do not alter test assertions, delays, inputs or expected results.
-    # Only SceneTree entry and exit are adapted to the shared Android tree.
+        match=re.search(r'(?m)^extends "res://addons/terra_forge/tests/([A-Za-z0-9_/]+\.gd)"[ \t]*$',s)
+        if not match: raise SystemExit("Unsupported test inheritance: "+relative)
+        parent=match.group(1)
+        adapt(parent)
+        s=s[:match.start()]+'extends "res://mobile_tests/'+parent+'"'+s[match.end():]
     s=re.sub(r'\bget_tree\(\)\.quit\(', 'quit(',s)
-    (mobile/(name+".gd")).write_text(s)
+    target=mobile/relative
+    target.parent.mkdir(parents=True,exist_ok=True)
+    target.write_text(s)
+    active.remove(relative)
+    done.add(relative)
+for name in names:
+    adapt(name+".gd")
+print(f"Adapted {len(done)} scripts for {len(names)} runnable tests")
 sha=subprocess.check_output(["git","rev-parse","HEAD"],cwd=repo,text=True).strip()
 terrain_commit="94e990af3bfeade2a30c887f9cbf67f41aab3f95"
 def terrain_tree(ref):
