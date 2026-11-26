@@ -75,9 +75,14 @@ func _run() -> void:
         if s.begin(p._reader,KEY,0,before)!=OK or p._reader.set_generation(1)!=OK or s.patch(p._reader,after)["error"]!=ERR_UNAVAILABLE:
             _fail("epoch rejection")
             return
-        if not EQ._load(p,G.required_pages(p._reader,KEY.x,KEY.y,0)) or s.begin(p._reader,KEY,0,before)!=OK:
+        if not EQ._load(p,G.required_pages(p._reader,KEY.x,KEY.y,0)):
+            _fail("verified pages")
+            return
+        var base_started: int=Time.get_ticks_usec()
+        if s.begin(p._reader,KEY,0,before)!=OK:
             _fail("verified base")
             return
+        var base_us: int=Time.get_ticks_usec()-base_started
         var held: int=s.retained_bytes()
         var t: int=Time.get_ticks_usec()
         var patched: Dictionary=s.patch(p._reader,after)
@@ -118,7 +123,7 @@ func _run() -> void:
         if s.patch(reader,before)["error"]!=ERR_UNAVAILABLE or s.retained_bytes()!=0:
             _fail("closed reader")
             return
-        print("G2_VERIFIED_PHYSICS ",JSON.stringify({"format":format+1,"rays":9,"changed_vertices":patched["changed_vertices"],"sampled_edges":patched["sampled_edges"],"normals":patched["updated_normals"],"full_us":full_us,"patch_us":patch_us,"retained_raw_bytes":held,"wrong_reader_rejected":true,"epoch_rejected":true,"stop_rejected":true,"note":"Single-use internally generated verified base, cost excludes base generation; ordinary full resource publication, no runtime cache or FPS claim"}))
+        print("G2_VERIFIED_PHYSICS ",JSON.stringify({"format":format+1,"rays":9,"changed_vertices":patched["changed_vertices"],"sampled_edges":patched["sampled_edges"],"normals":patched["updated_normals"],"full_us":full_us,"patch_us":patch_us,"base_us":base_us,"base_plus_patch_us":base_us+patch_us,"retained_raw_bytes":held,"wrong_reader_rejected":true,"epoch_rejected":true,"stop_rejected":true,"note":"Single-use internally generated verified base, patch_us excludes base generation; base_plus_patch_us includes it; ordinary full resource publication, no runtime cache or FPS claim"}))
         p.free()
         p=null
         b.close()
