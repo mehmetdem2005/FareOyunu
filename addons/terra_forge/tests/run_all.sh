@@ -136,6 +136,7 @@ suite=(
   test_g2_seam_patch
   test_g2_verified_physics
   test_g2_natural_opportunities
+  test_g2_resource_readback
   test_normal_edge_candidate
   test_g1_owned_resource
   test_g1_base_cache
