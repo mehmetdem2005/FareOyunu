@@ -1638,11 +1638,53 @@
       "pr": 73,
       "head": "baf162794d3958bcec0b2b9c427fc75d39f98d5e",
       "ci": 45790971038,
-      "disposition": "RETRY_CI_PENDING",
-      "decision": "Full target generation and scratch pack for both arms, old resource setup outside timing, readback/plan/update/bounds plus shape assignment for patch, same output verification outside time. 16 samples per arm/LOD/renderer ABBA/BAAB. CPU submission only; release/transient memory, actual GPU completion and physical device unverified.",
+      "disposition": "RENDERER_JOB_PASS_REJECT_CURRENT_RUNTIME_PENDING_FULL_CI",
+      "decision": "Reject current complete-cost runtime approach: all six matched LOD/renderer comparisons slower CPU submission; isolated planner and rendered diagnostics retained. Do not promote E4; revisit only with distinct cheaper plan/packing or real device GPU bottleneck evidence and matched full-pipeline benefit. Release, native transient memory and actual GPU completion excluded. Wait for full CI before closing PR.",
       "failed_ci": 45772109772,
       "failed_head": "dba096422fe37b7cf61fbe384594275abedf5fdd",
-      "failure": "Array to Array[bool] ternary runtime error at line 134, both renderers; prior 3 probes pass, no paired cost data."
+      "failure": "Array to Array[bool] ternary runtime error at line 134, both renderers; prior 3 probes pass, no paired cost data.",
+      "evidence": {
+        "job": 139809605703,
+        "renderers": {
+          "opengl": {
+            "full_total_us": [
+              30946,
+              8476,
+              2653
+            ],
+            "patch_total_us": [
+              52747,
+              15058,
+              4876
+            ],
+            "patch_plan_readback_us": [
+              21422,
+              6220,
+              1997
+            ]
+          },
+          "mobile": {
+            "full_total_us": [
+              31399,
+              8811,
+              2835
+            ],
+            "patch_total_us": [
+              57291,
+              19148,
+              8783
+            ],
+            "patch_plan_readback_us": [
+              25464,
+              10083,
+              5814
+            ]
+          }
+        },
+        "samples_per_arm_lod_renderer": 16,
+        "all_buffer_shape_parity": true,
+        "full_ci_pending": true
+      }
     },
     {
       "phase": "H2 multi-seam route and sample gap",
@@ -1677,13 +1719,20 @@
       "ci": 45791148541,
       "disposition": "CI_PENDING",
       "decision": "One worker, caps 1/2/4; six matched 720 tick routes, TFM1/2 reversed order. Check ownership, support, queue payload and shutdown; no device or RSS claims."
+    },
+    {
+      "phase": "I0 integrated F and I route matrix",
+      "branch": "exp/p1511i0-integrated-route",
+      "head": "f9e3e40ceb5de7a94164acffcbed7b4136738805",
+      "disposition": "PREPARED_NO_PR_NO_CI",
+      "decision": "Test-only four arms F, I-F, I-G cropped, I-H cropped, both formats reverse order, same 720-tick route and controller/cap settings. Existing flags only. Record pump hist, work, safety, policy and ownership; no runtime activation or device claims. Reconcile runner additions if H3 merges first; exact CI only once a lane opens."
     }
   ],
   "next": [
-    "Check exact E4 retry CI45790971038; compare net cost, keep default off.",
-    "Check H2 combined CI45790980185; real Android lifecycle remains open.",
-    "Check H3 CI45791148541; cap4 not promoted without device evidence.",
-    "Review I0 accepted components only; preserve deferred experiments and 24/33 scoped accounting."
+    "Check full exact E4 retry CI45790971038; renderer job passed, net CPU cost rejected; close PR only after full result recorded.",
+    "Check H2 combined CI45790980185 and H3 CI45791148541.",
+    "Open prepared I0 branch PR only when one of three lanes frees; preserve H3 runner entries if merged.",
+    "Keep 24/33 scope unchanged until disposition of full E4 CI; I0 outside this denominator."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
