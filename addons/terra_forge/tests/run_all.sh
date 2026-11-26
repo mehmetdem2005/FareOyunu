@@ -123,6 +123,8 @@ suite=(
   test_h1h2_moving_pressure_v2
   test_h2_multiseam_route
   test_h2_multiseam_route_v2
+  test_i0_integrated_route
+  test_i0_integrated_route_v2
   test_critical_worker_reservation
   test_critical_worker_reservation_v2
   test_critical_slot_lending
