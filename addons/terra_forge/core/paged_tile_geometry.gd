@@ -197,6 +197,9 @@ static func _generate(source, tx: int, tz: int, lod: int, desired: Dictionary, s
     var stride: int = LOD_POLICY.sample_stride(lod)
     var width: int = int(TILE_CELLS / stride) + 1
     var spacing: float = source.spacing
+    var origin_x: int = tx * TILE_CELLS
+    var origin_z: int = tz * TILE_CELLS
+    var edge: int = width - 1
     var vertices: PackedVector3Array = PackedVector3Array()
     var normals: PackedVector3Array = PackedVector3Array()
     var uv: PackedVector2Array = PackedVector2Array()
@@ -206,21 +209,22 @@ static func _generate(source, tx: int, tz: int, lod: int, desired: Dictionary, s
     normals.resize(width * width)
     colors.resize(width * width)
     for z in range(width):
+        var sz: int = z * stride
         for x in range(width):
             var sx: int = x * stride
-            var sz: int = z * stride
+            var border: bool = x == 0 or x == edge or z == 0 or z == edge
             var y: float
             if scalar:
-                y = _seam_scalar(source,tx,tz,sx,sz,lod,desired)
+                y = _seam_scalar(source,tx,tz,sx,sz,lod,desired) if border else source.read_finite_or_nan(origin_x + sx, origin_z + sz)
                 if not is_finite(y):
                     return {"error":ERR_FILE_CORRUPT}
             else:
-                var value: Dictionary = _seam(source, tx, tz, sx, sz, lod, desired)
+                var value: Dictionary = _seam(source, tx, tz, sx, sz, lod, desired) if border else source.get_height(origin_x + sx, origin_z + sz)
                 if int(value.get("error", ERR_FILE_CORRUPT)) != OK:
                     return {"error": int(value.get("error", ERR_FILE_CORRUPT))}
                 y = float(value["height"])
             vertices.append(Vector3(float(sx) * spacing, y, float(sz) * spacing))
-            uv.append(Vector2(float(tx * TILE_CELLS + sx), float(tz * TILE_CELLS + sz)) * spacing * 0.125)
+            uv.append(Vector2(float(origin_x + sx), float(origin_z + sz)) * spacing * 0.125)
             if lod == 0:
                 collision_heights.append(y / spacing)
 
@@ -233,8 +237,20 @@ static func _generate(source, tx: int, tz: int, lod: int, desired: Dictionary, s
     var east_same: bool = int(desired.get(Vector2i(tx + 1, tz), -1)) == lod
     var north_same: bool = int(desired.get(Vector2i(tx, tz - 1), -1)) == lod
     var south_same: bool = int(desired.get(Vector2i(tx, tz + 1), -1)) == lod
+    # Interior vertices always use the same four offsets in the finished grid.
+    # Only the perimeter needs clamping or reads from another tile.
+    var double_cell: float = 2.0 * cell_world
+    for z in range(1, edge):
+        var row: int = z * width
+        for i in range(row + 1, row + edge):
+            var dx: float = (vertices[i + 1].y - vertices[i - 1].y) / double_cell
+            var dz: float = (vertices[i + width].y - vertices[i - width].y) / double_cell
+            var normal: Vector3 = Vector3(-dx, 1.0, -dz).normalized()
+            normals[i] = normal
+            colors[i] = grass.lerp(stone, clampf((1.0 - normal.y) * 3.0, 0.0, 1.0))
     for z in range(width):
-        for x in range(width):
+        var border_step: int = 1 if z == 0 or z == edge else edge
+        for x in range(0, width, border_step):
             var i: int = z * width + x
             var west: int = maxi(0, x - 1)
             var east: int = mini(width - 1, x + 1)
@@ -246,8 +262,8 @@ static func _generate(source, tx: int, tz: int, lod: int, desired: Dictionary, s
             var dz: float = (
                 vertices[south * width + x].y - vertices[north * width + x].y
             ) / (float(south - north) * cell_world)
-            var gx: int = tx * TILE_CELLS + x * stride
-            var gz: int = tz * TILE_CELLS + z * stride
+            var gx: int = origin_x + x * stride
+            var gz: int = origin_z + z * stride
             var halo: Dictionary
             var halo_value: float
             if x == 0 and west_same:

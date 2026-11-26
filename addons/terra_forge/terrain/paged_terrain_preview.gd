@@ -464,7 +464,7 @@ func pump_stream() -> Dictionary:
         "error": _last_error,
         "resident_tiles": _tiles.size(),
         "pending_tiles": _pending_tiles.size(),
-        "resident_pages": int(_reader.stats()["resident"])
+        "resident_pages": _reader.resident_page_count()
     }
     if event!=null:
         PUMP_MICRO.mark(event,"result_stats")
@@ -489,7 +489,7 @@ func _sync_tiles() -> void:
             absi(focus_page.x - _queue_focus_page.x),
             absi(focus_page.y - _queue_focus_page.y)
         ) >= 2:
-        var current_generation: int = int(_reader.stats()["generation"])
+        var current_generation: int = _reader.generation()
         var cancel_error: Error = _reader.set_generation(current_generation + 1)
         if cancel_error != OK:
             _last_error = cancel_error
@@ -657,11 +657,27 @@ func _create_tile(tx: int, tz: int, event: Variant=null) -> Dictionary:
 ## Experimental F: actual anchor tile first, then desired LOD0 tiles
 ## without attached collision, then ordinary distance order.
 func _priority_ranks() -> Dictionary:
+    # Only reserved keys can have a queued or finished preview job. A stale
+    # key missing from the desired set is removed by reconcile before sorting.
+    var keys: Array = []
+    for key in _geometry_jobs:
+        if _desired_tiles.has(key):
+            keys.append(key)
+    _sort_priority(keys)
+    var result: Dictionary={}
+    for i in range(keys.size()):
+        result[keys[i]]=i
+    return result
+
+func _sort_priority(keys: Array) -> void:
+    if keys.size() < 2:
+        return
     var width: float=float(TILE_CELLS)*_reader.spacing
     var focus: Vector2i=Vector2i(floori(_anchor.x/width),floori(_anchor.z/width))
-    var keys: Array=_desired_tiles.keys()
     var classes: Dictionary={}
+    var distances: Dictionary={}
     for key in keys:
+        distances[key] = LOD.tile_distance(key, width, _anchor)
         var has_shape: bool=_tiles.has(key) and _tiles[key]["collision"].shape is HeightMapShape3D
         classes[key]=0 if key==focus and int(_desired_tiles[key])==0 and not has_shape else (1 if int(_desired_tiles[key])==0 and not has_shape else 2)
         if _support_active and _support_keys.has(key):
@@ -677,16 +693,12 @@ func _priority_ranks() -> Dictionary:
     keys.sort_custom(func(a: Variant,b: Variant)->bool:
         if classes[a]!=classes[b]:
             return int(classes[a])<int(classes[b])
-        var da: float=LOD.tile_distance(a,width,_anchor)
-        var db: float=LOD.tile_distance(b,width,_anchor)
+        var da: float=distances[a]
+        var db: float=distances[b]
         if da==db:
             return a.y<b.y if a.y!=b.y else a.x<b.x
         return da<db
     )
-    var result: Dictionary={}
-    for i in range(keys.size()):
-        result[keys[i]]=i
-    return result
 
 ## Includes queued/building/completed LOD0 and cold page dependencies.
 ## A terminally blocked key cannot keep idle headroom reserved forever.
@@ -722,8 +734,7 @@ func _build_pending_tiles(started: int = -1, event: Variant=null) -> void:
         return not _blocked_tiles.has(key) and not _geometry_jobs.has(key)
     )
     if _active_sampling_strategy>=4 or _publication_budget_active or _support_active:
-        var ranks: Dictionary=_priority_ranks()
-        keys.sort_custom(func(a: Variant,b: Variant)->bool: return int(ranks[a])<int(ranks[b]))
+        _sort_priority(keys)
     else:
         keys.sort_custom(func(a: Variant, b: Variant) -> bool:
             return LOD.tile_distance(a, float(TILE_CELLS) * _reader.spacing, _anchor) < LOD.tile_distance(b, float(TILE_CELLS) * _reader.spacing, _anchor)
@@ -872,8 +883,7 @@ func _publish_worker_results(started: int,event: Variant=null) -> void:
         var key: Vector2i=result["key"]
         var lod: int=result["lod"]
         var signature: Dictionary=WORKER.signature(key,lod,_desired_tiles,_reader.cells)
-        var current: Dictionary=_reader.stats()
-        if _geometry_jobs.get(key,-1)!=result["id"] or not _pending_tiles.has(key) or _blocked_tiles.has(key) or result["epoch"]!=current["generation"] or result["snapshot"]!=current["snapshot_id"] or result["source_serial"]!=_reader.session_serial() or signature.get("error",FAILED)!=OK or signature["levels"]!=result["levels"]:
+        if _geometry_jobs.get(key,-1)!=result["id"] or not _pending_tiles.has(key) or _blocked_tiles.has(key) or result["epoch"]!=_reader.generation() or result["snapshot"]!=_reader.snapshot_id() or result["source_serial"]!=_reader.session_serial() or signature.get("error",FAILED)!=OK or signature["levels"]!=result["levels"]:
             continue
         _geometry_jobs.erase(key)
         var generated: Dictionary=result["geometry"]
@@ -898,6 +908,8 @@ func _publish_worker_results(started: int,event: Variant=null) -> void:
     _prune_geometry_reservations()
 
 func _prune_geometry_reservations() -> void:
+    if _geometry_jobs.is_empty():
+        return
     # Only release reservations for jobs that no longer exist. Worker can
     # finish during this snapshot but cannot create a new job on its own.
     var active: Array[int]=_geometry_worker.active_ids()
