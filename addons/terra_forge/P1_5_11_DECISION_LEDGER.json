@@ -1193,13 +1193,29 @@
         "fix": "19754e86bac1903d590461922649dd08487dc458",
         "retry_ci": 45733047490
       }
+    },
+    {
+      "phase": "g2 changed seam patch",
+      "pr": 63,
+      "head": "5e2a91008f690e8d7f1dd34411889dbc20b2ed12",
+      "ci": 45733464793,
+      "disposition": "CI_PENDING",
+      "decision": "Check exact numerical parity, positive/negative controls and matched calculation timings; verified source/actual physics and natural usefulness required before integration."
+    },
+    {
+      "phase": "e4 mesh buffer probe",
+      "pr": 64,
+      "head": "09f4afa871a5c3b3ce263d69ce192ae14403e747",
+      "ci": 45733507207,
+      "disposition": "CI_PENDING",
+      "decision": "Distinguish pure planner and actual engine packed buffer readback; if headless unsupported do not claim GPU success. Real renderer, AABB/culling, lifetime and physics safety before promotion."
     }
   ],
   "next": [
-    "Check E2 positive-control retry CI 45733047490.",
-    "G1 current cache rejected; retain numerical algorithm, revisit only on measured repeat-use or G2/I0 review.",
-    "E2 authoritative revision/ray height gate then paired full publication/pump and transient memory if warranted.",
-    "F2/F3/G1 parked; 13 active numbered tasks."
+    "Exact E2 retry CI45733047490, G2 PR63 CI45733464793, E4 PR64 CI45733507207.",
+    "G2 evaluate parity, cost, verified source and actual physics; avoid G1 duplicate cache without measured reuse.",
+    "E4 conditional renderer capability and packed parity; decide whether actual device test warrants further work.",
+    "13 active numbered tasks; F2/F3/G1 parked."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -1308,7 +1324,7 @@
     ]
   },
   "progress_accounting": {
-    "scope": "G1 F2 E2 F3 only; other 12 active numbered phases not decomposed",
+    "scope": "G1 F2 E2 F3 G2 E4 only; other 10 active numbered phases not decomposed",
     "g1": {
       "done": 8,
       "total": 9,
@@ -1330,10 +1346,32 @@
       "deferred": 2
     },
     "done": 18,
-    "total": 25,
-    "active_remaining": 3,
+    "total": 33,
+    "active_remaining": 11,
     "deferred": 4,
     "active_numbered": 13,
-    "in_progress": 1
+    "in_progress": 3,
+    "g2": {
+      "done": 0,
+      "total": 4,
+      "in_progress": 1,
+      "items": [
+        "Numerical patch parity and timing",
+        "Verified source and actual physics parity",
+        "Natural route benefit and memory",
+        "Decision and fallback"
+      ]
+    },
+    "e4": {
+      "done": 0,
+      "total": 4,
+      "in_progress": 1,
+      "items": [
+        "Bounded buffer planner and renderer capability",
+        "Actual renderer data and AABB/culling safety",
+        "Lifetime, physics and paired cost",
+        "Decision and fallback"
+      ]
+    }
   }
 }
