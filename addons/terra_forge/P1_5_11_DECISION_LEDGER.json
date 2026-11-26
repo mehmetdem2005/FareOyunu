@@ -1518,13 +1518,28 @@
       "ci": 45769328846,
       "disposition": "CI_PENDING",
       "decision": "Test-only 4 planned traces x480 physics ticks, two formats/modes, actual moving capsule transfers across seam, then stationary support while camera anchor relocates, synthetic pressure high/recovery/high/manual override/auto resume, invalid input immutability and bounded shared tier/horizon, lease, resource caps, stop reset. Not real device FPS, rendered camera rotation or actual Android pause/resume."
+    },
+    {
+      "phase": "E4 combined cheapest-gap coalescing",
+      "pr": 71,
+      "head": "6cc4fb78ae6169a7e4eafee7698818a76066b5b7",
+      "ci": 45770191571,
+      "disposition": "CI_PENDING",
+      "decision": "Independent branch, globally capped 32 calls and <=75% full bytes, deterministic cheapest adjacent aligned gaps, compare old acceptance/calls/bytes with new, exact reconstruction and actual software renderer readback. Cap and byte threshold are experimental policy, not measured optimum. No runtime change."
+    },
+    {
+      "phase": "E4 rendered visibility and conservative bounds",
+      "pr": 72,
+      "head": "00cfb78e033fed076ebc7930a6ac28f36da7d527",
+      "ci": 45770246127,
+      "disposition": "CI_PENDING",
+      "decision": "Independent branch, synthetic horizontal quad moves from outside camera to inside via packed vertex patch; compare actual pixel mask against fresh target with conservative bounds, negative outside and relocated camera controls, OpenGL and Mobile software renderer. Not real terrain, physical GPU or collision proof."
     }
   ],
   "next": [
-    "H1/H2 PR70 exact CI45769328846 running, assess moving physical support traces.",
-    "E4 exact CI45768586261 full PASS, software capability confirmed; actual camera visibility/culling and bounded coalescing next.",
-    "H0 combined CI45768612215 exact PASS; test-only merged.",
-    "23/33 tracked done,5 active,5 deferred,11 numbered phases; E4 current gate remains open."
+    "Check H1/H2 CI45769328846, E4 coalescing CI45770191571 and E4 rendered culling CI45770246127. Three active lanes; no new task until slot free.",
+    "E4 branches share runner/workflow and base planner; merge accepted diagnostics only after exact results, preserve both tests and original PR67 evidence; no default or runtime change.",
+    "23/33 tracked done,5 active,5 deferred,11 numbered phases; no new verified completion."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
