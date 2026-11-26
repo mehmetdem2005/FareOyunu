@@ -7,8 +7,8 @@
   "combined_ci": {
     "head": "f013d3f839a1c4270676bf5f4663e45ce43d94fe",
     "ci": 45729781494,
-    "status": "PENDING_EXACT_VERIFICATION",
-    "expected_tests": 121
+    "conclusion": "success",
+    "tests": 121
   },
   "device_gate": {
     "status": "OPEN",
@@ -1151,23 +1151,55 @@
       "pr": 61,
       "head": "7c1cbde47ceea739aaff8c7daeaad5cc54bdb502",
       "ci": 45730976125,
-      "disposition": "CI_PENDING",
-      "decision": "Compare exact settled resource fingerprints/ray heights and natural delivered hit rate; check net worker overhead and remaining transient memory. Park if no meaningful benefit."
+      "disposition": "REJECT_CURRENT_CACHE_PARK_ALTERNATIVE",
+      "decision": "Reject current cache runtime; keep branch and isolated algorithm. Defer transient measurement and alternate architecture until actual repeat-use evidence.",
+      "evidence": {
+        "tests": 122,
+        "positions": 44,
+        "rays": 132,
+        "natural_hits": 0,
+        "eligible_delivered": 154,
+        "builds": [
+          154,
+          154
+        ],
+        "reads": [
+          484,
+          484
+        ],
+        "peak_retained_bytes": 261368,
+        "worker_mean_tfm1": [
+          1.53498701298701,
+          1.60567532467532
+        ],
+        "worker_mean_tfm2": [
+          1.50458441558442,
+          1.57176623376623
+        ]
+      }
     },
     {
       "phase": "e2 verified staged revision",
       "pr": 62,
       "head": "29a6b23cf3b40f19d90c27fc82092ab637653d87",
       "ci": 45731027386,
-      "disposition": "CI_PENDING",
-      "decision": "Check changed seam ray height parity, source revision and old resource rejection. No worker-result scheduler integration or full timing claim."
+      "disposition": "FIX_POSITIVE_CONTROL_RETRY_PENDING",
+      "decision": "Check changed seam ray height parity, source revision and old resource rejection. No worker-result scheduler integration or full timing claim.",
+      "evidence": {
+        "tests": 122,
+        "passed": 121,
+        "failed": 1,
+        "reason": "changed seam fixture; coarse grid aligned positive control",
+        "fix": "19754e86bac1903d590461922649dd08487dc458",
+        "retry_ci": 45733047490
+      }
     }
   ],
   "next": [
-    "Check combined CI45729781494 and exact G1 PR61 CI45730976125, E2 PR62 CI45731027386.",
-    "G1 natural use and live safety: decide on cache, then transient payload/RSS and paired workload if worthwhile.",
-    "E2 authoritative revision and exact ray height, then paired complete publication/pump and transient memory if justified.",
-    "F2/F3 parked; 14 active numbered tasks."
+    "Check E2 positive-control retry CI 45733047490.",
+    "G1 current cache rejected; retain numerical algorithm, revisit only on measured repeat-use or G2/I0 review.",
+    "E2 authoritative revision/ray height gate then paired full publication/pump and transient memory if warranted.",
+    "F2/F3/G1 parked; 13 active numbered tasks."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -1262,15 +1294,25 @@
         "status": "PARK_BATCH_ADMISSION_NO_MATERIAL_GAIN",
         "trigger": "H0/I0 review or measured material queue contention / distinct physical IO hypothesis",
         "review_status": "OPEN_REVIEW_NOT_IMPLEMENTATION"
+      },
+      {
+        "phase": "g1",
+        "branch": "exp/p1511g1-live-preview",
+        "pr": 61,
+        "head": "7c1cbde47ceea739aaff8c7daeaad5cc54bdb502",
+        "ci": 45730976125,
+        "status": "REJECT_CURRENT_CACHE_PARK_ALTERNATIVE",
+        "trigger": "G2/I0 review or observed repeat-use geometry evidence; compare direct active resource strategy without duplicate cache, transient RSS and matched benefit",
+        "review_status": "OPEN_REVIEW_NOT_IMPLEMENTATION"
       }
     ]
   },
   "progress_accounting": {
     "scope": "G1 F2 E2 F3 only; other 12 active numbered phases not decomposed",
     "g1": {
-      "done": 7,
+      "done": 8,
       "total": 9,
-      "in_progress": 1
+      "deferred": 1
     },
     "f2": {
       "done": 7,
@@ -1287,11 +1329,11 @@
       "total": 4,
       "deferred": 2
     },
-    "done": 17,
+    "done": 18,
     "total": 25,
-    "active_remaining": 5,
-    "deferred": 3,
-    "active_numbered": 14,
-    "in_progress": 2
+    "active_remaining": 3,
+    "deferred": 4,
+    "active_numbered": 13,
+    "in_progress": 1
   }
 }
