@@ -1902,9 +1902,9 @@
     }
   ],
   "next": [
-    "Analyze three exact CIs; only integrate render diagnostics after actual evidence and combined CI. No default/runtime change.",
-    "M10 candidate has full paired schedule and separate observer block; soak, actual lifecycle, device metrics availability, export/editor, final pin and distribution remain open.",
-    "Audit every M0–M11 review item, retain rejected/revisit decisions and P1.4R scratch design."
+    "Analyze exact combined M9 CI and M10 typed profile plan retest, no weakened gates.",
+    "Complete M10 soak/lifecycle/device metric availability/export-editor gates and repin after verified M9 render merge. Preserve old packages and defaults.",
+    "Audit all 60 M0–M11 tasks; close M11 only with explicit evidence dispositions, then P1.4R scratch."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -2098,19 +2098,14 @@
     "scope": "Separate from historical 26/33 scoped decisions. No double count. 60 planned review tasks, not 60 new runtime changes.",
     "active": [
       {
-        "phase": "M9 combined",
-        "sha": "fdfa7f952186c4bbf22986814182ccfd8427f7a7",
-        "ci": 45843499574
+        "phase": "M9 render combined",
+        "sha": "efdea1407a1c7a58ca892e3a0d665c1d8cf3f848",
+        "ci": 45846479435
       },
       {
-        "phase": "M9 rendered",
-        "sha": "53c996880bcc2f850d7e3c4a66443ebf1242f84d",
-        "ci": 45843624226
-      },
-      {
-        "phase": "M10 candidate",
-        "sha": "c13f9d2682f2e3edad5e13d47502470eaf47bf27",
-        "ci": 45843795922
+        "phase": "M10 typed plan retest",
+        "sha": "f838f52aa944a91a17ae71be4adbcf38765fa65d",
+        "ci": 45846450591
       }
     ],
     "last_analysis": {
@@ -2855,7 +2850,7 @@
       "ci": 45838077217
     },
     "m9": {
-      "status": "MERGED_TEST_ONLY_COMBINED_CI_PENDING_RENDER_FOLLOWUP_PENDING",
+      "status": "RENDER_TESTS_MERGED_COMBINED_CI_PENDING",
       "pr": 87,
       "sha": "d26d62a9502934761393f93cfccc147b23770504",
       "ci": 45840722547,
@@ -2869,9 +2864,47 @@
         "planned_routes": 24,
         "planned_ticks": 17280,
         "planned_pixel_checkpoints": 120,
-        "status": "CI_PENDING",
-        "note": "Separate renderer/format matrix; test-only I1 page cap hook defaults to 16; no phone/GPU timing claim."
-      }
+        "status": "SUCCESS_MERGED",
+        "note": "Separate renderer/format matrix; test-only I1 page cap hook defaults to 16; no phone/GPU timing claim.",
+        "merge": "efdea1407a1c7a58ca892e3a0d665c1d8cf3f848",
+        "combined_ci": 45846479435,
+        "regressions": 147,
+        "routes": 24,
+        "ticks": 17280,
+        "pixel_checks": 120,
+        "ghost_checks": 24,
+        "missing_rays": 0,
+        "airborne": 0,
+        "denied_ticks": 6,
+        "denial_note": "Six routes in Mobile TFM2 each one tick; all completed and exact target goals reached.",
+        "per_renderer_format_cap16_reads": [
+          284,
+          284,
+          284,
+          288
+        ],
+        "cap32_reads": [
+          127,
+          127,
+          127,
+          125
+        ],
+        "mean_reads": [
+          285,
+          126.5
+        ],
+        "mean_remote_anchor_missing_shape_samples": [
+          54.25,
+          34
+        ],
+        "mean_worker_service_ms": {
+          "F": 2.3791835205,
+          "IG": 1.760661168625,
+          "IH": 1.660991930375
+        },
+        "decision": "Accept test-only; cap32 and hybrid remain opt-in candidates. Software renderer, unequal optional work, no Android FPS, RSS or thermal claim."
+      },
+      "combined_ci_status": "SUCCESS_147_OF_147_PLUS_EXISTING_RENDERER"
     },
     "m10": {
       "status": "ANDROID_ADAPTER_PREFLIGHT_CI_VERIFIED_NOT_FINAL_PACKAGE",
@@ -2893,7 +2926,7 @@
         "diagnostic_profiles": 4,
         "profile_seconds_device": 20,
         "profile_seconds_smoke": 5,
-        "status": "CI_PENDING_NOT_FINAL",
+        "status": "FIRST_CI_FAILED_PROFILE_PLAN_RUNTIME_TYPE_FIXED_RETEST_PENDING",
         "remaining": [
           "30-minute soak",
           "actual Android lifecycle",
@@ -2901,7 +2934,14 @@
           "export/editor separation",
           "verified post-render integration repin",
           "60-task audit"
-        ]
+        ],
+        "failed_ci": 45843795922,
+        "load_gate": 147,
+        "executed_adapters": 147,
+        "profile_count": 0,
+        "root_cause": "runner.gd:796 ternary Array assigned to Array[int]; runtime error, no profiles begun.",
+        "fix": "f838f52aa944a91a17ae71be4adbcf38765fa65d",
+        "retest_ci": 45846450591
       }
     }
   }
