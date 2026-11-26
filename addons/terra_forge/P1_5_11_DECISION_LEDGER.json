@@ -2,15 +2,13 @@
   "schema": "TF_ENGINE_DECISION_LEDGER_1",
   "date": "2026-11-26",
   "branch": "feat/terraforge-mobile-addon",
-  "latest_code_merge": "ed71385c85cc16784a8818d5322ac794811ca969",
-  "recorded_parent": "ed71385c85cc16784a8818d5322ac794811ca969",
+  "latest_code_merge": "bf6c5e05fd4a92f6d2416700dd4b5da768eb4b9e",
+  "recorded_parent": "bf6c5e05fd4a92f6d2416700dd4b5da768eb4b9e",
   "combined_ci": {
-    "head": "ed71385c85cc16784a8818d5322ac794811ca969",
-    "ci": 45739269712,
-    "status": "VERIFIED_PASS",
-    "expected_tests": 124,
-    "tests": 124,
-    "failed": 0
+    "head": "bf6c5e05fd4a92f6d2416700dd4b5da768eb4b9e",
+    "ci": 45768612215,
+    "status": "PENDING_EXACT_VERIFICATION",
+    "expected_tests": 126
   },
   "device_gate": {
     "status": "OPEN",
@@ -1377,31 +1375,92 @@
       "pr": 67,
       "head": "a8752c6356c3f36cdc6eaba4f423444793fd76e7",
       "ci": 45767339295,
-      "disposition": "CI_PENDING",
-      "decision": "Require actual requested rendering method and changed raw readback, no silent fallback. PR-only software OpenGL/Mobile Vulkan via Xvfb/Mesa, log cap fallback causes, conservative custom AABB coverage. Not physical GPU, actual culling visibility or timing proof."
+      "disposition": "FAILED_RENDERER_ENVIRONMENT_PARTIAL_OPENGL_SUCCESS",
+      "decision": "Require actual requested rendering method and changed raw readback, no silent fallback. PR-only software OpenGL/Mobile Vulkan via Xvfb/Mesa, log cap fallback causes, conservative custom AABB coverage. Not physical GPU, actual culling visibility or timing proof.",
+      "evidence": {
+        "headless_tests": 125,
+        "headless_failed": 0,
+        "opengl_changed_verified": 1,
+        "lod": 2,
+        "planned_bytes": 108,
+        "full_bytes": 2592,
+        "calls": 18,
+        "lod0_fallback": "per_buffer_plan",
+        "lod1_calls": 39,
+        "call_cap": 32,
+        "custom_bounds_cover": true,
+        "actual_culling_verified": false,
+        "mobile_error": "VK_KHR_surface missing; fallback to OpenGL rejected",
+        "audio_error": "ALSA initialization"
+      }
     },
     {
       "phase": "g2 existing published resource readback",
       "pr": 68,
       "head": "3b1423ec46779a15174180899d236ecf3d09a1bb",
       "ci": 45767395082,
-      "disposition": "CI_PENDING",
-      "decision": "Inspect production lifetime: raw worker result is local during publication and not retained in resident tiles; no existing persistent raw base. Test TFM1/2 x LOD0/1/2 x forward/reverse, raw control parity, existing mesh/shape readback per-channel exactness, candidate raw and repacked parity, readback+patch cost, no live mutation. Lossy input never authorized. No duplicate persistent cache, no transient RSS bound or device timing."
+      "disposition": "REJECT_CURRENT_READBACK_PRESERVE_BRANCH",
+      "decision": "Close PR68 without merge; preserve natural opportunity and readback evidence. Raw canonical base not available after publication. Reject published resource readback as canonical source; do not relax validation. G2 algorithm remains isolated, alternative compact exact representation only with new hypothesis and measured whole-route/memory benefit.",
+      "evidence": {
+        "tests": 126,
+        "failed": 0,
+        "cases": 12,
+        "vertices_exact": 12,
+        "uv_exact": 12,
+        "indices_exact": 12,
+        "collision_exact": 12,
+        "normals_exact": 0,
+        "colors_exact": 0,
+        "canonical_valid": 0,
+        "patch_attempted": 0,
+        "raw_control_pass": 12
+      }
     },
     {
       "phase": "h0 existing combined controller gate",
       "pr": 69,
       "head": "79060ab25ca4929e2b869dc33088c7d6e3a35028",
       "ci": 45767471626,
+      "disposition": "MERGED_DIAGNOSTIC_ONLY",
+      "decision": "Existing view/work share tier, motion uses separate bounded horizon. Two formats x two modes stationary support traces with invalid pressure rejection, manual override, tier/cap invariants and stop reset. No new governor, no live code changes, no FPS claim. H0 is one of 12 numbered phases outside the 33 decomposed subtasks.",
+      "evidence": {
+        "tests": 126,
+        "failed": 0,
+        "traces": 4,
+        "ticks": 1360,
+        "transitions": 16,
+        "far": [
+          6,
+          2,
+          6
+        ],
+        "near": [
+          6,
+          6,
+          6
+        ],
+        "peak_tiles": 12,
+        "peak_pages": 16,
+        "peak_jobs": 1,
+        "missing_rays": 0,
+        "airborne_ticks": 0,
+        "merge": "bf6c5e05fd4a92f6d2416700dd4b5da768eb4b9e"
+      }
+    },
+    {
+      "phase": "e4 Lavapipe environment retry",
+      "pr": 67,
+      "head": "181af703449002916f87c0e825b3fac6dc6378e4",
+      "ci": 45768586261,
       "disposition": "CI_PENDING",
-      "decision": "Existing view/work share tier, motion uses separate bounded horizon. Two formats x two modes stationary support traces with invalid pressure rejection, manual override, tier/cap invariants and stop reset. No new governor, no live code changes, no FPS claim. H0 is one of 12 numbered phases outside the 33 decomposed subtasks."
+      "decision": "Discover installed ICD instead of hard-coded filename, require Vulkan surface extension and llvmpipe preflight, dummy audio, keep renderer/failure gate strict. Environment root hypothesis not yet proven; software renderer not device."
     }
   ],
   "next": [
-    "Check exact E4 CI45767339295 (3 regression shards plus PR-only renderer job); require real changed readback, software only, no actual culling proof.",
-    "Check G2 exact CI45767395082; raw/repacked parity and readback+patch cost; reject lossy raw bases rather than weaken authority.",
-    "Check H0 exact CI45767471626; no new governor, assess existing controls, preserve near/support and caps.",
-    "No new verified completion yet: 23/33 done,5 active,5 deferred,12 numbered phases; 2 tracked subtasks and H0 in progress."
+    "Verify E4 exact retry CI45768586261 and H0 combined CI45768612215.",
+    "G2 no canonical resident raw base; fresh base loses and readback lossy. Only reconsider with distinct compact exact representation/ownership hypothesis and measured memory/net route gain.",
+    "H0 existing controller diagnostics merged, next H1/H2 control hierarchy and sustained/moving safety; no device FPS claim.",
+    "23/33 tracked subtasks done,5 active,5 deferred; 11 numbered phases remain (H0 diagnostic accepted; combined CI pending)."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -1520,7 +1579,7 @@
     ]
   },
   "progress_accounting": {
-    "scope": "G1 F2 E2 F3 G2 E4 only; other 10 active numbered phases not decomposed",
+    "scope": "G1 F2 E2 F3 G2 E4 only; other 9 active numbered phases not decomposed",
     "g1": {
       "done": 8,
       "total": 9,
@@ -1546,12 +1605,12 @@
     "total": 33,
     "active_remaining": 5,
     "deferred": 5,
-    "active_numbered": 12,
-    "in_progress": 2,
+    "active_numbered": 11,
+    "in_progress": 1,
     "g2": {
       "done": 2,
       "total": 4,
-      "in_progress": 1,
+      "in_progress": 0,
       "items": [
         "Numerical patch parity and timing",
         "Verified source and actual physics parity",
