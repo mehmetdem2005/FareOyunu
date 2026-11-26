@@ -15,7 +15,7 @@ func _initialize() -> void:
 func _run() -> void:
     for format in [0,1]:
         b=V1.new() if format==0 else V2.new()
-        var err: Error=b.start(Vector2i(576,576),true) if format==0 else b.start(Vector2i(576,576))
+        var err: Error=b.start(Vector2i(576,576),false) if format==0 else b.start(Vector2i(576,576),true)
         if err!=OK:
             _fail("fixture start")
             return
@@ -44,7 +44,7 @@ func _run() -> void:
         var a: Dictionary=G.generate(p._reader,KEY.x,KEY.y,0,before)
         var z: Dictionary=G.generate(p._reader,KEY.x,KEY.y,0,after)
         if a["error"]!=OK or z["error"]!=OK or a["collision_heights"]==z["collision_heights"]:
-            _fail("changed seam fixture")
+            _fail("changed seam fixture format "+str(format+1))
             return
         p._desired_tiles=before.duplicate()
         if p._publish_geometry(KEY,0,a,Time.get_ticks_usec())!=OK:
@@ -120,8 +120,8 @@ func _run() -> void:
 
 func _heights() -> PackedFloat32Array:
     var out=PackedFloat32Array()
-    for x in [480.0,480.25,481.0]:
-        for z in [493.0,493.5,495.0]:
+    for x in [480.125,480.25,480.5]:
+        for z in [492.5,493.0,493.5]:
             var ray=PhysicsRayQueryParameters3D.create(Vector3(x,128,z),Vector3(x,-128,z))
             var hit: Dictionary=p.get_world_3d().direct_space_state.intersect_ray(ray)
             if hit.is_empty() or not p.is_ancestor_of(hit["collider"]):
