@@ -7,8 +7,10 @@
   "combined_ci": {
     "head": "ed71385c85cc16784a8818d5322ac794811ca969",
     "ci": 45739269712,
-    "status": "PENDING_EXACT_VERIFICATION",
-    "expected_tests": 124
+    "status": "VERIFIED_PASS",
+    "expected_tests": 124,
+    "tests": 124,
+    "failed": 0
   },
   "device_gate": {
     "status": "OPEN",
@@ -1279,17 +1281,60 @@
       "phase": "e2 paired publication",
       "branch": "exp/p1511e2-paired-publication",
       "head": "483e3dbecb1f3dca66c0958d060b42c5bd31ea4b",
-      "disposition": "CI_PENDING",
-      "decision": "Open PR when slot free. Matched resource creation and assignment ABBA, readiness ticks and sampled RSS; no full pump or device claim.",
+      "disposition": "REJECT_CURRENT_STAGING_PARK_RUNTIME",
+      "decision": "96 matched revisions, exact actual resource/ray parity; higher total cost both formats, doubled max readiness ticks, TFM1 peak worse. Close PR66 without merge; retain earlier isolated code and diagnostic branch. Revisit only with measured publication bottleneck and distinct hypothesis.",
       "pr": 66,
-      "ci": 45739281358
+      "ci": 45739281358,
+      "evidence": {
+        "tests": 125,
+        "failed": 0,
+        "revisions": 96,
+        "direct_total_us": [
+          3325,
+          3339
+        ],
+        "staged_total_us": [
+          5543,
+          5323
+        ],
+        "direct_peak_us": [
+          179,
+          185
+        ],
+        "staged_peak_us": [
+          214,
+          160
+        ],
+        "max_transition_ticks": [
+          2,
+          4
+        ],
+        "staged_raw_allowance_bytes": 116052,
+        "rss_sampled_only": true
+      }
+    },
+    {
+      "phase": "e4 corrected capability retry",
+      "pr": 67,
+      "head": "2310fe49b960303cc432fc6a1a47fde585cf0405",
+      "ci": 45764723652,
+      "disposition": "CI_PENDING",
+      "decision": "Supersedes conflicted PR64, old corrected SHA had no run. Same corrected planner/test blobs on current verified base; retain all runner entries. Headless unchanged bytes unsupported, not GPU proof."
+    },
+    {
+      "phase": "g2 natural opportunities and fresh base cost",
+      "pr": 68,
+      "head": "239b09de58c9420984075aa8ffa4f8dadfda14da",
+      "ci": 45764789621,
+      "disposition": "CI_PENDING",
+      "decision": "Diagnostic subclass classifies successful resident same-LOD effective seam changes; repeat settled natural route with exact meshes and actual rays. No duplicate base or live patch. Measure fresh begin cost separately in verified test, no actual reuse or transient RSS proof."
     }
   ],
   "next": [
-    "Check exact combined CI45739269712 and E2 PR66 CI45739281358.",
-    "E4 corrected PR64 retry not yet visible after reopen; check exact SHA.",
-    "G2 natural eligibility and total base cost; no duplicate persistent cache.",
-    "13 active numbered tasks."
+    "Check exact PR67 CI45764723652, PR68 CI45764789621; no active run cancellation.",
+    "E4 renderer capability is not real GPU proof; assess real renderer and AABB/culling gate.",
+    "G2 evaluate observed effective seam opportunity, fresh base+patch cost and whether existing owned raw payload can be reused without duplicate cache; transient memory still open.",
+    "E2 current staging parked; 12 active numbered tasks, 22/33 tracked subtasks done, 6 active, 5 deferred."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -1394,6 +1439,16 @@
         "status": "REJECT_CURRENT_CACHE_PARK_ALTERNATIVE",
         "trigger": "G2/I0 review or observed repeat-use geometry evidence; compare direct active resource strategy without duplicate cache, transient RSS and matched benefit",
         "review_status": "OPEN_REVIEW_NOT_IMPLEMENTATION"
+      },
+      {
+        "phase": "e2",
+        "branch": "exp/p1511e2-paired-publication",
+        "pr": 66,
+        "head": "483e3dbecb1f3dca66c0958d060b42c5bd31ea4b",
+        "ci": 45739281358,
+        "status": "REJECT_CURRENT_STAGING_PARK_RUNTIME",
+        "trigger": "I0/i1 actual publication bottleneck attributed to stage where alternative can reduce peak without increasing total and readiness; prove whole pump, transient RSS and device parity",
+        "review_status": "OPEN_REVIEW_NOT_IMPLEMENTATION"
       }
     ]
   },
@@ -1410,25 +1465,26 @@
       "deferred": 1
     },
     "e2": {
-      "done": 2,
+      "done": 3,
       "total": 4,
-      "in_progress": 1
+      "in_progress": 0,
+      "deferred": 1
     },
     "f3": {
       "done": 2,
       "total": 4,
       "deferred": 2
     },
-    "done": 21,
+    "done": 22,
     "total": 33,
-    "active_remaining": 8,
-    "deferred": 4,
-    "active_numbered": 13,
-    "in_progress": 1,
+    "active_remaining": 6,
+    "deferred": 5,
+    "active_numbered": 12,
+    "in_progress": 2,
     "g2": {
       "done": 2,
       "total": 4,
-      "in_progress": 0,
+      "in_progress": 1,
       "items": [
         "Numerical patch parity and timing",
         "Verified source and actual physics parity",
@@ -1439,7 +1495,7 @@
     "e4": {
       "done": 0,
       "total": 4,
-      "in_progress": 0,
+      "in_progress": 1,
       "items": [
         "Bounded buffer planner and renderer capability",
         "Actual renderer data and AABB/culling safety",
