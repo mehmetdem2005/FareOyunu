@@ -1902,9 +1902,9 @@
     }
   ],
   "next": [
-    "Verify exact combined M1/M2 CI and M3/M4 CI with actual logs. M3 candidate upper bound only; M4 cold/prewarm in independent processes includes setup; no speed claim.",
-    "M5 branch prepared, open PR when a CI lane frees; compare 16/24/32 on matched guarded route; no default change. Reconcile shared files if needed.",
-    "Maintain 60 review tasks, batch safely; M6+ still planned. No phone run until targeted combined package."
+    "M5 CI45831078190, inspect raw capacity reports and equal-work caveats.",
+    "M3 verified shadow only eligible for integration; M4 rejected runtime method keep branch/evidence; next separate allocation/material/release attribution and safe bounded lifetime hypothesis, no blind reuse.",
+    "Preserve 60 review tasks, default A/cap2 and no new phone request until combined targeted package."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -2088,8 +2088,8 @@
   "android_evidence_closure": {
     "plan": "P1_5_11_ANDROID_EVIDENCE_CLOSURE_TR.md",
     "m0": "RECORDED_DOCS_ONLY",
-    "m1": "MERGED_DIAGNOSTIC_COMBINED_CI_PENDING",
-    "m2": "MERGED_DIAGNOSTIC_COMBINED_CI_PENDING",
+    "m1": "MERGED_COMBINED_CI_VERIFIED_DIAGNOSTIC",
+    "m2": "MERGED_COMBINED_CI_VERIFIED_DIAGNOSTIC",
     "m3_to_m11": "PLANNED",
     "tools_ci": [
       45802197845,
@@ -2098,21 +2098,10 @@
     "scope": "Separate from historical 26/33 scoped decisions. No double count. 60 planned review tasks, not 60 new runtime changes.",
     "active": [
       {
-        "phase": "M1/M2 integration",
-        "sha": "d00bb396ebf97a905aebe58222fb2c6931f74e88",
-        "ci": 45828854113
-      },
-      {
-        "phase": "M3 shadow",
-        "sha": "fdf3bdd65657c6630fb1492d502497f1451fbf6d",
-        "pr": 80,
-        "ci": 45828968839
-      },
-      {
-        "phase": "M4 cold visual",
-        "sha": "33f8606f3033e2c7232f2efa2921a56b0ed89ab3",
-        "pr": 81,
-        "ci": 45829031521
+        "phase": "M5 page capacity",
+        "sha": "77019be3ec9167bf855efce127f360c93759237e",
+        "pr": 82,
+        "ci": 45831078190
       }
     ],
     "last_analysis": {
@@ -2306,13 +2295,84 @@
         }
       }
     },
-    "m3": "SHADOW_DIAGNOSTIC_CI_PENDING",
-    "m4": "COLD_PREWARM_DIAGNOSTIC_CI_PENDING",
+    "m3": "CI_VERIFIED_SHADOW_ONLY_PENDING_INTEGRATION",
+    "m4": "CI_VERIFIED_PREWARM_REJECTED_KEEP_EVIDENCE",
     "m5": {
-      "status": "BRANCH_PREPARED_NOT_TESTED",
+      "status": "CI_QUEUED",
       "sha": "77019be3ec9167bf855efce127f360c93759237e",
-      "branch": "exp/p1511m5-page-cap-matrix",
-      "pr": null
+      "pr": 82,
+      "ci": 45831078190
+    },
+    "latest_results": {
+      "combined": {
+        "ci": 45828854113,
+        "regressions": 137,
+        "renderers": 2,
+        "physical_ticks": 8640,
+        "missing_rays": 0,
+        "airborne": 0,
+        "denied": 0,
+        "ghost": 0,
+        "joined_visual_allocate_us": [
+          17044,
+          15527
+        ]
+      },
+      "m3": {
+        "ci": 45828968839,
+        "regressions": 137,
+        "controlled_finished_build_us": [
+          2078,
+          2117
+        ],
+        "live_routes": 8,
+        "ticks": 5760,
+        "successful_finished_candidates": 8,
+        "pending_candidates": 0,
+        "copy_wall_us": 1145,
+        "build_wall_us": 16425,
+        "aggregate_reserved_output_bytes": 928416,
+        "retained_payload_bytes": 0,
+        "decision": "Accept shadow diagnostics, not runtime reuse. Verify device stage incidence before promotion. Changed-neighbor negative unchanged."
+      },
+      "m4": {
+        "ci": 45829031521,
+        "regressions": 137,
+        "rendered_profiles": 8,
+        "mobile_cold_vs_prewarm": {
+          "mean_frame_ms": [
+            23.83609416610245,
+            24.4585337926275
+          ],
+          "mean_max_frame_ms": [
+            349.2565,
+            501.4745
+          ],
+          "mean_peak_visual_allocate_ms": [
+            20.296,
+            19.386
+          ],
+          "mean_setup_ms": [
+            0.0015,
+            134.4485
+          ],
+          "mean_builds": [
+            82,
+            79.5
+          ],
+          "mean_sampled_rss_bytes": [
+            386367488,
+            415211520
+          ],
+          "mean_first_focus_ms": [
+            49.621,
+            49.5105
+          ],
+          "setup_free_us": 247645,
+          "setup_material_us": 20322
+        },
+        "decision": "Reject empty-node prewarm; keep branch and raw evidence. Distinguish expensive material/assign/free and process waits, no automatic pool or deferred-free promotion. Software renderer, unequal work, two repetitions, no GPU/phone claim."
+      }
     }
   }
 }
