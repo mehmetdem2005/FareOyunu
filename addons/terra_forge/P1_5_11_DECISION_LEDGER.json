@@ -2,18 +2,18 @@
   "schema": "TF_ENGINE_DECISION_LEDGER_1",
   "date": "2026-11-26",
   "branch": "feat/terraforge-mobile-addon",
-  "latest_code_merge": "f29ff59a8287076f5f4fb30e12b4b9254268c362",
-  "recorded_parent": "0a6d1f5a30c0bf61f34256a97d734b54c665b88a",
+  "latest_code_merge": "fe575f82452342ef424dd2fa078b315da13d0292",
+  "recorded_parent": "ea7c554fecfeba95937a1dad967b7be0b68afc2b",
   "combined_ci": {
-    "head": "f29ff59a8287076f5f4fb30e12b4b9254268c362",
-    "ci": 45790980185,
+    "head": "fe575f82452342ef424dd2fa078b315da13d0292",
+    "ci": 45794931800,
     "status": "PENDING_EXACT_VERIFICATION",
-    "expected_tests": 133,
+    "expected_tests": 135,
     "previous": {
-      "head": "1306b4ae2baf1ceeeae50491caca1b5845b666d4",
-      "ci": 45772024957,
-      "status": "SUCCESS",
-      "renderer_probes": "3 per renderer successful"
+      "head": "f29ff59a8287076f5f4fb30e12b4b9254268c362",
+      "ci": 45790980185,
+      "status": "VERIFIED",
+      "tests": 133
     }
   },
   "device_gate": {
@@ -1638,8 +1638,8 @@
       "pr": 73,
       "head": "baf162794d3958bcec0b2b9c427fc75d39f98d5e",
       "ci": 45790971038,
-      "disposition": "RENDERER_JOB_PASS_REJECT_CURRENT_RUNTIME_PENDING_FULL_CI",
-      "decision": "Reject current complete-cost runtime approach: all six matched LOD/renderer comparisons slower CPU submission; isolated planner and rendered diagnostics retained. Do not promote E4; revisit only with distinct cheaper plan/packing or real device GPU bottleneck evidence and matched full-pipeline benefit. Release, native transient memory and actual GPU completion excluded. Wait for full CI before closing PR.",
+      "disposition": "REJECT_CURRENT_RUNTIME_PRESERVE_BRANCH",
+      "decision": "Reject current complete-cost runtime approach: all six matched LOD/renderer comparisons slower CPU submission; isolated planner and rendered diagnostics retained. Do not promote E4; revisit only with distinct cheaper plan/packing or real device GPU bottleneck evidence and matched full-pipeline benefit. Release, native transient memory and actual GPU completion excluded. Wait for full CI before closing PR. Full CI passed; PR73 closed unmerged.",
       "failed_ci": 45772109772,
       "failed_head": "dba096422fe37b7cf61fbe384594275abedf5fdd",
       "failure": "Array to Array[bool] ternary runtime error at line 134, both renderers; prior 3 probes pass, no paired cost data.",
@@ -1683,7 +1683,9 @@
         },
         "samples_per_arm_lod_renderer": 16,
         "all_buffer_shape_parity": true,
-        "full_ci_pending": true
+        "full_ci_pending": false,
+        "headless_tests": 132,
+        "headless_failed": 0
       }
     },
     {
@@ -1691,7 +1693,7 @@
       "pr": 74,
       "head": "6134394632b2609db3894579f10d6dd6188e572d",
       "ci": 45772183931,
-      "disposition": "MERGED_DIAGNOSTIC_ONLY_COMBINED_PENDING",
+      "disposition": "MERGED_DIAGNOSTIC_ONLY_COMBINED_VERIFIED",
       "decision": "4 planned traces x720 ticks, real capsule x510→536→500→552→510, actual support transfers and direction reversal, fixed caps, repeated camera shifts/pressure, 12 tick simulated gap in sample/pump. Actual Android background/resume not tested.",
       "evidence": {
         "tests": 133,
@@ -1709,7 +1711,8 @@
         "camera_shifts": 48,
         "tier_transitions": 48,
         "merge": "f29ff59a8287076f5f4fb30e12b4b9254268c362",
-        "combined_ci": 45790980185
+        "combined_ci": 45790980185,
+        "combined_tests": 133
       }
     },
     {
@@ -1717,22 +1720,93 @@
       "pr": 75,
       "head": "66b1aa52ca5005b2c44c8a62a9c3b3deb595be03",
       "ci": 45791148541,
-      "disposition": "CI_PENDING",
-      "decision": "One worker, caps 1/2/4; six matched 720 tick routes, TFM1/2 reversed order. Check ownership, support, queue payload and shutdown; no device or RSS claims."
+      "disposition": "MERGED_DIAGNOSTIC_ONLY_COMBINED_PENDING",
+      "decision": "Keep cap2; cap4 never used >2 slots, same work, +100% allowance with only noise-level time difference. cap1 lower bound alternative, not automatic switching; actual device and safe live drain not verified.",
+      "evidence": {
+        "tests": 135,
+        "shards": [
+          45,
+          45,
+          45
+        ],
+        "traces": 6,
+        "ticks": 4320,
+        "missing_rays": 0,
+        "airborne_ticks": 0,
+        "denied_ticks": 6,
+        "cap_order": [
+          1,
+          2,
+          4
+        ],
+        "each_format": {
+          "reads": [
+            629,
+            669,
+            669
+          ],
+          "mesh": [
+            174,
+            175,
+            175
+          ],
+          "dropped": [
+            1,
+            0,
+            0
+          ],
+          "peak_slots": [
+            1,
+            2,
+            2
+          ],
+          "peak_reserved_bytes": [
+            135972,
+            271944,
+            271944
+          ]
+        },
+        "pump_mean_ms": {
+          "tfm1": [
+            0.2646539548,
+            0.246279661,
+            0.2506214689
+          ],
+          "tfm2": [
+            0.2816087571,
+            0.2689435028,
+            0.2623799435
+          ]
+        },
+        "shutdown_all_clean": true,
+        "merge": "fe575f82452342ef424dd2fa078b315da13d0292",
+        "combined_ci": 45794931800
+      }
     },
     {
       "phase": "I0 integrated F and I route matrix",
       "branch": "exp/p1511i0-integrated-route",
-      "head": "f9e3e40ceb5de7a94164acffcbed7b4136738805",
-      "disposition": "PREPARED_NO_PR_NO_CI",
-      "decision": "Test-only four arms F, I-F, I-G cropped, I-H cropped, both formats reverse order, same 720-tick route and controller/cap settings. Existing flags only. Record pump hist, work, safety, policy and ownership; no runtime activation or device claims. Reconcile runner additions if H3 merges first; exact CI only once a lane opens."
+      "head": "e188056270d5ae6a6e3cc1df3f1348710b97ef7c",
+      "disposition": "CI_PENDING",
+      "decision": "Test-only four arms F, I-F, I-G cropped, I-H cropped, both formats reverse order, same 720-tick route and controller/cap settings. Existing flags only. Record pump hist, work, safety, policy and ownership; no runtime activation or device claims. Reconcile runner additions if H3 merges first; exact CI only once a lane opens. H3 runner reconciled; PR opened.",
+      "pr": 76,
+      "ci": 45794991885
+    },
+    {
+      "phase": "I1 rendered terrain checkpoints",
+      "pr": 77,
+      "branch": "exp/p1511i1-rendered-terrain",
+      "head": "ec9dc3c95165688d657418312c777e3c3074344b",
+      "ci": 45795116783,
+      "disposition": "PR_OPEN_CI_PENDING",
+      "decision": "Software GL/Mobile, F vs I-G cropped, both TFM formats, guarded capsule route; five center pixel checks and post-stop ghost rejection. Diagnostic material, separate draw waits, not matched timing or real map/device qualification."
     }
   ],
   "next": [
-    "Check full exact E4 retry CI45790971038; renderer job passed, net CPU cost rejected; close PR only after full result recorded.",
-    "Check H2 combined CI45790980185 and H3 CI45791148541.",
-    "Open prepared I0 branch PR only when one of three lanes frees; preserve H3 runner entries if merged.",
-    "Keep 24/33 scope unchanged until disposition of full E4 CI; I0 outside this denominator."
+    "Check H3 combined exact CI45794931800.",
+    "Check I0 CI45794991885, compare preset interactions and equal work limits.",
+    "Check I1 PR77 rendered gate 45795116783, no real data without authorization.",
+    "Prepare I2 focused device package only after I0/I1 evidence; no default promotion."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -1847,6 +1921,16 @@
         "status": "REJECT_CURRENT_STAGING_PARK_RUNTIME",
         "trigger": "I0/i1 actual publication bottleneck attributed to stage where alternative can reduce peak without increasing total and readiness; prove whole pump, transient RSS and device parity",
         "review_status": "OPEN_REVIEW_NOT_IMPLEMENTATION"
+      },
+      {
+        "phase": "e4",
+        "branch": "exp/p1511e4-complete-cost",
+        "pr": 73,
+        "head": "baf162794d3958bcec0b2b9c427fc75d39f98d5e",
+        "ci": 45790971038,
+        "status": "REJECT_CURRENT_RUNTIME",
+        "trigger": "Measured device GPU bottleneck or distinct cheaper planning architecture with matched whole pipeline benefit, native transient and release evidence",
+        "review_status": "OPEN_REVIEW_NOT_IMPLEMENTATION"
       }
     ]
   },
@@ -1873,12 +1957,12 @@
       "total": 4,
       "deferred": 2
     },
-    "done": 24,
+    "done": 26,
     "total": 33,
-    "active_remaining": 4,
+    "active_remaining": 2,
     "deferred": 5,
     "active_numbered": 10,
-    "in_progress": 1,
+    "in_progress": 0,
     "g2": {
       "done": 2,
       "total": 4,
@@ -1891,15 +1975,16 @@
       ]
     },
     "e4": {
-      "done": 2,
+      "done": 4,
       "total": 4,
-      "in_progress": 1,
+      "in_progress": 0,
       "items": [
         "Bounded buffer planner and renderer capability",
         "Actual renderer data and AABB/culling safety",
         "Lifetime, physics and paired cost",
         "Decision and fallback"
-      ]
+      ],
+      "resolution": "Closed current implementation rejected; lifetime/transient/GPU proof deferred to distinct revisit, not achieved."
     }
   }
 }
