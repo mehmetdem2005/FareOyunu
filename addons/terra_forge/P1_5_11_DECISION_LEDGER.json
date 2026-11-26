@@ -1902,9 +1902,9 @@
     }
   ],
   "next": [
-    "Check M0 integration run45824569782, M1 PR78 exact CI45825062346, discover M2 PR79 CI. Inspect logs and matched evidence; repair failures before merge.",
-    "M1 bounded exact start process-frame join, off/on/on/off rendered diagnostics; M2 six physical routes per renderer with remote-anchor attachment distinct from floor/ray. Not phone qualification. Merge only verified diagnostics, reconcile workflow if needed.",
-    "M3 exact identity shadow after free lane; no blanket epoch bypass. Then targeted phone runner pin, not each commit."
+    "Integrate exact PR78/79 diagnostics after checking current head and shared workflow, combined CI required. No runtime default change.",
+    "M3 exact identity shadow, M4 cold/warm visual allocation vs bounded E1 pool, M5 cache equal-work matrix in independent lanes when capacity allows.",
+    "Maintain all M0–M11 / 60 review tasks; batch related work into four work packages; no scope reduction. Full device and P1.4R gates preserved."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -2088,36 +2088,205 @@
   "android_evidence_closure": {
     "plan": "P1_5_11_ANDROID_EVIDENCE_CLOSURE_TR.md",
     "m0": "RECORDED_DOCS_ONLY",
-    "m1": "PR78_CI_PENDING",
-    "m2": "PR79_CI_DISCOVERY_PENDING",
+    "m1": "CI_VERIFIED_DIAGNOSTIC_PENDING_MERGE",
+    "m2": "CI_VERIFIED_DIAGNOSTIC_PENDING_MERGE",
     "m3_to_m11": "PLANNED",
     "tools_ci": [
       45802197845,
       45802203182
     ],
     "scope": "Separate from historical 26/33 scoped decisions. No double count. 60 planned review tasks, not 60 new runtime changes.",
-    "active": [
-      {
-        "phase": "M0-doc-regression",
-        "sha": "35a5f5e1fa2e09c6dee8b3e368917203b06f047a",
-        "ci": 45824569782
+    "active": [],
+    "last_analysis": {
+      "date": "2026-11-26",
+      "source": "exact completed CI jobs and prior decision ledger",
+      "regression": {
+        "runs": [
+          45824569782,
+          45825062346,
+          45825135946
+        ],
+        "tests_per_run": 137,
+        "total_executions": 411,
+        "fails": 0,
+        "job_groups_pass": 12
       },
-      {
-        "phase": "M1",
-        "branch": "exp/p1511i1-m1-frame-correlation",
-        "sha": "ff277a0ada50a0f77f4d0f50257780919489c5fd",
+      "m1": {
         "pr": 78,
+        "sha": "ff277a0ada50a0f77f4d0f50257780919489c5fd",
         "ci": 45825062346,
-        "disposition": "PENDING_DIAGNOSTIC_ONLY"
+        "job": 139926981028,
+        "order": [
+          false,
+          true,
+          true,
+          false
+        ],
+        "software_renderer_only": true,
+        "gl": {
+          "mean_frame_ms": [
+            15.671721875,
+            14.4732774566474,
+            14.3389512893983,
+            14.4678005780347
+          ],
+          "max_frame_ms": [
+            361.598,
+            32.215,
+            30.367,
+            31.867
+          ],
+          "builds": [
+            111,
+            107,
+            107,
+            109
+          ],
+          "reads": [
+            415,
+            436,
+            434,
+            430
+          ]
+        },
+        "mobile": {
+          "mean_frame_ms": [
+            45.6341181818182,
+            19.8591746031746,
+            19.8783055555555,
+            19.9038492063492
+          ],
+          "max_frame_ms": [
+            2826.196,
+            265.614,
+            259.196,
+            255.349
+          ],
+          "builds": [
+            43,
+            93,
+            93,
+            93
+          ],
+          "reads": [
+            141,
+            351,
+            351,
+            348
+          ],
+          "joined": [
+            {
+              "frame": 117,
+              "key": [
+                2,
+                2
+              ],
+              "new_tile": true,
+              "lod": 0,
+              "frame_us": 265614,
+              "pump_us": 18827,
+              "publication_us": 18457,
+              "visual_allocate_us": 18164,
+              "mesh_create_surface_us": 118,
+              "shape_create_data_us": 27
+            },
+            {
+              "frame": 370,
+              "key": [
+                2,
+                2
+              ],
+              "new_tile": true,
+              "lod": 0,
+              "frame_us": 259196,
+              "pump_us": 16338,
+              "publication_us": 15963,
+              "visual_allocate_us": 15678,
+              "mesh_create_surface_us": 119,
+              "shape_create_data_us": 26
+            }
+          ]
+        },
+        "decision": "ACCEPT_DIAGNOSTIC_ONLY_PENDING_MERGE",
+        "limitations": "First arm has very large initial frame and unequal completed work; warmed off arm only one repetition. Do not infer speed or negligible observer cost; prior isolated A1.3 measured overhead. Stages inclusive wall time; not causal GPU attribution. Pump outside remainder 246.787/242.858 ms; do not sum nested stages."
       },
-      {
-        "phase": "M2",
-        "branch": "exp/p1511i1-m2-support-coverage",
-        "sha": "cfb6b3ab7ac4e8936f34f0c6aef99790cba892f1",
+      "m2": {
         "pr": 79,
-        "ci": null,
-        "disposition": "PENDING_DIAGNOSTIC_ONLY"
+        "sha": "cfb6b3ab7ac4e8936f34f0c6aef99790cba892f1",
+        "ci": 45825135946,
+        "job": 139927231257,
+        "renderers": 2,
+        "formats": 2,
+        "arms": [
+          "F",
+          "I-G cropped",
+          "I-H cropped"
+        ],
+        "routes": 12,
+        "ticks_per_route": 720,
+        "total_ticks": 8640,
+        "per_route": {
+          "actual_floor_and_ray_samples": 720,
+          "missing_rays": 0,
+          "airborne": 0,
+          "denied": 0,
+          "remote_anchor_missing": 54,
+          "longest_remote_anchor_missing_ticks": 17,
+          "reads": 284,
+          "builds": 178,
+          "goals": [
+            65,
+            156,
+            287,
+            405
+          ],
+          "support_revisions": 12,
+          "tier_transitions": 12,
+          "peak_pages": 16,
+          "peak_tiles": 12,
+          "peak_jobs": 2,
+          "center_checkpoints": 5,
+          "post_stop_ghost_pixels": 0
+        },
+        "decision": "ACCEPT_DIAGNOSTIC_ONLY_PENDING_MERGE",
+        "limitations": "Identical guarded route, matched work counts, synthetic pressure, not comparable FPS; remote stream anchor != actual camera/actor. 60 center checkpoint checks, 648 missing remote attachments, no player floor/ray loss. Prior I1 had different repetitions and 2 denied ticks; cannot claim causal improvement. Android, full 4-tile/corrupt/cap/steep and actual lifecycle gates remain."
+      },
+      "revisit": {
+        "e1": {
+          "prior_ci": 45703959444,
+          "tfm1_cap4_ms": [
+            0.16315,
+            0.168983333333333
+          ],
+          "tfm1_cap8_ms": [
+            0.291666666666667,
+            0.282275
+          ],
+          "tfm2_cap4_ms": [
+            0.175541666666667,
+            0.169358333333333
+          ],
+          "tfm2_cap8_ms": [
+            0.28975,
+            0.283133333333333
+          ],
+          "prior_p95_upper_ms": 0.5,
+          "decision": "REOPEN_MEASUREMENT_NOT_RUNTIME_PROMOTION",
+          "reason": "M1 fresh visual_allocate repeat on same first tile. Test cold vs prewarmed first node and repeated churn separately, bounded shell reuse cap0/4/8, equal work, end-to-end plus setup/teardown and memory. Pool may shift initial cost; no new default."
+        },
+        "m3": {
+          "phone_submitted": 1562,
+          "phone_dropped": 241,
+          "same_geometry_at_epoch": 50,
+          "changed_neighbors": 160,
+          "unknown": 31,
+          "prior_discard_build_wall_us": 8497503,
+          "decision": "Exact identity shadow first; maximum 50/241 classified candidates, not guaranteed salvage or FPS. Reject changed neighbors and unknown. Keep full signature/owner/generation and caps."
+        },
+        "m5": {
+          "decision": "Matched route page cap16 vs24/32; measure bytes/RSS where available, accepted reads, reloads, evictions, queue/accept/delivery, same quality/work. Existing 16 cap saturated does not prove larger cache wins."
+        }
       }
-    ]
+    }
   }
 }
