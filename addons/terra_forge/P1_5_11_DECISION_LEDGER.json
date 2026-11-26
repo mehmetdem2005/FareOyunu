@@ -2,13 +2,13 @@
   "schema": "TF_ENGINE_DECISION_LEDGER_1",
   "date": "2026-11-26",
   "branch": "feat/terraforge-mobile-addon",
-  "latest_code_merge": "f013d3f839a1c4270676bf5f4663e45ce43d94fe",
-  "recorded_parent": "f013d3f839a1c4270676bf5f4663e45ce43d94fe",
+  "latest_code_merge": "e2b2553b16dfdb69bd0786037294f5fdd3d5f0c4",
+  "recorded_parent": "e2b2553b16dfdb69bd0786037294f5fdd3d5f0c4",
   "combined_ci": {
-    "head": "f013d3f839a1c4270676bf5f4663e45ce43d94fe",
-    "ci": 45729781494,
-    "conclusion": "success",
-    "tests": 121
+    "head": "e2b2553b16dfdb69bd0786037294f5fdd3d5f0c4",
+    "ci": 45736226703,
+    "status": "PENDING_EXACT_VERIFICATION",
+    "expected_tests": 123
   },
   "device_gate": {
     "status": "OPEN",
@@ -1183,39 +1183,69 @@
       "pr": 62,
       "head": "29a6b23cf3b40f19d90c27fc82092ab637653d87",
       "ci": 45731027386,
-      "disposition": "FIX_POSITIVE_CONTROL_RETRY_PENDING",
-      "decision": "Check changed seam ray height parity, source revision and old resource rejection. No worker-result scheduler integration or full timing claim.",
+      "disposition": "MERGED_ISOLATED_VERIFIED_REVISION",
+      "decision": "Verified revision and actual ray parity pass; full matched publication/pump and transient memory gate open.",
       "evidence": {
         "tests": 122,
         "passed": 121,
         "failed": 1,
         "reason": "changed seam fixture; coarse grid aligned positive control",
         "fix": "19754e86bac1903d590461922649dd08487dc458",
-        "retry_ci": 45733047490
-      }
+        "retry_ci": 45733047490,
+        "retry_head": "19754e86bac1903d590461922649dd08487dc458",
+        "retry_passed": 122,
+        "ray_points": 18,
+        "changed": true,
+        "exact_ray_parity": true,
+        "signature_rejected": true,
+        "epoch_rejected": true,
+        "stop_rejected": true
+      },
+      "merge": "eb08f93ba576778e4173a41695a71fc1ff00ed69"
     },
     {
       "phase": "g2 changed seam patch",
       "pr": 63,
       "head": "5e2a91008f690e8d7f1dd34411889dbc20b2ed12",
       "ci": 45733464793,
-      "disposition": "CI_PENDING",
-      "decision": "Check exact numerical parity, positive/negative controls and matched calculation timings; verified source/actual physics and natural usefulness required before integration."
+      "disposition": "MERGED_ISOLATED_CANDIDATE_ONLY",
+      "decision": "Accept numerical candidate; verified source and actual physics, natural reuse and memory pending.",
+      "merge": "e2b2553b16dfdb69bd0786037294f5fdd3d5f0c4",
+      "evidence": {
+        "tests": 122,
+        "cases": 216,
+        "changed": 64,
+        "collision_changed": 40,
+        "full_us": 164454,
+        "patch_us": 14153,
+        "full_vertices": 105048,
+        "sampled_edges": 2048,
+        "full_normals": 105048,
+        "patch_normals": 5680
+      }
     },
     {
       "phase": "e4 mesh buffer probe",
       "pr": 64,
       "head": "09f4afa871a5c3b3ce263d69ce192ae14403e747",
       "ci": 45733507207,
-      "disposition": "CI_PENDING",
-      "decision": "Distinguish pure planner and actual engine packed buffer readback; if headless unsupported do not claim GPU success. Real renderer, AABB/culling, lifetime and physics safety before promotion."
+      "disposition": "FIX_HEADLESS_CAPABILITY_CLASSIFICATION_RETRY_PENDING",
+      "decision": "Explicitly classify unchanged headless dummy bytes as unsupported; do not weaken actual renderer mismatch. No GPU success claim.",
+      "evidence": {
+        "tests": 122,
+        "passed": 121,
+        "failed": 1,
+        "reason": "raw renderer readback mismatch",
+        "fix": "1923c6619e96086a01a0329944172b0d16b2b3c4",
+        "retry_ci": null
+      }
     }
   ],
   "next": [
-    "Exact E2 retry CI45733047490, G2 PR63 CI45733464793, E4 PR64 CI45733507207.",
-    "G2 evaluate parity, cost, verified source and actual physics; avoid G1 duplicate cache without measured reuse.",
-    "E4 conditional renderer capability and packed parity; decide whether actual device test warrants further work.",
-    "13 active numbered tasks; F2/F3/G1 parked."
+    "Exact E4 capability retry pending ID and E2/G2 combined 45736226703.",
+    "E2 matched full publication/pump and transient memory; integrate only with actual safety/benefit.",
+    "G2 verified source and actual physics parity; avoid duplicate cache, measure natural usefulness.",
+    "E4 real renderer readback/AABB/lifetime if justified; no headless GPU claim. 13 active numbered tasks."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -1336,25 +1366,25 @@
       "deferred": 1
     },
     "e2": {
-      "done": 1,
+      "done": 2,
       "total": 4,
-      "in_progress": 1
+      "in_progress": 0
     },
     "f3": {
       "done": 2,
       "total": 4,
       "deferred": 2
     },
-    "done": 18,
+    "done": 20,
     "total": 33,
-    "active_remaining": 11,
+    "active_remaining": 9,
     "deferred": 4,
     "active_numbered": 13,
-    "in_progress": 3,
+    "in_progress": 1,
     "g2": {
-      "done": 0,
+      "done": 1,
       "total": 4,
-      "in_progress": 1,
+      "in_progress": 0,
       "items": [
         "Numerical patch parity and timing",
         "Verified source and actual physics parity",
