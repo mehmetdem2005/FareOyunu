@@ -121,6 +121,8 @@ suite=(
   test_h0_combined_controllers_v2
   test_h1h2_moving_pressure
   test_h1h2_moving_pressure_v2
+  test_h2_multiseam_route
+  test_h2_multiseam_route_v2
   test_critical_worker_reservation
   test_critical_worker_reservation_v2
   test_critical_slot_lending
