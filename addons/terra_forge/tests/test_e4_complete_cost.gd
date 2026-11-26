@@ -131,7 +131,9 @@ func _run() -> void:
             sums[arm]={"total_us":0,"geometry_us":0,"pack_us":0,"plan_readback_us":0,"update_bounds_us":0,"shape_us":0,"calls":0,"bytes":0,"fallbacks":0,"samples":0}
         for round_id in range(4):
             for reverse in [false,true]:
-                var order: Array[bool]=[false,true,true,false] if round_id%2==0 else [true,false,false,true]
+                var order: Array[bool]=[false,true,true,false]
+                if round_id%2!=0:
+                    order.assign([true,false,false,true])
                 for patch in order:
                     var result: Dictionary=_case(lod,reverse,patch)
                     if result["error"]!=OK:
