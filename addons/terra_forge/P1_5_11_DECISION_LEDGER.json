@@ -2,18 +2,18 @@
   "schema": "TF_ENGINE_DECISION_LEDGER_1",
   "date": "2026-11-26",
   "branch": "feat/terraforge-mobile-addon",
-  "latest_code_merge": "fe575f82452342ef424dd2fa078b315da13d0292",
-  "recorded_parent": "ea7c554fecfeba95937a1dad967b7be0b68afc2b",
+  "latest_code_merge": "94e990af3bfeade2a30c887f9cbf67f41aab3f95",
+  "recorded_parent": "b1975265d71f83b7e1671768d5cf124813003d36",
   "combined_ci": {
-    "head": "fe575f82452342ef424dd2fa078b315da13d0292",
-    "ci": 45794931800,
+    "head": "94e990af3bfeade2a30c887f9cbf67f41aab3f95",
+    "ci": 45797739044,
     "status": "PENDING_EXACT_VERIFICATION",
-    "expected_tests": 135,
+    "expected_tests": 137,
     "previous": {
-      "head": "f29ff59a8287076f5f4fb30e12b4b9254268c362",
-      "ci": 45790980185,
+      "head": "fe575f82452342ef424dd2fa078b315da13d0292",
+      "ci": 45794931800,
       "status": "VERIFIED",
-      "tests": 133
+      "tests": 135
     }
   },
   "device_gate": {
@@ -1720,7 +1720,7 @@
       "pr": 75,
       "head": "66b1aa52ca5005b2c44c8a62a9c3b3deb595be03",
       "ci": 45791148541,
-      "disposition": "MERGED_DIAGNOSTIC_ONLY_COMBINED_PENDING",
+      "disposition": "MERGED_DIAGNOSTIC_ONLY_COMBINED_VERIFIED",
       "decision": "Keep cap2; cap4 never used >2 slots, same work, +100% allowance with only noise-level time difference. cap1 lower bound alternative, not automatic switching; actual device and safe live drain not verified.",
       "evidence": {
         "tests": 135,
@@ -1780,17 +1780,54 @@
         },
         "shutdown_all_clean": true,
         "merge": "fe575f82452342ef424dd2fa078b315da13d0292",
-        "combined_ci": 45794931800
+        "combined_ci": 45794931800,
+        "combined_tests": 135
       }
     },
     {
       "phase": "I0 integrated F and I route matrix",
       "branch": "exp/p1511i0-integrated-route",
       "head": "e188056270d5ae6a6e3cc1df3f1348710b97ef7c",
-      "disposition": "CI_PENDING",
-      "decision": "Test-only four arms F, I-F, I-G cropped, I-H cropped, both formats reverse order, same 720-tick route and controller/cap settings. Existing flags only. Record pump hist, work, safety, policy and ownership; no runtime activation or device claims. Reconcile runner additions if H3 merges first; exact CI only once a lane opens. H3 runner reconciled; PR opened.",
+      "disposition": "MERGED_DIAGNOSTIC_ONLY_COMBINED_PENDING",
+      "decision": "Preserve all opt-in presets; small mixed CPU differences, no promotion. No device claim.",
       "pr": 76,
-      "ci": 45794991885
+      "ci": 45794991885,
+      "evidence": {
+        "tests": 137,
+        "shards": [
+          46,
+          46,
+          45
+        ],
+        "traces": 8,
+        "ticks": 5760,
+        "each_format_per_arm": {
+          "reads": 284,
+          "mesh": 178,
+          "dropped": 8,
+          "submitted": 186,
+          "denied": 0,
+          "missing_rays": 0,
+          "airborne": 0
+        },
+        "pump_mean_ms": {
+          "tfm1": [
+            0.212769774,
+            0.224675141,
+            0.210683616,
+            0.211433616
+          ],
+          "tfm2": [
+            0.223850282,
+            0.219463277,
+            0.219632768,
+            0.216257062
+          ]
+        },
+        "p95_upper_ms": 1,
+        "merge": "94e990af3bfeade2a30c887f9cbf67f41aab3f95",
+        "combined_ci": 45797739044
+      }
     },
     {
       "phase": "I1 rendered terrain checkpoints",
@@ -1798,15 +1835,45 @@
       "branch": "exp/p1511i1-rendered-terrain",
       "head": "ec9dc3c95165688d657418312c777e3c3074344b",
       "ci": 45795116783,
-      "disposition": "PR_OPEN_CI_PENDING",
-      "decision": "Software GL/Mobile, F vs I-G cropped, both TFM formats, guarded capsule route; five center pixel checks and post-stop ghost rejection. Diagnostic material, separate draw waits, not matched timing or real map/device qualification."
+      "disposition": "MERGED_DIAGNOSTIC_ONLY_COMBINED_PENDING",
+      "decision": "Software GL/Mobile, F vs I-G cropped, both TFM formats, guarded capsule route; five center pixel checks and post-stop ghost rejection. Diagnostic material, separate draw waits, not matched timing or real map/device qualification.",
+      "evidence": {
+        "tests": 135,
+        "renderer_job": 139823673042,
+        "traces": 8,
+        "ticks": 5760,
+        "pixel_checkpoints": 40,
+        "passed": 40,
+        "ghost_pixels": 0,
+        "missing_rays": 0,
+        "airborne": 0,
+        "denied": 2,
+        "merge": "94e990af3bfeade2a30c887f9cbf67f41aab3f95",
+        "combined_ci": 45797739044
+      }
+    },
+    {
+      "phase": "I2 targeted Android runner",
+      "branch": "tools/terraforge-android-i2",
+      "head": "cbcd8eab9a57789c08e846f1add531f4cdb69918",
+      "ci": 45797885308,
+      "disposition": "CI_PENDING_KNOWN_PROFILE_HISTORY_FIX_REQUIRED",
+      "decision": "Pinned integrated terrain exact tree; quick 4 tests/8 profiles; full 137 tests/24 profiles; manual start. Found existing profile scene caps internal reports at eight; base runner would fail at profile9. Do not distribute before render-smoke fix integrated and package rerun."
+    },
+    {
+      "phase": "I2 rendered runner smoke",
+      "branch": "tools/terraforge-android-i2-render-smoke",
+      "head": "92a3319c599f080f378695ac96e15629f7bfe776",
+      "ci": 45798007939,
+      "disposition": "CI_PENDING",
+      "decision": "Clear bounded internal report history before each independent profile, retain runner reports; reject failed/no-sample profiles and incomplete session, preserve retry selection. 12 actual software Mobile profiles x5s to cross history cap; no Android performance claim."
     }
   ],
   "next": [
-    "Check H3 combined exact CI45794931800.",
-    "Check I0 CI45794991885, compare preset interactions and equal work limits.",
-    "Check I1 PR77 rendered gate 45795116783, no real data without authorization.",
-    "Prepare I2 focused device package only after I0/I1 evidence; no default promotion."
+    "Verify integrated I0/I1 CI45797739044.",
+    "Verify Android package CI45797885308 and independent rendered smoke 45798007939.",
+    "If smoke succeeds, fast-forward I2 tools branch to fixed head, rerun package and adapter CI before sharing artifact.",
+    "Actual device quick/full, 30-minute soak, OS background/resume and export qualification remain open. No promotion."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
