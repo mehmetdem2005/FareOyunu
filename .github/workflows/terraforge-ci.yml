@@ -199,6 +199,11 @@ jobs:
               if ! timeout 300s xvfb-run -a godot --path "$project" --display-driver x11 --audio-driver Dummy --rendering-method "$method" --rendering-driver "$driver" --resolution 640x480 --script "res://addons/terra_forge/tests/test_i1_rendered_terrain.gd" -- --require-renderer="$method" 2>&1 | tee "$log"; then status=1; fi
               if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' "$log" || ! grep -q 'PASS: I1' "$log"; then status=1; fi
             fi
+            if [[ -f "$project/addons/terra_forge/tests/test_m1_rendered_micro.gd" ]]; then
+              log="$RUNNER_TEMP/e4-$method-m1-micro.log"
+              if ! timeout 180s xvfb-run -a godot --path "$project" --display-driver x11 --audio-driver Dummy --rendering-method "$method" --rendering-driver "$driver" --resolution 640x480 --script "res://addons/terra_forge/tests/test_m1_rendered_micro.gd" 2>&1 | tee "$log"; then status=1; fi
+              if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' "$log" || ! grep -q 'PASS: M1' "$log"; then status=1; fi
+            fi
           done
           exit "$status"
       - uses: actions/upload-artifact@v4
