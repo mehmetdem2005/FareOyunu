@@ -1,7 +1,7 @@
 name: TerraForge Android test package
 on:
   push:
-    branches: [tools/terraforge-android-i2]
+    branches: [tools/terraforge-android-i2, tools/terraforge-android-m10-preflight]
   workflow_dispatch:
 permissions:
   contents: read
@@ -39,7 +39,7 @@ jobs:
         run: |
           set -euo pipefail
           godot --headless --rendering-method gl_compatibility --path "$RUNNER_TEMP/tf-android" --script res://validate_adapters.gd 2>&1 | tee "$RUNNER_TEMP/adapter-load.log"
-          grep -F 'ANDROID_ADAPTER_LOAD_GATE {"failures":[],"passed":137,"total":137}' "$RUNNER_TEMP/adapter-load.log"
+          grep -F 'ANDROID_ADAPTER_LOAD_GATE {"failures":[],"passed":143,"total":143}' "$RUNNER_TEMP/adapter-load.log"
           if grep -E 'SCRIPT ERROR:|Parse Error:|Compile Error:|Failed to load script' "$RUNNER_TEMP/adapter-load.log"; then exit 1; fi
       - name: Smoke test adapter and JSON capture
         shell: bash
@@ -60,7 +60,7 @@ jobs:
           grep -F 'ANDROID_SUITE_COMPLETE {"failures":0,"tests":3}' "$RUNNER_TEMP/idle.log"
       - uses: actions/upload-artifact@v4
         with:
-          name: TerraForge_Android_I2
+          name: TerraForge_Android_M10_Preflight
           path: ${{ runner.temp }}/flat-project/
           retention-days: 30
       - uses: actions/upload-artifact@v4
@@ -89,7 +89,7 @@ jobs:
           name: godot
       - uses: actions/download-artifact@v4
         with:
-          name: TerraForge_Android_I2
+          name: TerraForge_Android_M10_Preflight
           path: TerraForge_Android_Test
       - run: godot --headless --rendering-method gl_compatibility --path TerraForge_Android_Test --editor --import
       - name: Run converted tests in one process

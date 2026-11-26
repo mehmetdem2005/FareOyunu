@@ -59,6 +59,13 @@ var _poll_stale_drops: int=0
 var _discarded_copy_us: int=0
 var _discarded_build_us: int=0
 var _discard_identity: Dictionary={"removed_key":0,"changed_lod":0,"changed_neighbors":0,"invalid_signature":0,"same_geometry_at_epoch":0,"unknown":0}
+# M3 shadow only: bounded counters, no retained jobs or buffers.
+var _shadow_pending: int=0
+var _shadow_finished: int=0
+var _shadow_failed_finished: int=0
+var _shadow_copy_us: int=0
+var _shadow_build_us: int=0
+var _shadow_output_bytes: int=0
 
 # Diagnostic identity only: a matching cardinal signature is not yet
 # permission to publish across epochs. Running work has unknown identity here.
@@ -80,6 +87,19 @@ func _record_discard(job: Dictionary,desired: Variant=null,cells: Vector2i=Vecto
             else:
                 reason="same_geometry_at_epoch"
     _discard_identity[reason]+=1
+    # Called only after the existing source/session/snapshot validation.
+    # The exact cardinal match is an upper bound, not a publish decision.
+    if reason=="same_geometry_at_epoch" and job["epoch"]!=_epoch:
+        if not job.has("geometry"):
+            _shadow_pending+=1
+            _shadow_copy_us+=int(job.get("copy_elapsed_us",0))
+        elif job["geometry"].get("error",FAILED)==OK:
+            _shadow_finished+=1
+            _shadow_copy_us+=int(job.get("copy_elapsed_us",0))
+            _shadow_build_us+=int(job.get("build_elapsed_us",0))
+            _shadow_output_bytes+=int(job.get("output_reserved_payload_bytes",0))
+        else:
+            _shadow_failed_finished+=1
 
 func start(source, cap: int=2, scalar_sampling: bool=false,reuse_topology: bool=false,reserve_critical: bool=false,lend_critical: bool=false,profile_latency: bool=false) -> Error:
     close()
@@ -414,6 +434,7 @@ func stats() -> Dictionary:
     var result: Dictionary={"open":_open,"scalar_sampling":_scalar_sampling,"topology_cache_bytes":_topology_payload,"topology_setup_us":_topology_setup_us,"total_worker_payload_allowance_bytes":_cap*SLOT_BYTES+_topology_payload,"pending":_pending.size(),"inflight":_inflight,"finished":_finished.size(),"slots":_slots(),"cap":_cap,"critical_reservation":_reserve_critical,"reservation_enforced":_reservation_enforced(),"lend_critical":_lend_critical,"critical_demand":_critical_demand,"demand_changes":_demand_changes,"loan_admissions":_loan_admissions,"critical_full_denials":_critical_full_denials,"optional_slots":_optional_slots(),"reservation_deferrals":_reservation_deferrals,"reserved_payload_bytes":_slots()*SLOT_BYTES,"payload_cap_bytes":_cap*SLOT_BYTES,"peak_slots":_peak_slots,"pruned_pending":_pruned_pending,"pruned_finished":_pruned_finished,"submitted":_submitted,"delivered":_delivered,"dropped":_dropped,"epoch":_epoch}
     result["discard_accounting"]={"epoch_pending":_epoch_pending_drops,"epoch_finished":_epoch_finished_drops,"epoch_running":_epoch_running_drops,"reconcile_pending":_pruned_pending,"reconcile_finished":_pruned_finished,"poll_stale":_poll_stale_drops,"copy_wall_us":_discarded_copy_us,"build_wall_us":_discarded_build_us,"classified":_epoch_pending_drops+_epoch_finished_drops+_epoch_running_drops+_pruned_pending+_pruned_finished+_poll_stale_drops}
     result["discard_identity"]=_discard_identity.duplicate()
+    result["epoch_reuse_shadow"]={"pending_candidates":_shadow_pending,"successful_finished_candidates":_shadow_finished,"failed_finished_excluded":_shadow_failed_finished,"candidate_copy_wall_us":_shadow_copy_us,"candidate_finished_build_wall_us":_shadow_build_us,"candidate_finished_reserved_output_bytes_sum":_shadow_output_bytes,"retained_payload_bytes":0,"publication_enabled":false}
     _mutex.unlock()
     return result
 
@@ -459,6 +480,12 @@ func close() -> void:
     _poll_stale_drops=0
     _discarded_copy_us=0
     _discarded_build_us=0
+    _shadow_pending=0
+    _shadow_finished=0
+    _shadow_failed_finished=0
+    _shadow_copy_us=0
+    _shadow_build_us=0
+    _shadow_output_bytes=0
     for reason in _discard_identity:
         _discard_identity[reason]=0
     _next_id=0

@@ -21,6 +21,11 @@ var _previous_strategy := -1
 var _previous_choice := 0
 var _sampling_choice: OptionButton
 var _budget_toggle: CheckButton
+var _publication_micro_toggle: CheckButton
+var _pump_micro_toggle: CheckButton
+const FRAME_EVENT_LIMIT: int=8
+var _slow_frame_intervals: Array[Dictionary]=[]
+var _previous_process_frame: int=-1
 var _hybrid_choice: OptionButton
 var _comparison_kind: String=""
 var _comparison_candidate: int=0
@@ -137,6 +142,16 @@ func _ready() -> void:
     _budget_toggle.button_pressed=enforce_publication_budget
     _budget_toggle.toggled.connect(func(enabled): enforce_publication_budget=enabled)
     ui.add_child(_budget_toggle)
+    _publication_micro_toggle=CheckButton.new()
+    _publication_micro_toggle.text="Publication micro (diagnostic)"
+    _publication_micro_toggle.button_pressed=observe_publication_micro
+    _publication_micro_toggle.toggled.connect(func(enabled): observe_publication_micro=enabled)
+    ui.add_child(_publication_micro_toggle)
+    _pump_micro_toggle=CheckButton.new()
+    _pump_micro_toggle.text="Pump micro (diagnostic)"
+    _pump_micro_toggle.button_pressed=observe_pump_micro
+    _pump_micro_toggle.toggled.connect(func(enabled): observe_pump_micro=enabled)
+    ui.add_child(_pump_micro_toggle)
     _button(ui, "Create isolated sample", _make_fixture)
     _cancel_button = Button.new()
     _cancel_button.text = "Cancel fixture generation"
@@ -176,6 +191,8 @@ func _set_busy(busy: bool) -> void:
     _sampling_choice.disabled = busy
     _hybrid_choice.disabled = busy
     _budget_toggle.disabled = busy
+    _publication_micro_toggle.disabled = busy
+    _pump_micro_toggle.disabled = busy
 
 func _refresh_sizes() -> void:
     var previous: int = _fixture_size.get_selected_id() if _fixture_size.item_count > 0 else 256
@@ -413,7 +430,10 @@ func _process(_delta: float) -> void:
     var elapsed: float = float(now - _opened) / 1000000.0
     if _previous_frame > 0:
         _record_frame_interval(now - _previous_frame)
+        if bool(_run_settings.get("publication_micro",false)) or bool(_run_settings.get("pump_micro",false)):
+            _record_slow_frame_interval(_previous_process_frame,Engine.get_process_frames(),now-_previous_frame)
     _previous_frame = now
+    _previous_process_frame=Engine.get_process_frames()
     # Identical route for both modes; fixed initial focus for two seconds.
     var t: float = clampf((elapsed - 2.0) / maxf(1.0, _run_seconds - 2.0), 0.0, 1.0)
     var focus: Vector3 = Vector3(_extent.x * lerpf(0.15, 0.85, t), 0.0, _extent.y * (0.5 - 0.35 * cos(t * TAU)))
@@ -461,6 +481,8 @@ func _process(_delta: float) -> void:
         _finish(OK)
 
 func _reset_frame_samples() -> void:
+    _slow_frame_intervals.clear()
+    _previous_process_frame=-1
     _frame_hist = HIST.new()
     _over_30fps_budget = 0
     _over_50ms = 0
@@ -477,6 +499,35 @@ func _record_frame_interval(interval_us: int) -> void:
         _late_streak = 0
     if interval_us > 50000:
         _over_50ms += 1
+
+# Bounded wall intervals keyed to the process invocation at the start.
+func _record_slow_frame_interval(start_frame: int,end_frame: int,elapsed_us: int) -> void:
+    if start_frame<0 or end_frame<=start_frame or elapsed_us*30<=1000000:
+        return
+    if _slow_frame_intervals.size()>=FRAME_EVENT_LIMIT and elapsed_us<=int(_slow_frame_intervals.back()["elapsed_us"]):
+        return
+    var i: int=0
+    while i<_slow_frame_intervals.size() and int(_slow_frame_intervals[i]["elapsed_us"])>=elapsed_us:
+        i+=1
+    _slow_frame_intervals.insert(i,{"start_frame":start_frame,"observed_frame":end_frame,"elapsed_us":elapsed_us})
+    if _slow_frame_intervals.size()>FRAME_EVENT_LIMIT:
+        _slow_frame_intervals.pop_back()
+
+func _frame_micro_report(publication: Dictionary,pump: Dictionary) -> Dictionary:
+    if not bool(_run_settings.get("publication_micro",false)) and not bool(_run_settings.get("pump_micro",false)):
+        return {}
+    var joined: Array[Dictionary]=[]
+    for interval in _slow_frame_intervals:
+        var item: Dictionary=interval.duplicate()
+        for source in ["publication","pump"]:
+            var events: Array=[]
+            var report: Dictionary=publication if source=="publication" else pump
+            for event in report.get("slow_events",[]):
+                if int(event.get("frame",-1))==int(interval["start_frame"]):
+                    events.append(event.duplicate(true))
+            item[source+"_events"]=events
+        joined.append(item)
+    return {"schema":"TF_FRAME_MICRO_JOIN_1","limit":FRAME_EVENT_LIMIT,"intervals":joined,"notes":"Wall-clock intervals include scheduling/render waits. Exact start process-frame match only; absent event may be below threshold or outside independent top-eight retention. No causal or GPU attribution."}
 
 func _finish(status: Error) -> void:
     _running = false
@@ -507,6 +558,7 @@ func _finish(status: Error) -> void:
         "publication": s.get("publication", {}),
         "publication_micro": micro,
         "pump_micro": pump_micro,
+        "frame_micro_join": _frame_micro_report(micro,pump_micro),
         "geometry_worker": s.get("geometry_worker", {}),
         "geometry_copy_ms": s.get("geometry_copy_ms", {}), "geometry_queue_ms": s.get("geometry_queue_ms", {}),
         "geometry_worker_ms": s.get("geometry_worker_ms", {}), "geometry_delivery_ms": s.get("geometry_delivery_ms", {}),

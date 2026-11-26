@@ -2,24 +2,25 @@
   "schema": "TF_ENGINE_DECISION_LEDGER_1",
   "date": "2026-11-26",
   "branch": "feat/terraforge-mobile-addon",
-  "latest_code_merge": "94e990af3bfeade2a30c887f9cbf67f41aab3f95",
+  "latest_code_merge": "d7aa19b503497ae34298957e8d141409829fd828",
   "recorded_parent": "b1975265d71f83b7e1671768d5cf124813003d36",
   "combined_ci": {
-    "head": "94e990af3bfeade2a30c887f9cbf67f41aab3f95",
-    "ci": 45797739044,
-    "status": "PENDING_EXACT_VERIFICATION",
+    "head": "d7aa19b503497ae34298957e8d141409829fd828",
+    "ci": 45802088242,
+    "status": "VERIFIED",
     "expected_tests": 137,
     "previous": {
-      "head": "fe575f82452342ef424dd2fa078b315da13d0292",
-      "ci": 45794931800,
+      "head": "94e990af3bfeade2a30c887f9cbf67f41aab3f95",
+      "ci": 45797739044,
       "status": "VERIFIED",
-      "tests": 135
+      "tests": 137
     }
   },
   "device_gate": {
-    "status": "OPEN",
+    "status": "QUICK_COMPLETE_FULL_OPEN",
     "baseline": "P1_5_11_ANDROID_BASELINE.json",
-    "note": "No new Android FPS measurement. Linux CI is not device qualification."
+    "note": "Exact Android quick package report received; four tests/eight profiles, complete exported diagnostic evidence, no promotion. Full device, RSS/GPU/thermal and lifecycle gates open.",
+    "quick_report": "P1_5_11_ANDROID_QUICK_20261126.json"
   },
   "experiments": [
     {
@@ -1788,7 +1789,7 @@
       "phase": "I0 integrated F and I route matrix",
       "branch": "exp/p1511i0-integrated-route",
       "head": "e188056270d5ae6a6e3cc1df3f1348710b97ef7c",
-      "disposition": "MERGED_DIAGNOSTIC_ONLY_COMBINED_PENDING",
+      "disposition": "MERGED_DIAGNOSTIC_ONLY_COMBINED_VERIFIED",
       "decision": "Preserve all opt-in presets; small mixed CPU differences, no promotion. No device claim.",
       "pr": 76,
       "ci": 45794991885,
@@ -1826,7 +1827,8 @@
         },
         "p95_upper_ms": 1,
         "merge": "94e990af3bfeade2a30c887f9cbf67f41aab3f95",
-        "combined_ci": 45797739044
+        "combined_ci": 45797739044,
+        "combined_tests": 137
       }
     },
     {
@@ -1835,7 +1837,7 @@
       "branch": "exp/p1511i1-rendered-terrain",
       "head": "ec9dc3c95165688d657418312c777e3c3074344b",
       "ci": 45795116783,
-      "disposition": "MERGED_DIAGNOSTIC_ONLY_COMBINED_PENDING",
+      "disposition": "MERGED_DIAGNOSTIC_ONLY_COMBINED_VERIFIED",
       "decision": "Software GL/Mobile, F vs I-G cropped, both TFM formats, guarded capsule route; five center pixel checks and post-stop ghost rejection. Diagnostic material, separate draw waits, not matched timing or real map/device qualification.",
       "evidence": {
         "tests": 135,
@@ -1849,34 +1851,60 @@
         "airborne": 0,
         "denied": 2,
         "merge": "94e990af3bfeade2a30c887f9cbf67f41aab3f95",
-        "combined_ci": 45797739044
+        "combined_ci": 45797739044,
+        "combined_tests": 137
       }
     },
     {
       "phase": "I2 targeted Android runner",
       "branch": "tools/terraforge-android-i2",
-      "head": "33af355b9c3f6487217b1119da617965d4f1b025",
-      "ci": 45798161522,
+      "head": "8040a5624cc5bccfd1833412ff807f0f8e1af897",
+      "ci": 45802197845,
       "disposition": "RETRY_CI_PENDING",
-      "decision": "Initial packaging failed unsupported inherited test_f2_long_shadow_v1 (base f2_long_motion_base.gd). Recursive strict inheritance adaptation, profile history fix and completeness guard integrated into tools branch. Retry both package and rendered smoke; no artifact distribution until verified.",
+      "decision": "Canonical test helper rename only, no runtime or assertions changed. Exact pinned addon tree 94a17bf0a1fcc1a61678f79e6c2eae2c99c3adcd; new load gate all 137 adapted scripts before full regression, no execution claimed by load gate. Wait package+full rendered smoke+canonical combined CI before distribution.",
       "failed_ci": 45797885308,
-      "failed_head": "cbcd8eab9a57789c08e846f1add531f4cdb69918"
+      "failed_head": "cbcd8eab9a57789c08e846f1add531f4cdb69918",
+      "history": [
+        {
+          "head": "cbcd8eab9a57789c08e846f1add531f4cdb69918",
+          "ci": 45797885308,
+          "result": "FAIL inheritance"
+        },
+        {
+          "head": "33af355b9c3f6487217b1119da617965d4f1b025",
+          "ci": 45798161522,
+          "result": "136/137, package and stale-idle/export smoke pass; only test_reader_delivery_abba Node _ready signature collision"
+        }
+      ],
+      "terrain_pin": "d7aa19b503497ae34298957e8d141409829fd828"
     },
     {
       "phase": "I2 rendered runner smoke",
       "branch": "tools/terraforge-android-i2-render-smoke",
-      "head": "33af355b9c3f6487217b1119da617965d4f1b025",
-      "ci": 45798137933,
-      "disposition": "RETRY_CI_PENDING",
-      "decision": "Clear bounded internal report history before each independent profile, retain runner reports; reject failed/no-sample profiles and incomplete session, preserve retry selection. 12 actual software Mobile profiles x5s to cross history cap; no Android performance claim. First smoke blocked at same packaging failure; strict recursive inheritance adaptation applied, retry exact new head.",
+      "head": "8040a5624cc5bccfd1833412ff807f0f8e1af897",
+      "ci": 45802203182,
+      "disposition": "FULL_SEQUENCE_CI_PENDING",
+      "decision": "Actual full ABBA/BAAB 24-profile order, 12 F/6 I-G/6 I-H, 5 seconds each CI only; compare snapshot identity, route, settings except policy, expected flags, frame samples, mesh, errors, completion and diagnostic export. Device still 20 s/prof; no GPU timing/FPS claims.",
       "failed_ci": 45798007939,
-      "failed_head": "92a3319c599f080f378695ac96e15629f7bfe776"
+      "failed_head": "92a3319c599f080f378695ac96e15629f7bfe776",
+      "history": [
+        {
+          "head": "92a3319c599f080f378695ac96e15629f7bfe776",
+          "ci": 45798007939,
+          "result": "FAIL inheritance"
+        },
+        {
+          "head": "33af355b9c3f6487217b1119da617965d4f1b025",
+          "ci": 45798137933,
+          "result": "PASS 12 software Mobile profiles, prior 8-report cap fixed"
+        }
+      ]
     }
   ],
   "next": [
-    "Check combined I0/I1 CI45797739044.",
-    "Check exact corrected I2 package CI45798161522 and rendered profile smoke CI45798137933; same tools head 33af355b9c3f6487217b1119da617965d4f1b025.",
-    "Do not share package before both succeed; actual Android lifecycle/soak/export remain device gates."
+    "M7/M8 combined CI143 and software renderer checks, preserve cap2 and default A.",
+    "M9 compare F and cropped scalar/topology with page16/32 on matched route, assess interactions; do not claim full synthesis or promotion until device.",
+    "M10 package and remaining safety/lifecycle tasks; all 60 review tasks retained."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -2055,6 +2083,601 @@
         "Decision and fallback"
       ],
       "resolution": "Closed current implementation rejected; lifetime/transient/GPU proof deferred to distinct revisit, not achieved."
+    }
+  },
+  "android_evidence_closure": {
+    "plan": "P1_5_11_ANDROID_EVIDENCE_CLOSURE_TR.md",
+    "m0": "RECORDED_DOCS_ONLY",
+    "m1": "MERGED_COMBINED_CI_VERIFIED_DIAGNOSTIC",
+    "m2": "MERGED_COMBINED_CI_VERIFIED_DIAGNOSTIC",
+    "m3_to_m11": "PLANNED",
+    "tools_ci": [
+      45802197845,
+      45802203182
+    ],
+    "scope": "Separate from historical 26/33 scoped decisions. No double count. 60 planned review tasks, not 60 new runtime changes.",
+    "active": [],
+    "last_analysis": {
+      "date": "2026-11-26",
+      "source": "exact completed CI jobs and prior decision ledger",
+      "regression": {
+        "runs": [
+          45824569782,
+          45825062346,
+          45825135946
+        ],
+        "tests_per_run": 137,
+        "total_executions": 411,
+        "fails": 0,
+        "job_groups_pass": 12
+      },
+      "m1": {
+        "pr": 78,
+        "sha": "ff277a0ada50a0f77f4d0f50257780919489c5fd",
+        "ci": 45825062346,
+        "job": 139926981028,
+        "order": [
+          false,
+          true,
+          true,
+          false
+        ],
+        "software_renderer_only": true,
+        "gl": {
+          "mean_frame_ms": [
+            15.671721875,
+            14.4732774566474,
+            14.3389512893983,
+            14.4678005780347
+          ],
+          "max_frame_ms": [
+            361.598,
+            32.215,
+            30.367,
+            31.867
+          ],
+          "builds": [
+            111,
+            107,
+            107,
+            109
+          ],
+          "reads": [
+            415,
+            436,
+            434,
+            430
+          ]
+        },
+        "mobile": {
+          "mean_frame_ms": [
+            45.6341181818182,
+            19.8591746031746,
+            19.8783055555555,
+            19.9038492063492
+          ],
+          "max_frame_ms": [
+            2826.196,
+            265.614,
+            259.196,
+            255.349
+          ],
+          "builds": [
+            43,
+            93,
+            93,
+            93
+          ],
+          "reads": [
+            141,
+            351,
+            351,
+            348
+          ],
+          "joined": [
+            {
+              "frame": 117,
+              "key": [
+                2,
+                2
+              ],
+              "new_tile": true,
+              "lod": 0,
+              "frame_us": 265614,
+              "pump_us": 18827,
+              "publication_us": 18457,
+              "visual_allocate_us": 18164,
+              "mesh_create_surface_us": 118,
+              "shape_create_data_us": 27
+            },
+            {
+              "frame": 370,
+              "key": [
+                2,
+                2
+              ],
+              "new_tile": true,
+              "lod": 0,
+              "frame_us": 259196,
+              "pump_us": 16338,
+              "publication_us": 15963,
+              "visual_allocate_us": 15678,
+              "mesh_create_surface_us": 119,
+              "shape_create_data_us": 26
+            }
+          ]
+        },
+        "decision": "ACCEPT_DIAGNOSTIC_ONLY_PENDING_MERGE",
+        "limitations": "First arm has very large initial frame and unequal completed work; warmed off arm only one repetition. Do not infer speed or negligible observer cost; prior isolated A1.3 measured overhead. Stages inclusive wall time; not causal GPU attribution. Pump outside remainder 246.787/242.858 ms; do not sum nested stages."
+      },
+      "m2": {
+        "pr": 79,
+        "sha": "cfb6b3ab7ac4e8936f34f0c6aef99790cba892f1",
+        "ci": 45825135946,
+        "job": 139927231257,
+        "renderers": 2,
+        "formats": 2,
+        "arms": [
+          "F",
+          "I-G cropped",
+          "I-H cropped"
+        ],
+        "routes": 12,
+        "ticks_per_route": 720,
+        "total_ticks": 8640,
+        "per_route": {
+          "actual_floor_and_ray_samples": 720,
+          "missing_rays": 0,
+          "airborne": 0,
+          "denied": 0,
+          "remote_anchor_missing": 54,
+          "longest_remote_anchor_missing_ticks": 17,
+          "reads": 284,
+          "builds": 178,
+          "goals": [
+            65,
+            156,
+            287,
+            405
+          ],
+          "support_revisions": 12,
+          "tier_transitions": 12,
+          "peak_pages": 16,
+          "peak_tiles": 12,
+          "peak_jobs": 2,
+          "center_checkpoints": 5,
+          "post_stop_ghost_pixels": 0
+        },
+        "decision": "ACCEPT_DIAGNOSTIC_ONLY_PENDING_MERGE",
+        "limitations": "Identical guarded route, matched work counts, synthetic pressure, not comparable FPS; remote stream anchor != actual camera/actor. 60 center checkpoint checks, 648 missing remote attachments, no player floor/ray loss. Prior I1 had different repetitions and 2 denied ticks; cannot claim causal improvement. Android, full 4-tile/corrupt/cap/steep and actual lifecycle gates remain."
+      },
+      "revisit": {
+        "e1": {
+          "prior_ci": 45703959444,
+          "tfm1_cap4_ms": [
+            0.16315,
+            0.168983333333333
+          ],
+          "tfm1_cap8_ms": [
+            0.291666666666667,
+            0.282275
+          ],
+          "tfm2_cap4_ms": [
+            0.175541666666667,
+            0.169358333333333
+          ],
+          "tfm2_cap8_ms": [
+            0.28975,
+            0.283133333333333
+          ],
+          "prior_p95_upper_ms": 0.5,
+          "decision": "REOPEN_MEASUREMENT_NOT_RUNTIME_PROMOTION",
+          "reason": "M1 fresh visual_allocate repeat on same first tile. Test cold vs prewarmed first node and repeated churn separately, bounded shell reuse cap0/4/8, equal work, end-to-end plus setup/teardown and memory. Pool may shift initial cost; no new default."
+        },
+        "m3": {
+          "phone_submitted": 1562,
+          "phone_dropped": 241,
+          "same_geometry_at_epoch": 50,
+          "changed_neighbors": 160,
+          "unknown": 31,
+          "prior_discard_build_wall_us": 8497503,
+          "decision": "Exact identity shadow first; maximum 50/241 classified candidates, not guaranteed salvage or FPS. Reject changed neighbors and unknown. Keep full signature/owner/generation and caps."
+        },
+        "m5": {
+          "decision": "Matched route page cap16 vs24/32; measure bytes/RSS where available, accepted reads, reloads, evictions, queue/accept/delivery, same quality/work. Existing 16 cap saturated does not prove larger cache wins."
+        }
+      }
+    },
+    "m3": "MERGED_SHADOW_COMBINED_CI_VERIFIED",
+    "m4": "CI_VERIFIED_PREWARM_REJECTED_KEEP_EVIDENCE",
+    "m5": {
+      "status": "MERGED_TEST_COMBINED_CI_VERIFIED",
+      "sha": "77019be3ec9167bf855efce127f360c93759237e",
+      "pr": 82,
+      "ci": 45831078190
+    },
+    "latest_results": {
+      "combined": {
+        "ci": 45828854113,
+        "regressions": 137,
+        "renderers": 2,
+        "physical_ticks": 8640,
+        "missing_rays": 0,
+        "airborne": 0,
+        "denied": 0,
+        "ghost": 0,
+        "joined_visual_allocate_us": [
+          17044,
+          15527
+        ]
+      },
+      "m3": {
+        "ci": 45828968839,
+        "regressions": 137,
+        "controlled_finished_build_us": [
+          2078,
+          2117
+        ],
+        "live_routes": 8,
+        "ticks": 5760,
+        "successful_finished_candidates": 8,
+        "pending_candidates": 0,
+        "copy_wall_us": 1145,
+        "build_wall_us": 16425,
+        "aggregate_reserved_output_bytes": 928416,
+        "retained_payload_bytes": 0,
+        "decision": "Accept shadow diagnostics, not runtime reuse. Verify device stage incidence before promotion. Changed-neighbor negative unchanged."
+      },
+      "m4": {
+        "ci": 45829031521,
+        "regressions": 137,
+        "rendered_profiles": 8,
+        "mobile_cold_vs_prewarm": {
+          "mean_frame_ms": [
+            23.83609416610245,
+            24.4585337926275
+          ],
+          "mean_max_frame_ms": [
+            349.2565,
+            501.4745
+          ],
+          "mean_peak_visual_allocate_ms": [
+            20.296,
+            19.386
+          ],
+          "mean_setup_ms": [
+            0.0015,
+            134.4485
+          ],
+          "mean_builds": [
+            82,
+            79.5
+          ],
+          "mean_sampled_rss_bytes": [
+            386367488,
+            415211520
+          ],
+          "mean_first_focus_ms": [
+            49.621,
+            49.5105
+          ],
+          "setup_free_us": 247645,
+          "setup_material_us": 20322
+        },
+        "decision": "Reject empty-node prewarm; keep branch and raw evidence. Distinguish expensive material/assign/free and process waits, no automatic pool or deferred-free promotion. Software renderer, unequal work, two repetitions, no GPU/phone claim."
+      },
+      "m5": {
+        "ci": 45831078190,
+        "regressions": 139,
+        "formats": 2,
+        "routes": 6,
+        "physical_ticks": 4320,
+        "capacities": [
+          16,
+          24,
+          32
+        ],
+        "per_format": {
+          "reads": [
+            284,
+            203,
+            127
+          ],
+          "derived_reloads": [
+            226,
+            145,
+            69
+          ],
+          "evictions": [
+            268,
+            179,
+            95
+          ],
+          "verified_pages": [
+            58,
+            58,
+            58
+          ],
+          "mesh_builds": [
+            178,
+            180,
+            184
+          ],
+          "float_payload_bytes": [
+            65536,
+            98304,
+            131072
+          ],
+          "goals": [
+            65,
+            156,
+            287,
+            405
+          ],
+          "missing_rays": 0,
+          "airborne": 0,
+          "denied": 0
+        },
+        "pump_mean_ms": {
+          "TFM1": [
+            0.188675141242937,
+            0.187707627118643,
+            0.183319209039548
+          ],
+          "TFM2": [
+            0.325481638418079,
+            0.31765395480226,
+            0.303149717514124
+          ]
+        },
+        "pump_p95_upper_ms": {
+          "TFM1": [
+            0.995,
+            0.847,
+            0.828
+          ],
+          "TFM2": [
+            1,
+            1.658,
+            1.714
+          ]
+        },
+        "decision": "Merge tests only; cap32 promising, no default promotion. Accepted reads -55.28%, evictions -64.55%, +64KiB resident float payload, unequal mesh work, TFM2 p95 upper worsens; no peak RSS/GPU/phone FPS."
+      },
+      "m6": {
+        "ci": 45835083337,
+        "regressions": 141,
+        "arms": 28,
+        "timed_tiles": 896,
+        "warmups": 112,
+        "labels": [
+          "F",
+          "I-F full",
+          "I-F crop",
+          "I-G full",
+          "I-G crop",
+          "I-H full",
+          "I-H crop"
+        ],
+        "wall_us_per_tile_mean": {
+          "TFM1": [
+            2623.984375,
+            2608.984375,
+            2575.8125,
+            2347.109375,
+            2225.8125,
+            2271.09375,
+            2178.703125
+          ],
+          "TFM2": [
+            1945.859375,
+            2015.5,
+            1929.078125,
+            1497.859375,
+            1494.15625,
+            1525.453125,
+            1491.5
+          ]
+        },
+        "decision": "Integrate test only; scalar major improvement, topology incremental crop benefit ~2.1%/0.18%; no automatic topology/default, no timed IO/renderer. Exact fingerprints and equal work."
+      },
+      "m4_lifecycle": {
+        "ci": 45835160341,
+        "regressions": 139,
+        "arms": 8,
+        "created": 192,
+        "freed": 192,
+        "visible_checks": 192,
+        "ghost_checks": 192,
+        "retained_cap": 4,
+        "GL_total_us_ABBA": [
+          282713,
+          103769,
+          101343,
+          102138
+        ],
+        "Mobile_total_us_ABBA": [
+          540198,
+          166377,
+          174297,
+          168569
+        ],
+        "first_visible_draw_wait_us_GL": [
+          188646,
+          11976,
+          12012,
+          12001
+        ],
+        "first_visible_draw_wait_us_Mobile": [
+          351136,
+          29802,
+          30348,
+          29769
+        ],
+        "mobile_free_max_ms": 0.074,
+        "decision": "Do not promote delayed retention; cold first immediate confounded by persistent caches, warm final immediate comparable or faster, all free costs tiny in quad probe. Prior actual terrain prewarm rejection preserved. Focus actual first draw/material state, not speculative deferred free. Synthetic equal quads, no actual terrain physics/GPU proof."
+      },
+      "m3_m5_combined": {
+        "ci": 45834613667,
+        "regressions": 139,
+        "renderer_groups": "success"
+      },
+      "m6_combined": {
+        "ci": 45837895267,
+        "regressions": 141,
+        "renderer": "success"
+      },
+      "m7": {
+        "ci": 45837982629,
+        "regressions": 141,
+        "renderers": 2,
+        "formats": 2,
+        "routes": 12,
+        "ticks": 8640,
+        "cap": [
+          1,
+          2,
+          4
+        ],
+        "per_route": {
+          "goals": [
+            65,
+            156,
+            287,
+            405
+          ],
+          "denied": 0,
+          "missing_rays": 0,
+          "airborne": 0,
+          "ghost": 0,
+          "reads": [
+            259,
+            284,
+            290
+          ],
+          "mesh_builds": [
+            174.75,
+            178,
+            184
+          ],
+          "anchor_missing_ticks": [
+            60,
+            54,
+            52
+          ],
+          "peak_slots": [
+            1,
+            2,
+            3
+          ],
+          "peak_reserved_bytes": [
+            135972,
+            271944,
+            407916
+          ],
+          "allowed_bytes": [
+            135972,
+            271944,
+            543888
+          ],
+          "mean_pump_ms": [
+            0.3334205508474585,
+            0.3257676553672315,
+            0.3227990819209045
+          ],
+          "mean_queue_ms": [
+            0.0488116,
+            1.0304843,
+            1.60438325
+          ],
+          "mean_delivery_ms": [
+            13.64620613,
+            13.93423663,
+            13.00992191
+          ]
+        },
+        "decision": "Keep cap2. Cap4 observed peak3, modest extra optional work, 2 fewer remote-anchor gaps, +50% peak reserved payload and higher queue wait; cap1 safe in this route but 6 more remote gaps. No actual device/FPS or equal optional work claim."
+      },
+      "m8": {
+        "ci": 45838077217,
+        "regressions": 143,
+        "formats": 2,
+        "targets": [
+          30,
+          60
+        ],
+        "routes": 4,
+        "ticks": 1360,
+        "per_route": {
+          "near": [
+            6,
+            6,
+            6,
+            6,
+            6
+          ],
+          "far": [
+            6,
+            2,
+            6,
+            6,
+            6
+          ],
+          "tiers": [
+            0,
+            2,
+            0,
+            0,
+            0
+          ],
+          "ticks": [
+            39,
+            139,
+            259,
+            319,
+            339
+          ],
+          "auto": [
+            true,
+            true,
+            true,
+            false,
+            true
+          ],
+          "reads": 155,
+          "builds": 44,
+          "transitions": 4,
+          "skipped_pressure_samples": 12,
+          "height_delta": 0,
+          "missing_rays": 0,
+          "airborne": 0
+        },
+        "decision": "Accept tests; normalized synthetic pressure control verified, not target FPS attainment or OS lifecycle."
+      }
+    },
+    "m6": {
+      "status": "MERGED_TEST_COMBINED_CI_VERIFIED",
+      "pr": 83,
+      "sha": "42ade476cc9f2a63c4252a7876ef5168ead5151f",
+      "ci": 45835083337
+    },
+    "m4_followup": {
+      "status": "CI_VERIFIED_RETENTION_NOT_PROMOTED",
+      "pr": 84,
+      "sha": "5e1f3e42dc2bf6d000926355443d05d14057a621",
+      "ci": 45835160341
+    },
+    "m7": {
+      "status": "MERGED_TEST_ONLY_COMBINED_CI_PENDING",
+      "pr": 85,
+      "sha": "8c893d0afa9010497521d202050c27ed30bafe1d",
+      "ci": 45837982629
+    },
+    "m8": {
+      "status": "MERGED_TEST_ONLY_COMBINED_CI_PENDING",
+      "pr": 86,
+      "sha": "20984e0bc07b7911cef3547091a692a6347c9ccc",
+      "ci": 45838077217
     }
   }
 }

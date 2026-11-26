@@ -33,12 +33,12 @@ func _run() -> void:
         if made.get("error",FAILED)!=OK:
             _fail("I1 fixture result")
             return
-        for mode in [4,7]:
-            var result: Dictionary=await _route(made["directory"],format,mode)
+        for arm in [4,5,6]:
+            var result: Dictionary=await _route(made["directory"],format,arm)
             if result.get("error",FAILED)!=OK:
-                _fail("I1 "+str([format,mode,result]))
+                _fail("I1 "+str([format,arm,result]))
                 return
-            print("I1_RENDERED_TERRAIN ",JSON.stringify({"renderer":expected,"format":format+1,"mode":mode,"metrics":result}))
+            print("I1_RENDERED_TERRAIN ",JSON.stringify({"renderer":expected,"format":format+1,"arm":arm,"mode":4 if arm==4 else 7,"metrics":result}))
         _builder.close()
         _builder=null
     _camera.free()
@@ -46,12 +46,14 @@ func _run() -> void:
     print("PASS: I1 rendered terrain support checkpoints and post-stop ghost rejection")
     quit(0)
 
-func _route(directory: String,format: int,mode: int) -> Dictionary:
+func _route(directory: String,format: int,arm: int,job_cap: int=2) -> Dictionary:
     _p=P.new()
     _p.region_index_format=format
-    _p.sampling_strategy=mode
-    _p.hybrid_scalar_sampling=mode==7
-    _p.hybrid_cropped_halo=mode==7
+    _p.sampling_strategy=4 if arm==4 else 7
+    _p.hybrid_scalar_sampling=arm!=4
+    _p.hybrid_topology_cache=arm==6
+    _p.hybrid_cropped_halo=arm!=4
+    _p.geometry_job_limit=job_cap
     _p.enable_support_retention=true
     _p.enable_motion_prefetch=true
     _p.enable_adaptive_motion_horizon=true
@@ -119,12 +121,22 @@ func _route(directory: String,format: int,mode: int) -> Dictionary:
         return {"error":FAILED,"stage":"initial rendered support","pixels":initial}
     checkpoints.append(initial)
     var denied: int=0
+    var denied_streak: int=0
+    var longest_denied_streak: int=0
+    var anchor_missing: int=0
+    var anchor_missing_streak: int=0
+    var anchor_longest_streak: int=0
+    var anchor_samples: int=0
+    var physical_samples: int=0
+    var stream_anchor=Vector3(100,0,100)
     var shifts: int=0
     var peak_tiles: int=0
     var peak_pages: int=0
     var peak_jobs: int=0
     var actual_velocity=Vector2.ZERO
     var traversed: float=0.0
+    var pump_hist=HIST.new()
+    var peak_payload: int=0
     var last_tier: int=0
     var transitions: int=0
     for tick in range(ROUTE_TICKS):
@@ -136,8 +148,8 @@ func _route(directory: String,format: int,mode: int) -> Dictionary:
             if _p.sample_view_pressure(pressure)!=OK:
                 return {"error":FAILED,"stage":"pressure","tick":tick}
         if tick%60==0:
-            var anchor=Vector3(100,0,100) if int(tick/60)%2==0 else Vector3(220,0,100)
-            _p.set_stream_center(anchor)
+            stream_anchor=Vector3(100,0,100) if int(tick/60)%2==0 else Vector3(220,0,100)
+            _p.set_stream_center(stream_anchor)
             shifts+=1
         var before: Vector3=_body.global_position
         var from=Vector2(before.x,before.z)
@@ -151,8 +163,12 @@ func _route(directory: String,format: int,mode: int) -> Dictionary:
         var admitted: bool=admission["ready"] and absf(command)>0.001
         if absf(command)>0.001 and not admitted:
             denied+=1
+            denied_streak+=1
+            longest_denied_streak=maxi(longest_denied_streak,denied_streak)
             if admission["reason"] not in ["missing_lod0","unsettled","physics_unconfirmed"]:
                 return {"error":FAILED,"stage":"admission","tick":tick,"detail":admission}
+        else:
+            denied_streak=0
         _body.velocity=Vector3(command if admitted else 0.0,_body.velocity.y-GRAVITY*dt,0)
         _body.move_and_slide()
         var after: Vector3=_body.global_position
@@ -161,6 +177,7 @@ func _route(directory: String,format: int,mode: int) -> Dictionary:
         traversed+=absf(actual.x-from.x)
         if not _body.is_on_floor() or not _valid_ground(_ground(after)):
             return {"error":FAILED,"stage":"ground","tick":tick,"position":str(after)}
+        physical_samples+=1
         if not admitted and actual.distance_to(from)>0.05:
             return {"error":FAILED,"stage":"denied drift","tick":tick}
         var plan: Dictionary=FOOT.plan(actual,actual,RADIUS,_p.world_extent(),32.0)
@@ -179,14 +196,29 @@ func _route(directory: String,format: int,mode: int) -> Dictionary:
                 return {"error":FAILED,"stage":"rendered support","tick":tick,"pixels":pixels}
             checkpoints.append(pixels)
         if not gap:
+            var stamp: int=Time.get_ticks_usec()
             var pumped: Dictionary=_p.pump_stream()
+            pump_hist.add(float(Time.get_ticks_usec()-stamp)/1000.0)
             if pumped["error"]!=OK:
                 return {"error":FAILED,"stage":"pump","tick":tick}
+        # The remote stream anchor is deliberately not the physical actor.
+        # Attachment is not a physics ray or actual camera pixel.
+        anchor_samples+=1
+        if not _p.has_collision_at(stream_anchor):
+            anchor_missing+=1
+            anchor_missing_streak+=1
+            anchor_longest_streak=maxi(anchor_longest_streak,anchor_missing_streak)
+        else:
+            anchor_missing_streak=0
         var stats: Dictionary=_p.stats()
         peak_tiles=maxi(peak_tiles,int(stats["tiles"]))
         peak_pages=maxi(peak_pages,int(stats["source"]["resident"]))
         peak_jobs=maxi(peak_jobs,int(stats["geometry_reservations"]))
-        if peak_tiles>12 or peak_pages>16 or peak_jobs>2:
+        var ws: Dictionary=stats["geometry_worker"]
+        peak_payload=maxi(peak_payload,int(ws["reserved_payload_bytes"]))
+        if ws["cap"]!=job_cap or ws["slots"]>job_cap or ws["inflight"]>1 or ws["reserved_payload_bytes"]>ws["payload_cap_bytes"] or int(ws["submitted"])!=int(ws["delivered"])+int(ws["dropped"])+int(ws["slots"]):
+            return {"error":FAILED,"stage":"worker ownership","tick":tick}
+        if peak_tiles>12 or peak_pages>16 or peak_jobs>job_cap:
             return {"error":FAILED,"stage":"cap","tick":tick}
         var held: Dictionary=_p.support_state()
         if held["tiles"]!=plan["tiles"] or held["revision"]!=revision:
@@ -207,6 +239,24 @@ func _route(directory: String,format: int,mode: int) -> Dictionary:
     if leg!=GOALS.size() or revision-initial_revision<8 or transitions<4 or absf(_body.global_position.x-510.0)>0.05:
         return {"error":FAILED,"stage":"route evidence","goals":goal_ticks,"revisions":revision-initial_revision,"transitions":transitions,"finish":_body.global_position.x}
     var report: Dictionary={"error":OK,"ticks":ROUTE_TICKS,"goals":goal_ticks,"travel_x":traversed,"support_revisions":revision-initial_revision,"denied_ticks":denied,"missing_rays":0,"airborne_ticks":0,"camera_shifts":shifts,"tier_transitions":transitions,"peak_tiles":peak_tiles,"peak_pages":peak_pages,"peak_jobs":peak_jobs,"simulated_sample_gap_ticks":12,"note":"No actual app pause/background, no phone FPS claim."}
+    var final_stats: Dictionary=_p.stats()
+    report["physical_contact_samples"]=physical_samples
+    report["remote_anchor_attachment_samples"]=anchor_samples
+    report["remote_anchor_missing_shape_samples"]=anchor_missing
+    report["remote_anchor_longest_missing_ticks"]=anchor_longest_streak
+    report["longest_denied_ticks"]=longest_denied_streak
+    report["source_reads"]=final_stats["source"].get("disk_reads",0)
+    report["mesh_builds"]=final_stats.get("mesh_builds",0)
+    report["hybrid_topology_cache"]=arm==6
+    report["job_cap"]=job_cap
+    report["pump_ms"]=pump_hist.report()
+    report["peak_reserved_payload_bytes"]=peak_payload
+    report["worker_final"]=final_stats["geometry_worker"]
+    report["worker_ms"]=final_stats["geometry_worker_ms"]
+    report["queue_ms"]=final_stats["geometry_queue_ms"]
+    report["delivery_ms"]=final_stats["geometry_delivery_ms"]
+    if physical_samples!=ROUTE_TICKS or anchor_samples!=ROUTE_TICKS or anchor_missing>anchor_samples or anchor_longest_streak>anchor_missing or longest_denied_streak>denied:
+        return {"error":FAILED,"stage":"sample accounting"}
     _body.free()
     _body=null
     _p.stop_preview()
@@ -215,7 +265,7 @@ func _route(directory: String,format: int,mode: int) -> Dictionary:
         return {"error":FAILED,"stage":"ghost after stop","pixels":ghost}
     report["checkpoints"]=checkpoints
     report["post_stop_pixels"]=ghost
-    report["note"]="Actual software-rendered terrain, diagnostic material, five physical checkpoints; extra draw waits, no matched timing or Android lifecycle/FPS claim."
+    report["note"]="Actual software-rendered terrain, diagnostic material, five physical checkpoints; remote anchor attachment distinct from actual actor floor and ray; extra draw waits, no matched timing or Android lifecycle/FPS claim."
     _p.free()
     _p=null
     return report
