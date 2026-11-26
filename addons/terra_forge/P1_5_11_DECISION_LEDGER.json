@@ -2,13 +2,13 @@
   "schema": "TF_ENGINE_DECISION_LEDGER_1",
   "date": "2026-11-26",
   "branch": "feat/terraforge-mobile-addon",
-  "latest_code_merge": "9bc8416d3657b5d446a5f23a3a4a6ecf401bab7b",
-  "recorded_parent": "9bc8416d3657b5d446a5f23a3a4a6ecf401bab7b",
+  "latest_code_merge": "f013d3f839a1c4270676bf5f4663e45ce43d94fe",
+  "recorded_parent": "f013d3f839a1c4270676bf5f4663e45ce43d94fe",
   "combined_ci": {
-    "head": "9bc8416d3657b5d446a5f23a3a4a6ecf401bab7b",
-    "ci": 45724197931,
-    "conclusion": "success",
-    "tests": 119
+    "head": "f013d3f839a1c4270676bf5f4663e45ce43d94fe",
+    "ci": 45729781494,
+    "status": "PENDING_EXACT_VERIFICATION",
+    "expected_tests": 121
   },
   "device_gate": {
     "status": "OPEN",
@@ -1064,31 +1064,94 @@
       "pr": 58,
       "head": "e47ef910bfd65e2a078112d0884238fc253d3260",
       "ci": 45727205380,
-      "disposition": "CI_PENDING",
-      "decision": "Inspect exact forced parity and caps; no natural hit rate, runtime publication or equal-work timing claim."
+      "disposition": "MERGED_ISOLATED_CANDIDATE_ONLY",
+      "decision": "Actual worker parity and fence pass. Live preview, actual physics, natural reuse and transient memory remain open.",
+      "merge": "64d4a0a938b46fa0efce0613e321a893e440418d",
+      "evidence": {
+        "tests": 120,
+        "cases": 12,
+        "forced_hits": 6,
+        "full_us": 16504,
+        "hit_us": 616,
+        "matched_work": false
+      }
     },
     {
       "phase": "e2 staged resource",
       "pr": 59,
       "head": "d0404c93b681c4f3ac8afcf545ac9549496fc3b6",
       "ci": 45727269126,
-      "disposition": "CI_PENDING",
-      "decision": "Inspect actual old ray presence, staged resource parity and timing; direct preparation excludes assignment, no full pump or VRAM claim."
+      "disposition": "MERGED_ISOLATED_CANDIDATE_ONLY",
+      "decision": "Preserve isolated candidate. Authoritative revision, actual ray height, paired whole publication and transient memory still required.",
+      "merge": "f013d3f839a1c4270676bf5f4663e45ce43d94fe",
+      "evidence": {
+        "tests": 120,
+        "cases": 24,
+        "commits": 16,
+        "cancels": 8,
+        "direct_peak_us": [
+          152,
+          132
+        ],
+        "staged_peak_us": [
+          98,
+          86
+        ],
+        "direct_prepare_us": [
+          1287,
+          1296
+        ],
+        "mesh_us": [
+          921,
+          944
+        ],
+        "shape_us": [
+          267,
+          295
+        ],
+        "commit_us": [
+          300,
+          371
+        ]
+      }
     },
     {
       "phase": "f3 batch admission",
       "pr": 60,
       "head": "f75cbc0340a790c6fdc4373957209e22e6d4caa1",
       "ci": 45727316892,
-      "disposition": "CI_PENDING",
-      "decision": "Inspect equal ordered requests and timings, not physical IO coalescing; require route/epoch/corruption evidence if worthwhile."
+      "disposition": "PARK_BATCH_ADMISSION_NO_MATERIAL_GAIN",
+      "decision": "Close without merge; retain branch. Further stress/route work deferred pending material queue contention or different physical IO hypothesis.",
+      "evidence": {
+        "tests": 120,
+        "admission_us_tfm1": [
+          770,
+          679
+        ],
+        "admission_us_tfm2": [
+          588,
+          592
+        ],
+        "reads": [
+          256,
+          256
+        ],
+        "wakes": [
+          64,
+          64
+        ],
+        "shard_loads": [
+          80,
+          80
+        ]
+      }
     }
   ],
   "next": [
-    "Review exact G1 PR58, E2 PR59 and F3 PR60 CI and actual metrics before promotion.",
-    "G1: live preview worker integration, physics and natural reuse/transient memory gates.",
-    "E2/F3: continue only if measured benefit justifies safety gates.",
-    "F2 remains parked; 15 active numbered tasks."
+    "Exact combined G1/E2 isolated candidates CI 45729781494.",
+    "G1 live preview physics safety and natural reuse/transient memory.",
+    "E2 authoritative revision, actual ray heights, matched full publication/pump and memory, decision.",
+    "F3 and F2 parked; 14 active numbered tasks."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -1173,15 +1236,24 @@
         "trigger": "H0/I0 review or actual readiness stalls in turning/four-tile traces; require equal route benefit and bounded cost",
         "alternative": "conservative cap-aware horizon only under measured pressure",
         "review_status": "OPEN_REVIEW_NOT_IMPLEMENTATION"
+      },
+      {
+        "phase": "f3",
+        "branch": "exp/p1511f3-batch-admission",
+        "pr": 60,
+        "head": "f75cbc0340a790c6fdc4373957209e22e6d4caa1",
+        "ci": 45727316892,
+        "status": "PARK_BATCH_ADMISSION_NO_MATERIAL_GAIN",
+        "trigger": "H0/I0 review or measured material queue contention / distinct physical IO hypothesis",
+        "review_status": "OPEN_REVIEW_NOT_IMPLEMENTATION"
       }
     ]
   },
   "progress_accounting": {
-    "scope": "G1 F2 E2 F3 only; other numbered phases not decomposed",
+    "scope": "G1 F2 E2 F3 only; other 12 active numbered phases not decomposed",
     "g1": {
-      "done": 6,
-      "total": 9,
-      "in_progress": 1
+      "done": 7,
+      "total": 9
     },
     "f2": {
       "done": 7,
@@ -1189,32 +1261,18 @@
       "deferred": 1
     },
     "e2": {
-      "done": 0,
-      "total": 4,
-      "in_progress": 1,
-      "items": [
-        "Staged candidate CI and parity",
-        "Authoritative revision and actual height rays",
-        "Paired full publication/pump and transient memory",
-        "Decision and integration/fallback"
-      ]
+      "done": 1,
+      "total": 4
     },
     "f3": {
-      "done": 0,
+      "done": 2,
       "total": 4,
-      "in_progress": 1,
-      "items": [
-        "Ordered batch candidate CI and parity",
-        "Epoch/corruption and capacity stress",
-        "Paired actual route net benefit",
-        "Decision and integration/fallback"
-      ]
+      "deferred": 2
     },
-    "done": 13,
+    "done": 17,
     "total": 25,
-    "active_remaining": 11,
-    "in_progress": 3,
-    "deferred": 1,
-    "active_numbered": 15
+    "active_remaining": 5,
+    "deferred": 3,
+    "active_numbered": 14
   }
 }
