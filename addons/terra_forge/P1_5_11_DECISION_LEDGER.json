@@ -1145,13 +1145,29 @@
           80
         ]
       }
+    },
+    {
+      "phase": "g1 natural live preview",
+      "pr": 61,
+      "head": "7c1cbde47ceea739aaff8c7daeaad5cc54bdb502",
+      "ci": 45730976125,
+      "disposition": "CI_PENDING",
+      "decision": "Compare exact settled resource fingerprints/ray heights and natural delivered hit rate; check net worker overhead and remaining transient memory. Park if no meaningful benefit."
+    },
+    {
+      "phase": "e2 verified staged revision",
+      "pr": 62,
+      "head": "29a6b23cf3b40f19d90c27fc82092ab637653d87",
+      "ci": 45731027386,
+      "disposition": "CI_PENDING",
+      "decision": "Check changed seam ray height parity, source revision and old resource rejection. No worker-result scheduler integration or full timing claim."
     }
   ],
   "next": [
-    "Exact combined G1/E2 isolated candidates CI 45729781494.",
-    "G1 live preview physics safety and natural reuse/transient memory.",
-    "E2 authoritative revision, actual ray heights, matched full publication/pump and memory, decision.",
-    "F3 and F2 parked; 14 active numbered tasks."
+    "Check combined CI45729781494 and exact G1 PR61 CI45730976125, E2 PR62 CI45731027386.",
+    "G1 natural use and live safety: decide on cache, then transient payload/RSS and paired workload if worthwhile.",
+    "E2 authoritative revision and exact ray height, then paired complete publication/pump and transient memory if justified.",
+    "F2/F3 parked; 14 active numbered tasks."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -1253,7 +1269,8 @@
     "scope": "G1 F2 E2 F3 only; other 12 active numbered phases not decomposed",
     "g1": {
       "done": 7,
-      "total": 9
+      "total": 9,
+      "in_progress": 1
     },
     "f2": {
       "done": 7,
@@ -1262,7 +1279,8 @@
     },
     "e2": {
       "done": 1,
-      "total": 4
+      "total": 4,
+      "in_progress": 1
     },
     "f3": {
       "done": 2,
@@ -1273,6 +1291,7 @@
     "total": 25,
     "active_remaining": 5,
     "deferred": 3,
-    "active_numbered": 14
+    "active_numbered": 14,
+    "in_progress": 2
   }
 }
