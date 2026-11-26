@@ -1137,6 +1137,17 @@
         "status": "PARKED_RUNTIME_ORDER",
         "trigger": "Actual device obsolete ready result frequency and matched net work reduction; no change solely on controlled jump.",
         "review_status": "OPEN_REVIEW_NOT_IMPLEMENTATION"
+      },
+      {
+        "phase": "f2",
+        "branch": "exp/p1511f2-paired-policy",
+        "pr": 57,
+        "head": "2eb7068a31c6662812203289f6aaec4800e49b60",
+        "ci": 45724196861,
+        "status": "REJECT_CURRENT_RUNTIME_POLICY_PARK_FOUR_TILE",
+        "trigger": "H0/I0 review or actual readiness stalls in turning/four-tile traces; require equal route benefit and bounded cost",
+        "alternative": "conservative cap-aware horizon only under measured pressure",
+        "review_status": "OPEN_REVIEW_NOT_IMPLEMENTATION"
       }
     ]
   },
