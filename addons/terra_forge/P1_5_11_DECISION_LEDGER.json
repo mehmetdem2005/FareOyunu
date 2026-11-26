@@ -1902,9 +1902,9 @@
     }
   ],
   "next": [
-    "M7/M8 combined CI143 and software renderer checks, preserve cap2 and default A.",
-    "M9 compare F and cropped scalar/topology with page16/32 on matched route, assess interactions; do not claim full synthesis or promotion until device.",
-    "M10 package and remaining safety/lifecycle tasks; all 60 review tasks retained."
+    "Inspect combined M7/M8 CI, M9 per-route results and M10 adapter package actual logs. M10 preflight only, not final or phone request.",
+    "M9 pending promotion interaction; M10 final ABBA/BAAB page+hybrid matrix, diagnostic arm, 30-minute soak, actual OS lifecycle, RSS/thermal/GPU availability, separate export/editor. No default change.",
+    "Audit all 60 M0–M11 review tasks, explicitly label remaining corner/corrupt/cap/identity/budget/IO/fairness/adaptation gates; do not close based on PASS alone. M11 and P1.4R remain."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -2096,7 +2096,30 @@
       45802203182
     ],
     "scope": "Separate from historical 26/33 scoped decisions. No double count. 60 planned review tasks, not 60 new runtime changes.",
-    "active": [],
+    "active": [
+      {
+        "phase": "M7/M8 combined",
+        "sha": "9fa7ff158dd156faf221174afde45d6ed24d456e",
+        "ci": 45840618764
+      },
+      {
+        "phase": "M9 interaction",
+        "status": "INTERACTION_CI_PENDING",
+        "pr": 87,
+        "sha": "d26d62a9502934761393f93cfccc147b23770504",
+        "ci": 45840722547
+      },
+      {
+        "phase": "M10 preflight",
+        "status": "ANDROID_ADAPTER_PREFLIGHT_CI_PENDING_NOT_FINAL_PACKAGE",
+        "sha": "f5a2cb3e1f143ad087e1aaa44881cf1eb3441cfa",
+        "branch": "tools/terraforge-android-m10-preflight",
+        "ci": 45840847374,
+        "terrain_pin": "9fa7ff158dd156faf221174afde45d6ed24d456e",
+        "addon_tree": "d72072c6b2ce43c14e4f928ca405575d4bd82dc2",
+        "inventory": 143
+      }
+    ],
     "last_analysis": {
       "date": "2026-11-26",
       "source": "exact completed CI jobs and prior decision ledger",
@@ -2678,6 +2701,21 @@
       "pr": 86,
       "sha": "20984e0bc07b7911cef3547091a692a6347c9ccc",
       "ci": 45838077217
+    },
+    "m9": {
+      "status": "INTERACTION_CI_PENDING",
+      "pr": 87,
+      "sha": "d26d62a9502934761393f93cfccc147b23770504",
+      "ci": 45840722547
+    },
+    "m10": {
+      "status": "ANDROID_ADAPTER_PREFLIGHT_CI_PENDING_NOT_FINAL_PACKAGE",
+      "sha": "f5a2cb3e1f143ad087e1aaa44881cf1eb3441cfa",
+      "branch": "tools/terraforge-android-m10-preflight",
+      "ci": 45840847374,
+      "terrain_pin": "9fa7ff158dd156faf221174afde45d6ed24d456e",
+      "addon_tree": "d72072c6b2ce43c14e4f928ca405575d4bd82dc2",
+      "inventory": 143
     }
   }
 }
