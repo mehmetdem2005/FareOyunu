@@ -1,6 +1,8 @@
 extends Node
 const CAPTURE = preload("res://capture.gd")
 const PROFILE_PATH = "res://addons/terra_forge/profiling/profile_scene.gd"
+const SOAK_SECONDS: float = 1800.0
+const LIFECYCLE_EVENT_LIMIT: int = 32
 var _run_dir: String = ""
 var _start: Button
 var _suite_choice: OptionButton
@@ -30,6 +32,7 @@ var _busy := false
 var _ci := false
 var _smoke := false
 var _profile_smoke := false
+var _soak_smoke := false
 var _seq := 0
 var _names: Array = []
 var _shard := 0
@@ -42,7 +45,8 @@ func _ready() -> void:
     var args: PackedStringArray = OS.get_cmdline_user_args()
     _idle_smoke = args.has("--idle-smoke")
     _profile_smoke=args.has("--profile-smoke")
-    _ci = args.has("--ci") or args.has("--smoke") or _idle_smoke or _profile_smoke
+    _soak_smoke=args.has("--soak-smoke")
+    _ci = args.has("--ci") or args.has("--smoke") or _idle_smoke or _profile_smoke or _soak_smoke
     _smoke = args.has("--smoke") or _idle_smoke
     for arg in args:
         if arg.begins_with("--shard="):
@@ -58,8 +62,8 @@ func _ready() -> void:
     _names = _inventory["tests"].duplicate()
     if not _ci:
         _names=_inventory["quick_tests"].duplicate()
-    if _profile_smoke:
-        _selected_suite="full"
+    if _profile_smoke or _soak_smoke:
+        _selected_suite="soak" if _soak_smoke else "full"
         _names=[]
         if DisplayServer.get_name().to_lower()=="headless" or RenderingServer.get_current_rendering_method()!="mobile":
             push_error("Profile smoke requires actual Mobile renderer")
@@ -106,8 +110,8 @@ func _start_fresh() -> void:
     if _busy or _starting or _inventory.is_empty():
         return
     if not _ci:
-        _selected_suite="quick" if _suite_choice.selected==0 else "full"
-        _names=_inventory["quick_tests" if _selected_suite=="quick" else "tests"].duplicate()
+        _selected_suite=["quick","full","soak"][_suite_choice.selected]
+        _names=_suite_tests(_suite_choice.selected)
     _starting = true
     _suite_choice.disabled=true
     _start.disabled = true
@@ -142,16 +146,32 @@ func _start_fresh() -> void:
     _stop.text = "Sıradaki testte dur"
     _report = _new_report()
     _report["session_id"] = token
-    _report["suite_mode"] = "ci" if _ci else _selected_suite
+    _report["suite_mode"] = "ci" if _ci and not _soak_smoke else _selected_suite
     _report["terrain_tree"] = _inventory.get("terrain_tree","")
-    _report["planned_profiles"] = 0 if _ci and not _profile_smoke else _profile_plan(_selected_suite=="full").size()
-    _report["qualification_note"] = "Quick is screening only. Full has 56 paired timing profiles plus four separate observer profiles; soak and actual OS lifecycle remain separate open gates."
+    _report["planned_profiles"] = 0 if _ci and not (_profile_smoke or _soak_smoke) else _profile_plan(_selected_suite).size()
+    _report["qualification_note"] = "Quick screens candidates. Full separates 56 timing profiles from four observer profiles. Soak uses a single, slower 30-minute camera sweep. Lifecycle events and renderer timing are not physics tests."
+    _report["application_lifecycle"] = {"events":[],"paused":0,"resumed":0,"dropped":0}
+    _report["runtime_features"] = {"editor":OS.has_feature("editor"),"template":OS.has_feature("template"),"debug":OS.has_feature("debug"),"release":OS.has_feature("release")}
+    _report["thermal_status"] = null
+    _report["gpu_frame_time_ms"] = null
     if not _logger_installed:
         OS.add_logger(_log)
         _logger_installed = true
     _save()
     _starting = false
     _run_all()
+
+func _notification(what: int) -> void:
+    if not _busy or what not in [NOTIFICATION_APPLICATION_PAUSED,NOTIFICATION_APPLICATION_RESUMED]:
+        return
+    var lifecycle: Dictionary = _report["application_lifecycle"]
+    var kind: String = "paused" if what==NOTIFICATION_APPLICATION_PAUSED else "resumed"
+    lifecycle[kind] += 1
+    if lifecycle["events"].size()<LIFECYCLE_EVENT_LIMIT:
+        lifecycle["events"].append({"kind":kind,"uptime_ms":Time.get_ticks_msec(),"active_test":_report["active_test"],"active_profile":_report["active_profile"]})
+    else:
+        lifecycle["dropped"] += 1
+    _save()
 
 func _new_report() -> Dictionary:
     return {"schema":"TF_ANDROID_SUITE_1","build_commit":_inventory["build_commit"],"terrain_commit":_inventory["terrain_commit"],"started_utc":Time.get_datetime_string_from_system(true),"device":{"model":OS.get_model_name(),"os":OS.get_name(),"os_version":OS.get_version(),"cpu":OS.get_processor_name(),"cores":OS.get_processor_count(),"godot":Engine.get_version_info().get("string",""),"renderer":RenderingServer.get_current_rendering_method(),"adapter":RenderingServer.get_video_adapter_name(),"display":DisplayServer.get_name(),"headless":DisplayServer.get_name()=="headless","viewport":[get_viewport().size.x,get_viewport().size.y],"physics_hz":Engine.physics_ticks_per_second},"planned_tests":_names.size(),"tests":[],"profiles":[],"profile_interruptions":[],"diagnostic_scopes":[],"active_test":"","active_profile":"","state":"running","sequence":0,"notes":"SceneTree tests adapted to Node; shared process, not independent headless CI. Real renderer profiles separate. Timing includes scheduling, not GPU timestamp. Memory is sampled. No device identifier or game data."}
@@ -197,6 +217,7 @@ func _make_ui() -> void:
     _suite_choice=OptionButton.new()
     _suite_choice.add_item("Hedefli: 4 M9 testi + 12 profil")
     _suite_choice.add_item("Tam: tüm regresyonlar + 60 profil")
+    _suite_choice.add_item("Dayanıklılık: 30 dakika, F / 32 sayfa")
     _suite_choice.select(0)
     _suite_choice.item_selected.connect(_select_suite)
     v.add_child(_suite_choice)
@@ -242,10 +263,15 @@ func _select_suite(index:int) -> void:
     if not _report.is_empty():
         _detail.text="Yeni seçim yalnız sıfırdan başlatınca uygulanır."
         return
-    _names=_inventory["quick_tests" if index==0 else "tests"].duplicate()
+    _names=_suite_tests(index)
     _progress.max_value=_names.size()
     _progress.value=0
     _detail.text="0/%d | Başlat yeni oturum açar." % _names.size()
+
+func _suite_tests(index: int) -> Array:
+    if index==2:
+        return []
+    return _inventory["quick_tests" if index==0 else "tests"].duplicate()
 
 func _export_json(full:bool=false) -> void:
     if _report.is_empty() or _export_dialog_open or (full and _busy):
@@ -418,19 +444,23 @@ func _reset() -> void:
     _start_fresh()
 
 func _update_ui() -> void:
-    _progress.max_value = _names.size()
-    _progress.value = _report["tests"].size()
+    var soak: bool = _selected_suite=="soak"
+    _progress.max_value = 1 if soak else _names.size()
+    _progress.value = _report["profiles"].size() if soak else _report["tests"].size()
     var counts := {}
     for t in _report["tests"]:
         counts[t["status"]] = int(counts.get(t["status"],0))+1
-    _detail.text = "%d/%d | PASS %d | FAIL %d | Kesildi %d | Profil %d" % [_report["tests"].size(),_names.size(),counts.get("pass",0),counts.get("fail",0),counts.get("interrupted",0),_report["profiles"].size()]
+    if soak:
+        _detail.text = "Profil %d/1 | Kesinti %d" % [_report["profiles"].size(),_report["profile_interruptions"].size()]
+    else:
+        _detail.text = "%d/%d | PASS %d | FAIL %d | Kesildi %d | Profil %d" % [_report["tests"].size(),_names.size(),counts.get("pass",0),counts.get("fail",0),counts.get("interrupted",0),_report["profiles"].size()]
     _start.disabled = _busy or _starting
     _suite_choice.disabled = _busy or _starting or _ci
     _copy.disabled = _report.is_empty()
     _full.disabled = _busy or _starting or _report.is_empty()
-    _stop.disabled = not _busy
+    _stop.disabled = not _busy or soak
     _restart.disabled = _starting
-    _retry.disabled = _report.is_empty() or _starting
+    _retry.disabled = _report.is_empty() or _starting or soak
 
 func _sample_memory() -> void:
     var rss: Variant = _read_rss()
@@ -497,7 +527,7 @@ func _run_all() -> void:
                 _retry_requested=false
                 _retry_failed()
             return
-    if not _ci or _profile_smoke:
+    if not _ci or _profile_smoke or _soak_smoke:
         await _run_profiles()
     if _restart_requested or _retry_requested:
         _busy=false
@@ -523,7 +553,7 @@ func _run_all() -> void:
         if _profile_smoke:
             if not complete:
                 failures+=1
-            var expected_plan: Array[Dictionary]=_profile_plan(true)
+            var expected_plan: Array[Dictionary]=_profile_plan("full")
             var snapshot: String=""
             var settings_reference: Dictionary={}
             var counts: Dictionary={}
@@ -567,6 +597,12 @@ func _run_all() -> void:
                     failures+=1
             if failures==0:
                 print("ANDROID_PROFILE_SMOKE_VERIFIED ",JSON.stringify({"profiles":index,"renderer":RenderingServer.get_current_rendering_method(),"arms":counts,"diagnostics_export":true,"seconds_per_profile":5}))
+        if _soak_smoke:
+            var profile: Dictionary = _report["profiles"][0] if complete else {}
+            if not complete or profile.get("comparison_arm")!="F" or profile.get("comparison_page_cap")!=32 or profile.get("requested_seconds")!=5.0 or profile.get("actual_stream_seconds",0)<5.0 or profile.get("mesh_builds",0)<=0 or not _report["diagnostic_integrity"]["recorded_evidence_complete"]:
+                failures+=1
+            else:
+                print("ANDROID_SOAK_SMOKE_VERIFIED")
         if _smoke:
             if not _diagnostics_negative_smoke():
                 failures+=1
@@ -781,7 +817,10 @@ func _finish_scope(scope:String) -> void:
 
 # Frozen paired profile schedule. 0/1 F16/32, 2/3 I-G16/32, 4/5 I-H16/32.
 # 6 is F32 with observers, never counted as a normal timing arm.
-func _profile_plan(full: bool) -> Array[Dictionary]:
+func _profile_plan(suite: String) -> Array[Dictionary]:
+    if suite=="soak":
+        return [_profile_spec(1,1,false)]
+    var full: bool = suite=="full"
     var pairs: Array = [[0,1],[1,3],[1,5]]
     if full:
         pairs=[[0,1],[2,3],[4,5],[0,2],[0,4],[1,3],[1,5]]
@@ -813,6 +852,9 @@ func _profile_spec(code: int,block: int,diagnostic: bool) -> Dictionary:
 func _run_profiles() -> void:
     # Independent visible camera/terrain rendering, same fixture and AB-style order.
     _phase="profiles"
+    if DisplayServer.get_name().to_lower()=="headless" or RenderingServer.get_current_rendering_method()!="mobile":
+        _report["profile_interruptions"].append("Mobile renderer unavailable")
+        return
     var before := _user_entries()
     _log.begin()
     var profile_script: Resource = load(PROFILE_PATH)
@@ -821,7 +863,8 @@ func _run_profiles() -> void:
         _finish_scope("fixture")
         return
     var p = profile_script.new()
-    p.duration_seconds=5.0 if _profile_smoke else 20.0
+    var soak: bool = _selected_suite=="soak"
+    p.duration_seconds=5.0 if _profile_smoke or _soak_smoke else (SOAK_SECONDS if soak else 20.0)
     p.page_limit=16
     p.shard_limit=4
     add_child(p)
@@ -844,7 +887,7 @@ func _run_profiles() -> void:
     for child in p.get_children():
         if child is CanvasLayer:
             child.visible=false
-    var order: Array[Dictionary]=_profile_plan(_selected_suite=="full")
+    var order: Array[Dictionary]=_profile_plan(_selected_suite)
     for i in range(order.size()):
         if i<_report["profiles"].size():
             continue
@@ -852,7 +895,8 @@ func _run_profiles() -> void:
             await get_tree().process_frame
         var spec: Dictionary=order[i]
         var arm: String=spec["arm"]
-        _status.text="Gerçek render profili %d/%d • %s / %d sayfa" % [i+1,order.size(),arm,spec["pages"]]
+        var status: String = "Dayanıklılık" if soak else "Render profili"
+        _status.text="%s %d/%d • %s / %d sayfa" % [status,i+1,order.size(),arm,spec["pages"]]
         _report["active_profile"]=str(i+1)
         _save()
         p.page_limit=spec["pages"]
@@ -866,11 +910,23 @@ func _run_profiles() -> void:
         # cumulative report; clear only its internal history before each run.
         p._reports.clear()
         _log.begin()
+        var pauses: int = _report["application_lifecycle"]["paused"]
         p._begin(true)
-        var deadline:=Time.get_ticks_msec()+90000
-        while p._running and Time.get_ticks_msec()<deadline:
+        var began: int = Time.get_ticks_msec()
+        var duration_ms: int = int(p.duration_seconds*1000.0)
+        var deadline: int = began+duration_ms+70000
+        var next_detail: int = began
+        while p._running and Time.get_ticks_msec()<deadline and _report["application_lifecycle"]["paused"]==pauses and not _restart_requested:
+            if soak and Time.get_ticks_msec()>=next_detail:
+                var elapsed: int = mini(Time.get_ticks_msec()-began,duration_ms)
+                _progress.value = float(elapsed)/duration_ms
+                _detail.text = "Geçen %d / %d saniye" % [elapsed/1000,duration_ms/1000]
+                next_detail = began+elapsed+1000
             await get_tree().process_frame
         _finish_scope("profile_"+str(i+1))
+        if _report["application_lifecycle"]["paused"]!=pauses:
+            _report["profile_interruptions"].append("application paused during profile "+str(i+1))
+            break
         if p._running or p._reports.size()!=1:
             _report["profile_interruptions"].append("profile timeout or no new report "+str(i+1))
             break
