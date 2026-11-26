@@ -1902,9 +1902,9 @@
     }
   ],
   "next": [
-    "Integrate accepted M9 tests only after user continuation; exact combined CI, no default change. Add actual rendered cache/hybrid validation as distinct gate if needed; M9 PR render job skipped by condition, not failure.",
-    "Prepare final M10 runner pinned to verified post-M9 snapshot, balanced cache/hybrid profiles, separate observer diagnostics, 30-minute soak, OS lifecycle and RSS/thermal/GPU availability. No premature device distribution.",
-    "Audit all 60 review tasks and revisit register, settle M11 and return to P1.4R scratch atomic generation design. Preserve A/default, cap2, cap16 baseline, no painting/objects."
+    "Analyze three exact CIs; only integrate render diagnostics after actual evidence and combined CI. No default/runtime change.",
+    "M10 candidate has full paired schedule and separate observer block; soak, actual lifecycle, device metrics availability, export/editor, final pin and distribution remain open.",
+    "Audit every M0–M11 review item, retain rejected/revisit decisions and P1.4R scratch design."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -2096,7 +2096,23 @@
       45802203182
     ],
     "scope": "Separate from historical 26/33 scoped decisions. No double count. 60 planned review tasks, not 60 new runtime changes.",
-    "active": [],
+    "active": [
+      {
+        "phase": "M9 combined",
+        "sha": "fdfa7f952186c4bbf22986814182ccfd8427f7a7",
+        "ci": 45843499574
+      },
+      {
+        "phase": "M9 rendered",
+        "sha": "53c996880bcc2f850d7e3c4a66443ebf1242f84d",
+        "ci": 45843624226
+      },
+      {
+        "phase": "M10 candidate",
+        "sha": "c13f9d2682f2e3edad5e13d47502470eaf47bf27",
+        "ci": 45843795922
+      }
+    ],
     "last_analysis": {
       "date": "2026-11-26",
       "source": "exact completed CI jobs and prior decision ledger",
@@ -2839,10 +2855,23 @@
       "ci": 45838077217
     },
     "m9": {
-      "status": "CI_VERIFIED_TEST_ONLY_ACCEPTED_PENDING_INTEGRATION",
+      "status": "MERGED_TEST_ONLY_COMBINED_CI_PENDING_RENDER_FOLLOWUP_PENDING",
       "pr": 87,
       "sha": "d26d62a9502934761393f93cfccc147b23770504",
-      "ci": 45840722547
+      "ci": 45840722547,
+      "merge": "fdfa7f952186c4bbf22986814182ccfd8427f7a7",
+      "combined_ci": 45843499574,
+      "render_followup": {
+        "pr": 88,
+        "head": "53c996880bcc2f850d7e3c4a66443ebf1242f84d",
+        "branch": "exp/p1511m9-rendered-interaction",
+        "ci": 45843624226,
+        "planned_routes": 24,
+        "planned_ticks": 17280,
+        "planned_pixel_checkpoints": 120,
+        "status": "CI_PENDING",
+        "note": "Separate renderer/format matrix; test-only I1 page cap hook defaults to 16; no phone/GPU timing claim."
+      }
     },
     "m10": {
       "status": "ANDROID_ADAPTER_PREFLIGHT_CI_VERIFIED_NOT_FINAL_PACKAGE",
@@ -2851,7 +2880,29 @@
       "ci": 45840847374,
       "terrain_pin": "9fa7ff158dd156faf221174afde45d6ed24d456e",
       "addon_tree": "d72072c6b2ce43c14e4f928ca405575d4bd82dc2",
-      "inventory": 143
+      "inventory": 143,
+      "candidate": {
+        "branch": "tools/terraforge-android-m10-candidate",
+        "head": "c13f9d2682f2e3edad5e13d47502470eaf47bf27",
+        "ci": 45843795922,
+        "terrain_pin": "fdfa7f952186c4bbf22986814182ccfd8427f7a7",
+        "addon_tree": "8975712aa381cc9a227ce96da00a69977808dd32",
+        "inventory": 147,
+        "quick_profiles": 12,
+        "full_normal_profiles": 56,
+        "diagnostic_profiles": 4,
+        "profile_seconds_device": 20,
+        "profile_seconds_smoke": 5,
+        "status": "CI_PENDING_NOT_FINAL",
+        "remaining": [
+          "30-minute soak",
+          "actual Android lifecycle",
+          "RSS/thermal/GPU availability",
+          "export/editor separation",
+          "verified post-render integration repin",
+          "60-task audit"
+        ]
+      }
     }
   }
 }
