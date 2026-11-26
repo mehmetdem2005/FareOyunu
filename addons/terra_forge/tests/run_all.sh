@@ -117,6 +117,8 @@ suite=(
   test_adaptive_view_budget_v2
   test_adaptive_work_budget
   test_adaptive_work_budget_v2
+  test_h0_combined_controllers
+  test_h0_combined_controllers_v2
   test_critical_worker_reservation
   test_critical_worker_reservation_v2
   test_critical_slot_lending
