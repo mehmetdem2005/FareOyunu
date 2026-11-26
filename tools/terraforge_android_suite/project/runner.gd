@@ -793,7 +793,11 @@ func _profile_plan(full: bool) -> Array[Dictionary]:
             var a: int=pair[0]
             var b: int=pair[1]
             block+=1
-            var order: Array[int]=[a,b,b,a] if pass_index==0 else [b,a,a,b]
+            var order: Array[int]=[]
+            if pass_index==0:
+                order.assign([a,b,b,a])
+            else:
+                order.assign([b,a,a,b])
             for code in order:
                 plan.append(_profile_spec(code,block,false))
     if full:
