@@ -1452,15 +1452,46 @@
       "pr": 67,
       "head": "181af703449002916f87c0e825b3fac6dc6378e4",
       "ci": 45768586261,
+      "disposition": "RENDERER_JOB_PASS_FULL_CI_PENDING",
+      "decision": "Discover installed ICD instead of hard-coded filename, require Vulkan surface extension and llvmpipe preflight, dummy audio, keep renderer/failure gate strict. Environment root hypothesis not yet proven; software renderer not device.",
+      "evidence": {
+        "job": 139735470358,
+        "job_status": "success",
+        "actual_icd": "/usr/share/vulkan/icd.d/lvp_icd.json",
+        "surface_extension": true,
+        "renderers": [
+          "gl_compatibility/opengl3",
+          "mobile/vulkan"
+        ],
+        "adapter": "llvmpipe software",
+        "each": {
+          "changed_verified": 1,
+          "lod": 2,
+          "planned_bytes": 108,
+          "full_bytes": 2592,
+          "calls": 18,
+          "lod0_fallback": "per_buffer_plan",
+          "lod1_calls": 39,
+          "bounds_checks": 1,
+          "stale_bounds": 0,
+          "actual_culling_verified": false
+        }
+      }
+    },
+    {
+      "phase": "H1/H2 moving support and pressure recovery",
+      "pr": 70,
+      "head": "e4cf417855933dc5d83b4db2a21cf9591ce95e73",
+      "ci": 45769328846,
       "disposition": "CI_PENDING",
-      "decision": "Discover installed ICD instead of hard-coded filename, require Vulkan surface extension and llvmpipe preflight, dummy audio, keep renderer/failure gate strict. Environment root hypothesis not yet proven; software renderer not device."
+      "decision": "Test-only 4 planned traces x480 physics ticks, two formats/modes, actual moving capsule transfers across seam, then stationary support while camera anchor relocates, synthetic pressure high/recovery/high/manual override/auto resume, invalid input immutability and bounded shared tier/horizon, lease, resource caps, stop reset. Not real device FPS, rendered camera rotation or actual Android pause/resume."
     }
   ],
   "next": [
-    "Verify E4 exact retry CI45768586261 and H0 combined CI45768612215.",
-    "G2 no canonical resident raw base; fresh base loses and readback lossy. Only reconsider with distinct compact exact representation/ownership hypothesis and measured memory/net route gain.",
-    "H0 existing controller diagnostics merged, next H1/H2 control hierarchy and sustained/moving safety; no device FPS claim.",
-    "23/33 tracked subtasks done,5 active,5 deferred; 11 numbered phases remain (H0 diagnostic accepted; combined CI pending)."
+    "E4 exact CI45768586261: renderer job success on actual software OpenGL and Vulkan Mobile; full three shards pending. Next design actual camera visibility/culling with changed bounds and paired cost, retain call cap.",
+    "H0 combined exact CI45768612215 pending.",
+    "H1/H2 PR70 exact CI45769328846: validate actual movement and sustained pressure traces, no quality or FPS claim.",
+    "G2 prior published readback rejected; no runtime change. 23/33 tracked done, 5 active,5 deferred,11 numbered phases."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
