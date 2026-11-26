@@ -189,7 +189,7 @@ jobs:
           for method in gl_compatibility mobile; do
             driver=opengl3
             if [[ "$method" == mobile ]]; then driver=vulkan; fi
-            for probe in test_e4_mesh_buffer_probe test_e4_coalesce_probe test_e4_rendered_culling; do
+            for probe in test_e4_mesh_buffer_probe test_e4_coalesce_probe test_e4_rendered_culling test_e4_complete_cost; do
               log="$RUNNER_TEMP/e4-$method-$probe.log"
               if ! timeout 180s xvfb-run -a godot --path "$project" --display-driver x11 --audio-driver Dummy --rendering-method "$method" --rendering-driver "$driver" --resolution 640x480 --script "res://addons/terra_forge/tests/$probe.gd" -- --require-renderer="$method" 2>&1 | tee "$log"; then status=1; fi
               if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' "$log" || ! grep -q 'PASS: E4' "$log"; then status=1; fi

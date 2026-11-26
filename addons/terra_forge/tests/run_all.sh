@@ -142,6 +142,7 @@ suite=(
   test_e4_mesh_buffer_probe
   test_e4_coalesce_probe
   test_e4_rendered_culling
+  test_e4_complete_cost
   test_normal_edge_candidate
   test_g1_owned_resource
   test_g1_base_cache
