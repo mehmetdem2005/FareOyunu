@@ -1,7 +1,7 @@
 name: TerraForge Android test package
 on:
   push:
-    branches: [tools/terraforge-android-i2, tools/terraforge-android-m10-preflight]
+    branches: [tools/terraforge-android-i2, tools/terraforge-android-m10-candidate]
   workflow_dispatch:
 permissions:
   contents: read
@@ -39,7 +39,7 @@ jobs:
         run: |
           set -euo pipefail
           godot --headless --rendering-method gl_compatibility --path "$RUNNER_TEMP/tf-android" --script res://validate_adapters.gd 2>&1 | tee "$RUNNER_TEMP/adapter-load.log"
-          grep -F 'ANDROID_ADAPTER_LOAD_GATE {"failures":[],"passed":143,"total":143}' "$RUNNER_TEMP/adapter-load.log"
+          grep -F 'ANDROID_ADAPTER_LOAD_GATE {"failures":[],"passed":147,"total":147}' "$RUNNER_TEMP/adapter-load.log"
           if grep -E 'SCRIPT ERROR:|Parse Error:|Compile Error:|Failed to load script' "$RUNNER_TEMP/adapter-load.log"; then exit 1; fi
       - name: Smoke test adapter and JSON capture
         shell: bash
@@ -60,7 +60,7 @@ jobs:
           grep -F 'ANDROID_SUITE_COMPLETE {"failures":0,"tests":3}' "$RUNNER_TEMP/idle.log"
       - uses: actions/upload-artifact@v4
         with:
-          name: TerraForge_Android_M10_Preflight
+          name: TerraForge_Android_M10_Candidate
           path: ${{ runner.temp }}/flat-project/
           retention-days: 30
       - uses: actions/upload-artifact@v4
@@ -89,7 +89,7 @@ jobs:
           name: godot
       - uses: actions/download-artifact@v4
         with:
-          name: TerraForge_Android_M10_Preflight
+          name: TerraForge_Android_M10_Candidate
           path: TerraForge_Android_Test
       - run: godot --headless --rendering-method gl_compatibility --path TerraForge_Android_Test --editor --import
       - name: Run converted tests in one process
@@ -104,3 +104,45 @@ jobs:
           name: Android_adapter_group_${{ matrix.shard }}
           path: adapter.log
           if-no-files-found: ignore
+  rendered-profile-smoke:
+    if: github.ref == 'refs/heads/tools/terraforge-android-m10-candidate'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: solarlabyrinth/action-setup-godot@v3
+        with:
+          version: 4.7.2-stable
+          export-templates: false
+          name: godot
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb xauth mesa-vulkan-drivers vulkan-tools
+      - run: python3 tools/terraforge_android_suite/build.py --output "$RUNNER_TEMP/tf-android" --zip "$RUNNER_TEMP/tf.zip"
+      - name: Verify full 60-profile paired order, identity, report and diagnostic export
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --rendering-method gl_compatibility --path "$RUNNER_TEMP/tf-android" --editor --import --quit 2>&1 | tee "$RUNNER_TEMP/import.log"
+          if grep -E 'SCRIPT ERROR:|Parse Error:|Compile Error:|Failed to load script' "$RUNNER_TEMP/import.log"; then exit 1; fi
+          unset VK_ICD_FILENAMES VK_DRIVER_FILES VK_ADD_DRIVER_FILES
+          mapfile -t icds < <(find /usr/share/vulkan/icd.d /etc/vulkan/icd.d -maxdepth 1 -type f -name 'lvp_icd*.json' 2>/dev/null | sort -u || true)
+          [[ "${#icds[@]}" == 1 ]]
+          export VK_DRIVER_FILES="${icds[0]}"
+          export XDG_RUNTIME_DIR="$RUNNER_TEMP/i2-xdg"
+          mkdir -p "$XDG_RUNTIME_DIR"
+          chmod 700 "$XDG_RUNTIME_DIR"
+          timeout 720s xvfb-run -a godot --path "$RUNNER_TEMP/tf-android" --display-driver x11 --audio-driver Dummy --rendering-method mobile --rendering-driver vulkan --resolution 640x480 -- --profile-smoke 2>&1 | tee "$RUNNER_TEMP/profile-smoke.log"
+          grep -F 'ANDROID_PROFILE_SMOKE_VERIFIED' "$RUNNER_TEMP/profile-smoke.log"
+          grep -F '"profiles":60' "$RUNNER_TEMP/profile-smoke.log"
+          if grep -E '^SCRIPT ERROR:|Parse Error:|Compile Error:|^ERROR:' "$RUNNER_TEMP/profile-smoke.log"; then exit 1; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: M10-candidate-rendered-profile-smoke-logs
+          path: |
+            ${{ runner.temp }}/import.log
+            ${{ runner.temp }}/profile-smoke.log
+          if-no-files-found: warn

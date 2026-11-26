@@ -77,7 +77,7 @@ func _ready() -> void:
     _report = {}
     _progress.max_value = _names.size()
     _progress.value = 0
-    _status.text = "TerraForge I2 • Hazır"
+    _status.text = "TerraForge M10 • Hazır"
     _detail.text = "0/%d | Başlat'a bas. Eski kayıtlar yüklenmez." % _names.size()
     _start.disabled = false
     _copy.disabled = true
@@ -144,8 +144,8 @@ func _start_fresh() -> void:
     _report["session_id"] = token
     _report["suite_mode"] = "ci" if _ci else _selected_suite
     _report["terrain_tree"] = _inventory.get("terrain_tree","")
-    _report["planned_profiles"] = 24 if _profile_smoke else (0 if _ci else (8 if _selected_suite=="quick" else 24))
-    _report["qualification_note"] = "Quick is screening only; full adds repeated profiles, not a 30-minute soak or OS lifecycle proof."
+    _report["planned_profiles"] = 0 if _ci and not _profile_smoke else _profile_plan(_selected_suite=="full").size()
+    _report["qualification_note"] = "Quick is screening only. Full has 56 paired timing profiles plus four separate observer profiles; soak and actual OS lifecycle remain separate open gates."
     if not _logger_installed:
         OS.add_logger(_log)
         _logger_installed = true
@@ -185,7 +185,7 @@ func _make_ui() -> void:
     var v := VBoxContainer.new()
     panel.add_child(v)
     _status = Label.new()
-    _status.text = "TerraForge I2 • manuel başlangıç"
+    _status.text = "TerraForge M10 • manuel başlangıç"
     _status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     v.add_child(_status)
     _progress = ProgressBar.new()
@@ -195,8 +195,8 @@ func _make_ui() -> void:
     _detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     v.add_child(_detail)
     _suite_choice=OptionButton.new()
-    _suite_choice.add_item("Hedefli: 4 rota testi + 8 profil")
-    _suite_choice.add_item("Tam: tüm regresyonlar + 24 profil")
+    _suite_choice.add_item("Hedefli: 4 M9 testi + 12 profil")
+    _suite_choice.add_item("Tam: tüm regresyonlar + 60 profil")
     _suite_choice.select(0)
     _suite_choice.item_selected.connect(_select_suite)
     v.add_child(_suite_choice)
@@ -523,35 +523,40 @@ func _run_all() -> void:
         if _profile_smoke:
             if not complete:
                 failures+=1
-            var expected_arms: Array[String]=["F","I-G cropped","I-G cropped","F","I-H cropped","F","F","I-H cropped","I-G cropped","F","F","I-G cropped","F","I-H cropped","I-H cropped","F","F","I-G cropped","I-G cropped","F","I-H cropped","F","F","I-H cropped"]
+            var expected_plan: Array[Dictionary]=_profile_plan(true)
             var snapshot: String=""
             var settings_reference: Dictionary={}
             var counts: Dictionary={}
             var index: int=0
             for profile in _report["profiles"]:
-                if index>=expected_arms.size() or profile.get("comparison_arm","")!=expected_arms[index] or profile.get("sequence_index",0)!=index+1 or profile.get("error",FAILED)!=OK or profile.get("frame_interval_ms",{}).get("count",0)<=0 or profile.get("mesh_builds",0)<=0 or profile.get("worker_errors",-1)!=0:
+                if index>=expected_plan.size():
                     failures+=1
-                var arm: String=str(profile.get("comparison_arm",""))
-                counts[arm]=int(counts.get(arm,0))+1
+                    break
+                var spec: Dictionary=expected_plan[index]
+                var arm: String=str(spec["arm"])
                 var settings: Dictionary=profile.get("settings",{}).duplicate(true)
                 var expected_mode: int=4 if arm=="F" else 7
                 var expected_effective: int=4 if arm=="F" else (5 if arm=="I-G cropped" else 6)
-                if profile.get("comparison_block",0)!=int(index/4)+1 or settings.get("sampling_strategy",-1)!=expected_mode or settings.get("effective_sampling_strategy",-1)!=expected_effective or settings.get("hybrid_scalar_sampling")!=(arm!="F") or settings.get("hybrid_topology_cache")!=(arm=="I-H cropped") or settings.get("hybrid_cropped_halo")!=(arm!="F") or profile.get("route","")!="normalized_sine_v1" or profile.get("requested_seconds",0)!=5.0 or float(profile.get("actual_stream_seconds",0))<5.0 or profile.get("index_format","")!="TFM2" or profile.get("first_focus_collision_ms_from_open_start")==null:
+                if profile.get("comparison_arm","")!=arm or profile.get("sequence_index",0)!=index+1 or profile.get("comparison_block",0)!=spec["block"] or profile.get("comparison_page_cap",0)!=spec["pages"] or profile.get("diagnostic_observer_block",null)!=spec["diagnostic"] or profile.get("error",FAILED)!=OK or profile.get("frame_interval_ms",{}).get("count",0)<=0 or profile.get("mesh_builds",0)<=0 or profile.get("worker_errors",-1)!=0:
+                    failures+=1
+                if settings.get("sampling_strategy",-1)!=expected_mode or settings.get("effective_sampling_strategy",-1)!=expected_effective or settings.get("hybrid_scalar_sampling")!=(arm!="F") or settings.get("hybrid_topology_cache")!=(arm=="I-H cropped") or settings.get("hybrid_cropped_halo")!=(arm!="F") or settings.get("page_limit",0)!=spec["pages"] or settings.get("publication_micro",null)!=spec["observer"] or settings.get("pump_micro",null)!=spec["observer"] or profile.get("route","")!="normalized_sine_v1" or profile.get("requested_seconds",0)!=5.0 or float(profile.get("actual_stream_seconds",0))<5.0 or profile.get("index_format","")!="TFM2" or profile.get("first_focus_collision_ms_from_open_start")==null:
                     failures+=1
                 var current_snapshot: String=str(profile.get("snapshot_id",""))
                 if index==0:
                     snapshot=current_snapshot
                 if current_snapshot.is_empty() or current_snapshot!=snapshot:
                     failures+=1
-                for key in ["sampling_strategy","effective_sampling_strategy","hybrid_scalar_sampling","hybrid_topology_cache","hybrid_cropped_halo"]:
+                for key in ["sampling_strategy","effective_sampling_strategy","hybrid_scalar_sampling","hybrid_topology_cache","hybrid_cropped_halo","page_limit","publication_micro","pump_micro"]:
                     settings.erase(key)
                 if index==0:
                     settings_reference=settings
                 elif settings!=settings_reference:
                     failures+=1
-                print("ANDROID_PROFILE_SMOKE_ARM ",JSON.stringify({"index":index+1,"arm":arm,"block":profile.get("comparison_block"),"mesh_builds":profile.get("mesh_builds"),"frame_samples":profile.get("frame_interval_ms",{}).get("count"),"stream_seconds":profile.get("actual_stream_seconds")}))
+                var label: String=str(spec["code"])
+                counts[label]=int(counts.get(label,0))+1
+                print("ANDROID_PROFILE_SMOKE_ARM ",JSON.stringify({"index":index+1,"arm":arm,"pages":spec["pages"],"block":spec["block"],"observer":spec["observer"],"diagnostic":spec["diagnostic"],"mesh_builds":profile.get("mesh_builds"),"frame_samples":profile.get("frame_interval_ms",{}).get("count"),"stream_seconds":profile.get("actual_stream_seconds")}))
                 index+=1
-            if index!=24 or counts!={"F":12,"I-G cropped":6,"I-H cropped":6} or not _report["diagnostic_integrity"].get("recorded_evidence_complete",false):
+            if index!=60 or counts!={"0":12,"1":14,"2":8,"3":8,"4":8,"5":8,"6":2} or not _report["diagnostic_integrity"].get("recorded_evidence_complete",false):
                 failures+=1
             var destination: String=_run_dir.path_join("profile_smoke_export.json")
             if not _write_diagnostics(destination):
@@ -774,6 +779,33 @@ func _finish_scope(scope:String) -> void:
     var saved:bool=_store_detail(path,{"capture":captured,"scope":scope})
     _report["diagnostic_scopes"].append({"name":scope,"details":path,"detail_saved":saved,"diagnostic_complete":captured["diagnostic_complete"] and saved,"error_type_counts":captured["error_type_counts"],"unexpected_errors":captured["errors"],"diagnostic_dropped":captured["diagnostic_dropped"],"message_dropped":captured["message_dropped"],"capture_truncated":captured["truncated"]})
 
+# Frozen paired profile schedule. 0/1 F16/32, 2/3 I-G16/32, 4/5 I-H16/32.
+# 6 is F32 with observers, never counted as a normal timing arm.
+func _profile_plan(full: bool) -> Array[Dictionary]:
+    var pairs: Array = [[0,1],[1,3],[1,5]]
+    if full:
+        pairs=[[0,1],[2,3],[4,5],[0,2],[0,4],[1,3],[1,5]]
+    var plan: Array[Dictionary]=[]
+    var block: int=0
+    for pass_index in range(2 if full else 1):
+        for pair_index in range(pairs.size()):
+            var pair: Array=pairs[pair_index if pass_index==0 else pairs.size()-1-pair_index]
+            var a: int=pair[0]
+            var b: int=pair[1]
+            block+=1
+            var order: Array[int]=[a,b,b,a] if pass_index==0 else [b,a,a,b]
+            for code in order:
+                plan.append(_profile_spec(code,block,false))
+    if full:
+        block+=1
+        for code in [1,6,6,1]:
+            plan.append(_profile_spec(code,block,true))
+    return plan
+
+func _profile_spec(code: int,block: int,diagnostic: bool) -> Dictionary:
+    var arm: String="F" if code<2 or code==6 else ("I-G cropped" if code<4 else "I-H cropped")
+    return {"arm":arm,"pages":32 if code==6 or code%2==1 else 16,"observer":code==6,"diagnostic":diagnostic,"block":block,"code":code}
+
 func _run_profiles() -> void:
     # Independent visible camera/terrain rendering, same fixture and AB-style order.
     _phase="profiles"
@@ -808,22 +840,24 @@ func _run_profiles() -> void:
     for child in p.get_children():
         if child is CanvasLayer:
             child.visible=false
-    # 0=F, 1=I-G cropped, 2=I-H cropped. Each block compares F/candidate.
-    var order: Array[int]=[0,1,1,0,2,0,0,2]
-    if _selected_suite=="full":
-        order.assign([0,1,1,0,2,0,0,2,1,0,0,1,0,2,2,0,0,1,1,0,2,0,0,2])
+    var order: Array[Dictionary]=_profile_plan(_selected_suite=="full")
     for i in range(order.size()):
         if i<_report["profiles"].size():
             continue
         while _paused or _export_dialog_open:
             await get_tree().process_frame
-        _status.text="Gerçek render profili %d/%d • yapı %d" % [i+1,order.size(),order[i]]
+        var spec: Dictionary=order[i]
+        var arm: String=spec["arm"]
+        _status.text="Gerçek render profili %d/%d • %s / %d sayfa" % [i+1,order.size(),arm,spec["pages"]]
         _report["active_profile"]=str(i+1)
         _save()
-        p.sampling_strategy=4 if order[i]==0 else 7
-        p.hybrid_scalar_sampling=order[i]!=0
-        p.hybrid_topology_cache=order[i]==2
-        p.hybrid_cropped_halo=order[i]!=0
+        p.page_limit=spec["pages"]
+        p.sampling_strategy=4 if arm=="F" else 7
+        p.hybrid_scalar_sampling=arm!="F"
+        p.hybrid_topology_cache=arm=="I-H cropped"
+        p.hybrid_cropped_halo=arm!="F"
+        p.observe_publication_micro=spec["observer"]
+        p.observe_pump_micro=spec["observer"]
         # Profile scene retains at most eight reports. The runner owns the
         # cumulative report; clear only its internal history before each run.
         p._reports.clear()
@@ -838,8 +872,10 @@ func _run_profiles() -> void:
             break
         var data: Dictionary=p._reports.back().duplicate(true)
         data["sequence_index"]=i+1
-        data["comparison_arm"]=["F","I-G cropped","I-H cropped"][order[i]]
-        data["comparison_block"]=int(i/4)+1
+        data["comparison_arm"]=arm
+        data["comparison_block"]=spec["block"]
+        data["comparison_page_cap"]=spec["pages"]
+        data["diagnostic_observer_block"]=spec["diagnostic"]
         data["diagnostic_material"]=false
         if data.get("error",FAILED)!=OK or data.get("frame_interval_ms",{}).get("count",0)<=0:
             _report["profile_interruptions"].append("profile failed or no frame samples "+str(i+1))

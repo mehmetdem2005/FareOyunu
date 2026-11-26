@@ -17,7 +17,7 @@ mobile=out/"mobile_tests"
 mobile.mkdir()
 suite=(repo/"addons/terra_forge/tests/run_all.sh").read_text()
 names=re.findall(r"^\s+(test_\w+)\s*$",suite.split("suite=(\n",1)[1].split("\n)",1)[0],re.M)
-if len(names)!=len(set(names)) or len(names)<90: raise SystemExit("Unexpected regression inventory")
+if len(names)!=len(set(names)) or len(names)!=147: raise SystemExit("Unexpected regression inventory")
 # Walk only declared test inheritance, including shared non-test_ bases.
 # Reject cycles or unknown paths rather than leaving SceneTree scripts in Node runner.
 done=set()
@@ -46,12 +46,12 @@ for name in names:
     adapt(name+".gd")
 print(f"Adapted {len(done)} scripts for {len(names)} runnable tests")
 sha=subprocess.check_output(["git","rev-parse","HEAD"],cwd=repo,text=True).strip()
-terrain_commit="9fa7ff158dd156faf221174afde45d6ed24d456e"
+terrain_commit="fdfa7f952186c4bbf22986814182ccfd8427f7a7"
 def terrain_tree(ref):
     return subprocess.check_output(["git","rev-parse",ref+":addons/terra_forge"],cwd=repo,text=True).strip()
 if terrain_tree("HEAD")!=terrain_tree(terrain_commit):
     raise SystemExit("Terrain differs from pinned integrated snapshot")
-quick=["test_i0_integrated_route","test_i0_integrated_route_v2","test_h3_capacity_matrix","test_h3_capacity_matrix_v2"]
+quick=["test_m9_interaction","test_m9_interaction_32","test_m9_interaction_v2","test_m9_interaction_v2_32"]
 if not set(quick).issubset(names): raise SystemExit("Missing targeted tests")
 (out/"suite.json").write_text(json.dumps({"build_commit":sha,"terrain_commit":terrain_commit,"terrain_tree":terrain_tree("HEAD"),"tests":names,"quick_tests":quick},indent=2)+"\n")
 z=Path(a.zip)

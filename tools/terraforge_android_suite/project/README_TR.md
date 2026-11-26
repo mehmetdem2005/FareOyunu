@@ -1,3 +1,10 @@
+# TerraForge M10 — paired matrix candidate (not for distribution)
+Pin: fdfa7f952186c4bbf22986814182ccfd8427f7a7; addon tree 8975712aa381cc9a227ce96da00a69977808dd32; 147 adapters. Pin is pending combined CI when prepared. No runtime changes. Previous I2 and M10 preflight branches untouched.
+
+Manual start and fresh isolated session; quick: four M9 tests, 12 profiles (F16/F32, F32/I-G32, F32/I-H32 ABBA). Full: 147 regressions and 56 timing profiles, seven pairs with ABBA and BAAB in reversed block order; all same TFM2 fixture, 20 seconds each. Four extra F32 observer-off/on/on/off profiles are explicitly marked diagnostic, not normal performance samples. Report includes page cap, arm, block, flags. CI smoke checks all 60 at 5 seconds, identity, samples, flags, order, diagnostic export. Fixed-time profiles are not equal-work; M6 and M9 controlled tests are separate.
+
+Remaining before final qualification: exact post-integration pin, rendered M9 result, 30-minute soak, actual Android background/foreground lifecycle, actual RSS/thermal/GPU availability (unknown if unsupported), release/export versus editor, actual device run. No phone request until final gate. Default A, cap2, page16 unchanged.
+
 # TerraForge M10 — Ön doğrulama (telefon testi isteme)
 
 Bu paket bir **CI ön doğrulama** paketidir; M9 ve son cihaz yeterlilik paketi değildir. Önceki I2 aracı ve manuel başlatma/JSON bütünlüğü korunur. Yeni terrain pin: 9fa7ff158dd156faf221174afde45d6ed24d456e. Addon tree: d72072c6b2ce43c14e4f928ca405575d4bd82dc2. Envanter 143 regresyon; eski 4 hızlı test ve 8/24 profil aynen korunur. Henüz gerçek cihaz çalıştırma istemiyoruz.
