@@ -7,8 +7,34 @@
   "combined_ci": {
     "head": "bf6c5e05fd4a92f6d2416700dd4b5da768eb4b9e",
     "ci": 45768612215,
-    "status": "PENDING_EXACT_VERIFICATION",
-    "expected_tests": 126
+    "status": "VERIFIED",
+    "tests": 126,
+    "failed": 0,
+    "shards": [
+      42,
+      42,
+      42
+    ],
+    "h0": {
+      "traces": 4,
+      "ticks": 1360,
+      "transitions": 16,
+      "far": [
+        6,
+        2,
+        6
+      ],
+      "near": [
+        6,
+        6,
+        6
+      ],
+      "missing_rays": 0,
+      "airborne_ticks": 0,
+      "peak_tiles": 12,
+      "peak_pages": 16,
+      "peak_jobs": 1
+    }
   },
   "device_gate": {
     "status": "OPEN",
@@ -1452,8 +1478,8 @@
       "pr": 67,
       "head": "181af703449002916f87c0e825b3fac6dc6378e4",
       "ci": 45768586261,
-      "disposition": "RENDERER_JOB_PASS_FULL_CI_PENDING",
-      "decision": "Discover installed ICD instead of hard-coded filename, require Vulkan surface extension and llvmpipe preflight, dummy audio, keep renderer/failure gate strict. Environment root hypothesis not yet proven; software renderer not device.",
+      "disposition": "FULL_CI_PASS_SOFTWARE_RENDERER_ONLY",
+      "decision": "Accept software renderer capability evidence, not E4 runtime or complete AABB/culling gate. Next actual camera visibility and bounded coalescing; no physical GPU or FPS claims.",
       "evidence": {
         "job": 139735470358,
         "job_status": "success",
@@ -1475,7 +1501,14 @@
           "bounds_checks": 1,
           "stale_bounds": 0,
           "actual_culling_verified": false
-        }
+        },
+        "headless_tests": 125,
+        "headless_failed": 0,
+        "shards": [
+          42,
+          42,
+          41
+        ]
       }
     },
     {
@@ -1488,10 +1521,10 @@
     }
   ],
   "next": [
-    "E4 exact CI45768586261: renderer job success on actual software OpenGL and Vulkan Mobile; full three shards pending. Next design actual camera visibility/culling with changed bounds and paired cost, retain call cap.",
-    "H0 combined exact CI45768612215 pending.",
-    "H1/H2 PR70 exact CI45769328846: validate actual movement and sustained pressure traces, no quality or FPS claim.",
-    "G2 prior published readback rejected; no runtime change. 23/33 tracked done, 5 active,5 deferred,11 numbered phases."
+    "H1/H2 PR70 exact CI45769328846 running, assess moving physical support traces.",
+    "E4 exact CI45768586261 full PASS, software capability confirmed; actual camera visibility/culling and bounded coalescing next.",
+    "H0 combined CI45768612215 exact PASS; test-only merged.",
+    "23/33 tracked done,5 active,5 deferred,11 numbered phases; E4 current gate remains open."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
