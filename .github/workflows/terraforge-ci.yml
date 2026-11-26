@@ -216,3 +216,64 @@ jobs:
         with:
           name: e4-software-renderer-logs
           path: ${{ runner.temp }}/e4-*.log
+
+  m9-rendered-interaction:
+    if: ${{ (github.event_name == 'pull_request' && startsWith(github.head_ref, 'exp/p1511m9-rendered-')) || (github.event_name == 'push' && github.ref == 'refs/heads/feat/terraforge-mobile-addon') || github.event_name == 'workflow_dispatch' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        method: [gl_compatibility, mobile]
+        format: [0, 1]
+    name: M9 rendered / ${{ matrix.method }} / format ${{ matrix.format }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install official Godot 4.7.2 stable
+        uses: solarlabyrinth/action-setup-godot@v3
+        with:
+          version: 4.7.2-stable
+          export-templates: false
+          name: godot
+      - name: Install virtual display and software graphics drivers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb xauth mesa-vulkan-drivers libgl1-mesa-dri vulkan-tools mesa-utils
+      - name: Render six guarded routes per matrix job
+        shell: bash
+        env:
+          METHOD: ${{ matrix.method }}
+          FORMAT: ${{ matrix.format }}
+        run: |
+          set -euo pipefail
+          project="$RUNNER_TEMP/m9-renderer"
+          mkdir -p "$project/addons"
+          cp -a addons/terra_forge "$project/addons/terra_forge"
+          printf 'config_version=5\n[application]\nconfig/name="M9 renderer interaction"\n' > "$project/project.godot"
+          godot --headless --path "$project" --editor --import --quit 2>&1 | tee "$RUNNER_TEMP/m9-import.log"
+          if grep -E 'SCRIPT ERROR:|Parse Error:|Compile Error:|Failed to load script' "$RUNNER_TEMP/m9-import.log"; then exit 1; fi
+          export LIBGL_ALWAYS_SOFTWARE=1
+          unset VK_ICD_FILENAMES VK_DRIVER_FILES VK_ADD_DRIVER_FILES
+          mapfile -t icds < <(find /usr/share/vulkan/icd.d /etc/vulkan/icd.d -maxdepth 1 -type f -name 'lvp_icd*.json' 2>/dev/null | sort -u || true)
+          if [[ "${#icds[@]}" != 1 ]]; then exit 1; fi
+          export VK_DRIVER_FILES="${icds[0]}"
+          export XDG_RUNTIME_DIR="$RUNNER_TEMP/m9-xdg"
+          mkdir -p "$XDG_RUNTIME_DIR"
+          chmod 700 "$XDG_RUNTIME_DIR"
+          driver=opengl3
+          if [[ "$METHOD" == mobile ]]; then
+            driver=vulkan
+            xvfb-run -a vulkaninfo --summary 2>&1 | tee "$RUNNER_TEMP/m9-vulkan.log"
+            grep -q VK_KHR_surface "$RUNNER_TEMP/m9-vulkan.log"
+            grep -qi llvmpipe "$RUNNER_TEMP/m9-vulkan.log"
+          fi
+          log="$RUNNER_TEMP/m9-route.log"
+          timeout 360s xvfb-run -a godot --path "$project" --display-driver x11 --audio-driver Dummy --rendering-method "$METHOD" --rendering-driver "$driver" --resolution 640x480 --script res://addons/terra_forge/tests/test_m9_rendered_interaction.gd -- --require-renderer="$METHOD" --format="$FORMAT" 2>&1 | tee "$log"
+          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' "$log"; then exit 1; fi
+          grep -q 'PASS: M9 rendered interaction 6 routes' "$log"
+          test "$(grep -c '^M9_RENDERED_INTERACTION ' "$log")" -eq 6
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m9-rendered-${{ matrix.method }}-${{ matrix.format }}
+          path: ${{ runner.temp }}/m9-*.log
