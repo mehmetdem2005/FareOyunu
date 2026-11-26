@@ -2,39 +2,13 @@
   "schema": "TF_ENGINE_DECISION_LEDGER_1",
   "date": "2026-11-26",
   "branch": "feat/terraforge-mobile-addon",
-  "latest_code_merge": "bf6c5e05fd4a92f6d2416700dd4b5da768eb4b9e",
+  "latest_code_merge": "1a3b35e488dace84fe1c0146582a8c14d9f15a8e",
   "recorded_parent": "bf6c5e05fd4a92f6d2416700dd4b5da768eb4b9e",
   "combined_ci": {
-    "head": "bf6c5e05fd4a92f6d2416700dd4b5da768eb4b9e",
-    "ci": 45768612215,
-    "status": "VERIFIED",
-    "tests": 126,
-    "failed": 0,
-    "shards": [
-      42,
-      42,
-      42
-    ],
-    "h0": {
-      "traces": 4,
-      "ticks": 1360,
-      "transitions": 16,
-      "far": [
-        6,
-        2,
-        6
-      ],
-      "near": [
-        6,
-        6,
-        6
-      ],
-      "missing_rays": 0,
-      "airborne_ticks": 0,
-      "peak_tiles": 12,
-      "peak_pages": 16,
-      "peak_jobs": 1
-    }
+    "head": "1a3b35e488dace84fe1c0146582a8c14d9f15a8e",
+    "ci": 45770498183,
+    "status": "PENDING_EXACT_VERIFICATION",
+    "expected_tests": 128
   },
   "device_gate": {
     "status": "OPEN",
@@ -1516,30 +1490,130 @@
       "pr": 70,
       "head": "e4cf417855933dc5d83b4db2a21cf9591ce95e73",
       "ci": 45769328846,
-      "disposition": "CI_PENDING",
-      "decision": "Test-only 4 planned traces x480 physics ticks, two formats/modes, actual moving capsule transfers across seam, then stationary support while camera anchor relocates, synthetic pressure high/recovery/high/manual override/auto resume, invalid input immutability and bounded shared tier/horizon, lease, resource caps, stop reset. Not real device FPS, rendered camera rotation or actual Android pause/resume."
+      "disposition": "MERGED_DIAGNOSTIC_ONLY_COMBINED_PENDING",
+      "decision": "Accept H1 control hierarchy diagnostic; H2 still needs actual pause/background resume and broader moving route, not just camera relocations. No runtime changes. Combined exact CI pending.",
+      "evidence": {
+        "tests": 128,
+        "failed": 0,
+        "shards": [
+          43,
+          43,
+          42
+        ],
+        "traces": 4,
+        "ticks": 1920,
+        "camera_shifts": 48,
+        "tier_transitions": 28,
+        "denied_ticks": 2,
+        "missing_rays": 0,
+        "airborne_ticks": 0,
+        "goal_ticks": [
+          65,
+          66,
+          65,
+          66
+        ],
+        "finish_x": 535.999816894531,
+        "peak_tiles": 12,
+        "peak_pages": 16,
+        "peak_jobs": 2,
+        "merge": "1a3b35e488dace84fe1c0146582a8c14d9f15a8e"
+      }
     },
     {
       "phase": "E4 combined cheapest-gap coalescing",
       "pr": 71,
       "head": "6cc4fb78ae6169a7e4eafee7698818a76066b5b7",
       "ci": 45770191571,
-      "disposition": "CI_PENDING",
-      "decision": "Independent branch, globally capped 32 calls and <=75% full bytes, deterministic cheapest adjacent aligned gaps, compare old acceptance/calls/bytes with new, exact reconstruction and actual software renderer readback. Cap and byte threshold are experimental policy, not measured optimum. No runtime change."
+      "disposition": "RENDERER_JOB_PASS_FULL_CI_PENDING",
+      "decision": "Independent branch, globally capped 32 calls and <=75% full bytes, deterministic cheapest adjacent aligned gaps, compare old acceptance/calls/bytes with new, exact reconstruction and actual software renderer readback. Cap and byte threshold are experimental policy, not measured optimum. No runtime change.",
+      "evidence": {
+        "job": 139740708494,
+        "renderers": [
+          "OpenGL",
+          "Mobile Vulkan"
+        ],
+        "each": {
+          "verified": 3,
+          "fallback": 0,
+          "full_bytes": [
+            34848,
+            9248,
+            2592
+          ],
+          "patch_bytes": [
+            18864,
+            1212,
+            108
+          ],
+          "calls": [
+            32,
+            32,
+            18
+          ],
+          "initial_calls": [
+            110,
+            46,
+            18
+          ],
+          "old_calls": [
+            null,
+            39,
+            18
+          ],
+          "old_accepted": [
+            false,
+            false,
+            true
+          ],
+          "total_full": 46688,
+          "total_patch": 20184
+        },
+        "plan_us": {
+          "opengl": [
+            2390,
+            654,
+            187
+          ],
+          "mobile": [
+            2406,
+            671,
+            189
+          ]
+        }
+      }
     },
     {
       "phase": "E4 rendered visibility and conservative bounds",
       "pr": 72,
       "head": "00cfb78e033fed076ebc7930a6ac28f36da7d527",
       "ci": 45770246127,
-      "disposition": "CI_PENDING",
-      "decision": "Independent branch, synthetic horizontal quad moves from outside camera to inside via packed vertex patch; compare actual pixel mask against fresh target with conservative bounds, negative outside and relocated camera controls, OpenGL and Mobile software renderer. Not real terrain, physical GPU or collision proof."
+      "disposition": "RENDERER_JOB_PASS_FULL_CI_PENDING",
+      "decision": "Independent branch, synthetic horizontal quad moves from outside camera to inside via packed vertex patch; compare actual pixel mask against fresh target with conservative bounds, negative outside and relocated camera controls, OpenGL and Mobile software renderer. Not real terrain, physical GPU or collision proof.",
+      "evidence": {
+        "job": 139740888171,
+        "renderers": [
+          "OpenGL",
+          "Mobile Vulkan"
+        ],
+        "each": {
+          "target_pixels": 4096,
+          "before_bounds_fix_pixels": 0,
+          "after_bounds_fix_pixels": 4096,
+          "old_outside_pixels": 0,
+          "relocated_camera_pixels": 0,
+          "mask_equal": true,
+          "calls": 1,
+          "bytes": 40
+        }
+      }
     }
   ],
   "next": [
-    "Check H1/H2 CI45769328846, E4 coalescing CI45770191571 and E4 rendered culling CI45770246127. Three active lanes; no new task until slot free.",
-    "E4 branches share runner/workflow and base planner; merge accepted diagnostics only after exact results, preserve both tests and original PR67 evidence; no default or runtime change.",
-    "23/33 tracked done,5 active,5 deferred,11 numbered phases; no new verified completion."
+    "Check E4 PR71 CI45770191571 and PR72 CI45770246127 full regression; special renderer jobs passed.",
+    "Check H1/H2 combined exact CI45770498183. H1 accepted diagnostic, H2 actual lifecycle and broader movement remain open.",
+    "E4 coalescing all three LODs works on software renderer but plan time 2.4ms LOD0; next paired complete cost with same work, bounds update, physics and resource lifetime. Conservative bounds mandatory for visibility; avoid unbounded accumulated AABB.",
+    "23/33 tracked done,5 active,5 deferred; 10 numbered phases remain after H1 diagnostic acceptance, combined pending. Three slots occupied; no defaults changed."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -1658,7 +1732,7 @@
     ]
   },
   "progress_accounting": {
-    "scope": "G1 F2 E2 F3 G2 E4 only; other 9 active numbered phases not decomposed",
+    "scope": "G1 F2 E2 F3 G2 E4 only; other 8 active numbered phases not decomposed",
     "g1": {
       "done": 8,
       "total": 9,
@@ -1684,7 +1758,7 @@
     "total": 33,
     "active_remaining": 5,
     "deferred": 5,
-    "active_numbered": 11,
+    "active_numbered": 10,
     "in_progress": 1,
     "g2": {
       "done": 2,
