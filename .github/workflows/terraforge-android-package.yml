@@ -34,6 +34,13 @@ jobs:
           set -euo pipefail
           godot --headless --rendering-method gl_compatibility --path "$RUNNER_TEMP/tf-android" --editor --import 2>&1 | tee "$RUNNER_TEMP/import.log"
           if grep -E 'SCRIPT ERROR:|Parse Error:|Parser Error:|Compile Error:|Failed to load script' "$RUNNER_TEMP/import.log"; then exit 1; fi
+      - name: Load every converted adapter before executing the suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --rendering-method gl_compatibility --path "$RUNNER_TEMP/tf-android" --script res://validate_adapters.gd 2>&1 | tee "$RUNNER_TEMP/adapter-load.log"
+          grep -F 'ANDROID_ADAPTER_LOAD_GATE {"failures":[],"passed":137,"total":137}' "$RUNNER_TEMP/adapter-load.log"
+          if grep -E 'SCRIPT ERROR:|Parse Error:|Compile Error:|Failed to load script' "$RUNNER_TEMP/adapter-load.log"; then exit 1; fi
       - name: Smoke test adapter and JSON capture
         shell: bash
         run: |
@@ -62,6 +69,7 @@ jobs:
           name: Android_package_validation
           path: |
             ${{ runner.temp }}/import.log
+            ${{ runner.temp }}/adapter-load.log
             ${{ runner.temp }}/smoke.log
             ${{ runner.temp }}/idle.log
           if-no-files-found: ignore

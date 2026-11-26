@@ -46,7 +46,7 @@ for name in names:
     adapt(name+".gd")
 print(f"Adapted {len(done)} scripts for {len(names)} runnable tests")
 sha=subprocess.check_output(["git","rev-parse","HEAD"],cwd=repo,text=True).strip()
-terrain_commit="94e990af3bfeade2a30c887f9cbf67f41aab3f95"
+terrain_commit="d7aa19b503497ae34298957e8d141409829fd828"
 def terrain_tree(ref):
     return subprocess.check_output(["git","rev-parse",ref+":addons/terra_forge"],cwd=repo,text=True).strip()
 if terrain_tree("HEAD")!=terrain_tree(terrain_commit):

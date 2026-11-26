@@ -59,6 +59,7 @@ func _ready() -> void:
     if not _ci:
         _names=_inventory["quick_tests"].duplicate()
     if _profile_smoke:
+        _selected_suite="full"
         _names=[]
         if DisplayServer.get_name().to_lower()=="headless" or RenderingServer.get_current_rendering_method()!="mobile":
             push_error("Profile smoke requires actual Mobile renderer")
@@ -143,7 +144,7 @@ func _start_fresh() -> void:
     _report["session_id"] = token
     _report["suite_mode"] = "ci" if _ci else _selected_suite
     _report["terrain_tree"] = _inventory.get("terrain_tree","")
-    _report["planned_profiles"] = 12 if _profile_smoke else (0 if _ci else (8 if _selected_suite=="quick" else 24))
+    _report["planned_profiles"] = 24 if _profile_smoke else (0 if _ci else (8 if _selected_suite=="quick" else 24))
     _report["qualification_note"] = "Quick is screening only; full adds repeated profiles, not a 30-minute soak or OS lifecycle proof."
     if not _logger_installed:
         OS.add_logger(_log)
@@ -522,14 +523,45 @@ func _run_all() -> void:
         if _profile_smoke:
             if not complete:
                 failures+=1
-            var expected_arms: Array[String]=["F","I-G cropped","I-H cropped","F","I-G cropped","I-H cropped","F","I-G cropped","I-H cropped","F","I-G cropped","I-H cropped"]
+            var expected_arms: Array[String]=["F","I-G cropped","I-G cropped","F","I-H cropped","F","F","I-H cropped","I-G cropped","F","F","I-G cropped","F","I-H cropped","I-H cropped","F","F","I-G cropped","I-G cropped","F","I-H cropped","F","F","I-H cropped"]
+            var snapshot: String=""
+            var settings_reference: Dictionary={}
+            var counts: Dictionary={}
             var index: int=0
             for profile in _report["profiles"]:
                 if index>=expected_arms.size() or profile.get("comparison_arm","")!=expected_arms[index] or profile.get("sequence_index",0)!=index+1 or profile.get("error",FAILED)!=OK or profile.get("frame_interval_ms",{}).get("count",0)<=0 or profile.get("mesh_builds",0)<=0 or profile.get("worker_errors",-1)!=0:
                     failures+=1
+                var arm: String=str(profile.get("comparison_arm",""))
+                counts[arm]=int(counts.get(arm,0))+1
+                var settings: Dictionary=profile.get("settings",{}).duplicate(true)
+                var expected_mode: int=4 if arm=="F" else 7
+                var expected_effective: int=4 if arm=="F" else (5 if arm=="I-G cropped" else 6)
+                if profile.get("comparison_block",0)!=int(index/4)+1 or settings.get("sampling_strategy",-1)!=expected_mode or settings.get("effective_sampling_strategy",-1)!=expected_effective or settings.get("hybrid_scalar_sampling")!=(arm!="F") or settings.get("hybrid_topology_cache")!=(arm=="I-H cropped") or settings.get("hybrid_cropped_halo")!=(arm!="F") or profile.get("route","")!="normalized_sine_v1" or profile.get("requested_seconds",0)!=5.0 or float(profile.get("actual_stream_seconds",0))<5.0 or profile.get("index_format","")!="TFM2" or profile.get("first_focus_collision_ms_from_open_start")==null:
+                    failures+=1
+                var current_snapshot: String=str(profile.get("snapshot_id",""))
+                if index==0:
+                    snapshot=current_snapshot
+                if current_snapshot.is_empty() or current_snapshot!=snapshot:
+                    failures+=1
+                for key in ["sampling_strategy","effective_sampling_strategy","hybrid_scalar_sampling","hybrid_topology_cache","hybrid_cropped_halo"]:
+                    settings.erase(key)
+                if index==0:
+                    settings_reference=settings
+                elif settings!=settings_reference:
+                    failures+=1
+                print("ANDROID_PROFILE_SMOKE_ARM ",JSON.stringify({"index":index+1,"arm":arm,"block":profile.get("comparison_block"),"mesh_builds":profile.get("mesh_builds"),"frame_samples":profile.get("frame_interval_ms",{}).get("count"),"stream_seconds":profile.get("actual_stream_seconds")}))
                 index+=1
+            if index!=24 or counts!={"F":12,"I-G cropped":6,"I-H cropped":6} or not _report["diagnostic_integrity"].get("recorded_evidence_complete",false):
+                failures+=1
+            var destination: String=_run_dir.path_join("profile_smoke_export.json")
+            if not _write_diagnostics(destination):
+                failures+=1
+            else:
+                var exported: Variant=JSON.parse_string(FileAccess.get_file_as_string(destination))
+                if not exported is Dictionary or not exported.get("exported_evidence_complete",false) or exported.get("missing_detail_count",-1)!=0:
+                    failures+=1
             if failures==0:
-                print("ANDROID_PROFILE_SMOKE_VERIFIED ",JSON.stringify({"profiles":index,"renderer":RenderingServer.get_current_rendering_method()}))
+                print("ANDROID_PROFILE_SMOKE_VERIFIED ",JSON.stringify({"profiles":index,"renderer":RenderingServer.get_current_rendering_method(),"arms":counts,"diagnostics_export":true,"seconds_per_profile":5}))
         if _smoke:
             if not _diagnostics_negative_smoke():
                 failures+=1
@@ -780,8 +812,6 @@ func _run_profiles() -> void:
     var order: Array[int]=[0,1,1,0,2,0,0,2]
     if _selected_suite=="full":
         order.assign([0,1,1,0,2,0,0,2,1,0,0,1,0,2,2,0,0,1,1,0,2,0,0,2])
-    if _profile_smoke:
-        order.assign([0,1,2,0,1,2,0,1,2,0,1,2])
     for i in range(order.size()):
         if i<_report["profiles"].size():
             continue

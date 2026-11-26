@@ -22,7 +22,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y xvfb xauth mesa-vulkan-drivers vulkan-tools
       - run: python3 tools/terraforge_android_suite/build.py --output "$RUNNER_TEMP/tf-android" --zip "$RUNNER_TEMP/tf.zip"
-      - name: Verify twelve real software-rendered profiles beyond eight-report history cap
+      - name: Verify full 24-profile ABBA order, identity, report and diagnostic export
         shell: bash
         run: |
           set -euo pipefail
@@ -37,7 +37,7 @@ jobs:
           chmod 700 "$XDG_RUNTIME_DIR"
           timeout 600s xvfb-run -a godot --path "$RUNNER_TEMP/tf-android" --display-driver x11 --audio-driver Dummy --rendering-method mobile --rendering-driver vulkan --resolution 640x480 -- --profile-smoke 2>&1 | tee "$RUNNER_TEMP/profile-smoke.log"
           grep -F 'ANDROID_PROFILE_SMOKE_VERIFIED' "$RUNNER_TEMP/profile-smoke.log"
-          grep -F '"profiles":12' "$RUNNER_TEMP/profile-smoke.log"
+          grep -F '"profiles":24' "$RUNNER_TEMP/profile-smoke.log"
           if grep -E '^SCRIPT ERROR:|Parse Error:|Compile Error:|^ERROR:' "$RUNNER_TEMP/profile-smoke.log"; then exit 1; fi
       - uses: actions/upload-artifact@v4
         if: always()
