@@ -1371,12 +1371,37 @@
         ],
         "retained_raw_bytes": 116052
       }
+    },
+    {
+      "phase": "e4 non-headless renderer capability and bounds",
+      "pr": 67,
+      "head": "a8752c6356c3f36cdc6eaba4f423444793fd76e7",
+      "ci": 45767339295,
+      "disposition": "CI_PENDING",
+      "decision": "Require actual requested rendering method and changed raw readback, no silent fallback. PR-only software OpenGL/Mobile Vulkan via Xvfb/Mesa, log cap fallback causes, conservative custom AABB coverage. Not physical GPU, actual culling visibility or timing proof."
+    },
+    {
+      "phase": "g2 existing published resource readback",
+      "pr": 68,
+      "head": "3b1423ec46779a15174180899d236ecf3d09a1bb",
+      "ci": 45767395082,
+      "disposition": "CI_PENDING",
+      "decision": "Inspect production lifetime: raw worker result is local during publication and not retained in resident tiles; no existing persistent raw base. Test TFM1/2 x LOD0/1/2 x forward/reverse, raw control parity, existing mesh/shape readback per-channel exactness, candidate raw and repacked parity, readback+patch cost, no live mutation. Lossy input never authorized. No duplicate persistent cache, no transient RSS bound or device timing."
+    },
+    {
+      "phase": "h0 existing combined controller gate",
+      "pr": 69,
+      "head": "79060ab25ca4929e2b869dc33088c7d6e3a35028",
+      "ci": 45767471626,
+      "disposition": "CI_PENDING",
+      "decision": "Existing view/work share tier, motion uses separate bounded horizon. Two formats x two modes stationary support traces with invalid pressure rejection, manual override, tier/cap invariants and stop reset. No new governor, no live code changes, no FPS claim. H0 is one of 12 numbered phases outside the 33 decomposed subtasks."
     }
   ],
   "next": [
-    "G2: inspect existing raw payload ownership; 108/308 opportunities not actual hits; fresh base loses, no duplicate cache; transient memory and decision open.",
-    "E4: real non-headless renderer probe and AABB/culling, no GPU proof yet; two fallback cases need attribution.",
-    "Both diagnostic PRs remain isolated, no default change. 23/33 tracked done, 5 active, 5 deferred; 12 active numbered tasks."
+    "Check exact E4 CI45767339295 (3 regression shards plus PR-only renderer job); require real changed readback, software only, no actual culling proof.",
+    "Check G2 exact CI45767395082; raw/repacked parity and readback+patch cost; reject lossy raw bases rather than weaken authority.",
+    "Check H0 exact CI45767471626; no new governor, assess existing controls, preserve near/support and caps.",
+    "No new verified completion yet: 23/33 done,5 active,5 deferred,12 numbered phases; 2 tracked subtasks and H0 in progress."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -1522,11 +1547,11 @@
     "active_remaining": 5,
     "deferred": 5,
     "active_numbered": 12,
-    "in_progress": 0,
+    "in_progress": 2,
     "g2": {
       "done": 2,
       "total": 4,
-      "in_progress": 0,
+      "in_progress": 1,
       "items": [
         "Numerical patch parity and timing",
         "Verified source and actual physics parity",
@@ -1537,7 +1562,7 @@
     "e4": {
       "done": 1,
       "total": 4,
-      "in_progress": 0,
+      "in_progress": 1,
       "items": [
         "Bounded buffer planner and renderer capability",
         "Actual renderer data and AABB/culling safety",
