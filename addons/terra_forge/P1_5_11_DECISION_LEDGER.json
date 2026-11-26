@@ -1902,10 +1902,8 @@
     }
   ],
   "next": [
-    "Verify exact combined M3/M5 CI139 and renderer checks, M6 factorial raw metrics and M4 lifecycle raw stage reports. No default change.",
-    "M6 28 arms 896 timed tiles +112 warmups; isolate crop/scalar/topology with same cap2, full parity and no timed IO. Not FPS. G1/G2 natural reuse remains separate.",
-    "M4 synthetic 8 process arms ×24 nodes, cap4 detached retention vs immediate, 192 visible and 192 ghost checks planned; include drain and all stages; no terrain physics or GPU proof. Prior prewarm rejection remains.",
-    "Next M7 rendered slot cap1/2/4 and other pending substeps, all 60 tasks preserved. No phone request yet."
+    "M6 test integration combined CI; retain M4 lifecycle experiment branch, no runtime adoption.",
+    "M7 rendered cap1/2/4 and M8 target 30/60 real guarded route. 60 tasks preserved."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -2097,27 +2095,7 @@
       45802203182
     ],
     "scope": "Separate from historical 26/33 scoped decisions. No double count. 60 planned review tasks, not 60 new runtime changes.",
-    "active": [
-      {
-        "phase": "M3/M5 combined",
-        "sha": "c82cf93655c05660246630ad7328b764a3357b73",
-        "ci": 45834613667
-      },
-      {
-        "phase": "M6 factorial",
-        "status": "FACTORIAL_CI_PENDING",
-        "pr": 83,
-        "sha": "42ade476cc9f2a63c4252a7876ef5168ead5151f",
-        "ci": 45835083337
-      },
-      {
-        "phase": "M4 lifecycle",
-        "status": "LIFECYCLE_CI_PENDING",
-        "pr": 84,
-        "sha": "5e1f3e42dc2bf6d000926355443d05d14057a621",
-        "ci": 45835160341
-      }
-    ],
+    "active": [],
     "last_analysis": {
       "date": "2026-11-26",
       "source": "exact completed CI jobs and prior decision ledger",
@@ -2309,10 +2287,10 @@
         }
       }
     },
-    "m3": "MERGED_SHADOW_ONLY_COMBINED_CI_PENDING",
+    "m3": "MERGED_SHADOW_COMBINED_CI_VERIFIED",
     "m4": "CI_VERIFIED_PREWARM_REJECTED_KEEP_EVIDENCE",
     "m5": {
-      "status": "MERGED_TEST_ONLY_COMBINED_CI_PENDING",
+      "status": "MERGED_TEST_COMBINED_CI_VERIFIED",
       "sha": "77019be3ec9167bf855efce127f360c93759237e",
       "pr": 82,
       "ci": 45831078190
@@ -2464,16 +2442,94 @@
           ]
         },
         "decision": "Merge tests only; cap32 promising, no default promotion. Accepted reads -55.28%, evictions -64.55%, +64KiB resident float payload, unequal mesh work, TFM2 p95 upper worsens; no peak RSS/GPU/phone FPS."
+      },
+      "m6": {
+        "ci": 45835083337,
+        "regressions": 141,
+        "arms": 28,
+        "timed_tiles": 896,
+        "warmups": 112,
+        "labels": [
+          "F",
+          "I-F full",
+          "I-F crop",
+          "I-G full",
+          "I-G crop",
+          "I-H full",
+          "I-H crop"
+        ],
+        "wall_us_per_tile_mean": {
+          "TFM1": [
+            2623.984375,
+            2608.984375,
+            2575.8125,
+            2347.109375,
+            2225.8125,
+            2271.09375,
+            2178.703125
+          ],
+          "TFM2": [
+            1945.859375,
+            2015.5,
+            1929.078125,
+            1497.859375,
+            1494.15625,
+            1525.453125,
+            1491.5
+          ]
+        },
+        "decision": "Integrate test only; scalar major improvement, topology incremental crop benefit ~2.1%/0.18%; no automatic topology/default, no timed IO/renderer. Exact fingerprints and equal work."
+      },
+      "m4_lifecycle": {
+        "ci": 45835160341,
+        "regressions": 139,
+        "arms": 8,
+        "created": 192,
+        "freed": 192,
+        "visible_checks": 192,
+        "ghost_checks": 192,
+        "retained_cap": 4,
+        "GL_total_us_ABBA": [
+          282713,
+          103769,
+          101343,
+          102138
+        ],
+        "Mobile_total_us_ABBA": [
+          540198,
+          166377,
+          174297,
+          168569
+        ],
+        "first_visible_draw_wait_us_GL": [
+          188646,
+          11976,
+          12012,
+          12001
+        ],
+        "first_visible_draw_wait_us_Mobile": [
+          351136,
+          29802,
+          30348,
+          29769
+        ],
+        "mobile_free_max_ms": 0.074,
+        "decision": "Do not promote delayed retention; cold first immediate confounded by persistent caches, warm final immediate comparable or faster, all free costs tiny in quad probe. Prior actual terrain prewarm rejection preserved. Focus actual first draw/material state, not speculative deferred free. Synthetic equal quads, no actual terrain physics/GPU proof."
+      },
+      "m3_m5_combined": {
+        "ci": 45834613667,
+        "regressions": 139,
+        "renderer_groups": "success"
       }
     },
     "m6": {
-      "status": "FACTORIAL_CI_PENDING",
+      "status": "MERGED_TEST_ONLY_COMBINED_CI_PENDING",
       "pr": 83,
       "sha": "42ade476cc9f2a63c4252a7876ef5168ead5151f",
       "ci": 45835083337
     },
     "m4_followup": {
-      "status": "LIFECYCLE_CI_PENDING",
+      "status": "CI_VERIFIED_RETENTION_NOT_PROMOTED",
       "pr": 84,
       "sha": "5e1f3e42dc2bf6d000926355443d05d14057a621",
       "ci": 45835160341
