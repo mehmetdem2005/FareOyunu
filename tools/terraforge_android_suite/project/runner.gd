@@ -29,6 +29,7 @@ var _paused := false
 var _busy := false
 var _ci := false
 var _smoke := false
+var _profile_smoke := false
 var _seq := 0
 var _names: Array = []
 var _shard := 0
@@ -40,7 +41,8 @@ var _static_peak: int = 0
 func _ready() -> void:
     var args: PackedStringArray = OS.get_cmdline_user_args()
     _idle_smoke = args.has("--idle-smoke")
-    _ci = args.has("--ci") or args.has("--smoke") or _idle_smoke
+    _profile_smoke=args.has("--profile-smoke")
+    _ci = args.has("--ci") or args.has("--smoke") or _idle_smoke or _profile_smoke
     _smoke = args.has("--smoke") or _idle_smoke
     for arg in args:
         if arg.begins_with("--shard="):
@@ -56,7 +58,13 @@ func _ready() -> void:
     _names = _inventory["tests"].duplicate()
     if not _ci:
         _names=_inventory["quick_tests"].duplicate()
-    if _smoke:
+    if _profile_smoke:
+        _names=[]
+        if DisplayServer.get_name().to_lower()=="headless" or RenderingServer.get_current_rendering_method()!="mobile":
+            push_error("Profile smoke requires actual Mobile renderer")
+            get_tree().quit(1)
+            return
+    elif _smoke:
         _names = ["test_height_store","test_data_safety","test_guarded_capsule"]
     elif _shard > 0:
         var selected: Array = []
@@ -135,7 +143,7 @@ func _start_fresh() -> void:
     _report["session_id"] = token
     _report["suite_mode"] = "ci" if _ci else _selected_suite
     _report["terrain_tree"] = _inventory.get("terrain_tree","")
-    _report["planned_profiles"] = 0 if _ci else (8 if _selected_suite=="quick" else 24)
+    _report["planned_profiles"] = 12 if _profile_smoke else (0 if _ci else (8 if _selected_suite=="quick" else 24))
     _report["qualification_note"] = "Quick is screening only; full adds repeated profiles, not a 30-minute soak or OS lifecycle proof."
     if not _logger_installed:
         OS.add_logger(_log)
@@ -229,6 +237,9 @@ func _make_ui() -> void:
 
 func _select_suite(index:int) -> void:
     if _busy or _starting or _inventory.is_empty() or _ci:
+        return
+    if not _report.is_empty():
+        _detail.text="Yeni seçim yalnız sıfırdan başlatınca uygulanır."
         return
     _names=_inventory["quick_tests" if index==0 else "tests"].duplicate()
     _progress.max_value=_names.size()
@@ -485,7 +496,7 @@ func _run_all() -> void:
                 _retry_requested=false
                 _retry_failed()
             return
-    if not _ci:
+    if not _ci or _profile_smoke:
         await _run_profiles()
     if _restart_requested or _retry_requested:
         _busy=false
@@ -495,7 +506,7 @@ func _run_all() -> void:
             _retry_requested=false
             _retry_failed()
         return
-    var complete: bool=_report["tests"].size()==_names.size() and (_ci or (_report["profiles"].size()==int(_report["planned_profiles"]) and _report["profile_interruptions"].is_empty()))
+    var complete: bool=_report["tests"].size()==_names.size() and (_report["profiles"].size()==int(_report["planned_profiles"]) and _report["profile_interruptions"].is_empty())
     _report["state"]="complete" if complete else "incomplete"
     _report["active_test"]=""
     _report["active_profile"]=""
@@ -508,6 +519,17 @@ func _run_all() -> void:
         for t in _report["tests"]:
             if t["status"]!="pass":
                 failures+=1
+        if _profile_smoke:
+            if not complete:
+                failures+=1
+            var expected_arms: Array[String]=["F","I-G cropped","I-H cropped","F","I-G cropped","I-H cropped","F","I-G cropped","I-H cropped","F","I-G cropped","I-H cropped"]
+            var index: int=0
+            for profile in _report["profiles"]:
+                if index>=expected_arms.size() or profile.get("comparison_arm","")!=expected_arms[index] or profile.get("sequence_index",0)!=index+1 or profile.get("error",FAILED)!=OK or profile.get("frame_interval_ms",{}).get("count",0)<=0 or profile.get("mesh_builds",0)<=0 or profile.get("worker_errors",-1)!=0:
+                    failures+=1
+                index+=1
+            if failures==0:
+                print("ANDROID_PROFILE_SMOKE_VERIFIED ",JSON.stringify({"profiles":index,"renderer":RenderingServer.get_current_rendering_method()}))
         if _smoke:
             if not _diagnostics_negative_smoke():
                 failures+=1
@@ -731,7 +753,7 @@ func _run_profiles() -> void:
         _finish_scope("fixture")
         return
     var p = profile_script.new()
-    p.duration_seconds=20.0
+    p.duration_seconds=5.0 if _profile_smoke else 20.0
     p.page_limit=16
     p.shard_limit=4
     add_child(p)
@@ -758,6 +780,8 @@ func _run_profiles() -> void:
     var order: Array[int]=[0,1,1,0,2,0,0,2]
     if _selected_suite=="full":
         order.assign([0,1,1,0,2,0,0,2,1,0,0,1,0,2,2,0,0,1,1,0,2,0,0,2])
+    if _profile_smoke:
+        order.assign([0,1,2,0,1,2,0,1,2,0,1,2])
     for i in range(order.size()):
         if i<_report["profiles"].size():
             continue
@@ -770,14 +794,16 @@ func _run_profiles() -> void:
         p.hybrid_scalar_sampling=order[i]!=0
         p.hybrid_topology_cache=order[i]==2
         p.hybrid_cropped_halo=order[i]!=0
-        var previous_reports:int=p._reports.size()
+        # Profile scene retains at most eight reports. The runner owns the
+        # cumulative report; clear only its internal history before each run.
+        p._reports.clear()
         _log.begin()
         p._begin(true)
         var deadline:=Time.get_ticks_msec()+90000
         while p._running and Time.get_ticks_msec()<deadline:
             await get_tree().process_frame
         _finish_scope("profile_"+str(i+1))
-        if p._running or p._reports.size()<=previous_reports:
+        if p._running or p._reports.size()!=1:
             _report["profile_interruptions"].append("profile timeout or no new report "+str(i+1))
             break
         var data: Dictionary=p._reports.back().duplicate(true)
@@ -785,6 +811,9 @@ func _run_profiles() -> void:
         data["comparison_arm"]=["F","I-G cropped","I-H cropped"][order[i]]
         data["comparison_block"]=int(i/4)+1
         data["diagnostic_material"]=false
+        if data.get("error",FAILED)!=OK or data.get("frame_interval_ms",{}).get("count",0)<=0:
+            _report["profile_interruptions"].append("profile failed or no frame samples "+str(i+1))
+            break
         _report["profiles"].append(data)
         _report["active_profile"]=""
         _save()
