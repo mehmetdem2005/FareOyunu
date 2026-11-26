@@ -7,7 +7,8 @@
   "combined_ci": {
     "head": "9bc8416d3657b5d446a5f23a3a4a6ecf401bab7b",
     "ci": 45724197931,
-    "status": "PENDING_EXACT_VERIFICATION"
+    "conclusion": "success",
+    "tests": 119
   },
   "device_gate": {
     "status": "OPEN",
@@ -1003,23 +1004,66 @@
       "pr": 57,
       "head": "716d63f22be8d7f72a0645fe67b5466653b7178f",
       "ci": 45722942419,
-      "disposition": "FIX_TEST_HARNESS_RETRY_PENDING",
-      "decision": "Review changed calls and actual matched route safety/resource costs; park if no net benefit; four-tile turns and Android remain open.",
+      "disposition": "REJECT_CURRENT_RUNTIME_POLICY_PARK_FOUR_TILE",
+      "decision": "Do not promote. Keep branch and exact CI; defer four-tile turns until measured stalls or H0/I0 review. Straight route only, no Android evidence.",
       "evidence": {
-        "tests": 121,
-        "passed": 119,
-        "failed": 2,
-        "reason": "typed Array[bool] ternary assignment",
-        "fix": "2eb7068a31c6662812203289f6aaec4800e49b60",
-        "retry_ci": 45724196861
+        "head": "2eb7068a31c6662812203289f6aaec4800e49b60",
+        "ci": 45724196861,
+        "passed": 121,
+        "formats": 2,
+        "laps_per_arm": 8,
+        "changed_calls": 782,
+        "reads": [
+          538,
+          604
+        ],
+        "builds": [
+          230,
+          276
+        ],
+        "tfm2_shard_loads": [
+          91,
+          104
+        ],
+        "mean_pump_ms_tfm1": [
+          0.140891666666667,
+          0.152877083333334
+        ],
+        "mean_pump_ms_tfm2": [
+          0.107016666666665,
+          0.112804687499999
+        ],
+        "horizon_seconds": [
+          0.125,
+          0.439599317988066
+        ],
+        "denied": [
+          0,
+          0
+        ],
+        "missing_rays": [
+          0,
+          0
+        ],
+        "return_tick": [
+          1508,
+          1508
+        ],
+        "speculative_publications": [
+          32,
+          42
+        ],
+        "abandoned": [
+          0,
+          10
+        ]
       }
     }
   ],
   "next": [
-    "Exact combined G1 authority CI 45724197931 and F2 harness retry 45724196861.",
-    "G1 authoritative source/snapshot ownership and bounded metadata, actual worker/publication integration only after parity and physics safety; track transient memory and natural reuse.",
-    "F2 closed-loop paired comparison incl turning/four-tile traces, resource cost and safety; park if no net gain.",
-    "14 other numbered items remain; G1/F2 still open."
+    "G1 actual worker/publication integration only after parity and physics safety; track transient memory and natural reuse.",
+    "F2 current policy rejected; revisit four-tile turning only on measured stalls or H0/I0 review. Keep existing runtime horizon.",
+    "15 active numbered items remain (G1 +14); F2 deferred, not a required active step."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -1095,5 +1139,22 @@
         "review_status": "OPEN_REVIEW_NOT_IMPLEMENTATION"
       }
     ]
+  },
+  "progress_accounting": {
+    "scope": "G1 and F2 only; remaining other phases not decomposed",
+    "g1": {
+      "done": 6,
+      "total": 9
+    },
+    "f2": {
+      "done": 7,
+      "total": 8,
+      "deferred": 1
+    },
+    "done": 13,
+    "total": 17,
+    "active_remaining": 3,
+    "deferred": 1,
+    "active_numbered": 15
   }
 }
