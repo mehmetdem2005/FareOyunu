@@ -1902,8 +1902,9 @@
     }
   ],
   "next": [
-    "Combined CI after atomic merge PR78/79, verify 137 regressions and both rendered diagnostics; no default change.",
-    "M3 exact-identity shadow and M4 initial vs repeated visual node allocation; M5 after lane frees. Keep 60 tasks."
+    "Verify exact combined M1/M2 CI and M3/M4 CI with actual logs. M3 candidate upper bound only; M4 cold/prewarm in independent processes includes setup; no speed claim.",
+    "M5 branch prepared, open PR when a CI lane frees; compare 16/24/32 on matched guarded route; no default change. Reconcile shared files if needed.",
+    "Maintain 60 review tasks, batch safely; M6+ still planned. No phone run until targeted combined package."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -2095,7 +2096,25 @@
       45802203182
     ],
     "scope": "Separate from historical 26/33 scoped decisions. No double count. 60 planned review tasks, not 60 new runtime changes.",
-    "active": [],
+    "active": [
+      {
+        "phase": "M1/M2 integration",
+        "sha": "d00bb396ebf97a905aebe58222fb2c6931f74e88",
+        "ci": 45828854113
+      },
+      {
+        "phase": "M3 shadow",
+        "sha": "fdf3bdd65657c6630fb1492d502497f1451fbf6d",
+        "pr": 80,
+        "ci": 45828968839
+      },
+      {
+        "phase": "M4 cold visual",
+        "sha": "33f8606f3033e2c7232f2efa2921a56b0ed89ab3",
+        "pr": 81,
+        "ci": 45829031521
+      }
+    ],
     "last_analysis": {
       "date": "2026-11-26",
       "source": "exact completed CI jobs and prior decision ledger",
@@ -2286,6 +2305,14 @@
           "decision": "Matched route page cap16 vs24/32; measure bytes/RSS where available, accepted reads, reloads, evictions, queue/accept/delivery, same quality/work. Existing 16 cap saturated does not prove larger cache wins."
         }
       }
+    },
+    "m3": "SHADOW_DIAGNOSTIC_CI_PENDING",
+    "m4": "COLD_PREWARM_DIAGNOSTIC_CI_PENDING",
+    "m5": {
+      "status": "BRANCH_PREPARED_NOT_TESTED",
+      "sha": "77019be3ec9167bf855efce127f360c93759237e",
+      "branch": "exp/p1511m5-page-cap-matrix",
+      "pr": null
     }
   }
 }
