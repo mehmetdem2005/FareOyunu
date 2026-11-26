@@ -160,6 +160,8 @@ suite=(
   test_geomorphology
   test_shape_quality
   test_drainage_analysis
+  test_m5_page_cap
+  test_m5_page_cap_v2
 )
 # Interleave adjacent physics scenarios across independent CI runners.
 shard_number="${3:-1}"

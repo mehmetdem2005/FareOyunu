@@ -1902,9 +1902,8 @@
     }
   ],
   "next": [
-    "M5 CI45831078190, inspect raw capacity reports and equal-work caveats.",
-    "M3 verified shadow only eligible for integration; M4 rejected runtime method keep branch/evidence; next separate allocation/material/release attribution and safe bounded lifetime hypothesis, no blind reuse.",
-    "Preserve 60 review tasks, default A/cap2 and no new phone request until combined targeted package."
+    "Combined M3/M5 CI: 139 regressions and software renderer checks; no default change.",
+    "M6 equal-work hybrid and M4 distinct allocation/material/release attribution, cap32 device suite candidate. Preserve 60 tasks."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -2096,14 +2095,7 @@
       45802203182
     ],
     "scope": "Separate from historical 26/33 scoped decisions. No double count. 60 planned review tasks, not 60 new runtime changes.",
-    "active": [
-      {
-        "phase": "M5 page capacity",
-        "sha": "77019be3ec9167bf855efce127f360c93759237e",
-        "pr": 82,
-        "ci": 45831078190
-      }
-    ],
+    "active": [],
     "last_analysis": {
       "date": "2026-11-26",
       "source": "exact completed CI jobs and prior decision ledger",
@@ -2295,10 +2287,10 @@
         }
       }
     },
-    "m3": "CI_VERIFIED_SHADOW_ONLY_PENDING_INTEGRATION",
+    "m3": "MERGED_SHADOW_ONLY_COMBINED_CI_PENDING",
     "m4": "CI_VERIFIED_PREWARM_REJECTED_KEEP_EVIDENCE",
     "m5": {
-      "status": "CI_QUEUED",
+      "status": "MERGED_TEST_ONLY_COMBINED_CI_PENDING",
       "sha": "77019be3ec9167bf855efce127f360c93759237e",
       "pr": 82,
       "ci": 45831078190
@@ -2372,6 +2364,84 @@
           "setup_material_us": 20322
         },
         "decision": "Reject empty-node prewarm; keep branch and raw evidence. Distinguish expensive material/assign/free and process waits, no automatic pool or deferred-free promotion. Software renderer, unequal work, two repetitions, no GPU/phone claim."
+      },
+      "m5": {
+        "ci": 45831078190,
+        "regressions": 139,
+        "formats": 2,
+        "routes": 6,
+        "physical_ticks": 4320,
+        "capacities": [
+          16,
+          24,
+          32
+        ],
+        "per_format": {
+          "reads": [
+            284,
+            203,
+            127
+          ],
+          "derived_reloads": [
+            226,
+            145,
+            69
+          ],
+          "evictions": [
+            268,
+            179,
+            95
+          ],
+          "verified_pages": [
+            58,
+            58,
+            58
+          ],
+          "mesh_builds": [
+            178,
+            180,
+            184
+          ],
+          "float_payload_bytes": [
+            65536,
+            98304,
+            131072
+          ],
+          "goals": [
+            65,
+            156,
+            287,
+            405
+          ],
+          "missing_rays": 0,
+          "airborne": 0,
+          "denied": 0
+        },
+        "pump_mean_ms": {
+          "TFM1": [
+            0.188675141242937,
+            0.187707627118643,
+            0.183319209039548
+          ],
+          "TFM2": [
+            0.325481638418079,
+            0.31765395480226,
+            0.303149717514124
+          ]
+        },
+        "pump_p95_upper_ms": {
+          "TFM1": [
+            0.995,
+            0.847,
+            0.828
+          ],
+          "TFM2": [
+            1,
+            1.658,
+            1.714
+          ]
+        },
+        "decision": "Merge tests only; cap32 promising, no default promotion. Accepted reads -55.28%, evictions -64.55%, +64KiB resident float payload, unequal mesh work, TFM2 p95 upper worsens; no peak RSS/GPU/phone FPS."
       }
     }
   }

@@ -35,7 +35,7 @@ func _run() -> void:
     print("PASS: I0 F and three explicit hybrid presets, matched guarded multi-seam routes and ownership")
     quit(0)
 
-func _route(directory: String,format: int,arm: int) -> Dictionary:
+func _route(directory: String,format: int,arm: int,page_cap: int=16) -> Dictionary:
     _p=P.new()
     _p.region_index_format=format
     _p.sampling_strategy=4 if arm==0 else 7
@@ -55,7 +55,7 @@ func _route(directory: String,format: int,arm: int) -> Dictionary:
     _p.max_tile_work_ms=8.0
     _p.tile_updates_per_frame=3
     root.add_child(_p)
-    if _p.start_preview(directory,16,4)!=OK:
+    if _p.start_preview(directory,page_cap,4)!=OK:
         return {"error":FAILED,"stage":"open"}
     _p.set_process(false)
     _p.set_stream_center(Vector3(512,0,512))
@@ -174,7 +174,7 @@ func _route(directory: String,format: int,arm: int) -> Dictionary:
             return {"error":FAILED,"stage":"session policy","tick":tick}
         if ws["slots"]>2 or ws["inflight"]>1 or ws["reserved_payload_bytes"]>ws["payload_cap_bytes"] or int(ws["submitted"])!=int(ws["delivered"])+int(ws["dropped"])+int(ws["slots"]):
             return {"error":FAILED,"stage":"ownership","tick":tick,"worker":ws}
-        if peak_tiles>12 or peak_pages>16 or peak_jobs>2:
+        if peak_tiles>12 or peak_pages>page_cap or peak_jobs>2:
             return {"error":FAILED,"stage":"cap","tick":tick}
         var held: Dictionary=_p.support_state()
         if held["tiles"]!=plan["tiles"] or held["revision"]!=revision:
@@ -201,6 +201,7 @@ func _route(directory: String,format: int,arm: int) -> Dictionary:
     report["crop_submissions"]=final_stats["hybrid_cropped_submissions"]
     report["mesh_builds"]=final_stats["mesh_builds"]
     report["source"]=final_stats["source"]
+    report["page_cap"]=page_cap
     report["peak_reserved_payload_bytes"]=peak_reserved
     report["pump_ms"]=pump_hist.report()
     report["note"]="Equal physical route and settings; optional work may differ. No actual app lifecycle, GPU, RSS or phone FPS claim."
