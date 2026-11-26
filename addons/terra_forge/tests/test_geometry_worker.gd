@@ -100,6 +100,41 @@ func _initialize() -> void:
         if discarded_stats["classified"]!=4 or discarded_stats["epoch_pending"]+discarded_stats["epoch_finished"]+discarded_stats["epoch_running"]!=2 or discarded_stats["poll_stale"]!=2 or discarded_stats["copy_wall_us"]<poll_stats["copy_wall_us"] or discarded_stats["build_wall_us"]<poll_stats["build_wall_us"]:
             _fail("epoch discard accounting",src,w,b)
             return
+        # Force one successful finished result before changing epoch. No
+        # scheduling race: wait for actual ownership state, never poll it.
+        var before_shadow: Dictionary=stats["epoch_reuse_shadow"]
+        if w.submit(src,key,0,desired)["error"]!=OK:
+            _fail("shadow finished setup",src,w,b)
+            return
+        for step in range(4000):
+            if w.stats()["finished"]==1:
+                break
+            OS.delay_msec(1)
+        if w.stats()["finished"]!=1 or src.set_generation(2)!=OK or w.poll(src,desired)["error"]!=ERR_BUSY:
+            _fail("shadow epoch guard",src,w,b)
+            return
+        var after: Dictionary=w.stats()
+        var shadow: Dictionary=after["epoch_reuse_shadow"]
+        if shadow["successful_finished_candidates"]!=before_shadow["successful_finished_candidates"]+1 or shadow["candidate_finished_reserved_output_bytes_sum"]<=before_shadow["candidate_finished_reserved_output_bytes_sum"] or shadow["candidate_finished_build_wall_us"]<before_shadow["candidate_finished_build_wall_us"] or shadow["retained_payload_bytes"]!=0 or shadow["publication_enabled"] or after["slots"]!=0 or after["submitted"]!=after["delivered"]+after["dropped"]:
+            _fail("shadow accounting "+str(shadow),src,w,b)
+            return
+        # An actual finished output with changed neighbors cannot become
+        # a candidate, even when the source epoch also changes.
+        if w.submit(src,key,0,desired)["error"]!=OK:
+            _fail("shadow negative setup",src,w,b)
+            return
+        for step in range(4000):
+            if w.stats()["finished"]==1:
+                break
+            OS.delay_msec(1)
+        if w.stats()["finished"]!=1 or src.set_generation(3)!=OK or w.poll(src,changed)["error"]!=ERR_BUSY:
+            _fail("shadow negative epoch",src,w,b)
+            return
+        var negative: Dictionary=w.stats()
+        if negative["epoch_reuse_shadow"]!=shadow or negative["discard_identity"]["changed_neighbors"]!=after["discard_identity"]["changed_neighbors"]+1:
+            _fail("changed neighbor counted as candidate",src,w,b)
+            return
+        print("M3_EPOCH_REUSE_SHADOW ",JSON.stringify({"format":version,"before":before_shadow,"positive":shadow,"negative":negative["epoch_reuse_shadow"],"discard_identity":negative["discard_identity"]}))
         if w.submit(src,key,0,desired)["error"]!=OK:
             _fail("reopen setup",src,w,b)
             return
@@ -110,7 +145,7 @@ func _initialize() -> void:
             return
         print("GEOMETRY_WORKER ",JSON.stringify({"format":version,"parity_cases":7,"worker_build_elapsed_sum_us":elapsed,"stats_before_reopen":stats}))
         w.close()
-        if w.stats()["slots"]!=0 or w.stats()["open"] or w.stats()["discard_accounting"]["classified"]!=0:
+        if w.stats()["slots"]!=0 or w.stats()["open"] or w.stats()["discard_accounting"]["classified"]!=0 or w.stats()["epoch_reuse_shadow"]["successful_finished_candidates"]!=0 or w.stats()["epoch_reuse_shadow"]["candidate_finished_reserved_output_bytes_sum"]!=0:
             _fail("close",src,w,b)
             return
         src.close()
