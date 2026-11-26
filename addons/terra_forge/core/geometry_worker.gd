@@ -105,11 +105,10 @@ func start(source, cap: int=2, scalar_sampling: bool=false,reuse_topology: bool=
     close()
     if source==null or not source.is_open() or cap<1 or cap>4 or (reuse_topology and not scalar_sampling):
         return ERR_INVALID_PARAMETER
-    var stats: Dictionary=source.stats()
     _source_id=source.get_instance_id()
     _serial=source.session_serial()
-    _snapshot=stats["snapshot_id"]
-    _epoch=stats["generation"]
+    _snapshot=source.snapshot_id()
+    _epoch=source.generation()
     _cap=cap
     _reserve_critical=reserve_critical and cap>=2
     _lend_critical=lend_critical and _reserve_critical
@@ -139,10 +138,9 @@ func _context(source,desired: Variant=null) -> Error:
         return ERR_UNCONFIGURED
     if source.get_instance_id()!=_source_id or source.session_serial()!=_serial:
         return ERR_INVALID_DATA
-    var stats: Dictionary=source.stats()
-    if stats["snapshot_id"]!=_snapshot:
+    if source.snapshot_id()!=_snapshot:
         return ERR_INVALID_DATA
-    var epoch: int=stats["generation"]
+    var epoch: int=source.generation()
     _mutex.lock()
     if epoch!=_epoch:
         _epoch=epoch

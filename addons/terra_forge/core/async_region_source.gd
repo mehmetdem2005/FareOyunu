@@ -186,6 +186,16 @@ func _start_worker(directory: String, resident_limit: int, max_jobs: int, verify
 func session_serial() -> int:
     return _session_serial
 
+## Main-thread queries for streaming and publication. stats() is diagnostic.
+func generation() -> int:
+    return _generation
+
+func snapshot_id() -> String:
+    return _snapshot_id
+
+func resident_page_count() -> int:
+    return _cache.size()
+
 func is_open() -> bool:
     return _opened
 
