@@ -2,39 +2,47 @@
   "schema": "TF_ENGINE_DECISION_LEDGER_1",
   "date": "2026-11-26",
   "branch": "feat/terraforge-mobile-addon",
-  "latest_code_merge": "18dddc7d592ea20c57463a9440cd03e0742439ee",
+  "latest_code_merge": "056f72a8a6a6de641a768ee93000dd287625302a",
   "recorded_parent": "8081cc874f7b38dbca738abf0ef7f2998075b304",
   "combined_ci": {
-    "head": "641bed6d6a024818addd4cc27dd723475aa93e28",
-    "ci": 45850121509,
+    "head": "056f72a8a6a6de641a768ee93000dd287625302a",
+    "ci": 45862782494,
     "status": "VERIFIED",
     "expected_tests": 147,
     "tests": 147,
     "renderer_jobs": 5,
     "previous": {
-      "head": "efdea1407a1c7a58ca892e3a0d665c1d8cf3f848",
-      "ci": 45846479435,
+      "head": "641bed6d6a024818addd4cc27dd723475aa93e28",
+      "ci": 45850121509,
       "status": "VERIFIED",
+      "expected_tests": 147,
       "tests": 147,
       "renderer_jobs": 5,
-      "prior": {
-        "head": "d7aa19b503497ae34298957e8d141409829fd828",
-        "ci": 45802088242,
+      "previous": {
+        "head": "efdea1407a1c7a58ca892e3a0d665c1d8cf3f848",
+        "ci": 45846479435,
         "status": "VERIFIED",
-        "expected_tests": 137,
-        "previous": {
-          "head": "94e990af3bfeade2a30c887f9cbf67f41aab3f95",
-          "ci": 45797739044,
+        "tests": 147,
+        "renderer_jobs": 5,
+        "prior": {
+          "head": "d7aa19b503497ae34298957e8d141409829fd828",
+          "ci": 45802088242,
           "status": "VERIFIED",
-          "tests": 137
+          "expected_tests": 137,
+          "previous": {
+            "head": "94e990af3bfeade2a30c887f9cbf67f41aab3f95",
+            "ci": 45797739044,
+            "status": "VERIFIED",
+            "tests": 137
+          }
         }
       }
     }
   },
   "device_gate": {
-    "status": "OPTIMIZED_PACKAGE_VERIFIED_PHONE_OPEN",
+    "status": "OPTIMIZED_QUICK_CAPTURED_M9_RETEST_OPEN",
     "baseline": "P1_5_11_ANDROID_BASELINE.json",
-    "note": "The historical quick report uses an older engine. The verified M10 package contains the optimized terrain engine. Physical paired timings, 30-minute soak and OS lifecycle remain open.",
+    "note": "Optimized Redmi Note 8 Pro run captured all 12 profiles. Two M9 assertions rejected safe one-tick arrival differences. The corrected package is ready for a phone retest. Full, soak and Android lifecycle remain open.",
     "quick_report": "P1_5_11_ANDROID_QUICK_20261126.json"
   },
   "experiments": [
@@ -1917,9 +1925,9 @@
     }
   ],
   "next": [
-    "Run the targeted package on the Redmi Note 8 Pro and compare median paired frame intervals, p95/p99, completed work and guarded movement.",
-    "Run the 30-minute foreground sweep and capture actual Android background/resume plus editor/export environment evidence; keep unavailable metrics null.",
-    "Close the device gate only on measured evidence. Resume P1.4R scratch after the phase gate."
+    "Confirm the four M9 tests on the Redmi Note 8 Pro with the corrected package.",
+    "Carry F/32 forward as the leading device candidate and retain paired frame p95/p99 and completed work. The main phone frame target remains open.",
+    "Record full, 30-minute soak and separate real Android background/resume evidence before device closure."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -2920,10 +2928,36 @@
         "decision": "Accept test-only; cap32 and hybrid remain opt-in candidates. Software renderer, unequal optional work, no Android FPS, RSS or thermal claim.",
         "combined_ci_status": "SUCCESS_147_OF_147_PLUS_RENDERER"
       },
-      "combined_ci_status": "SUCCESS_147_OF_147_PLUS_EXISTING_RENDERER"
+      "combined_ci_status": "SUCCESS_147_OF_147_PLUS_EXISTING_RENDERER",
+      "android_waypoint_fix": {
+        "status": "MERGED_CI_VERIFIED_PHONE_RETEST_OPEN",
+        "cause": "The test required identical arrival tick arrays for corresponding ordered waypoints.",
+        "reported_arrivals": [
+          [
+            65,
+            156,
+            287,
+            405
+          ],
+          [
+            66,
+            157,
+            288,
+            406
+          ]
+        ],
+        "sha": "5700c89dd6232a59abe80e9be95cd4a577939aac",
+        "pr": 90,
+        "pr_ci": 45860852550,
+        "combined_ci": 45862782494,
+        "package_sha": "c44d427b3c4746d24b7c35671f64338eb4034f29",
+        "package_ci": 45860846130,
+        "artifact": 15138167040,
+        "verification": "Replayed both timestamp orders. Both pass. A missing ray and unequal support-transfer count still fail. Verified all four Godot M9 routes and corresponding adapted tests."
+      }
     },
     "m10": {
-      "status": "PACKAGE_AND_SOFTWARE_RENDER_VERIFIED_DEVICE_OPEN",
+      "status": "QUICK_DEVICE_SCREEN_CAPTURED_M9_RETEST_OPEN",
       "sha": "f5a2cb3e1f143ad087e1aaa44881cf1eb3441cfa",
       "branch": "tools/terraforge-android-m10-preflight",
       "ci": 45840847374,
@@ -2976,6 +3010,170 @@
         "gpu_frame_time_ms": null,
         "thermal_status": null,
         "scope": "TFM2, F, 32 pages, one slower 30-minute camera sweep. Backgrounding interrupts the active timing arm. Runtime flags and lifecycle notifications are logged."
+      },
+      "optimized_device_quick": {
+        "report_sha256": "bb48b454596660b4d29c571c32aefe1f2440dc4300b83d3feb8d67dcb065bc36",
+        "build_commit": "164fb6a7b789b4a097c39b717f0da9d2ac52e89f",
+        "terrain_commit": "706739b5e6c1abc78d237d96c6f7c059a499f699",
+        "device": {
+          "adapter": "Mali-G76 MC4",
+          "cores": 8,
+          "cpu": "",
+          "display": "Android",
+          "godot": "4.7.2-stable (official)",
+          "headless": false,
+          "model": "Redmi Note 8 Pro",
+          "os": "Android",
+          "os_version": "30.V12.5.8.0.RGGMIXM",
+          "physics_hz": 60,
+          "renderer": "mobile",
+          "viewport": [
+            1812,
+            883
+          ]
+        },
+        "runtime_features": {
+          "debug": true,
+          "editor": true,
+          "release": false,
+          "template": false
+        },
+        "planned_tests": 4,
+        "passed_tests": 2,
+        "failed_tests": 2,
+        "failed_cases": [
+          "test_m9_interaction",
+          "test_m9_interaction_v2_32"
+        ],
+        "captured_routes": 9,
+        "captured_physics_ticks": 6480,
+        "captured_missing_rays": 0.0,
+        "captured_airborne_ticks": 0.0,
+        "captured_denied_ticks": 4.0,
+        "profiles": 12,
+        "scope_details": 18,
+        "profile_interruptions": 0,
+        "fixture_snapshot": "53ad739a957050f3b93db7f0fdd0117b21b18be1e88b19301dab2589375eed3b",
+        "groups": [
+          {
+            "block": 1,
+            "arm": "F",
+            "pages": 16,
+            "repeats": 2,
+            "fps": 40.412,
+            "p95_bucket_ms": [
+              40.0,
+              40.0
+            ],
+            "p99_bucket_ms": [
+              40.0,
+              40.0
+            ],
+            "over_33_33_ms_percent": 21.323,
+            "accepted_reads_mean": 1024,
+            "mesh_builds_mean": 254,
+            "worker_ms_mean": 29.463
+          },
+          {
+            "block": 1,
+            "arm": "F",
+            "pages": 32,
+            "repeats": 2,
+            "fps": 41.649,
+            "p95_bucket_ms": [
+              40.0,
+              40.0
+            ],
+            "p99_bucket_ms": [
+              50.0,
+              40.0
+            ],
+            "over_33_33_ms_percent": 18.367,
+            "accepted_reads_mean": 492.5,
+            "mesh_builds_mean": 309.5,
+            "worker_ms_mean": 26.456
+          },
+          {
+            "block": 2,
+            "arm": "F",
+            "pages": 32,
+            "repeats": 2,
+            "fps": 42.843,
+            "p95_bucket_ms": [
+              40.0,
+              40.0
+            ],
+            "p99_bucket_ms": [
+              40.0,
+              40.0
+            ],
+            "over_33_33_ms_percent": 17.97,
+            "accepted_reads_mean": 529.5,
+            "mesh_builds_mean": 318.5,
+            "worker_ms_mean": 25.495
+          },
+          {
+            "block": 2,
+            "arm": "I-G cropped",
+            "pages": 32,
+            "repeats": 2,
+            "fps": 40.301,
+            "p95_bucket_ms": [
+              40.0,
+              40.0
+            ],
+            "p99_bucket_ms": [
+              50.0,
+              40.0
+            ],
+            "over_33_33_ms_percent": 22.753,
+            "accepted_reads_mean": 344,
+            "mesh_builds_mean": 327,
+            "worker_ms_mean": 22.542
+          },
+          {
+            "block": 3,
+            "arm": "F",
+            "pages": 32,
+            "repeats": 2,
+            "fps": 40.51,
+            "p95_bucket_ms": [
+              40.0,
+              40.0
+            ],
+            "p99_bucket_ms": [
+              50.0,
+              40.0
+            ],
+            "over_33_33_ms_percent": 20.79,
+            "accepted_reads_mean": 483,
+            "mesh_builds_mean": 306.5,
+            "worker_ms_mean": 26.681
+          },
+          {
+            "block": 3,
+            "arm": "I-H cropped",
+            "pages": 32,
+            "repeats": 2,
+            "fps": 40.611,
+            "p95_bucket_ms": [
+              40.0,
+              40.0
+            ],
+            "p99_bucket_ms": [
+              40.0,
+              40.0
+            ],
+            "over_33_33_ms_percent": 22.14,
+            "accepted_reads_mean": 345,
+            "mesh_builds_mean": 342,
+            "worker_ms_mean": 21.724
+          }
+        ],
+        "rss_peak": null,
+        "thermal_status": null,
+        "gpu_frame_time_ms": null,
+        "decision": "Select F/32 for the next controlled device run. Keep runtime defaults. I-G is slower in its paired block and I-H shows no clear frame-rate gain. The prior-version device recording came from a separate session and completed fewer meshes. Use same-session version comparisons for attribution."
       }
     },
     "geometry_and_streaming": {

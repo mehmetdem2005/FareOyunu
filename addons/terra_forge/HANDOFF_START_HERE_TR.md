@@ -1,5 +1,12 @@
 # TerraForge Mobile — YENİ SOHBETTE BURADAN BAŞLA
 
+## 26 Kasım 2026 — Redmi Note 8 Pro hedefli test ve M9 düzeltmesi
+
+M10 `164fb6a7b789` ile 12/12 profil ve 18 ayrıntı kaydı tamamlandı. Dört M9 testinden ikisi, aynı rotanın bir fizik adımı geç bitmesini farklı rota saydı. Kaydedilen dokuz rotada 6.480 fizik adımı boyunca eksik ray veya havada kalma görülmedi. M9 karşılaştırması artık tamamlanan hedefleri ve rota sayaçlarını kullanıyor. Varış adımları ölçüm olarak kaydediliyor. [PR #90](https://github.com/mehmetdem2005/FareOyunu/pull/90) · [Birleşik CI](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45862782494)
+
+- F 16→32 sayfa eşleştirmesinde 40,41→41,65 FPS, 1.024→492,5 ortalama kabul edilen okuma ve 254→309,5 ortalama mesh ölçüldü. I-G kendi eşleşmesinde F/32’den yavaş, I-H yaklaşık aynı FPS’de. Kare p95 üst sınırı 40 ms, p99 üst sınırı 40–50 ms. F/32 sonraki cihaz turunun adayı. [Karar defteri](P1_5_11_DECISION_LEDGER.json)
+- `c44d427b3c47` paketinde M9 düzeltmesi var. Önceki telefon raporu performans elemesi için kullanılabilir. Telefon üzerinde düzeltilen dört M9 testi, tam tur, 30 dakikalık dayanıklılık ve Android arka plan/geri dönüş ölçümü açık. [Paket CI](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45860846130) · [Paket](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45860846130/artifacts/15138167040)
+
 ## 26 Kasım 2026 — P1.5 akış ve geometri hızlandırması
 
 F motorunun aynı işi bitirme süresi TFM1’de %21,9, TFM2’de %24,7 azaldı. Varsayılan A motoru LOD0 ölçümünde %21,1 ve %19,2 daha hızlı geometri üretti. Köşe, kenar, LOD0–2 ve komşu LOD kombinasyonlarında 4.608 ham geometri karşılaştırması birebir eşleşti. İki eksik veri kontrolü hata döndürdü. F için format başına dört önce ve dört sonra blokta aynı tile ve çarpışma parmak izleri doğrulandı. Ölçümler Godot 4.7.2 Linux’ta alındı. [PR #89](https://github.com/mehmetdem2005/FareOyunu/pull/89) · [Birleşik CI](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45850121509)
