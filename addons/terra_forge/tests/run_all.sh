@@ -133,6 +133,7 @@ suite=(
   test_lod_seams
   test_geometry_dirty_shadow
   test_geometry_dirty_curved
+  test_g2_seam_patch
   test_normal_edge_candidate
   test_g1_owned_resource
   test_g1_base_cache
