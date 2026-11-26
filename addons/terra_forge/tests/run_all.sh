@@ -62,6 +62,7 @@ suite=(
   test_publication_budget_oracle
   test_e2_staged_resource
   test_e2_verified_revision
+  test_e2_paired_publication
   test_topology_worker
   test_hybrid_i_v0
   test_hybrid_policy
