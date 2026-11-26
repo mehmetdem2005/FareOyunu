@@ -7,7 +7,7 @@
   "combined_ci": {
     "head": "d7aa19b503497ae34298957e8d141409829fd828",
     "ci": 45802088242,
-    "status": "PENDING_EXACT_VERIFICATION",
+    "status": "VERIFIED",
     "expected_tests": 137,
     "previous": {
       "head": "94e990af3bfeade2a30c887f9cbf67f41aab3f95",
@@ -17,9 +17,10 @@
     }
   },
   "device_gate": {
-    "status": "OPEN",
+    "status": "QUICK_COMPLETE_FULL_OPEN",
     "baseline": "P1_5_11_ANDROID_BASELINE.json",
-    "note": "No new Android FPS measurement. Linux CI is not device qualification."
+    "note": "Exact Android quick package report received; four tests/eight profiles, complete exported diagnostic evidence, no promotion. Full device, RSS/GPU/thermal and lifecycle gates open.",
+    "quick_report": "P1_5_11_ANDROID_QUICK_20261126.json"
   },
   "experiments": [
     {
@@ -1901,9 +1902,9 @@
     }
   ],
   "next": [
-    "Check canonical rename CI45802088242; no runtime changes.",
-    "Check package CI45802197845 and full rendered smoke CI45802203182 (same exact tools head 8040a5624cc5bccfd1833412ff807f0f8e1af897).",
-    "Do not distribute until all three pass. Actual Android device, OS background/resume, 30-minute soak and export runtime gates remain open."
+    "M1 targeted existing publication/pump micro-profile with observation-off control; bounded event correlation, exact source and matched work.",
+    "M2 existing support retention on separately labelled rendered guarded capsule route; true ray/coverage and denial metrics.",
+    "M3 exact identity shadow evaluation; no blanket epoch bypass. Keep A default, F comparison reference, cap2."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -2083,5 +2084,17 @@
       ],
       "resolution": "Closed current implementation rejected; lifetime/transient/GPU proof deferred to distinct revisit, not achieved."
     }
+  },
+  "android_evidence_closure": {
+    "plan": "P1_5_11_ANDROID_EVIDENCE_CLOSURE_TR.md",
+    "m0": "RECORDED_DOCS_ONLY",
+    "m1": "SOURCE_REVIEWED_NOT_IMPLEMENTED",
+    "m2": "SOURCE_REVIEWED_NOT_IMPLEMENTED",
+    "m3_to_m11": "PLANNED",
+    "tools_ci": [
+      45802197845,
+      45802203182
+    ],
+    "scope": "Separate from historical 26/33 scoped decisions. No double count. 60 planned review tasks, not 60 new runtime changes."
   }
 }

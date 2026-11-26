@@ -1,0 +1,31 @@
+# P1.5.11 Android Evidence Closure — M0–M11
+26 Kasım 2026 | M0 evidence recorded; M1/M2 source review only.
+Current baseline: 7c32a962bcae3811d5ba01265689bd299932698c; Android terrain d7aa19b, tools 8040a562, addon tree 94a17bf0. [Quick derived evidence](P1_5_11_ANDROID_QUICK_20261126.json), [original hybrid master](P1_5_11_HYBRID_MASTER_PLAN_TR.md), [decision ledger](P1_5_11_DECISION_LEDGER.json), [handoff](HANDOFF_START_HERE_TR.md). Exact canonical CI45802088242, tools package CI45802197845 and rendered smoke CI45802203182 all completed SUCCESS. Not equivalent to full phone qualification.
+## Scope and rules
+A default unchanged; F experimental comparison reference; I modes opt-in, cap2. No main, TFH/TFL, painting, objects or game changes. No repeating already rejected methods without distinct measured hypothesis. Existing 26/33 historical scope unchanged; M0–M11 is separate 60-task review checklist, not 60 mandatory runtime changes. Document no-op, parked, rejected or accepted decisions. All experiments require exact SHA, parity, matched route/settings/quality, costs, CI, rollback. Linux PASS is not device PASS. Raw report stays user attachment, derived record SHA256 linked.
+## M0 — evidence
+1. Record derived exact report and fingerprint. 2. Pin code/tool identity. 3. Separate equal-time and equal-work. 4. Compare configuration and halo differences. 5. Maintain decision summary. M0 record done; no automation code claimed. F block1 47.34 vs I-G 43.89; F block2 45.61 vs I-H 44.57. I-G mean builds174 vs167; I-H170.5 vs147. Read/build 3.347→2.471 and3.153→2.399, descriptive only. Actual late fractions 7.92→14.85% and11.07→13.57%. Camera post-ready shape loss is not physics fall. F remains comparison, A default.
+## M1 — attributed publication
+1. Reuse observe_publication_micro and observe_pump_micro. 2. Isolate existing validate/tile creation/mesh create/assign/shape compare/create/assign/metadata/bookkeeping/accounting spans. 3. Attribute residual and resource retire/sync only where measured. 4. Bounded event-level frame correlation; same fixture/route and off control. 5. Quantify observer overhead; targeted attribution separate from performance arm. Current profile_scene.gd already exports both flags; paged_terrain_preview.gd _publish_geometry has stage marks; report all eight flags false. Do not rewrite. Source review complete, implementation pending. First inspect micro collector peak event retention and runner pin; separate tools changes from canonical code. 100.899 ms publication max not proven GPU.
+## M2 — support retention
+1. Reuse enable_support_retention and existing I1 guarded capsule route. 2. Distinguish camera position coverage from physical footprint. 3. Verify exact session/revision, actual ray readiness and safe handoff, equal-height reuse only. 4. Cross seam/4-tile/reversal/slope. 5. Corrupt/missing data and cap exhaustion fail closed. Source review: update_support, inspect_support_step, sample_motion_prefetch, _publish_geometry already exist; no new support subsystem. Keep camera-only baseline intact and add separate labelled diagnostic, never invent ground. No claim player fell in quick profile.
+## M3 — job identity
+1. Reproduce 50 same-geometry-at-epoch drops of 241/1562. 2. Distinguish source snapshot/session and camera epoch. 3. Shadow exact-signature reuse before activation. 4. Reject changed seams/LOD, stale owner, bad source. 5. Check accounting, cap, actual output/rays. 8.497503s discarded worker elapsed is not frame time; D1/D2/D3 parked, no blanket epoch bypass.
+## M4 — publication budget
+1. Off/on compare existing 1ms soft target. 2. Measure first expensive item exception. 3. Reopen E0/E1/E2/E4 only if M1 attribution supports new hypothesis. 4. Measure retire timing and transient resource ownership. 5. Compare equal work, LOD, physics and visible coverage. E4 current runtime rejected (+72.7/+98% full CPU cost).
+## M5 — cache/IO
+1. LRU evidence. 2. Compare 16/24/32 pages. 3. Critical footprint priority under cap. 4. Queue/service/delivery and cancelled result accounting; revisit F1/F3 only with actual evidence. 5. Memory vs work and cold vs warm; accepted reads != physical disk.
+## M6 — hybrid
+1. Same halo F/I-F/I-G/I-H. 2. Crop alone. 3. Scalar vs topology cost. 4. G1/G2 only with natural repeat and canonical raw ownership; no renderer readback canonical base. 5. Full rebuild fallback.
+## M7 — scheduling
+1. Keep cap2. 2. Matched render cap1/2/4 (slots not threads). 3. Critical/optional wait. 4. Reserve/lend fairness, starvation. 5. Dynamic cap only after safe drain and device benefit.
+## M8 — adaptation
+1. Reuse existing view/work/motion governors. 2. 30/60 modes separate. 3. Near physics and height precision invariant. 4. Hysteresis/recovery/override. 5. Pause/resume. No hidden quality lowering in fixed-quality arms.
+## M9 — integration
+1. Merge accepted components incrementally. 2. F paired comparison. 3. Interactions. 4. Full exact CI/software renderers. 5. Rollback failures.
+## M10 — device
+1. Single manual-start targeted/full package. 2. Repeated matched ABBA/BAAB, equal work alongside timed route. 3. 30min soak. 4. RSS/GPU/thermal where available, unknown otherwise. 5. Actual Android OS lifecycle, release/editor distinction. No repeated phone run per commit. Basic suggested target p95<=33.33ms p99<=50ms and real floor/ray loss zero; 60 FPS stretch not closure prerequisite.
+## M11 — close
+1. Every experiment disposition including revisit register. 2. Costs/limitations and rollback. 3. Separate explicit default promotion. 4. Archive verified package and evidence. 5. Return to P1.4R scratch atomic generation/Undo/Redo design; no real user data mutation. P2 geomorphology, P3 erosion, P4 CDLOD/clipmap, P5 mouse-scale, P6 non-destructive edit, P7 quality remain in original roadmap.
+## Execution
+Max three independent CI lanes; avoid shared writer files, reconcile before merge, no force push, avoid queued cancellation. Immediate lanes M1 targeted runner diagnostics and M2 guarded-render test investigation, M3 identity shadow after contracts; M0 docs only, no new CI claimed. Review CI logs and actual source before writing each change. Existing tools package exact 8040a562 remains pinned until deliberate qualification. No device test requested this turn.
