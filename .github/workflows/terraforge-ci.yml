@@ -147,3 +147,45 @@ jobs:
             ${{ runner.temp }}/terraforge-regressions/
           if-no-files-found: warn
           retention-days: 7
+
+  e4-renderer-capability:
+    if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'exp/p1511e4-') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install official Godot 4.7.2 stable
+        uses: solarlabyrinth/action-setup-godot@v3
+        with:
+          version: 4.7.2-stable
+          export-templates: false
+          name: godot
+      - name: Install virtual display and software graphics drivers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb xauth mesa-vulkan-drivers libgl1-mesa-dri vulkan-tools mesa-utils
+      - name: Non-headless Compatibility and Mobile capability (software, not device)
+        shell: bash
+        run: |
+          set -euo pipefail
+          project="$RUNNER_TEMP/e4-renderer"
+          mkdir -p "$project/addons"
+          cp -a addons/terra_forge "$project/addons/terra_forge"
+          printf 'config_version=5\n[application]\nconfig/name="E4 renderer capability"\n' > "$project/project.godot"
+          godot --headless --path "$project" --editor --import --quit
+          export LIBGL_ALWAYS_SOFTWARE=1
+          export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json
+          status=0
+          for method in gl_compatibility mobile; do
+            driver=opengl3
+            if [[ "$method" == mobile ]]; then driver=vulkan; fi
+            log="$RUNNER_TEMP/e4-$method.log"
+            if ! timeout 180s xvfb-run -a godot --path "$project" --display-driver x11 --rendering-method "$method" --rendering-driver "$driver" --resolution 640x480 --script res://addons/terra_forge/tests/test_e4_mesh_buffer_probe.gd -- --require-renderer="$method" 2>&1 | tee "$log"; then status=1; fi
+            if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' "$log" || ! grep -q 'PASS: E4 bounded' "$log"; then status=1; fi
+          done
+          exit "$status"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e4-software-renderer-logs
+          path: ${{ runner.temp }}/e4-*.log
