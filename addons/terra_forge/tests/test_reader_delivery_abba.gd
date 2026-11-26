@@ -36,7 +36,7 @@ func _initialize() -> void:
                         if src.request_page(Vector2i(cycle+1,z+1))!=OK:
                             _fail("request",src,builder)
                             return
-                    if not _ready(src,cap):
+                    if not _await_reader_results(src,cap):
                         _fail("ready timeout",src,builder)
                         return
                     var ready_at: int=Time.get_ticks_usec()
@@ -67,7 +67,7 @@ func _initialize() -> void:
                     _fail("injected delivery wait missing",src,builder)
                     return
                 # Cancel one ready result; it must not enter accepted histograms.
-                if src.request_page(Vector2i(12,12))!=OK or not _ready(src,1) or src.set_generation(1)!=OK:
+                if src.request_page(Vector2i(12,12))!=OK or not _await_reader_results(src,1) or src.set_generation(1)!=OK:
                     _fail("cancel setup",src,builder)
                     return
                 var after: Dictionary=src.stats()
@@ -83,7 +83,7 @@ func _initialize() -> void:
     print("PASS: matched reader delivery ABBA, controlled ready delay, bounded cap1/3, cancelled result isolation, both formats")
     quit(0)
 
-func _ready(src, count: int) -> bool:
+func _await_reader_results(src, count: int) -> bool:
     var deadline: int=Time.get_ticks_msec()+5000
     while Time.get_ticks_msec()<deadline:
         if int(src.stats()["finished"])==count:
