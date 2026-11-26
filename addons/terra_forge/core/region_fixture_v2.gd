@@ -32,14 +32,14 @@ static func preflight(dimensions: Vector2i) -> Dictionary:
 
 ## Canonical 24-byte descriptor: TFG1, generator version 1, cells x/z,
 ## Float32 spacing=1, algorithm id=1. Integer-only dyadic terrain formula.
-static func descriptor(dimensions: Vector2i) -> PackedByteArray:
+static func descriptor(dimensions: Vector2i, shifted_seam: bool=false) -> PackedByteArray:
     var raw: PackedByteArray = "TFG1".to_ascii_buffer()
     raw.resize(24)
     raw.encode_u32(4, 1)
     raw.encode_u32(8, dimensions.x)
     raw.encode_u32(12, dimensions.y)
     raw.encode_float(16, 1.0)
-    raw.encode_u32(20, 1)
+    raw.encode_u32(20, 2 if shifted_seam else 1)
     return raw
 
 static func sample(x: int, z: int) -> float:
@@ -50,7 +50,8 @@ static func sample(x: int, z: int) -> float:
     var diagonal: int = 32 - absi(((x + z) % 64) - 32)
     return 8.0 + float(ridge_x) / 16.0 + float(ridge_z) / 32.0 + float(diagonal) / 64.0
 
-func start(dimensions: Vector2i) -> Error:
+## Explicit scratch-only shifted ridge recipe: breaks coarse-grid alignment.
+func start(dimensions: Vector2i, shifted_seam: bool=false) -> Error:
     if _thread != null:
         return ERR_BUSY
     var plan: Dictionary = preflight(dimensions)
@@ -71,7 +72,7 @@ func start(dimensions: Vector2i) -> Error:
     _progress = {"phase": "starting", "completed": 0, "total": 1}
     _mutex.unlock()
     _thread = Thread.new()
-    var status: Error = _thread.start(Callable(self, "_work").bind(dimensions), Thread.PRIORITY_LOW)
+    var status: Error = _thread.start(Callable(self, "_work").bind(dimensions, shifted_seam), Thread.PRIORITY_LOW)
     if status != OK:
         _thread = null
     return status
@@ -119,7 +120,7 @@ func close() -> void:
         _thread.wait_to_finish()
         _thread = null
 
-func _work(dimensions: Vector2i) -> void:
+func _work(dimensions: Vector2i, shifted_seam: bool) -> void:
     var token: String = str(Time.get_unix_time_from_system()).replace(".", "_") + "_" + str(Time.get_ticks_usec()) + "_" + str(get_instance_id())
     var output: String = PREFIX + token
     var stage: String = output + ".staging"
@@ -131,7 +132,7 @@ func _work(dimensions: Vector2i) -> void:
         err = DirAccess.make_dir_absolute(stage)
         owned = err == OK
     if owned:
-        err = _generate(stage, dimensions)
+        err = _generate(stage, dimensions, shifted_seam)
     if err == OK:
         # Cancellation and publication are serialized; cancellation after
         # publication is not a promise to undo an already completed world.
@@ -165,8 +166,8 @@ static func _write_new(path: String, raw: PackedByteArray) -> Error:
     f.close()
     return err
 
-func _generate(stage: String, dimensions: Vector2i) -> Error:
-    var desc: PackedByteArray = descriptor(dimensions)
+func _generate(stage: String, dimensions: Vector2i, shifted_seam: bool) -> Error:
+    var desc: PackedByteArray = descriptor(dimensions, shifted_seam)
     var err: Error = _write_new(stage.path_join("fixture.tfg"), desc)
     if err != OK:
         return err
@@ -194,7 +195,7 @@ func _generate(stage: String, dimensions: Vector2i) -> Error:
                             var gx: int = key.x * 32 + x
                             if gx > dimensions.x:
                                 break
-                            values[z * 32 + x] = sample(gx, gz)
+                            values[z * 32 + x] = sample(gx, gz + 179) if shifted_seam else sample(gx, gz)
                     var raw: PackedByteArray = PAGE.encode(dimensions, 1.0, key, values)
                     err = _write_new(stage.path_join("r_%05d_%05d.tfr" % [key.x, key.y]), raw)
                     if err != OK:
