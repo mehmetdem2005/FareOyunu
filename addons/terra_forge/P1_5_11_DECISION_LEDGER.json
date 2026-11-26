@@ -1902,9 +1902,9 @@
     }
   ],
   "next": [
-    "M1 targeted existing publication/pump micro-profile with observation-off control; bounded event correlation, exact source and matched work.",
-    "M2 existing support retention on separately labelled rendered guarded capsule route; true ray/coverage and denial metrics.",
-    "M3 exact identity shadow evaluation; no blanket epoch bypass. Keep A default, F comparison reference, cap2."
+    "Check M0 integration run45824569782, M1 PR78 exact CI45825062346, discover M2 PR79 CI. Inspect logs and matched evidence; repair failures before merge.",
+    "M1 bounded exact start process-frame join, off/on/on/off rendered diagnostics; M2 six physical routes per renderer with remote-anchor attachment distinct from floor/ray. Not phone qualification. Merge only verified diagnostics, reconcile workflow if needed.",
+    "M3 exact identity shadow after free lane; no blanket epoch bypass. Then targeted phone runner pin, not each commit."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -2088,13 +2088,36 @@
   "android_evidence_closure": {
     "plan": "P1_5_11_ANDROID_EVIDENCE_CLOSURE_TR.md",
     "m0": "RECORDED_DOCS_ONLY",
-    "m1": "SOURCE_REVIEWED_NOT_IMPLEMENTED",
-    "m2": "SOURCE_REVIEWED_NOT_IMPLEMENTED",
+    "m1": "PR78_CI_PENDING",
+    "m2": "PR79_CI_DISCOVERY_PENDING",
     "m3_to_m11": "PLANNED",
     "tools_ci": [
       45802197845,
       45802203182
     ],
-    "scope": "Separate from historical 26/33 scoped decisions. No double count. 60 planned review tasks, not 60 new runtime changes."
+    "scope": "Separate from historical 26/33 scoped decisions. No double count. 60 planned review tasks, not 60 new runtime changes.",
+    "active": [
+      {
+        "phase": "M0-doc-regression",
+        "sha": "35a5f5e1fa2e09c6dee8b3e368917203b06f047a",
+        "ci": 45824569782
+      },
+      {
+        "phase": "M1",
+        "branch": "exp/p1511i1-m1-frame-correlation",
+        "sha": "ff277a0ada50a0f77f4d0f50257780919489c5fd",
+        "pr": 78,
+        "ci": 45825062346,
+        "disposition": "PENDING_DIAGNOSTIC_ONLY"
+      },
+      {
+        "phase": "M2",
+        "branch": "exp/p1511i1-m2-support-coverage",
+        "sha": "cfb6b3ab7ac4e8936f34f0c6aef99790cba892f1",
+        "pr": 79,
+        "ci": null,
+        "disposition": "PENDING_DIAGNOSTIC_ONLY"
+      }
+    ]
   }
 }
