@@ -2,18 +2,18 @@
   "schema": "TF_ENGINE_DECISION_LEDGER_1",
   "date": "2026-11-26",
   "branch": "feat/terraforge-mobile-addon",
-  "latest_code_merge": "94e990af3bfeade2a30c887f9cbf67f41aab3f95",
+  "latest_code_merge": "d7aa19b503497ae34298957e8d141409829fd828",
   "recorded_parent": "b1975265d71f83b7e1671768d5cf124813003d36",
   "combined_ci": {
-    "head": "94e990af3bfeade2a30c887f9cbf67f41aab3f95",
-    "ci": 45797739044,
+    "head": "d7aa19b503497ae34298957e8d141409829fd828",
+    "ci": 45802088242,
     "status": "PENDING_EXACT_VERIFICATION",
     "expected_tests": 137,
     "previous": {
-      "head": "fe575f82452342ef424dd2fa078b315da13d0292",
-      "ci": 45794931800,
+      "head": "94e990af3bfeade2a30c887f9cbf67f41aab3f95",
+      "ci": 45797739044,
       "status": "VERIFIED",
-      "tests": 135
+      "tests": 137
     }
   },
   "device_gate": {
@@ -1788,7 +1788,7 @@
       "phase": "I0 integrated F and I route matrix",
       "branch": "exp/p1511i0-integrated-route",
       "head": "e188056270d5ae6a6e3cc1df3f1348710b97ef7c",
-      "disposition": "MERGED_DIAGNOSTIC_ONLY_COMBINED_PENDING",
+      "disposition": "MERGED_DIAGNOSTIC_ONLY_COMBINED_VERIFIED",
       "decision": "Preserve all opt-in presets; small mixed CPU differences, no promotion. No device claim.",
       "pr": 76,
       "ci": 45794991885,
@@ -1826,7 +1826,8 @@
         },
         "p95_upper_ms": 1,
         "merge": "94e990af3bfeade2a30c887f9cbf67f41aab3f95",
-        "combined_ci": 45797739044
+        "combined_ci": 45797739044,
+        "combined_tests": 137
       }
     },
     {
@@ -1835,7 +1836,7 @@
       "branch": "exp/p1511i1-rendered-terrain",
       "head": "ec9dc3c95165688d657418312c777e3c3074344b",
       "ci": 45795116783,
-      "disposition": "MERGED_DIAGNOSTIC_ONLY_COMBINED_PENDING",
+      "disposition": "MERGED_DIAGNOSTIC_ONLY_COMBINED_VERIFIED",
       "decision": "Software GL/Mobile, F vs I-G cropped, both TFM formats, guarded capsule route; five center pixel checks and post-stop ghost rejection. Diagnostic material, separate draw waits, not matched timing or real map/device qualification.",
       "evidence": {
         "tests": 135,
@@ -1849,34 +1850,60 @@
         "airborne": 0,
         "denied": 2,
         "merge": "94e990af3bfeade2a30c887f9cbf67f41aab3f95",
-        "combined_ci": 45797739044
+        "combined_ci": 45797739044,
+        "combined_tests": 137
       }
     },
     {
       "phase": "I2 targeted Android runner",
       "branch": "tools/terraforge-android-i2",
-      "head": "33af355b9c3f6487217b1119da617965d4f1b025",
-      "ci": 45798161522,
+      "head": "8040a5624cc5bccfd1833412ff807f0f8e1af897",
+      "ci": 45802197845,
       "disposition": "RETRY_CI_PENDING",
-      "decision": "Initial packaging failed unsupported inherited test_f2_long_shadow_v1 (base f2_long_motion_base.gd). Recursive strict inheritance adaptation, profile history fix and completeness guard integrated into tools branch. Retry both package and rendered smoke; no artifact distribution until verified.",
+      "decision": "Canonical test helper rename only, no runtime or assertions changed. Exact pinned addon tree 94a17bf0a1fcc1a61678f79e6c2eae2c99c3adcd; new load gate all 137 adapted scripts before full regression, no execution claimed by load gate. Wait package+full rendered smoke+canonical combined CI before distribution.",
       "failed_ci": 45797885308,
-      "failed_head": "cbcd8eab9a57789c08e846f1add531f4cdb69918"
+      "failed_head": "cbcd8eab9a57789c08e846f1add531f4cdb69918",
+      "history": [
+        {
+          "head": "cbcd8eab9a57789c08e846f1add531f4cdb69918",
+          "ci": 45797885308,
+          "result": "FAIL inheritance"
+        },
+        {
+          "head": "33af355b9c3f6487217b1119da617965d4f1b025",
+          "ci": 45798161522,
+          "result": "136/137, package and stale-idle/export smoke pass; only test_reader_delivery_abba Node _ready signature collision"
+        }
+      ],
+      "terrain_pin": "d7aa19b503497ae34298957e8d141409829fd828"
     },
     {
       "phase": "I2 rendered runner smoke",
       "branch": "tools/terraforge-android-i2-render-smoke",
-      "head": "33af355b9c3f6487217b1119da617965d4f1b025",
-      "ci": 45798137933,
-      "disposition": "RETRY_CI_PENDING",
-      "decision": "Clear bounded internal report history before each independent profile, retain runner reports; reject failed/no-sample profiles and incomplete session, preserve retry selection. 12 actual software Mobile profiles x5s to cross history cap; no Android performance claim. First smoke blocked at same packaging failure; strict recursive inheritance adaptation applied, retry exact new head.",
+      "head": "8040a5624cc5bccfd1833412ff807f0f8e1af897",
+      "ci": 45802203182,
+      "disposition": "FULL_SEQUENCE_CI_PENDING",
+      "decision": "Actual full ABBA/BAAB 24-profile order, 12 F/6 I-G/6 I-H, 5 seconds each CI only; compare snapshot identity, route, settings except policy, expected flags, frame samples, mesh, errors, completion and diagnostic export. Device still 20 s/prof; no GPU timing/FPS claims.",
       "failed_ci": 45798007939,
-      "failed_head": "92a3319c599f080f378695ac96e15629f7bfe776"
+      "failed_head": "92a3319c599f080f378695ac96e15629f7bfe776",
+      "history": [
+        {
+          "head": "92a3319c599f080f378695ac96e15629f7bfe776",
+          "ci": 45798007939,
+          "result": "FAIL inheritance"
+        },
+        {
+          "head": "33af355b9c3f6487217b1119da617965d4f1b025",
+          "ci": 45798137933,
+          "result": "PASS 12 software Mobile profiles, prior 8-report cap fixed"
+        }
+      ]
     }
   ],
   "next": [
-    "Check combined I0/I1 CI45797739044.",
-    "Check exact corrected I2 package CI45798161522 and rendered profile smoke CI45798137933; same tools head 33af355b9c3f6487217b1119da617965d4f1b025.",
-    "Do not share package before both succeed; actual Android lifecycle/soak/export remain device gates."
+    "Check canonical rename CI45802088242; no runtime changes.",
+    "Check package CI45802197845 and full rendered smoke CI45802203182 (same exact tools head 8040a5624cc5bccfd1833412ff807f0f8e1af897).",
+    "Do not distribute until all three pass. Actual Android device, OS background/resume, 30-minute soak and export runtime gates remain open."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
