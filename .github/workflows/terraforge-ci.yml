@@ -147,3 +147,55 @@ jobs:
             ${{ runner.temp }}/terraforge-regressions/
           if-no-files-found: warn
           retention-days: 7
+
+  e4-renderer-capability:
+    if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'exp/p1511e4-') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install official Godot 4.7.2 stable
+        uses: solarlabyrinth/action-setup-godot@v3
+        with:
+          version: 4.7.2-stable
+          export-templates: false
+          name: godot
+      - name: Install virtual display and software graphics drivers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb xauth mesa-vulkan-drivers libgl1-mesa-dri vulkan-tools mesa-utils
+      - name: Non-headless Compatibility and Mobile capability (software, not device)
+        shell: bash
+        run: |
+          set -euo pipefail
+          project="$RUNNER_TEMP/e4-renderer"
+          mkdir -p "$project/addons"
+          cp -a addons/terra_forge "$project/addons/terra_forge"
+          printf 'config_version=5\n[application]\nconfig/name="E4 renderer capability"\n' > "$project/project.godot"
+          godot --headless --path "$project" --editor --import --quit
+          export LIBGL_ALWAYS_SOFTWARE=1
+          unset VK_ICD_FILENAMES VK_DRIVER_FILES VK_ADD_DRIVER_FILES
+          mapfile -t icds < <(find /usr/share/vulkan/icd.d /etc/vulkan/icd.d -maxdepth 1 -type f -name 'lvp_icd*.json' 2>/dev/null | sort -u || true)
+          printf 'Lavapipe ICD candidates: %s\n' "${icds[@]}"
+          if [[ "${#icds[@]}" != 1 ]]; then echo "::error::Expected one installed Lavapipe ICD manifest"; exit 1; fi
+          export VK_DRIVER_FILES="${icds[0]}"
+          export XDG_RUNTIME_DIR="$RUNNER_TEMP/e4-xdg"
+          mkdir -p "$XDG_RUNTIME_DIR"
+          chmod 700 "$XDG_RUNTIME_DIR"
+          xvfb-run -a vulkaninfo --summary 2>&1 | tee "$RUNNER_TEMP/e4-vulkan-preflight.log"
+          grep -q VK_KHR_surface "$RUNNER_TEMP/e4-vulkan-preflight.log" || { echo "::error::Vulkan surface extension unavailable"; exit 1; }
+          grep -qi llvmpipe "$RUNNER_TEMP/e4-vulkan-preflight.log" || { echo "::error::Lavapipe device unavailable"; exit 1; }
+          status=0
+          for method in gl_compatibility mobile; do
+            driver=opengl3
+            if [[ "$method" == mobile ]]; then driver=vulkan; fi
+            log="$RUNNER_TEMP/e4-$method.log"
+            if ! timeout 180s xvfb-run -a godot --path "$project" --display-driver x11 --audio-driver Dummy --rendering-method "$method" --rendering-driver "$driver" --resolution 640x480 --script res://addons/terra_forge/tests/test_e4_coalesce_probe.gd -- --require-renderer="$method" 2>&1 | tee "$log"; then status=1; fi
+            if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' "$log" || ! grep -q 'PASS: E4 bounded' "$log"; then status=1; fi
+          done
+          exit "$status"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e4-software-renderer-logs
+          path: ${{ runner.temp }}/e4-*.log
