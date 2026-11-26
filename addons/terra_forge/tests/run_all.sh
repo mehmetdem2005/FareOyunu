@@ -139,6 +139,9 @@ suite=(
   test_geometry_dirty_curved
   test_g2_seam_patch
   test_g2_verified_physics
+  test_e4_mesh_buffer_probe
+  test_e4_coalesce_probe
+  test_e4_rendered_culling
   test_normal_edge_candidate
   test_g1_owned_resource
   test_g1_base_cache
