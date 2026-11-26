@@ -1318,23 +1318,65 @@
       "pr": 67,
       "head": "2310fe49b960303cc432fc6a1a47fde585cf0405",
       "ci": 45764723652,
-      "disposition": "CI_PENDING",
-      "decision": "Supersedes conflicted PR64, old corrected SHA had no run. Same corrected planner/test blobs on current verified base; retain all runner entries. Headless unchanged bytes unsupported, not GPU proof."
+      "disposition": "CI_VERIFIED_PLANNER_HEADLESS_UNSUPPORTED",
+      "decision": "15 pure planner cases, 1 cap rejection; 3 raw surfaces available, 2 fallback, 1 headless no-op, 0 verified updates. No actual GPU proof; real renderer and AABB/culling remain required. Keep PR isolated.",
+      "evidence": {
+        "tests": 125,
+        "failed": 0,
+        "pure_cases": 15,
+        "pure_cap_rejections": 1,
+        "raw_available": 3,
+        "raw_verified": 0,
+        "fallback": 2,
+        "dummy_noop": 1,
+        "planned_noop_bytes": 108,
+        "planned_noop_calls": 18
+      }
     },
     {
       "phase": "g2 natural opportunities and fresh base cost",
       "pr": 68,
       "head": "239b09de58c9420984075aa8ffa4f8dadfda14da",
       "ci": 45764789621,
-      "disposition": "CI_PENDING",
-      "decision": "Diagnostic subclass classifies successful resident same-LOD effective seam changes; repeat settled natural route with exact meshes and actual rays. No duplicate base or live patch. Measure fresh begin cost separately in verified test, no actual reuse or transient RSS proof."
+      "disposition": "CI_VERIFIED_DIAGNOSTIC_ONLY_RUNTIME_GATE_OPEN",
+      "decision": "Natural same-LOD effective seams 108/308 (35.1%) upper-bound, no actual reuse. Fresh base+patch loses vs full; do not activate or create duplicate cache. Next evaluate ownership of already-produced raw geometry and transient memory, equal work. Keep diagnostic branch.",
+      "evidence": {
+        "tests": 125,
+        "failed": 0,
+        "settled_positions": 44,
+        "rays": 132,
+        "published": 308,
+        "new_tile": 160,
+        "lod_change": 32,
+        "effective_seam_change": 108,
+        "signature_only": 8,
+        "height_edge_change": 84,
+        "collision_changed": 0,
+        "unknown": 0,
+        "full_us": [
+          2845,
+          2864
+        ],
+        "base_us": [
+          2864,
+          2755
+        ],
+        "patch_us": [
+          289,
+          262
+        ],
+        "base_plus_patch_us": [
+          3153,
+          3017
+        ],
+        "retained_raw_bytes": 116052
+      }
     }
   ],
   "next": [
-    "Check exact PR67 CI45764723652, PR68 CI45764789621; no active run cancellation.",
-    "E4 renderer capability is not real GPU proof; assess real renderer and AABB/culling gate.",
-    "G2 evaluate observed effective seam opportunity, fresh base+patch cost and whether existing owned raw payload can be reused without duplicate cache; transient memory still open.",
-    "E2 current staging parked; 12 active numbered tasks, 22/33 tracked subtasks done, 6 active, 5 deferred."
+    "G2: inspect existing raw payload ownership; 108/308 opportunities not actual hits; fresh base loses, no duplicate cache; transient memory and decision open.",
+    "E4: real non-headless renderer probe and AABB/culling, no GPU proof yet; two fallback cases need attribution.",
+    "Both diagnostic PRs remain isolated, no default change. 23/33 tracked done, 5 active, 5 deferred; 12 active numbered tasks."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -1475,16 +1517,16 @@
       "total": 4,
       "deferred": 2
     },
-    "done": 22,
+    "done": 23,
     "total": 33,
-    "active_remaining": 6,
+    "active_remaining": 5,
     "deferred": 5,
     "active_numbered": 12,
-    "in_progress": 2,
+    "in_progress": 0,
     "g2": {
       "done": 2,
       "total": 4,
-      "in_progress": 1,
+      "in_progress": 0,
       "items": [
         "Numerical patch parity and timing",
         "Verified source and actual physics parity",
@@ -1493,9 +1535,9 @@
       ]
     },
     "e4": {
-      "done": 0,
+      "done": 1,
       "total": 4,
-      "in_progress": 1,
+      "in_progress": 0,
       "items": [
         "Bounded buffer planner and renderer capability",
         "Actual renderer data and AABB/culling safety",
