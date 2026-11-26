@@ -2,18 +2,18 @@
   "schema": "TF_ENGINE_DECISION_LEDGER_1",
   "date": "2026-11-26",
   "branch": "feat/terraforge-mobile-addon",
-  "latest_code_merge": "1306b4ae2baf1ceeeae50491caca1b5845b666d4",
-  "recorded_parent": "bf6c5e05fd4a92f6d2416700dd4b5da768eb4b9e",
+  "latest_code_merge": "f29ff59a8287076f5f4fb30e12b4b9254268c362",
+  "recorded_parent": "0a6d1f5a30c0bf61f34256a97d734b54c665b88a",
   "combined_ci": {
-    "head": "1306b4ae2baf1ceeeae50491caca1b5845b666d4",
-    "ci": 45772024957,
+    "head": "f29ff59a8287076f5f4fb30e12b4b9254268c362",
+    "ci": 45790980185,
     "status": "PENDING_EXACT_VERIFICATION",
-    "expected_tests": 131,
+    "expected_tests": 133,
     "previous": {
-      "head": "1a3b35e488dace84fe1c0146582a8c14d9f15a8e",
-      "ci": 45770498183,
-      "status": "VERIFIED",
-      "tests": 128
+      "head": "1306b4ae2baf1ceeeae50491caca1b5845b666d4",
+      "ci": 45772024957,
+      "status": "SUCCESS",
+      "renderer_probes": "3 per renderer successful"
     }
   },
   "device_gate": {
@@ -1636,25 +1636,54 @@
     {
       "phase": "E4 paired complete CPU publication cost",
       "pr": 73,
-      "head": "dba096422fe37b7cf61fbe384594275abedf5fdd",
-      "ci": 45772109772,
-      "disposition": "CI_PENDING",
-      "decision": "Full target generation and scratch pack for both arms, old resource setup outside timing, readback/plan/update/bounds plus shape assignment for patch, same output verification outside time. 16 samples per arm/LOD/renderer ABBA/BAAB. CPU submission only; release/transient memory, actual GPU completion and physical device unverified."
+      "head": "baf162794d3958bcec0b2b9c427fc75d39f98d5e",
+      "ci": 45790971038,
+      "disposition": "RETRY_CI_PENDING",
+      "decision": "Full target generation and scratch pack for both arms, old resource setup outside timing, readback/plan/update/bounds plus shape assignment for patch, same output verification outside time. 16 samples per arm/LOD/renderer ABBA/BAAB. CPU submission only; release/transient memory, actual GPU completion and physical device unverified.",
+      "failed_ci": 45772109772,
+      "failed_head": "dba096422fe37b7cf61fbe384594275abedf5fdd",
+      "failure": "Array to Array[bool] ternary runtime error at line 134, both renderers; prior 3 probes pass, no paired cost data."
     },
     {
       "phase": "H2 multi-seam route and sample gap",
       "pr": 74,
       "head": "6134394632b2609db3894579f10d6dd6188e572d",
       "ci": 45772183931,
+      "disposition": "MERGED_DIAGNOSTIC_ONLY_COMBINED_PENDING",
+      "decision": "4 planned traces x720 ticks, real capsule x510→536→500→552→510, actual support transfers and direction reversal, fixed caps, repeated camera shifts/pressure, 12 tick simulated gap in sample/pump. Actual Android background/resume not tested.",
+      "evidence": {
+        "tests": 133,
+        "shards": [
+          44,
+          44,
+          45
+        ],
+        "failed": 0,
+        "traces": 4,
+        "ticks": 2880,
+        "missing_rays": 0,
+        "airborne_ticks": 0,
+        "denied_ticks": 2,
+        "camera_shifts": 48,
+        "tier_transitions": 48,
+        "merge": "f29ff59a8287076f5f4fb30e12b4b9254268c362",
+        "combined_ci": 45790980185
+      }
+    },
+    {
+      "phase": "H3 fixed worker slot capacity",
+      "pr": 75,
+      "head": "66b1aa52ca5005b2c44c8a62a9c3b3deb595be03",
+      "ci": 45791148541,
       "disposition": "CI_PENDING",
-      "decision": "4 planned traces x720 ticks, real capsule x510→536→500→552→510, actual support transfers and direction reversal, fixed caps, repeated camera shifts/pressure, 12 tick simulated gap in sample/pump. Actual Android background/resume not tested."
+      "decision": "One worker, caps 1/2/4; six matched 720 tick routes, TFM1/2 reversed order. Check ownership, support, queue payload and shutdown; no device or RSS claims."
     }
   ],
   "next": [
-    "Check combined exact E4 diagnostic integration CI45772024957 (131 planned headless tests plus 3 probes x 2 renderers).",
-    "E4 PR73 exact CI45772109772 paired CPU cost, no activation until net benefit and safety gate.",
-    "H2 PR74 exact CI45772183931 broader route, simulated sample gap; actual lifecycle separate.",
-    "24/33 tracked done,4 active,5 deferred,10 numbered phases; E4 diagnostic renderer/bounds gate accepted, real terrain/lifetime/device gate remains."
+    "Check exact E4 retry CI45790971038; compare net cost, keep default off.",
+    "Check H2 combined CI45790980185; real Android lifecycle remains open.",
+    "Check H3 CI45791148541; cap4 not promoted without device evidence.",
+    "Review I0 accepted components only; preserve deferred experiments and 24/33 scoped accounting."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
