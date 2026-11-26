@@ -2,13 +2,13 @@
   "schema": "TF_ENGINE_DECISION_LEDGER_1",
   "date": "2026-11-26",
   "branch": "feat/terraforge-mobile-addon",
-  "latest_code_merge": "e2b2553b16dfdb69bd0786037294f5fdd3d5f0c4",
-  "recorded_parent": "e2b2553b16dfdb69bd0786037294f5fdd3d5f0c4",
+  "latest_code_merge": "ed71385c85cc16784a8818d5322ac794811ca969",
+  "recorded_parent": "ed71385c85cc16784a8818d5322ac794811ca969",
   "combined_ci": {
-    "head": "e2b2553b16dfdb69bd0786037294f5fdd3d5f0c4",
-    "ci": 45736226703,
+    "head": "ed71385c85cc16784a8818d5322ac794811ca969",
+    "ci": 45739269712,
     "status": "PENDING_EXACT_VERIFICATION",
-    "expected_tests": 123
+    "expected_tests": 124
   },
   "device_gate": {
     "status": "OPEN",
@@ -1237,7 +1237,8 @@
         "failed": 1,
         "reason": "raw renderer readback mismatch",
         "fix": "1923c6619e96086a01a0329944172b0d16b2b3c4",
-        "retry_ci": null
+        "retry_ci": null,
+        "retry_trigger": "PR closed/reopened, exact corrected SHA; run not assumed until listed"
       }
     },
     {
@@ -1245,21 +1246,49 @@
       "pr": 65,
       "head": "0430cf42c63bdb5193a50e88f58fd6a5daf11941",
       "ci": 45737023171,
-      "disposition": "CI_PENDING",
-      "decision": "Exact array and actual ray parity; single-use base not proof of natural benefit."
+      "disposition": "MERGED_ISOLATED_VERIFIED_PHYSICS",
+      "decision": "Accept isolated verified source/physics parity. Natural benefit and full costs still open.",
+      "merge": "ed71385c85cc16784a8818d5322ac794811ca969",
+      "evidence": {
+        "tests": 124,
+        "ray_points": 18,
+        "full_us": [
+          4568,
+          4616
+        ],
+        "patch_us": [
+          445,
+          388
+        ],
+        "changed_vertices": [
+          24,
+          3
+        ],
+        "normals": [
+          57,
+          36
+        ],
+        "retained_raw_bytes": 116052,
+        "base_generation_included": false,
+        "wrong_reader_rejected": true,
+        "epoch_rejected": true,
+        "stop_rejected": true
+      }
     },
     {
       "phase": "e2 paired publication",
       "branch": "exp/p1511e2-paired-publication",
       "head": "483e3dbecb1f3dca66c0958d060b42c5bd31ea4b",
-      "disposition": "PREPARED_NO_PR_CI_CAP",
-      "decision": "Open PR when slot free. Matched resource creation and assignment ABBA, readiness ticks and sampled RSS; no full pump or device claim."
+      "disposition": "CI_PENDING",
+      "decision": "Open PR when slot free. Matched resource creation and assignment ABBA, readiness ticks and sampled RSS; no full pump or device claim.",
+      "pr": 66,
+      "ci": 45739281358
     }
   ],
   "next": [
-    "Check active exact CI45736219748,45736226703,45737023171.",
-    "When slot frees, prioritize exact E4 correction CI (not old SHA rerun) or E2 prepared paired PR.",
-    "G2 evaluate actual parity; no reuse/cost claim including base generation yet.",
+    "Check exact combined CI45739269712 and E2 PR66 CI45739281358.",
+    "E4 corrected PR64 retry not yet visible after reopen; check exact SHA.",
+    "G2 natural eligibility and total base cost; no duplicate persistent cache.",
     "13 active numbered tasks."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
@@ -1390,16 +1419,16 @@
       "total": 4,
       "deferred": 2
     },
-    "done": 20,
+    "done": 21,
     "total": 33,
-    "active_remaining": 9,
+    "active_remaining": 8,
     "deferred": 4,
     "active_numbered": 13,
-    "in_progress": 2,
+    "in_progress": 1,
     "g2": {
-      "done": 1,
+      "done": 2,
       "total": 4,
-      "in_progress": 1,
+      "in_progress": 0,
       "items": [
         "Numerical patch parity and timing",
         "Verified source and actual physics parity",
