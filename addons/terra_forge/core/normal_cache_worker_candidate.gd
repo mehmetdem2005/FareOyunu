@@ -18,6 +18,7 @@ func close() -> void:
     _full=0
     _partial=0
     _retain_fail=0
+    _observed={"delivered":0,"hits":0,"full":0,"hit_us":0,"full_us":0,"peak_retained_bytes":0,"max_metadata_keys":0,"retain_fail_max":0}
 
 func _build_geometry(job: Dictionary) -> Dictionary:
     # Snapshot/reader serial validated by base worker before owned copy.
@@ -47,3 +48,23 @@ func _build_geometry(job: Dictionary) -> Dictionary:
     # mutable worker cache on main thread. Raw bound excludes transient copy.
     job["g1_candidate"]={"hit":hit,"full":_full,"partial":_partial,"retain_fail":_retain_fail,"cache":_base_cache.report()}
     return result
+
+# Main-thread delivery telemetry only. Dropped jobs are not counted as hits.
+var _observed: Dictionary={"delivered":0,"hits":0,"full":0,"hit_us":0,"full_us":0,"peak_retained_bytes":0,"max_metadata_keys":0,"retain_fail_max":0}
+
+func poll(source,desired: Dictionary,max_source_bytes: int=-1,critical_only: bool=false) -> Dictionary:
+    var answer: Dictionary=super.poll(source,desired,max_source_bytes,critical_only)
+    if answer["error"]==OK:
+        var result: Dictionary=answer["result"]
+        var info: Dictionary=result["g1_candidate"]
+        _observed["delivered"]+=1
+        var hit: bool=info["hit"]
+        _observed["hits" if hit else "full"]+=1
+        _observed["hit_us" if hit else "full_us"]+=int(result["build_elapsed_us"])
+        _observed["peak_retained_bytes"]=maxi(_observed["peak_retained_bytes"],info["cache"]["peak_bytes"])
+        _observed["max_metadata_keys"]=maxi(_observed["max_metadata_keys"],info["cache"]["metadata_keys"])
+        _observed["retain_fail_max"]=maxi(_observed["retain_fail_max"],info["retain_fail"])
+    return answer
+
+func delivered_cache_report() -> Dictionary:
+    return _observed.duplicate()

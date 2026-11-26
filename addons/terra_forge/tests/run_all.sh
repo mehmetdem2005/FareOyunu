@@ -136,6 +136,7 @@ suite=(
   test_g1_owned_resource
   test_g1_base_cache
   test_g1_worker_candidate
+  test_g1_live_preview_candidate
   test_edge_normals
   test_stream_budget
   test_brush_sampling

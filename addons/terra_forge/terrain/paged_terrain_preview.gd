@@ -241,7 +241,7 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
         return _last_error
     if selected>=3:
         _capacity_wait=CAPACITY_WAIT.new() if observe_capacity_wait else null
-        _geometry_worker=WORKER.new()
+        _geometry_worker=_make_geometry_worker()
         status=_geometry_worker.start(_reader,geometry_job_limit,selected>=5,selected==6,_critical_reservation_active,_critical_lending_active,observe_geometry_latency)
         if status!=OK:
             stop_preview()
@@ -279,6 +279,10 @@ func start_preview(directory: String, cache_pages: int = 16, max_jobs: int = 4) 
     _sync_tiles()
     set_process(true)
     return OK
+
+## Test seam: production default still creates the original worker.
+func _make_geometry_worker():
+    return WORKER.new()
 
 func resolved_sampling_strategy() -> int:
     return (1 if use_tile_read_view else 0) if sampling_strategy == -1 else sampling_strategy
