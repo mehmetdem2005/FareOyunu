@@ -1902,8 +1902,9 @@
     }
   ],
   "next": [
-    "M6 test integration combined CI; retain M4 lifecycle experiment branch, no runtime adoption.",
-    "M7 rendered cap1/2/4 and M8 target 30/60 real guarded route. 60 tasks preserved."
+    "Inspect M6 combined CI141 and raw M7/M8 logs; correct any test issues, no promotion without measured evidence.",
+    "M7 F cap1/2/4 rendered both formats, 12×720 physical ticks, ownership and stage timing; M8 4×340 stationary real floor, normalized pressure target30/60 and sample gap/manual override, no Android lifecycle claim.",
+    "M9 synthesis, M10 device package, M11 closure plus all remaining substeps. 60 tasks unchanged, A default, cap2."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -2095,7 +2096,27 @@
       45802203182
     ],
     "scope": "Separate from historical 26/33 scoped decisions. No double count. 60 planned review tasks, not 60 new runtime changes.",
-    "active": [],
+    "active": [
+      {
+        "phase": "M6 combined",
+        "sha": "ed25f1d7684a4d987753e9d977b0c1e44af80427",
+        "ci": 45837895267
+      },
+      {
+        "phase": "M7 rendered cap",
+        "status": "RENDERED_CAP_CI_PENDING",
+        "pr": 85,
+        "sha": "8c893d0afa9010497521d202050c27ed30bafe1d",
+        "ci": 45837982629
+      },
+      {
+        "phase": "M8 normalized target",
+        "status": "TARGET_GAP_CI_PENDING",
+        "pr": 86,
+        "sha": "20984e0bc07b7911cef3547091a692a6347c9ccc",
+        "ci": 45838077217
+      }
+    ],
     "last_analysis": {
       "date": "2026-11-26",
       "source": "exact completed CI jobs and prior decision ledger",
@@ -2533,6 +2554,18 @@
       "pr": 84,
       "sha": "5e1f3e42dc2bf6d000926355443d05d14057a621",
       "ci": 45835160341
+    },
+    "m7": {
+      "status": "RENDERED_CAP_CI_PENDING",
+      "pr": 85,
+      "sha": "8c893d0afa9010497521d202050c27ed30bafe1d",
+      "ci": 45837982629
+    },
+    "m8": {
+      "status": "TARGET_GAP_CI_PENDING",
+      "pr": 86,
+      "sha": "20984e0bc07b7911cef3547091a692a6347c9ccc",
+      "ci": 45838077217
     }
   }
 }
