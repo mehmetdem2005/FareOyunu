@@ -92,7 +92,7 @@ func _run() -> void:
     print("PASS: H0 shared view/work tier and bounded adaptive motion with actual support and manual override")
     quit(0)
 
-func _case(directory: String,format: int,mode: int) -> Dictionary:
+func _case(directory: String,format: int,mode: int,target_fps: int=30,simulate_gap: bool=false) -> Dictionary:
     _p=P.new()
     _p.region_index_format=format
     _p.sampling_strategy=mode
@@ -101,7 +101,7 @@ func _case(directory: String,format: int,mode: int) -> Dictionary:
     _p.enable_adaptive_view_budget=true
     _p.enable_adaptive_work_budget=true
     _p.enable_adaptive_motion_horizon=true
-    _p.adaptive_target_fps=30
+    _p.adaptive_target_fps=target_fps
     _p.max_visible_tiles=CAP
     _p.high_detail_distance=32.0
     _p.medium_detail_distance=80.0
@@ -156,6 +156,9 @@ func _case(directory: String,format: int,mode: int) -> Dictionary:
     var baseline_near: Array[Vector2i]=[]
     var prior_tier: int=0
     var transitions: int=0
+    var skipped_samples: int=0
+    var peak_ground_delta: float=0.0
+    var reference_height: float=ground["position"].y
     for tick in range(340):
         await physics_frame
         if tick==260 and _p.set_adaptive_view_auto(false)!=OK:
@@ -167,7 +170,12 @@ func _case(directory: String,format: int,mode: int) -> Dictionary:
             frame_ms=55.0
         elif tick>=140 and tick<260:
             frame_ms=20.0
-        if _p.sample_view_pressure(frame_ms)!=OK:
+        frame_ms*=30.0/float(target_fps)
+        # Skip only pressure observation, keep real physics and streaming.
+        # Never pretend this is Android pause/resume.
+        if simulate_gap and tick>=145 and tick<157:
+            skipped_samples+=1
+        elif _p.sample_view_pressure(frame_ms)!=OK:
             return {"error":FAILED,"stage":"pressure sample"}
         if tick in [50,170,280]:
             var prior: Dictionary=_p.adaptive_view_state()
@@ -184,6 +192,9 @@ func _case(directory: String,format: int,mode: int) -> Dictionary:
         var hit: Dictionary=_ground(_body.global_position)
         if not _body.is_on_floor() or not _valid_ground(hit) or hit["collider"].get_instance_id()!=body_id:
             return {"error":FAILED,"stage":"physical ground","tick":tick}
+        peak_ground_delta=maxf(peak_ground_delta,absf(float(hit["position"].y)-reference_height))
+        if peak_ground_delta>0.0001:
+            return {"error":FAILED,"stage":"stationary ground height changed","tick":tick,"delta":peak_ground_delta}
         var began: int=Time.get_ticks_usec()
         var result: Dictionary=_p.pump_stream()
         hist.add(float(Time.get_ticks_usec()-began)/1000.0)
@@ -194,7 +205,7 @@ func _case(directory: String,format: int,mode: int) -> Dictionary:
         var tier: int=view["controller"]["tier"]
         var work: Dictionary=_p.adaptive_work_state()
         var motion: Dictionary=_p.motion_prefetch_state()
-        if not work["active"] or work["controller"]["tier"]!=tier or not motion["active"] or not motion["adaptive"]:
+        if view["controller"]["target_fps"]!=target_fps or not work["active"] or work["controller"]["tier"]!=tier or not motion["active"] or not motion["adaptive"]:
             return {"error":FAILED,"stage":"shared tier or motion controller","tick":tick}
         var horizon: float=motion["latency"]["horizon_seconds"]
         if not is_finite(horizon) or horizon<0.125 or horizon>0.5 or work["controller"]["tier2_peak_optional"]>1 or work["controller"]["restricted_peak_optional"]>2:
@@ -228,7 +239,12 @@ func _case(directory: String,format: int,mode: int) -> Dictionary:
         if tick in [259,319,339] and (tier!=0 or far!=baseline_far):
             return {"error":FAILED,"stage":"restored far view","detail":points}
     var report: Dictionary={"error":OK,"ticks":340,"checkpoints":points,"transitions":transitions,"peak_tiles":peak_tiles,"peak_pages":peak_pages,"peak_jobs":peak_jobs,"missing_rays":0,"airborne_ticks":0,"pump_ms":hist.report(),"final":_p.adaptive_view_state(),"work":_p.adaptive_work_state(),"motion":_p.motion_prefetch_state(),"note":"Injected frame pressure, real stationary support; no FPS or equal-work performance claim"}
-    if transitions!=4 or _p.adaptive_view_state()["controller"]["transitions"]!=4:
+    report["target_fps"]=target_fps
+    report["skipped_pressure_samples"]=skipped_samples
+    report["peak_ground_height_delta"]=peak_ground_delta
+    report["source_reads"]=_p.stats()["source"]["disk_reads"]
+    report["mesh_builds"]=_p.stats()["mesh_builds"]
+    if transitions!=4 or _p.adaptive_view_state()["controller"]["transitions"]!=4 or skipped_samples!=(12 if simulate_gap else 0):
         return {"error":FAILED,"stage":"transition evidence","detail":report}
     _body.free()
     _body=null

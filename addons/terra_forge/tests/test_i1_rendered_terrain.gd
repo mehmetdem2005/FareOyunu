@@ -46,13 +46,14 @@ func _run() -> void:
     print("PASS: I1 rendered terrain support checkpoints and post-stop ghost rejection")
     quit(0)
 
-func _route(directory: String,format: int,arm: int) -> Dictionary:
+func _route(directory: String,format: int,arm: int,job_cap: int=2) -> Dictionary:
     _p=P.new()
     _p.region_index_format=format
     _p.sampling_strategy=4 if arm==4 else 7
     _p.hybrid_scalar_sampling=arm!=4
     _p.hybrid_topology_cache=arm==6
     _p.hybrid_cropped_halo=arm!=4
+    _p.geometry_job_limit=job_cap
     _p.enable_support_retention=true
     _p.enable_motion_prefetch=true
     _p.enable_adaptive_motion_horizon=true
@@ -134,6 +135,8 @@ func _route(directory: String,format: int,arm: int) -> Dictionary:
     var peak_jobs: int=0
     var actual_velocity=Vector2.ZERO
     var traversed: float=0.0
+    var pump_hist=HIST.new()
+    var peak_payload: int=0
     var last_tier: int=0
     var transitions: int=0
     for tick in range(ROUTE_TICKS):
@@ -193,7 +196,9 @@ func _route(directory: String,format: int,arm: int) -> Dictionary:
                 return {"error":FAILED,"stage":"rendered support","tick":tick,"pixels":pixels}
             checkpoints.append(pixels)
         if not gap:
+            var stamp: int=Time.get_ticks_usec()
             var pumped: Dictionary=_p.pump_stream()
+            pump_hist.add(float(Time.get_ticks_usec()-stamp)/1000.0)
             if pumped["error"]!=OK:
                 return {"error":FAILED,"stage":"pump","tick":tick}
         # The remote stream anchor is deliberately not the physical actor.
@@ -209,7 +214,11 @@ func _route(directory: String,format: int,arm: int) -> Dictionary:
         peak_tiles=maxi(peak_tiles,int(stats["tiles"]))
         peak_pages=maxi(peak_pages,int(stats["source"]["resident"]))
         peak_jobs=maxi(peak_jobs,int(stats["geometry_reservations"]))
-        if peak_tiles>12 or peak_pages>16 or peak_jobs>2:
+        var ws: Dictionary=stats["geometry_worker"]
+        peak_payload=maxi(peak_payload,int(ws["reserved_payload_bytes"]))
+        if ws["cap"]!=job_cap or ws["slots"]>job_cap or ws["inflight"]>1 or ws["reserved_payload_bytes"]>ws["payload_cap_bytes"] or int(ws["submitted"])!=int(ws["delivered"])+int(ws["dropped"])+int(ws["slots"]):
+            return {"error":FAILED,"stage":"worker ownership","tick":tick}
+        if peak_tiles>12 or peak_pages>16 or peak_jobs>job_cap:
             return {"error":FAILED,"stage":"cap","tick":tick}
         var held: Dictionary=_p.support_state()
         if held["tiles"]!=plan["tiles"] or held["revision"]!=revision:
@@ -239,6 +248,13 @@ func _route(directory: String,format: int,arm: int) -> Dictionary:
     report["source_reads"]=final_stats["source"].get("disk_reads",0)
     report["mesh_builds"]=final_stats.get("mesh_builds",0)
     report["hybrid_topology_cache"]=arm==6
+    report["job_cap"]=job_cap
+    report["pump_ms"]=pump_hist.report()
+    report["peak_reserved_payload_bytes"]=peak_payload
+    report["worker_final"]=final_stats["geometry_worker"]
+    report["worker_ms"]=final_stats["geometry_worker_ms"]
+    report["queue_ms"]=final_stats["geometry_queue_ms"]
+    report["delivery_ms"]=final_stats["geometry_delivery_ms"]
     if physical_samples!=ROUTE_TICKS or anchor_samples!=ROUTE_TICKS or anchor_missing>anchor_samples or anchor_longest_streak>anchor_missing or longest_denied_streak>denied:
         return {"error":FAILED,"stage":"sample accounting"}
     _body.free()

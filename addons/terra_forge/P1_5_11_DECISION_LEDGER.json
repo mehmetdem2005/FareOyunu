@@ -1902,9 +1902,9 @@
     }
   ],
   "next": [
-    "Inspect M6 combined CI141 and raw M7/M8 logs; correct any test issues, no promotion without measured evidence.",
-    "M7 F cap1/2/4 rendered both formats, 12×720 physical ticks, ownership and stage timing; M8 4×340 stationary real floor, normalized pressure target30/60 and sample gap/manual override, no Android lifecycle claim.",
-    "M9 synthesis, M10 device package, M11 closure plus all remaining substeps. 60 tasks unchanged, A default, cap2."
+    "M7/M8 combined CI143 and software renderer checks, preserve cap2 and default A.",
+    "M9 compare F and cropped scalar/topology with page16/32 on matched route, assess interactions; do not claim full synthesis or promotion until device.",
+    "M10 package and remaining safety/lifecycle tasks; all 60 review tasks retained."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -2096,27 +2096,7 @@
       45802203182
     ],
     "scope": "Separate from historical 26/33 scoped decisions. No double count. 60 planned review tasks, not 60 new runtime changes.",
-    "active": [
-      {
-        "phase": "M6 combined",
-        "sha": "ed25f1d7684a4d987753e9d977b0c1e44af80427",
-        "ci": 45837895267
-      },
-      {
-        "phase": "M7 rendered cap",
-        "status": "RENDERED_CAP_CI_PENDING",
-        "pr": 85,
-        "sha": "8c893d0afa9010497521d202050c27ed30bafe1d",
-        "ci": 45837982629
-      },
-      {
-        "phase": "M8 normalized target",
-        "status": "TARGET_GAP_CI_PENDING",
-        "pr": 86,
-        "sha": "20984e0bc07b7911cef3547091a692a6347c9ccc",
-        "ci": 45838077217
-      }
-    ],
+    "active": [],
     "last_analysis": {
       "date": "2026-11-26",
       "source": "exact completed CI jobs and prior decision ledger",
@@ -2541,10 +2521,142 @@
         "ci": 45834613667,
         "regressions": 139,
         "renderer_groups": "success"
+      },
+      "m6_combined": {
+        "ci": 45837895267,
+        "regressions": 141,
+        "renderer": "success"
+      },
+      "m7": {
+        "ci": 45837982629,
+        "regressions": 141,
+        "renderers": 2,
+        "formats": 2,
+        "routes": 12,
+        "ticks": 8640,
+        "cap": [
+          1,
+          2,
+          4
+        ],
+        "per_route": {
+          "goals": [
+            65,
+            156,
+            287,
+            405
+          ],
+          "denied": 0,
+          "missing_rays": 0,
+          "airborne": 0,
+          "ghost": 0,
+          "reads": [
+            259,
+            284,
+            290
+          ],
+          "mesh_builds": [
+            174.75,
+            178,
+            184
+          ],
+          "anchor_missing_ticks": [
+            60,
+            54,
+            52
+          ],
+          "peak_slots": [
+            1,
+            2,
+            3
+          ],
+          "peak_reserved_bytes": [
+            135972,
+            271944,
+            407916
+          ],
+          "allowed_bytes": [
+            135972,
+            271944,
+            543888
+          ],
+          "mean_pump_ms": [
+            0.3334205508474585,
+            0.3257676553672315,
+            0.3227990819209045
+          ],
+          "mean_queue_ms": [
+            0.0488116,
+            1.0304843,
+            1.60438325
+          ],
+          "mean_delivery_ms": [
+            13.64620613,
+            13.93423663,
+            13.00992191
+          ]
+        },
+        "decision": "Keep cap2. Cap4 observed peak3, modest extra optional work, 2 fewer remote-anchor gaps, +50% peak reserved payload and higher queue wait; cap1 safe in this route but 6 more remote gaps. No actual device/FPS or equal optional work claim."
+      },
+      "m8": {
+        "ci": 45838077217,
+        "regressions": 143,
+        "formats": 2,
+        "targets": [
+          30,
+          60
+        ],
+        "routes": 4,
+        "ticks": 1360,
+        "per_route": {
+          "near": [
+            6,
+            6,
+            6,
+            6,
+            6
+          ],
+          "far": [
+            6,
+            2,
+            6,
+            6,
+            6
+          ],
+          "tiers": [
+            0,
+            2,
+            0,
+            0,
+            0
+          ],
+          "ticks": [
+            39,
+            139,
+            259,
+            319,
+            339
+          ],
+          "auto": [
+            true,
+            true,
+            true,
+            false,
+            true
+          ],
+          "reads": 155,
+          "builds": 44,
+          "transitions": 4,
+          "skipped_pressure_samples": 12,
+          "height_delta": 0,
+          "missing_rays": 0,
+          "airborne": 0
+        },
+        "decision": "Accept tests; normalized synthetic pressure control verified, not target FPS attainment or OS lifecycle."
       }
     },
     "m6": {
-      "status": "MERGED_TEST_ONLY_COMBINED_CI_PENDING",
+      "status": "MERGED_TEST_COMBINED_CI_VERIFIED",
       "pr": 83,
       "sha": "42ade476cc9f2a63c4252a7876ef5168ead5151f",
       "ci": 45835083337
@@ -2556,13 +2668,13 @@
       "ci": 45835160341
     },
     "m7": {
-      "status": "RENDERED_CAP_CI_PENDING",
+      "status": "MERGED_TEST_ONLY_COMBINED_CI_PENDING",
       "pr": 85,
       "sha": "8c893d0afa9010497521d202050c27ed30bafe1d",
       "ci": 45837982629
     },
     "m8": {
-      "status": "TARGET_GAP_CI_PENDING",
+      "status": "MERGED_TEST_ONLY_COMBINED_CI_PENDING",
       "pr": 86,
       "sha": "20984e0bc07b7911cef3547091a692a6347c9ccc",
       "ci": 45838077217

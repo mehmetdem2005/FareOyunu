@@ -164,6 +164,8 @@ suite=(
   test_m5_page_cap_v2
   test_m6_factorial
   test_m6_factorial_v2
+  test_m8_target
+  test_m8_target_v2
 )
 # Interleave adjacent physics scenarios across independent CI runners.
 shard_number="${3:-1}"
