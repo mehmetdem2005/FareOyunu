@@ -46,6 +46,9 @@ func _run() -> void:
     print("PASS: I1 rendered terrain support checkpoints and post-stop ghost rejection")
     quit(0)
 
+func _route_page_cap() -> int:
+    return 16
+
 func _route(directory: String,format: int,arm: int,job_cap: int=2) -> Dictionary:
     _p=P.new()
     _p.region_index_format=format
@@ -66,7 +69,7 @@ func _route(directory: String,format: int,arm: int,job_cap: int=2) -> Dictionary
     _p.max_tile_work_ms=8.0
     _p.tile_updates_per_frame=3
     root.add_child(_p)
-    if _p.start_preview(directory,16,4)!=OK:
+    if _p.start_preview(directory,_route_page_cap(),4)!=OK:
         return {"error":FAILED,"stage":"open"}
     _p.set_process(false)
     var material: StandardMaterial3D=_p._material
@@ -218,7 +221,7 @@ func _route(directory: String,format: int,arm: int,job_cap: int=2) -> Dictionary
         peak_payload=maxi(peak_payload,int(ws["reserved_payload_bytes"]))
         if ws["cap"]!=job_cap or ws["slots"]>job_cap or ws["inflight"]>1 or ws["reserved_payload_bytes"]>ws["payload_cap_bytes"] or int(ws["submitted"])!=int(ws["delivered"])+int(ws["dropped"])+int(ws["slots"]):
             return {"error":FAILED,"stage":"worker ownership","tick":tick}
-        if peak_tiles>12 or peak_pages>16 or peak_jobs>job_cap:
+        if peak_tiles>12 or peak_pages>_route_page_cap() or peak_jobs>job_cap:
             return {"error":FAILED,"stage":"cap","tick":tick}
         var held: Dictionary=_p.support_state()
         if held["tiles"]!=plan["tiles"] or held["revision"]!=revision:
@@ -246,6 +249,10 @@ func _route(directory: String,format: int,arm: int,job_cap: int=2) -> Dictionary
     report["remote_anchor_longest_missing_ticks"]=anchor_longest_streak
     report["longest_denied_ticks"]=longest_denied_streak
     report["source_reads"]=final_stats["source"].get("disk_reads",0)
+    report["page_cap"]=_route_page_cap()
+    report["source_float_bytes"]=final_stats["source"].get("resident_float_bytes",0)
+    report["source_evictions"]=final_stats["source"].get("evictions",0)
+    report["source_verified_pages"]=final_stats["source"].get("pages_verified_on_demand",0)
     report["mesh_builds"]=final_stats.get("mesh_builds",0)
     report["hybrid_topology_cache"]=arm==6
     report["job_cap"]=job_cap
