@@ -1058,12 +1058,37 @@
           10
         ]
       }
+    },
+    {
+      "phase": "g1 real worker cache",
+      "pr": 58,
+      "head": "e47ef910bfd65e2a078112d0884238fc253d3260",
+      "ci": 45727205380,
+      "disposition": "CI_PENDING",
+      "decision": "Inspect exact forced parity and caps; no natural hit rate, runtime publication or equal-work timing claim."
+    },
+    {
+      "phase": "e2 staged resource",
+      "pr": 59,
+      "head": "d0404c93b681c4f3ac8afcf545ac9549496fc3b6",
+      "ci": 45727269126,
+      "disposition": "CI_PENDING",
+      "decision": "Inspect actual old ray presence, staged resource parity and timing; direct preparation excludes assignment, no full pump or VRAM claim."
+    },
+    {
+      "phase": "f3 batch admission",
+      "pr": 60,
+      "head": "f75cbc0340a790c6fdc4373957209e22e6d4caa1",
+      "ci": 45727316892,
+      "disposition": "CI_PENDING",
+      "decision": "Inspect equal ordered requests and timings, not physical IO coalescing; require route/epoch/corruption evidence if worthwhile."
     }
   ],
   "next": [
-    "G1 actual worker/publication integration only after parity and physics safety; track transient memory and natural reuse.",
-    "F2 current policy rejected; revisit four-tile turning only on measured stalls or H0/I0 review. Keep existing runtime horizon.",
-    "15 active numbered items remain (G1 +14); F2 deferred, not a required active step."
+    "Review exact G1 PR58, E2 PR59 and F3 PR60 CI and actual metrics before promotion.",
+    "G1: live preview worker integration, physics and natural reuse/transient memory gates.",
+    "E2/F3: continue only if measured benefit justifies safety gates.",
+    "F2 remains parked; 15 active numbered tasks."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -1152,19 +1177,43 @@
     ]
   },
   "progress_accounting": {
-    "scope": "G1 and F2 only; remaining other phases not decomposed",
+    "scope": "G1 F2 E2 F3 only; other numbered phases not decomposed",
     "g1": {
       "done": 6,
-      "total": 9
+      "total": 9,
+      "in_progress": 1
     },
     "f2": {
       "done": 7,
       "total": 8,
       "deferred": 1
     },
+    "e2": {
+      "done": 0,
+      "total": 4,
+      "in_progress": 1,
+      "items": [
+        "Staged candidate CI and parity",
+        "Authoritative revision and actual height rays",
+        "Paired full publication/pump and transient memory",
+        "Decision and integration/fallback"
+      ]
+    },
+    "f3": {
+      "done": 0,
+      "total": 4,
+      "in_progress": 1,
+      "items": [
+        "Ordered batch candidate CI and parity",
+        "Epoch/corruption and capacity stress",
+        "Paired actual route net benefit",
+        "Decision and integration/fallback"
+      ]
+    },
     "done": 13,
-    "total": 17,
-    "active_remaining": 3,
+    "total": 25,
+    "active_remaining": 11,
+    "in_progress": 3,
     "deferred": 1,
     "active_numbered": 15
   }
