@@ -2,13 +2,19 @@
   "schema": "TF_ENGINE_DECISION_LEDGER_1",
   "date": "2026-11-26",
   "branch": "feat/terraforge-mobile-addon",
-  "latest_code_merge": "1a3b35e488dace84fe1c0146582a8c14d9f15a8e",
+  "latest_code_merge": "1306b4ae2baf1ceeeae50491caca1b5845b666d4",
   "recorded_parent": "bf6c5e05fd4a92f6d2416700dd4b5da768eb4b9e",
   "combined_ci": {
-    "head": "1a3b35e488dace84fe1c0146582a8c14d9f15a8e",
-    "ci": 45770498183,
+    "head": "1306b4ae2baf1ceeeae50491caca1b5845b666d4",
+    "ci": 45772024957,
     "status": "PENDING_EXACT_VERIFICATION",
-    "expected_tests": 128
+    "expected_tests": 131,
+    "previous": {
+      "head": "1a3b35e488dace84fe1c0146582a8c14d9f15a8e",
+      "ci": 45770498183,
+      "status": "VERIFIED",
+      "tests": 128
+    }
   },
   "device_gate": {
     "status": "OPEN",
@@ -1452,7 +1458,7 @@
       "pr": 67,
       "head": "181af703449002916f87c0e825b3fac6dc6378e4",
       "ci": 45768586261,
-      "disposition": "FULL_CI_PASS_SOFTWARE_RENDERER_ONLY",
+      "disposition": "MERGED_DIAGNOSTIC_ONLY_COMBINED_PENDING",
       "decision": "Accept software renderer capability evidence, not E4 runtime or complete AABB/culling gate. Next actual camera visibility and bounded coalescing; no physical GPU or FPS claims.",
       "evidence": {
         "job": 139735470358,
@@ -1483,14 +1489,15 @@
           42,
           41
         ]
-      }
+      },
+      "merge": "1306b4ae2baf1ceeeae50491caca1b5845b666d4"
     },
     {
       "phase": "H1/H2 moving support and pressure recovery",
       "pr": 70,
       "head": "e4cf417855933dc5d83b4db2a21cf9591ce95e73",
       "ci": 45769328846,
-      "disposition": "MERGED_DIAGNOSTIC_ONLY_COMBINED_PENDING",
+      "disposition": "MERGED_DIAGNOSTIC_ONLY_COMBINED_VERIFIED",
       "decision": "Accept H1 control hierarchy diagnostic; H2 still needs actual pause/background resume and broader moving route, not just camera relocations. No runtime changes. Combined exact CI pending.",
       "evidence": {
         "tests": 128,
@@ -1517,7 +1524,9 @@
         "peak_tiles": 12,
         "peak_pages": 16,
         "peak_jobs": 2,
-        "merge": "1a3b35e488dace84fe1c0146582a8c14d9f15a8e"
+        "merge": "1a3b35e488dace84fe1c0146582a8c14d9f15a8e",
+        "combined_ci": 45770498183,
+        "combined_tests": 128
       }
     },
     {
@@ -1525,7 +1534,7 @@
       "pr": 71,
       "head": "6cc4fb78ae6169a7e4eafee7698818a76066b5b7",
       "ci": 45770191571,
-      "disposition": "RENDERER_JOB_PASS_FULL_CI_PENDING",
+      "disposition": "MERGED_DIAGNOSTIC_ONLY_COMBINED_PENDING",
       "decision": "Independent branch, globally capped 32 calls and <=75% full bytes, deterministic cheapest adjacent aligned gaps, compare old acceptance/calls/bytes with new, exact reconstruction and actual software renderer readback. Cap and byte threshold are experimental policy, not measured optimum. No runtime change.",
       "evidence": {
         "job": 139740708494,
@@ -1580,15 +1589,23 @@
             671,
             189
           ]
-        }
-      }
+        },
+        "headless_tests": 127,
+        "headless_failed": 0,
+        "shards": [
+          43,
+          42,
+          42
+        ]
+      },
+      "merge": "1306b4ae2baf1ceeeae50491caca1b5845b666d4"
     },
     {
       "phase": "E4 rendered visibility and conservative bounds",
       "pr": 72,
       "head": "00cfb78e033fed076ebc7930a6ac28f36da7d527",
       "ci": 45770246127,
-      "disposition": "RENDERER_JOB_PASS_FULL_CI_PENDING",
+      "disposition": "MERGED_DIAGNOSTIC_ONLY_COMBINED_PENDING",
       "decision": "Independent branch, synthetic horizontal quad moves from outside camera to inside via packed vertex patch; compare actual pixel mask against fresh target with conservative bounds, negative outside and relocated camera controls, OpenGL and Mobile software renderer. Not real terrain, physical GPU or collision proof.",
       "evidence": {
         "job": 139740888171,
@@ -1605,15 +1622,39 @@
           "mask_equal": true,
           "calls": 1,
           "bytes": 40
-        }
-      }
+        },
+        "headless_tests": 127,
+        "headless_failed": 0,
+        "shards": [
+          43,
+          42,
+          42
+        ]
+      },
+      "merge": "1306b4ae2baf1ceeeae50491caca1b5845b666d4"
+    },
+    {
+      "phase": "E4 paired complete CPU publication cost",
+      "pr": 73,
+      "head": "dba096422fe37b7cf61fbe384594275abedf5fdd",
+      "ci": 45772109772,
+      "disposition": "CI_PENDING",
+      "decision": "Full target generation and scratch pack for both arms, old resource setup outside timing, readback/plan/update/bounds plus shape assignment for patch, same output verification outside time. 16 samples per arm/LOD/renderer ABBA/BAAB. CPU submission only; release/transient memory, actual GPU completion and physical device unverified."
+    },
+    {
+      "phase": "H2 multi-seam route and sample gap",
+      "pr": 74,
+      "head": "6134394632b2609db3894579f10d6dd6188e572d",
+      "ci": 45772183931,
+      "disposition": "CI_PENDING",
+      "decision": "4 planned traces x720 ticks, real capsule x510→536→500→552→510, actual support transfers and direction reversal, fixed caps, repeated camera shifts/pressure, 12 tick simulated gap in sample/pump. Actual Android background/resume not tested."
     }
   ],
   "next": [
-    "Check E4 PR71 CI45770191571 and PR72 CI45770246127 full regression; special renderer jobs passed.",
-    "Check H1/H2 combined exact CI45770498183. H1 accepted diagnostic, H2 actual lifecycle and broader movement remain open.",
-    "E4 coalescing all three LODs works on software renderer but plan time 2.4ms LOD0; next paired complete cost with same work, bounds update, physics and resource lifetime. Conservative bounds mandatory for visibility; avoid unbounded accumulated AABB.",
-    "23/33 tracked done,5 active,5 deferred; 10 numbered phases remain after H1 diagnostic acceptance, combined pending. Three slots occupied; no defaults changed."
+    "Check combined exact E4 diagnostic integration CI45772024957 (131 planned headless tests plus 3 probes x 2 renderers).",
+    "E4 PR73 exact CI45772109772 paired CPU cost, no activation until net benefit and safety gate.",
+    "H2 PR74 exact CI45772183931 broader route, simulated sample gap; actual lifecycle separate.",
+    "24/33 tracked done,4 active,5 deferred,10 numbered phases; E4 diagnostic renderer/bounds gate accepted, real terrain/lifetime/device gate remains."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -1754,9 +1795,9 @@
       "total": 4,
       "deferred": 2
     },
-    "done": 23,
+    "done": 24,
     "total": 33,
-    "active_remaining": 5,
+    "active_remaining": 4,
     "deferred": 5,
     "active_numbered": 10,
     "in_progress": 1,
@@ -1772,7 +1813,7 @@
       ]
     },
     "e4": {
-      "done": 1,
+      "done": 2,
       "total": 4,
       "in_progress": 1,
       "items": [
