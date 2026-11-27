@@ -1,0 +1,24 @@
+name: TerraForge isolated multiscale Smooth reference
+on:
+  push:
+    branches: [experiment/terraforge-smooth-multiscale]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smooth-reference:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compare Q1 box filter and Q4 detail-preserving candidate
+        working-directory: tools/terrain3d_runtime/experiments/smooth_multiscale
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -u test_smooth_reference.py 2>&1 | tee "$RUNNER_TEMP/smooth-reference.log"
+          grep -q TF_SMOOTH_SCALES_OK "$RUNNER_TEMP/smooth-reference.log"
+          grep -q TF_SMOOTH_MASK_OK "$RUNNER_TEMP/smooth-reference.log"

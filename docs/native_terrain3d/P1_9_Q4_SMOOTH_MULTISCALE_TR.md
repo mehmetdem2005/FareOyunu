@@ -1,0 +1,5 @@
+# Q4 — Çok ölçekli Smooth (sayısal referans deney)
+
+Q1 C++ filtreyi değiştirmeden önce ayrı dalda fiziksel ölçekli iki mod doğrulanıyor. Macro: ince yüzey ortalamasını çıkar, iki geniş kutu geçişiyle kaba formu yumuşat, ince artık sinyalinin %90'ını geri ekle. Fine: küçük komşulukla mikro pürüzleri azalt, geniş tepeleri koru. Mevcut Q1 tek kutu sayısal referansı aynı fixture üzerinde kıyaslanır. 24m yarıçap, .25m örnek aralığı, sentetik tepe ve 2m dalga; test tepe azalması, mikro dalga genliği, sabit yüzey, maskeli hücreler ve fırça dışı değişmezliği kapsar.
+
+Henüz Python sayısal prototipi; Godot, C++ native, GPU veya Android performansı ölçülmüyor. Maskeli ortalama delikleri değiştirmez ama ayrı yüzeyler arasında filtre etkisi aktarabilir; topology-aware sınır testi sonraki adımdır. İki kutu geçişi yaklaşık Gaussian, gerçek izotropi garanti edilmez. Halo ihtiyacı Q1'den geniş; native bellek ve hesap bütçesi ayrıca test edilmeden entegrasyon yok. Fine/macro seçim UI'sı henüz yok. Q3 ayrı dalda.
