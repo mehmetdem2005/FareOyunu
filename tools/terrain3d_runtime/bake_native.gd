@@ -69,7 +69,7 @@ func _ready() -> void:
 	# Precompute identical Godot mip chains offline. Keep original pixels and format.
 	# Uncompressed Image resources: avoid PNG decode and mip generation on the phone.
 	for kind: String in ["soil","rock","sand","grass"]:
-		var pixels := Image.load_from_file("res://world/"+kind+".png")
+		var pixels := Runtime.read_source_png(kind)
 		if pixels == null or pixels.is_empty() or pixels.generate_mipmaps() != OK:
 			fail("surface mip generation "+kind)
 			return

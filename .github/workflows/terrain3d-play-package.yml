@@ -37,7 +37,7 @@ jobs:
         run: |
           set -euo pipefail
           project="$GITHUB_WORKSPACE/tools/terrain3d_runtime"
-          xvfb-run -a godot --path "$project" --editor --import --quit --rendering-method gl_compatibility --rendering-driver opengl3 2>&1 | tee "$RUNNER_TEMP/native-import.log"
+          xvfb-run -a godot --path "$project" --editor --import --quit --rendering-method gl_compatibility --rendering-driver opengl3 --audio-driver Dummy 2>&1 | tee "$RUNNER_TEMP/native-import.log"
           if grep -Eq 'SCRIPT ERROR:|Parse Error:' "$RUNNER_TEMP/native-import.log"; then
             echo "Script import failed; stopping before native bake."
             exit 1

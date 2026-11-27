@@ -102,7 +102,7 @@ func initialize(camera: Camera3D, collision_target: Node3D, spacing: float, prof
 				if baked:
 					pixels = ResourceLoader.load("res://world/"+kind+"_mips.res", "Image", ResourceLoader.CACHE_MODE_IGNORE) as Image
 				else:
-					pixels = Image.load_from_file("res://world/"+kind+".png")
+					pixels = read_source_png(kind)
 				if pixels == null or pixels.is_empty() or (baked and not pixels.has_mipmaps()):
 					terrain.free()
 					terrain = null
@@ -226,3 +226,12 @@ func load_baked_regions(manifest: Dictionary) -> Error:
 	if render_profile == "world":
 		terrain.get("material").call("set_show_checkered",false)
 	return OK
+
+## Raw source only for offline baking / legacy non-baked profile.
+## The Android playable path uses the verified precomputed Image resources.
+static func read_source_png(kind: String) -> Image:
+	var image := Image.new()
+	var bytes := FileAccess.get_file_as_bytes("res://world/"+kind+".png")
+	if bytes.is_empty() or image.load_png_from_buffer(bytes) != OK:
+		return null
+	return image
