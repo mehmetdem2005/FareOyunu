@@ -173,6 +173,7 @@ jobs:
           ! grep -Eq 'SCRIPT ERROR:|Parse Error:|NATIVE_EDITOR_BRUSH_FAIL|Shader compilation failed' "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_SMOOTH_OK" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_MULTISCALE_OK" "$RUNNER_TEMP/native-editor-brush.log"
+          grep -q "NATIVE_EDITOR_SMOOTH_UI_OK" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_NATIVE_BATCH_OK lower=true flatten=true undo=true" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_STROKE_QUEUE_OK dabs=11" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_UPLOAD_PROFILE_OK case=0" "$RUNNER_TEMP/native-editor-brush.log"

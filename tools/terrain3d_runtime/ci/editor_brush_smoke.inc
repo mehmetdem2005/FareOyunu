@@ -273,6 +273,48 @@ func _ci_editor_brush_smoke() -> void:
         get_tree().quit(1)
         return
     print("NATIVE_EDITOR_MULTISCALE_OK peaks=",peak_plain," retention=",retention," plan_us=",mode_times)
+    # Actual panel selection -> captured gesture mode -> scheduler -> native write.
+    _tool_select.select(2)
+    _on_tool_changed(2)
+    if not _advanced_row.visible or not _smooth_mode.visible or _weather_mode.visible or _smooth_mode.get_item_count()!=3:
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: Smooth panel")
+        get_tree().quit(1)
+        return
+    for mode in [0,1,2]:
+        _smooth_mode.select(mode)
+        _refresh_tool_help()
+        if _tool_help.text.is_empty():
+            push_error("NATIVE_EDITOR_BRUSH_FAIL: Smooth help")
+            get_tree().quit(1)
+            return
+        var expected_plan: Dictionary = data.call("tf_plan_brush",Vector2(center.x,center.z),2,24.0,6.0,0.0,mode)
+        var center_key := Vector2i(roundi(center.x/spacing),roundi(center.z/spacing))
+        if not str(expected_plan["error"]).is_empty() or not expected_plan["changes"].has(center_key):
+            push_error("NATIVE_EDITOR_BRUSH_FAIL: Smooth UI reference plan")
+            get_tree().quit(1)
+            return
+        _brush.begin()
+        _corridor_tool=2
+        _corridor_radius=24.0
+        _corridor_power=6.0
+        _stroke_active=true
+        _begin_basic()
+        _smooth_mode.select((mode+1)%3)
+        _offer_basic(Vector2(center.x,center.z))
+        _finish_stroke(true)
+        _pump_basic()
+        if _stroke_active or _basic_dabs!=1 or float(data.call("get_height",center))!=float(expected_plan["changes"][center_key]) or _brush.undo()!="Native undo applied." or float(data.call("get_height",center))!=smooth_peak:
+            push_error("NATIVE_EDITOR_BRUSH_FAIL: Smooth UI mode "+str(mode))
+            get_tree().quit(1)
+            return
+    _smooth_mode.select(0)
+    _tool_select.select(8)
+    _on_tool_changed(8)
+    if _smooth_mode.visible or not _weather_mode.visible:
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: Smooth shared row")
+        get_tree().quit(1)
+        return
+    print("NATIVE_EDITOR_SMOOTH_UI_OK modes=3 frozen=true undo=true")
     var previous_data_id: int = data.get_instance_id()
     var previous_directory := str(_active.get("data_directory"))
     _save_active()

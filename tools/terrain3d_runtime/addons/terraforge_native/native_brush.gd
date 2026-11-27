@@ -97,7 +97,7 @@ func begin() -> void:
 	last_dab_ms = -100000
 	last_dab_duration_ms = 0
 
-func dab(hit: Vector3, tool: int, radius: float, power: float, scheduled: bool = false) -> String:
+func dab(hit: Vector3, tool: int, radius: float, power: float, scheduled: bool = false, smooth_mode: int = 0) -> String:
 	last_changed_cells = 0
 	if tool<0 or tool>3 or not hit.is_finite() or not is_finite(radius) or radius<=0 or not is_finite(power):
 		return "Unsupported native brush."
@@ -134,7 +134,7 @@ func dab(hit: Vector3, tool: int, radius: float, power: float, scheduled: bool =
 	if not data.has_method("tf_plan_brush") or not data.has_method("tf_write_brush"):
 		return "Native batch extension missing; install matching package."
 	var plan_started := Time.get_ticks_usec()
-	var planned: Dictionary = data.call("tf_plan_brush",center,tool,radius,power,flatten_height)
+	var planned: Dictionary = data.call("tf_plan_brush",center,tool,radius,power,flatten_height,smooth_mode)
 	last_plan_us=Time.get_ticks_usec()-plan_started
 	last_filter_half_width_m=float(planned.get("filter_half_width_m",0.0))
 	if not str(planned["error"]).is_empty():

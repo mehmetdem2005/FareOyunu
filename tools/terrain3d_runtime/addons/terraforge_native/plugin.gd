@@ -33,6 +33,8 @@ var _layer_restore: Button
 var _advanced_row: HBoxContainer
 var _advanced_label: Label
 var _stamp_preset: OptionButton
+var _smooth_mode: OptionButton
+var _smooth_mode_at_press := 0
 var _weather_mode: OptionButton
 var _weather_mode_at_press := 0
 var _ramp_rise: SpinBox
@@ -198,6 +200,17 @@ func _enter_tree() -> void:
     _ramp_rise.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     _advanced_row.add_child(_ramp_rise)
     _ramp_rise.visible = false
+    _smooth_mode = OptionButton.new()
+    _smooth_mode.add_item("Klasik",0)
+    _smooth_mode.add_item("Geniş ölçek",1)
+    _smooth_mode.add_item("İnce pürüz",2)
+    _smooth_mode.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    _advanced_row.add_child(_smooth_mode)
+    _smooth_mode.visible = false
+    _smooth_mode.get_popup().set_item_tooltip(0,"Genel yüzey yumuşatma.")
+    _smooth_mode.get_popup().set_item_tooltip(1,"Ana arazi şeklini yumuşatır, küçük ayrıntıları korur. Daha ağır hesaplama.")
+    _smooth_mode.get_popup().set_item_tooltip(2,"Küçük pürüzleri giderir, büyük arazi şeklini korur.")
+    _smooth_mode.item_selected.connect(func(_index: int): _refresh_tool_help())
     _weather_mode = OptionButton.new()
     _weather_mode.add_item("Yamaç Aşınması",0)
     _weather_mode.add_item("Su Aşınması",1)
@@ -399,11 +412,12 @@ func _view_profile_changed(index: int) -> void:
 func _on_tool_changed(tool: int) -> void:
     _finish_stroke()
     _current_tool = tool
-    _advanced_row.visible = tool==8
-    _advanced_label.text = "Yöntem" if tool==8 else "Şekil"
+    _advanced_row.visible = tool in [2,8]
+    _advanced_label.text = "Yöntem" if tool in [2,8] else "Şekil"
     _stamp_preset.visible = false
     _ramp_rise.visible = false
     _weather_mode.visible = tool==8
+    _smooth_mode.visible = tool==2
     _refresh_tool_help()
     if tool==8:
         _set_status("Weather: touch area, release to apply one pass.")
@@ -418,6 +432,9 @@ func _refresh_tool_help() -> void:
         _tool_help.text="Bir araç seç."
         return
     var description := _tool_select.get_popup().get_item_tooltip(index)
+    if index==2 and is_instance_valid(_smooth_mode):
+        description=_smooth_mode.get_popup().get_item_tooltip(clampi(_smooth_mode.selected,0,2))
+        _smooth_mode.tooltip_text=description
     if index==8 and is_instance_valid(_weather_mode):
         description="Dokun ve bırak. "+_weather_mode.get_popup().get_item_tooltip(clampi(_weather_mode.selected,0,1))
     _tool_help.text=description
@@ -803,6 +820,7 @@ func _begin_basic() -> void:
     _basic_error = ""
     _basic_dabs = 0
     _basic_max_us = 0
+    _smooth_mode_at_press = _smooth_mode.get_selected_id() if _corridor_tool==2 else 0
     _basic_accepting = _stroke_sampler.begin(maxf(float(_active.get("vertex_spacing")),_corridor_radius*0.2))
 
 func _offer_basic(point: Vector2) -> void:
@@ -823,7 +841,7 @@ func _pump_basic() -> void:
     if _stroke_sampler.pending_count()>0:
         var point: Vector2 = _stroke_sampler.take_next()
         var started := Time.get_ticks_usec()
-        var error := _brush.dab(Vector3(point.x,0.0,point.y),_corridor_tool,_corridor_radius,_corridor_power,true)
+        var error := _brush.dab(Vector3(point.x,0.0,point.y),_corridor_tool,_corridor_radius,_corridor_power,true,_smooth_mode_at_press)
         _basic_max_us = maxi(_basic_max_us,Time.get_ticks_usec()-started)
         _basic_dabs += 1
         _changed_count += _brush.last_changed_cells
