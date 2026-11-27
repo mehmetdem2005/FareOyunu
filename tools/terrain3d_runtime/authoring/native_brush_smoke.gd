@@ -53,6 +53,13 @@ func _run() -> void:
 	await process_frame
 	var brush := Brush.new()
 	brush.attach(terrain)
+	# Match the user brush radius/power on the interior of one region.
+	var inside := Vector3(64,0,64)
+	brush.begin()
+	var interior_error := brush.dab(inside,0,8.0,3.0)
+	brush.end()
+	check(interior_error.is_empty() and brush.last_changed_cells>0 and absf(float(data.call("get_height",inside))-3.0)<0.00001,"8m interior raise: "+interior_error)
+	check(brush.undo()=="Native undo applied." and is_zero_approx(float(data.call("get_height",inside))),"8m interior undo")
 	var center := Vector3(128,0,64)
 	var left := Vector3(127.75,0,64)
 	var hit: Vector3 = terrain.call("get_intersection",center+Vector3.UP*20.0,Vector3.DOWN,false)

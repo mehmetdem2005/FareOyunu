@@ -571,12 +571,12 @@ func _paint_at(camera: Camera3D, position: Vector2) -> void:
         return
     _hit_count += 1
     var result := _brush.dab(hit,_tool_select.selected,float(_radius.value),float(_strength.value))
-    if _brush.last_changed_cells>0:
-        _changed_count += _brush.last_changed_cells
+    _changed_count += _brush.last_changed_cells
+    if not result.is_empty():
+        _last_input_result = result
+    elif _brush.last_changed_cells>0:
         _last_input_result = "Edited %d samples in last dab." % _brush.last_changed_cells
         _brush_button.tooltip_text = _last_input_result
-    elif not result.is_empty():
-        _last_input_result = result
     else:
         _last_input_result = "Surface hit; no new height change (spacing/flat tool/edge)."
     _brush_button.tooltip_text = _last_input_result

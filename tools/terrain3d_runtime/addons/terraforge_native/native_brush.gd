@@ -13,6 +13,7 @@ var redo_history: Array[Dictionary] = []
 var last_hit := Vector2(INF,INF)
 var flatten_height := NAN
 var last_changed_cells := 0
+var region_error := ""
 
 func attach(node: Node3D) -> void:
 	terrain = node
@@ -21,39 +22,51 @@ func attach(node: Node3D) -> void:
 	history.clear()
 	redo_history.clear()
 
+# Resolve live native resources through the native active-region list. The
+# engine, not a GDScript Image copy, owns the height map and its grid size.
 func _regions() -> Dictionary:
+	region_error = ""
 	var result := {}
 	if not is_instance_valid(terrain):
+		region_error = "No native terrain attached."
 		return result
 	var data: Object = terrain.get("data")
 	if data == null:
+		region_error = "Native data object missing."
 		return result
-	var locations: Array = data.call("get_region_locations")
-	if locations.is_empty() or locations.size()>64:
+	var count := int(data.call("get_region_count"))
+	if count < 1 or count > 64:
+		region_error = "Native region count %d outside 1..64." % count
+		return result
+	var active: Array = data.call("get_regions_active",false,false)
+	if active.size()!=count:
+		region_error = "Native active list %d != count %d." % [active.size(),count]
 		return {}
 	var size := int(terrain.call("get_region_size"))
-	for loc: Vector2i in locations:
-		var reg: Resource = data.call("get_region",loc)
-		if reg == null:
+	for reg in active:
+		if not is_instance_valid(reg) or not reg.has_method("get_location"):
+			region_error = "Native active region resource missing."
 			return {}
-		var img: Image = reg.call("get_height_map")
-		if img == null or img.get_format()!=Image.FORMAT_RF or img.get_size()!=Vector2i(size,size):
+		var loc: Vector2i = reg.call("get_location")
+		if result.has(loc):
+			region_error = "Duplicate native location %s." % str(loc)
 			return {}
-		result[loc]={"region":reg,"image":img}
+		result[loc]={"region":reg}
 	return result
 
 func _loc(p: Vector2i, size: int) -> Vector2i:
 	return Vector2i(floori(float(p.x)/size),floori(float(p.y)/size))
 
+func _world(p: Vector2i, spacing: float) -> Vector3:
+	return Vector3(p.x*spacing,0,p.y*spacing)
+
 func _sample(regions: Dictionary, p: Vector2i, size: int, spacing: float, data: Object) -> float:
-	var loc := _loc(p,size)
-	if not regions.has(loc):
+	if not regions.has(_loc(p,size)):
 		return NAN
-	# Preserve native holes. Use native bitfield API, not float-to-int conversion.
-	if bool(data.call("get_control_hole",Vector3(p.x*spacing,0,p.y*spacing))):
+	var pos := _world(p,spacing)
+	if bool(data.call("get_control_hole",pos)):
 		return NAN
-	var img: Image = regions[loc]["image"]
-	return img.get_pixelv(p-loc*size).r
+	return float(data.call("get_height",pos))
 
 func begin() -> void:
 	before = {}
@@ -67,10 +80,12 @@ func dab(hit: Vector3, tool: int, radius: float, power: float) -> String:
 		return "Unsupported native brush."
 	var regions := _regions()
 	if regions.is_empty():
-		return "No editable native regions."
+		return region_error
 	var size := int(terrain.call("get_region_size"))
 	var spacing := float(terrain.get("vertex_spacing"))
 	var data: Object = terrain.get("data")
+	if size <= 0 or not is_finite(spacing) or spacing <= 0.0:
+		return "Native grid invalid: %d / %.3f." % [size,spacing]
 	var center := Vector2(hit.x,hit.z)
 	if last_hit.is_finite() and center.distance_to(last_hit)<maxf(spacing,radius*0.2):
 		return ""
@@ -124,38 +139,53 @@ func dab(hit: Vector3, tool: int, radius: float, power: float) -> String:
 		return "Stroke budget reached; release and continue."
 	before.merge(originals)
 	if not changes.is_empty():
-		_write(regions,changes,size,true)
-		last_changed_cells = changes.size()
+		var write_error := _write(regions,changes,size,true)
+		if not write_error.is_empty():
+			return write_error
 	last_hit = center
+	if changes.is_empty() and tool == 0:
+		return "Raise: no editable samples at %.2f, %.2f (grid %d / %.2fm)." % [hit.x,hit.z,size,spacing]
 	return ""
 
-func _write(regions: Dictionary, values: Dictionary, size: int, record: bool) -> void:
+func _write(regions: Dictionary, values: Dictionary, size: int, record: bool) -> String:
 	var bounds := {}
+	var data: Object = terrain.get("data")
+	var spacing := float(terrain.get("vertex_spacing"))
+	var write_failures := 0
+	var written := 0
 	for p: Vector2i in values:
 		var loc := _loc(p,size)
-		var img: Image = regions[loc]["image"]
-		var pixel := p-loc*size
-		img.set_pixelv(pixel,Color(values[p],0,0,1))
-		var h := img.get_pixelv(pixel).r
+		var pos := _world(p,spacing)
+		var old := float(data.call("get_height",pos))
+		data.call("set_height",pos,float(values[p]))
+		var height := float(data.call("get_height",pos))
+		# RF rounds to float32. Validate actual native readback, not planned edits.
+		if not is_finite(height) or not is_equal_approx(height,float(values[p])):
+			write_failures += 1
+		if not is_finite(height) or height==old:
+			continue
+		written += 1
 		if record:
-			after[p]=h
+			after[p]=height
 		var reg: Resource = regions[loc]["region"]
 		var limits: Vector2 = bounds[loc] if bounds.has(loc) else reg.call("get_height_range")
-		bounds[loc]=Vector2(minf(limits.x,h),maxf(limits.y,h))
-	# Conservatively expand the region bounds. Never shrink until explicit save.
-	# No full RF image scan on each dab; only edited height layers uploaded.
-	var data: Object = terrain.get("data")
-	for loc: Vector2i in bounds:
-		var reg: Resource = regions[loc]["region"]
-		reg.call("set_height_range",bounds[loc])
-		reg.call("set_modified",true)
-		reg.call("set_edited",true)
-	data.call("calc_height_range",false)
-	data.call("update_maps",0,false,false)
-	for loc: Vector2i in bounds:
-		regions[loc]["region"].call("set_edited",false)
-	# Runtime dynamic collision observes changed heights on next native snap.
-	terrain.call("snap")
+		bounds[loc]=Vector2(minf(limits.x,height),maxf(limits.y,height))
+	if not bounds.is_empty():
+		for loc: Vector2i in bounds:
+			var reg: Resource = regions[loc]["region"]
+			reg.call("set_height_range",bounds[loc])
+			reg.call("set_modified",true)
+			reg.call("set_edited",true)
+		data.call("calc_height_range",false)
+		data.call("update_maps",0,false,false)
+		for loc: Vector2i in bounds:
+			regions[loc]["region"].call("set_edited",false)
+		terrain.call("snap")
+	if record:
+		last_changed_cells = written
+	if write_failures>0:
+		return "Native write readback mismatch: %d/%d." % [write_failures,values.size()]
+	return ""
 
 func end() -> void:
 	if not after.is_empty():
@@ -181,8 +211,7 @@ func _apply(values: Dictionary) -> bool:
 	for p: Vector2i in values:
 		if not is_finite(_sample(regions,p,size,spacing,data)):
 			return false
-	_write(regions,values,size,false)
-	return true
+	return _write(regions,values,size,false).is_empty()
 
 func undo() -> String:
 	if history.is_empty():
@@ -212,13 +241,16 @@ func _filename(loc: Vector2i) -> String:
 func save_snapshot() -> String:
 	var regions := _regions()
 	if regions.is_empty():
-		return "No supported native regions."
+		return region_error
 	var folder := "res://terraforge_data/native_"+Crypto.new().generate_random_bytes(12).hex_encode()
 	if DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(folder)) != OK:
 		return "Cannot create snapshot folder."
 	# Manual operation. Preserve previous directory; no destructive overwrite.
 	for loc: Vector2i in regions:
 		var reg: Resource = regions[loc]["region"]
+		var source: Image = reg.call("get_height_map")
+		if source == null or source.get_format()!=Image.FORMAT_RF or source.get_size()!=Vector2i(int(terrain.call("get_region_size")),int(terrain.call("get_region_size"))):
+			return "Save blocked: native RF image metadata mismatch at %s." % str(loc)
 		reg.call("calc_height_range")
 		var path := folder.path_join(_filename(loc))
 		var err := ResourceSaver.save(reg,path,ResourceSaver.FLAG_COMPRESS)
