@@ -21,9 +21,10 @@ jobs:
         run: |
           set -euo pipefail
           cd tools/terrain3d_runtime
-          zip -q -r "$RUNNER_TEMP/TerraForge-Play-Godot.zip" project.godot play.tscn play.gd terrain_runtime.gd import_source.gd addons shaders README.md
-          unzip -t "$RUNNER_TEMP/TerraForge-Play-Godot.zip"
+          mkdir -p "$RUNNER_TEMP/TerraForge-Play-Godot"
+          cp -a project.godot play.tscn play.gd terrain_runtime.gd import_source.gd addons shaders README.md "$RUNNER_TEMP/TerraForge-Play-Godot/"
       - uses: actions/upload-artifact@v4
         with:
           name: TerraForge-Play-Godot
-          path: ${{ runner.temp }}/TerraForge-Play-Godot.zip
+          path: ${{ runner.temp }}/TerraForge-Play-Godot/
+          include-hidden-files: true
