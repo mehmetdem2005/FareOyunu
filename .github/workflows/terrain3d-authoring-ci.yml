@@ -1,0 +1,34 @@
+name: TerraForge authoring correctness
+on:
+  push:
+    branches: [feat/terraforge-authoring-flow-micro, feat/terraforge-terrain3d-runtime]
+    paths: ["tools/terrain3d_runtime/authoring/**", ".github/workflows/terrain3d-authoring-ci.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  authoring:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        case: [ridge, flow, micro]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: solarlabyrinth/action-setup-godot@v3
+        with:
+          version: 4.7.2-stable
+          export-templates: false
+          name: godot
+      - name: Validate isolated Float32 authoring kernels (not a benchmark)
+        shell: bash
+        run: |
+          set -euo pipefail
+          project="$RUNNER_TEMP/authoring"
+          mkdir -p "$project/authoring"
+          cp tools/terrain3d_runtime/authoring/*.gd "$project/authoring/"
+          printf '[application]\nconfig/name="Authoring correctness"\n' > "$project/project.godot"
+          godot --headless --path "$project" --script res://authoring/correctness.gd -- ${{ matrix.case }} 2>&1 | tee "$RUNNER_TEMP/authoring.log"
+          grep -q AUTHORING_CORRECTNESS_PASS "$RUNNER_TEMP/authoring.log"
+          ! grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' "$RUNNER_TEMP/authoring.log"
