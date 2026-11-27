@@ -3,7 +3,7 @@
 Onay: 27 Kasım 2026, kullanıcı mevcut oynanabilir sürümü beğendi ve bu planın eski planlardan ayrı kaydedilmesini istedi.
 Dal: `feat/terraforge-terrain3d-runtime`
 Kararlı referans (kullanıcının oynadığı Dört Havza V2): `fdbf49b2b5c1e0133a050e2a5f5592011f1fbf2c`.
-Durum: P1.5 native temel gerçek cihazda çalıştı; P1.6.1–7 paket/uygulama hedefleri tamamlandı (7/43); yeni runtime cihaz doğrulaması açık. P1.7.1–4 kaynak/uygulama ve paket hedefleri tamamlandı (11/43). P1.7.5–8 mevcut resident dünya için koşullu ertelendi, tamamlanmış sayılmadı; P1.7.9 paket doğrulandı (12/43). Sıradaki P1.7.10.
+Durum: P1.5 native temel gerçek cihazda çalıştı; P1.6.1–7 paket/uygulama hedefleri tamamlandı (7/43); yeni runtime cihaz doğrulaması açık. P1.7.1–4 kaynak/uygulama ve paket hedefleri tamamlandı (11/43). P1.7.5–8 mevcut resident dünya için koşullu ertelendi, tamamlanmış sayılmadı; P1.7.9 paket doğrulandı (12/43). P1.7.10 paket başarılı; P1.8.1 kaynak analizi tamamlandı (14/43). Sıradaki P1.8.2.
 Bu belge bu dalın TEK aktif geliştirme planıdır. Eski `addons/terra_forge/` altındaki özel CPU mesh/worker mimarisi planları tarihsel referanstır; görev sırası, faz numaraları ve başarı ölçütleri buraya taşınmaz. Orijinal dal `feat/terraforge-mobile-addon` korunur.
 
 ## Başlangıç noktası ve kararlar
@@ -36,11 +36,11 @@ Hedef: ilk fiziksel zemin 6,71 s bazına göre iyileşsin; saniyelik donmaların
 - [ ] 1.7.7 Yükleme/boşaltma mesafelerinde histerezis — runtime eviction yok; streaming koşullu.
 - [ ] 1.7.8 Kare başına yükleme bütçesi — runtime yükleme kuyruğu yok; streaming koşullu, başlangıç GPU upload ayrı.
 - [x] 1.7.9 (paket doğrulandı; cihaz fizik davranışı açık) Fizik bölgelerini koruma: eksiksiz resident set ve mevcut fizik probe doğruluğu.
-- [ ] 1.7.10 (aday; shader sınır güvenliği ve coverage raporu; görsel cihaz doğrulaması açık) Uzak arazinin kesintisiz görünmesini sağlama.
+- [x] 1.7.10 (paket doğrulandı; görsel cihaz doğrulaması açık) Uzak arazinin kesintisiz görünmesini sağlama.
 Native 1.1 aktif bölgeleri GPU belleğinde tutuyor. GPU texture array yeniden oluşturma maliyeti ölçülmeden streaming ana sürüme kabul edilmez. Görsel LOD Terrain3D'ye ait kalır; disk önbelleği ile fizik alanı ve görsel alan birbirinden ayrılır. Uzak siluet kaybolması ve fizik boşluğu kabul edilmez; çözüm fizibilitesi açık.
 
 ## P1.8 — Profesyonel LOD ve çizim optimizasyonu (8 adım)
-- [ ] 1.8.1 LOD profillerinin maliyet analizi.
+- [x] 1.8.1 LOD profillerinin kaynak/topoloji maliyet analizi (cihaz ölçümü açık).
 - [ ] 1.8.2 Cihaz performansına göre adaptif görüş mesafesi.
 - [ ] 1.8.3 LOD geçişlerinde titreşim ve şekil değişimi kontrolü.
 - [ ] 1.8.4 Horizon culling fizibilitesi.
@@ -92,3 +92,5 @@ Kullanıcı şartı: yakın grafik kalitesi bozulmadan akıcı FPS ve düşük g
 Arka plan iş yükü de maliyet sayılır: öncelik gereksiz işi tamamen kaldırmak ve offline hazırlamak; ölçülmemiş worker, agresif prefetch ve sınırsız kuyruk eklenmez.
 
 P1.7.1 kararı: [NATIVE_RESIDENCY_AUDIT_TR.md](NATIVE_RESIDENCY_AUDIT_TR.md). Mevcut dünya resident kalır; naive add/remove streaming reddedildi. P1.7.4–8 gereklilik ve ölçüm koşullu; gereksiz worker/cache/prefetch oluşturma. 8/43.
+
+P1.8.1 kararları: [NATIVE_LOD_COST_AUDIT_TR.md](NATIVE_LOD_COST_AUDIT_TR.md). 16/7/0.25 korunur, native snap gereksiz transform adayını ayrı incele, yürürken mesh rebuild yaptırma.
