@@ -85,6 +85,27 @@ jobs:
           timeout 120s xvfb-run -a godot --path "$package" --editor --import --quit --rendering-method gl_compatibility --rendering-driver opengl3 --audio-driver Dummy 2>&1 | tee "$RUNNER_TEMP/packaged-editor.log"
           ! grep -Ei 'SCRIPT ERROR:|Parse Error:|Parser Error:|Compile Error:|Failed to load script|Unable to load addon script|Error loading addon' "$RUNNER_TEMP/packaged-editor.log"
           grep -Fq 'enabled=PackedStringArray("res://addons/terraforge_native/plugin.cfg")' "$package/project.godot"
+          # Exercise actual @tool editor lifecycle, not only a game SceneTree.
+          # Inject only into the temporary CI package, then restore exact source.
+          plugin="$package/addons/terraforge_native/plugin.gd"
+          cp "$plugin" "$RUNNER_TEMP/native-plugin-original.gd"
+          trap 'cp "$RUNNER_TEMP/native-plugin-original.gd" "$plugin"' EXIT
+          python3 - "$plugin" "$GITHUB_WORKSPACE/tools/terrain3d_runtime/ci/editor_brush_smoke.inc" <<'PY'
+          import sys
+          from pathlib import Path
+          plugin, snippet = map(Path, sys.argv[1:])
+          src = plugin.read_text()
+          needle = "    call_deferred(\"_on_selection_changed\")"
+          assert needle in src
+          src = src.replace(needle, needle + "\n    call_deferred(\"_ci_editor_brush_smoke\")", 1)
+          plugin.write_text(src + "\n" + snippet.read_text())
+          PY
+          timeout 120s xvfb-run -a godot --path "$package" --editor res://terraforge_workspace.tscn --rendering-method gl_compatibility --rendering-driver opengl3 --audio-driver Dummy 2>&1 | tee "$RUNNER_TEMP/native-editor-brush.log"
+          grep -q 'NATIVE_EDITOR_BRUSH_OK regions=1 radius=8 power=3 changed=' "$RUNNER_TEMP/native-editor-brush.log"
+          ! grep -Eq 'SCRIPT ERROR:|Parse Error:|NATIVE_EDITOR_BRUSH_FAIL|Shader compilation failed' "$RUNNER_TEMP/native-editor-brush.log"
+          cp "$RUNNER_TEMP/native-plugin-original.gd" "$plugin"
+          trap - EXIT
+          cmp "$plugin" "$GITHUB_WORKSPACE/tools/terrain3d_runtime/addons/terraforge_native/plugin.gd"
           rm -rf "$package/.godot"
           echo "TERRAFORGE_NATIVE_EDITOR_PACKAGED"
       - uses: actions/upload-artifact@v4
