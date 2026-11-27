@@ -1,5 +1,12 @@
 # TerraForge Mobile — YENİ SOHBETTE BURADAN BAŞLA
 
+## 27 Kasım 2026 — Redmi Note 8 Pro 60/60 profil doğrulaması
+
+`20f114aa3948` ile 60/60 profil, 62 ayrıntı ve sıfır kesinti. Önceki 147/147 telefon regresyonu aynı terrain ağacına ait. 56 normal profilin toplu ortalaması 53,12 FPS. İlk 13 profilde 42,32 FPS ve 33,33 ms’yi aşan %18,79 kare var. Profil 14–56’da 56,38 FPS ve %0,20 geç kare var. Bu farkın nedeni ölçülmedi. Normal profillerin 43/56’sı 33,33 ms p95 sınırını karşıladı ve 56/56’sı 50 ms p99 sınırını karşıladı. [Karar defteri](P1_5_11_DECISION_LEDGER.json)
+
+- F 16→32 sayfa eşleştirmelerinde kabul edilen okuma %55–60 azaldı, mesh sayısı %6–29 arttı. Eşleştirilmiş FPS 47,19→43,27 ve 55,73→55,42. I-H/32, F/32’ye göre %33–36 az okuma ve %12–19 fazla mesh üretti. İki FPS sonucu +%0,75 ve −%1,11. Bu oturum için ölçülen iş üretimi ve kare süresi ayrı değerlendirilir.
+- Sıradaki cihaz işi aynı pakette **Dayanıklılık** seçeneğiyle 30 dakika F / 32 sayfa. Cihaz bellek ve termal değerlendirmesi dayanıklılık raporuyla devam eder. Profildeki RSS ve termal ölçümler cihazdan gelmedi. [Paket](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45968613300/artifacts/15183853223)
+
 ## 27 Kasım 2026 — Redmi Note 8 Pro 147/147 ve ayrı profil oturumu
 
 Tam oturumda 147 regresyonun tamamı geçti. Eksik yükseklik, eksik katman ve bozuk katman kayıtları üç beklenen veri koruma testiyle eşleşti. Optimize M9 dört test ve 12 rota boyunca 8.640 fizik adımı kaydetti. Eksik ray ve havada kalma sıfır. Android üçüncü performans profili sırasında duraklama bildirdi. İki tamamlanmış profil ve 152 ayrıntı kaydı korundu. İlk ABBA bloğu eksik kaldığı için kare hızı kararı açık. [Karar defteri](P1_5_11_DECISION_LEDGER.json)

@@ -40,9 +40,9 @@
     }
   },
   "device_gate": {
-    "status": "PHONE_REGRESSIONS_COMPLETE_FULL_PROFILES_AND_SOAK_OPEN",
+    "status": "PHONE_REGRESSIONS_AND_PROFILE_MATRIX_COMPLETE_SOAK_OPEN",
     "baseline": "P1_5_11_ANDROID_BASELINE.json",
-    "note": "All 147 tests passed on the Redmi Note 8 Pro. Android paused profile 3 and the report preserved two completed profiles. The 60-profile matrix can now be run in a fresh session without repeating regressions.",
+    "note": "Preserve the 147/147 Android regression session and all 60 profiles on the same terrain tree. The first 13 profiles ran at a lower frame-rate regime. Next qualification run is the 30-minute F/32 sweep.",
     "quick_report": "P1_5_11_ANDROID_QUICK_20261126.json"
   },
   "experiments": [
@@ -1925,9 +1925,9 @@
     }
   ],
   "next": [
-    "Run the 60-profile matrix in the Yalnız profiller mode and keep the 147/147 Android regression evidence from the prior session.",
-    "Evaluate the completed ABBA/BAAB blocks before choosing an engine and cache cap for promotion.",
-    "Complete the 30-minute endurance run and record any remaining device qualification evidence."
+    "Run the existing 30-minute F/32 Dayanıklılık profile in the same package.",
+    "Evaluate the full session and endurance, including frame-budget overruns and existing guarded physics evidence, before promotion.",
+    "Keep exported runtime evidence and any additional dedicated lifecycle checks separate from the Godot editor device measurements."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -2965,7 +2965,7 @@
       }
     },
     "m10": {
-      "status": "PHONE_REGRESSION_VERIFIED_FULL_MATRIX_PENDING",
+      "status": "PHONE_REGRESSIONS_AND_60_PROFILES_VERIFIED_SOAK_OPEN",
       "sha": "f5a2cb3e1f143ad087e1aaa44881cf1eb3441cfa",
       "branch": "tools/terraforge-android-m10-preflight",
       "ci": 45840847374,
@@ -3264,7 +3264,598 @@
         "mode_timing_profiles": 56,
         "mode_observer_profiles": 4,
         "profile_seconds_device": 20,
-        "status": "CI_VERIFIED_PHONE_PROFILES_PENDING"
+        "status": "CI_AND_PHONE_60_PROFILES_VERIFIED"
+      },
+      "full_device_profile_matrix": {
+        "source_sha256": "9e8559c75d551301307a2528704cb9bb4afc2a62951406e4d729a62c057782c5",
+        "build_commit": "20f114aa394881e32a945aebe016bed7fc9f4900",
+        "terrain_commit": "5700c89dd6232a59abe80e9be95cd4a577939aac",
+        "terrain_tree": "6bfc84bf954513398cdd9407a40a948f289e9c2f",
+        "device": {
+          "adapter": "Mali-G76 MC4",
+          "cores": 8,
+          "cpu": "",
+          "display": "Android",
+          "godot": "4.7.2-stable (official)",
+          "headless": false,
+          "model": "Redmi Note 8 Pro",
+          "os": "Android",
+          "os_version": "30.V12.5.8.0.RGGMIXM",
+          "physics_hz": 60,
+          "renderer": "mobile",
+          "viewport": [
+            1812,
+            883
+          ]
+        },
+        "runtime_features": {
+          "debug": true,
+          "editor": true,
+          "release": false,
+          "template": false
+        },
+        "settings": {
+          "high_detail_distance": 72.0,
+          "job_limit": 4,
+          "max_tile_work_ms": 3.0,
+          "max_visible_tiles": 32,
+          "medium_detail_distance": 128.0,
+          "publication_budget": false,
+          "publication_byte_target": 131072,
+          "publication_time_target_us": 1000,
+          "shard_limit": 4,
+          "tile_updates_per_frame": 1,
+          "use_tile_read_view": false,
+          "view_distance": 160.0,
+          "viewport": [
+            1812,
+            883
+          ]
+        },
+        "snapshot": "53ad739a957050f3b93db7f0fdd0117b21b18be1e88b19301dab2589375eed3b",
+        "route": "normalized_sine_v1",
+        "profiles": 60,
+        "timing_profiles": 56,
+        "observer_profiles": 4,
+        "complete_details": 62,
+        "missing_details": 0,
+        "total_active_stream_seconds": 1201.162,
+        "all_timing": {
+          "profiles": 56,
+          "frames": 59506,
+          "fps": 53.119,
+          "minimum_profile_fps": 39.605,
+          "maximum_profile_fps": 57.455,
+          "over_33_33_ms_percent": 3.64,
+          "profiles_meeting_33_33_ms_p95": 43,
+          "p95_upper_bound_ms_counts": {
+            "40.0": 13,
+            "33.4": 34,
+            "25.0": 9
+          },
+          "p99_upper_bound_ms_counts": {
+            "40.0": 12,
+            "50.0": 1,
+            "33.4": 43
+          },
+          "max_frame_ms": 156.232,
+          "mean_accepted_page_reads": 804.6428571428571,
+          "mean_mesh_builds": 408.7142857142857,
+          "mean_geometry_worker_ms": 21.866,
+          "mean_pump_ms": 5.156,
+          "geometry_jobs_submitted": 26549,
+          "geometry_jobs_dropped": 3611
+        },
+        "profiles_1_to_13": {
+          "profiles": 13,
+          "frames": 11008,
+          "fps": 42.322,
+          "minimum_profile_fps": 39.605,
+          "maximum_profile_fps": 53.775,
+          "over_33_33_ms_percent": 18.786,
+          "profiles_meeting_33_33_ms_p95": 0,
+          "p95_upper_bound_ms_counts": {
+            "40.0": 13
+          },
+          "p99_upper_bound_ms_counts": {
+            "40.0": 12,
+            "50.0": 1
+          },
+          "max_frame_ms": 156.232,
+          "mean_accepted_page_reads": 669.6153846153846,
+          "mean_mesh_builds": 322.7692307692308,
+          "mean_geometry_worker_ms": 23.143,
+          "mean_pump_ms": 5.696,
+          "geometry_jobs_submitted": 4989,
+          "geometry_jobs_dropped": 779
+        },
+        "profiles_14_to_56": {
+          "profiles": 43,
+          "frames": 48498,
+          "fps": 56.384,
+          "minimum_profile_fps": 55.091,
+          "maximum_profile_fps": 57.455,
+          "over_33_33_ms_percent": 0.202,
+          "profiles_meeting_33_33_ms_p95": 43,
+          "p95_upper_bound_ms_counts": {
+            "33.4": 34,
+            "25.0": 9
+          },
+          "p99_upper_bound_ms_counts": {
+            "33.4": 43
+          },
+          "max_frame_ms": 140.271,
+          "mean_accepted_page_reads": 845.4651162790698,
+          "mean_mesh_builds": 434.69767441860466,
+          "mean_geometry_worker_ms": 21.48,
+          "mean_pump_ms": 4.993,
+          "geometry_jobs_submitted": 21560,
+          "geometry_jobs_dropped": 2832
+        },
+        "post_ready_camera_shape_gap": {
+          "profiles": 1,
+          "frames": 3,
+          "longest_ms": 66.977
+        },
+        "paired_blocks": [
+          {
+            "reference": [
+              "F",
+              16
+            ],
+            "candidate": [
+              "F",
+              32
+            ],
+            "blocks": [
+              {
+                "block": 1,
+                "fps": [
+                  47.194,
+                  43.269
+                ],
+                "accepted_page_reads": [
+                  1343,
+                  533
+                ],
+                "mesh_builds": [
+                  324,
+                  345
+                ],
+                "geometry_worker_ms": [
+                  21.207,
+                  22.788
+                ],
+                "over_33_33_ms_percent": [
+                  13.242,
+                  16.984
+                ]
+              },
+              {
+                "block": 14,
+                "fps": [
+                  55.726,
+                  55.416
+                ],
+                "accepted_page_reads": [
+                  1386.5,
+                  630.5
+                ],
+                "mesh_builds": [
+                  336,
+                  433.5
+                ],
+                "geometry_worker_ms": [
+                  26.751,
+                  22.707
+                ],
+                "over_33_33_ms_percent": [
+                  0.179,
+                  0.18
+                ]
+              }
+            ]
+          },
+          {
+            "reference": [
+              "I-G cropped",
+              16
+            ],
+            "candidate": [
+              "I-G cropped",
+              32
+            ],
+            "blocks": [
+              {
+                "block": 2,
+                "fps": [
+                  40.418,
+                  41.912
+                ],
+                "accepted_page_reads": [
+                  656.5,
+                  355
+                ],
+                "mesh_builds": [
+                  293,
+                  359
+                ],
+                "geometry_worker_ms": [
+                  24.285,
+                  22.337
+                ],
+                "over_33_33_ms_percent": [
+                  21.274,
+                  19.678
+                ]
+              },
+              {
+                "block": 13,
+                "fps": [
+                  56.249,
+                  55.904
+                ],
+                "accepted_page_reads": [
+                  1016,
+                  437.5
+                ],
+                "mesh_builds": [
+                  408,
+                  507
+                ],
+                "geometry_worker_ms": [
+                  21.372,
+                  17.803
+                ],
+                "over_33_33_ms_percent": [
+                  0.222,
+                  0.179
+                ]
+              }
+            ]
+          },
+          {
+            "reference": [
+              "I-H cropped",
+              16
+            ],
+            "candidate": [
+              "I-H cropped",
+              32
+            ],
+            "blocks": [
+              {
+                "block": 3,
+                "fps": [
+                  40.364,
+                  41.495
+                ],
+                "accepted_page_reads": [
+                  625.5,
+                  346.5
+                ],
+                "mesh_builds": [
+                  292.5,
+                  359.5
+                ],
+                "geometry_worker_ms": [
+                  23.541,
+                  20.915
+                ],
+                "over_33_33_ms_percent": [
+                  21.906,
+                  20.289
+                ]
+              },
+              {
+                "block": 12,
+                "fps": [
+                  56.682,
+                  56.284
+                ],
+                "accepted_page_reads": [
+                  1013.5,
+                  422
+                ],
+                "mesh_builds": [
+                  416,
+                  525.5
+                ],
+                "geometry_worker_ms": [
+                  20.278,
+                  17.319
+                ],
+                "over_33_33_ms_percent": [
+                  0.176,
+                  0.178
+                ]
+              }
+            ]
+          },
+          {
+            "reference": [
+              "F",
+              16
+            ],
+            "candidate": [
+              "I-G cropped",
+              16
+            ],
+            "blocks": [
+              {
+                "block": 4,
+                "fps": [
+                  48.912,
+                  56.059
+                ],
+                "accepted_page_reads": [
+                  1215.5,
+                  1037
+                ],
+                "mesh_builds": [
+                  298,
+                  402
+                ],
+                "geometry_worker_ms": [
+                  28.221,
+                  21.463
+                ],
+                "over_33_33_ms_percent": [
+                  8.227,
+                  0.446
+                ]
+              },
+              {
+                "block": 11,
+                "fps": [
+                  56.239,
+                  56.968
+                ],
+                "accepted_page_reads": [
+                  1429.5,
+                  994.5
+                ],
+                "mesh_builds": [
+                  341.5,
+                  406.5
+                ],
+                "geometry_worker_ms": [
+                  25.731,
+                  21.063
+                ],
+                "over_33_33_ms_percent": [
+                  0.178,
+                  0.176
+                ]
+              }
+            ]
+          },
+          {
+            "reference": [
+              "F",
+              16
+            ],
+            "candidate": [
+              "I-H cropped",
+              16
+            ],
+            "blocks": [
+              {
+                "block": 5,
+                "fps": [
+                  56.343,
+                  56.65
+                ],
+                "accepted_page_reads": [
+                  1441,
+                  980
+                ],
+                "mesh_builds": [
+                  342,
+                  405.5
+                ],
+                "geometry_worker_ms": [
+                  26.716,
+                  20.52
+                ],
+                "over_33_33_ms_percent": [
+                  0.177,
+                  0.176
+                ]
+              },
+              {
+                "block": 10,
+                "fps": [
+                  56.199,
+                  56.594
+                ],
+                "accepted_page_reads": [
+                  1433,
+                  1017
+                ],
+                "mesh_builds": [
+                  341,
+                  413
+                ],
+                "geometry_worker_ms": [
+                  26.741,
+                  20.299
+                ],
+                "over_33_33_ms_percent": [
+                  0.178,
+                  0.177
+                ]
+              }
+            ]
+          },
+          {
+            "reference": [
+              "F",
+              32
+            ],
+            "candidate": [
+              "I-G cropped",
+              32
+            ],
+            "blocks": [
+              {
+                "block": 6,
+                "fps": [
+                  56.758,
+                  56.62
+                ],
+                "accepted_page_reads": [
+                  642,
+                  421
+                ],
+                "mesh_builds": [
+                  457.5,
+                  531.5
+                ],
+                "geometry_worker_ms": [
+                  21.987,
+                  17.752
+                ],
+                "over_33_33_ms_percent": [
+                  0.22,
+                  0.177
+                ]
+              },
+              {
+                "block": 9,
+                "fps": [
+                  56.983,
+                  56.176
+                ],
+                "accepted_page_reads": [
+                  644.5,
+                  414.5
+                ],
+                "mesh_builds": [
+                  458.5,
+                  506
+                ],
+                "geometry_worker_ms": [
+                  22.015,
+                  18.543
+                ],
+                "over_33_33_ms_percent": [
+                  0.219,
+                  0.178
+                ]
+              }
+            ]
+          },
+          {
+            "reference": [
+              "F",
+              32
+            ],
+            "candidate": [
+              "I-H cropped",
+              32
+            ],
+            "blocks": [
+              {
+                "block": 7,
+                "fps": [
+                  56.323,
+                  56.747
+                ],
+                "accepted_page_reads": [
+                  615,
+                  413.5
+                ],
+                "mesh_builds": [
+                  447,
+                  533.5
+                ],
+                "geometry_worker_ms": [
+                  22.52,
+                  17.478
+                ],
+                "over_33_33_ms_percent": [
+                  0.178,
+                  0.176
+                ]
+              },
+              {
+                "block": 8,
+                "fps": [
+                  56.745,
+                  56.118
+                ],
+                "accepted_page_reads": [
+                  651.5,
+                  415
+                ],
+                "mesh_builds": [
+                  453,
+                  508.5
+                ],
+                "geometry_worker_ms": [
+                  21.985,
+                  17.908
+                ],
+                "over_33_33_ms_percent": [
+                  0.264,
+                  0.223
+                ]
+              }
+            ]
+          }
+        ],
+        "observer_block": {
+          "off": {
+            "profiles": 2,
+            "frames": 2282,
+            "fps": 57.04,
+            "minimum_profile_fps": 56.109,
+            "maximum_profile_fps": 57.971,
+            "over_33_33_ms_percent": 0.175,
+            "profiles_meeting_33_33_ms_p95": 2,
+            "p95_upper_bound_ms_counts": {
+              "33.4": 1,
+              "25.0": 1
+            },
+            "p99_upper_bound_ms_counts": {
+              "33.4": 2
+            },
+            "max_frame_ms": 121.518,
+            "mean_accepted_page_reads": 640.5,
+            "mean_mesh_builds": 469.5,
+            "mean_geometry_worker_ms": 20.981,
+            "mean_pump_ms": 4.908,
+            "geometry_jobs_submitted": 1095,
+            "geometry_jobs_dropped": 156
+          },
+          "on": {
+            "profiles": 2,
+            "frames": 2239,
+            "fps": 55.981,
+            "minimum_profile_fps": 55.81,
+            "maximum_profile_fps": 56.152,
+            "over_33_33_ms_percent": 0.179,
+            "profiles_meeting_33_33_ms_p95": 2,
+            "p95_upper_bound_ms_counts": {
+              "33.4": 2
+            },
+            "p99_upper_bound_ms_counts": {
+              "33.4": 2
+            },
+            "max_frame_ms": 135.195,
+            "mean_accepted_page_reads": 625.5,
+            "mean_mesh_builds": 443,
+            "mean_geometry_worker_ms": 22.835,
+            "mean_pump_ms": 5.36,
+            "geometry_jobs_submitted": 1017,
+            "geometry_jobs_dropped": 129
+          }
+        },
+        "rss_peak_sampled_bytes": null,
+        "gpu_frame_time_ms": null,
+        "thermal_status": null,
+        "decision": "Run 30-minute F/32 endurance. Both F paired cache blocks reduced accepted reads and increased mesh work at a lower measured FPS. At 32 pages I-H consistently increased mesh throughput and saved reads with mixed frame-rate deltas. The transition to a faster frame regime occurred across engine families. Its cause was not recorded. Keep kernel selection under device qualification."
       }
     },
     "geometry_and_streaming": {
