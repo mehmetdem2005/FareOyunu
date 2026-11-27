@@ -4,6 +4,7 @@ extends RefCounted
 const MAX_FRAMES := 1000000
 var active := false
 var start_us := 0
+var unix_start := 0.0
 var last_second := 0
 var total_us := 0
 var raw := PackedInt32Array()
@@ -24,6 +25,7 @@ func begin(info: Dictionary, load_ms: float) -> void:
 	world = info.duplicate(true)
 	startup_ms = load_ms
 	start_us = Time.get_ticks_usec()
+	unix_start = Time.get_unix_time_from_system()
 	last_second = start_us
 	last_flush = start_us
 	active = true
@@ -32,7 +34,7 @@ func begin(info: Dictionary, load_ms: float) -> void:
 	write_line({"type":"header","schema":2,"world":world,"startup_ms":startup_ms,"metadata":metadata()})
 
 func metadata() -> Dictionary:
-	return {"godot":Engine.get_version_info(),"platform":OS.get_name(),"device":OS.get_model_name(),"gpu":RenderingServer.get_video_adapter_name(),"renderer":RenderingServer.get_current_rendering_method(),"fps_cap":Engine.max_fps,"physics_ticks_per_second":Engine.physics_ticks_per_second,"screen":[DisplayServer.window_get_size().x,DisplayServer.window_get_size().y],"unix_start":Time.get_unix_time_from_system(),"notes":"Frame intervals include rendering, scheduling and caps, not GPU-only time. Physics script time excludes engine solver. RSS is sampled, not VRAM."}
+	return {"godot":Engine.get_version_info(),"platform":OS.get_name(),"device":OS.get_model_name(),"gpu":RenderingServer.get_video_adapter_name(),"renderer":RenderingServer.get_current_rendering_method(),"fps_cap":Engine.max_fps,"physics_ticks_per_second":Engine.physics_ticks_per_second,"screen":[DisplayServer.window_get_size().x,DisplayServer.window_get_size().y],"unix_start":unix_start,"notes":"Frame intervals include rendering, scheduling and caps, not GPU-only time. Physics script time excludes engine solver. RSS is sampled, not VRAM."}
 
 func write_line(data: Dictionary) -> void:
 	if file != null:
@@ -57,7 +59,7 @@ func rss_bytes() -> int:
 			break
 	return -1
 
-func frame(interval: int, pos: Vector3, phys: int, distance: float, falls: int, checks: int, misses: int, speed: float, grounded_ready: bool, menu: bool) -> void:
+func frame(interval: int, pos: Vector3, phys: int, distance: float, falls: int, checks: int, misses: int, speed: float, grounded_ready: bool, menu: bool, viewport_size: Vector2) -> void:
 	if not active:
 		return
 	if skip_next:
@@ -74,7 +76,7 @@ func frame(interval: int, pos: Vector3, phys: int, distance: float, falls: int, 
 	if now-last_second<1000000:
 		return
 	var summary := summarize(bucket)
-	summary.merge({"type":"second","t_ms":float(now-start_us)/1000.0,"pos":[pos.x,pos.y,pos.z],"distance_m":distance,"respawn_falls":falls,"ground_checks":checks,"ground_misses":misses,"ground_error_last_m":last_ground_error_m,"physics_script_us":bucket_physics_us,"speed_mps":speed,"ground_ready":grounded_ready,"menu_open":menu,"fps_cap":Engine.max_fps,"viewport":[int(Engine.get_main_loop().root.get_visible_rect().size.x),int(Engine.get_main_loop().root.get_visible_rect().size.y)],"rss_bytes":rss_bytes(),"static_bytes":OS.get_static_memory_usage(),"draw_calls":int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),"primitives":int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)),"physics_process_ms":Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS)*1000.0,"process_ms":Performance.get_monitor(Performance.TIME_PROCESS)*1000.0})
+	summary.merge({"type":"second","t_ms":float(now-start_us)/1000.0,"pos":[pos.x,pos.y,pos.z],"distance_m":distance,"respawn_falls":falls,"ground_checks":checks,"ground_misses":misses,"ground_error_last_m":last_ground_error_m,"physics_script_us":bucket_physics_us,"speed_mps":speed,"ground_ready":grounded_ready,"menu_open":menu,"fps_cap":Engine.max_fps,"viewport":[int(viewport_size.x),int(viewport_size.y)],"rss_bytes":rss_bytes(),"static_bytes":OS.get_static_memory_usage(),"draw_calls":int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),"primitives":int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)),"physics_process_ms":Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS)*1000.0,"process_ms":Performance.get_monitor(Performance.TIME_PROCESS)*1000.0})
 	seconds.append(summary)
 	var line := summary.duplicate()
 	line["frame_us"] = Array(bucket)

@@ -227,7 +227,18 @@ func save_report() -> void:
 	if report_path.is_empty():
 		source_label.text = "Rapor yazılamadı"
 		return
-	source_label.text = "Rapor: " + ProjectSettings.globalize_path(report_path)
+	# Android editor project folder is normally user-accessible, unlike app-private user://.
+	var report_dir := ProjectSettings.globalize_path("res://reports")
+	var mkdir := DirAccess.make_dir_recursive_absolute(report_dir)
+	var project_copy := report_dir.path_join(report_path.get_file())
+	if mkdir == OK and DirAccess.copy_absolute(ProjectSettings.globalize_path(report_path),project_copy) == OK:
+		source_label.text = "Rapor kaydedildi: reports/" + report_path.get_file()
+		dialog.current_dir = report_dir
+	else:
+		source_label.text = "Rapor: " + ProjectSettings.globalize_path(report_path)
+		var downloads := OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS)
+		if not downloads.is_empty() and DirAccess.dir_exists_absolute(downloads):
+			dialog.current_dir = downloads
 	dialog.current_file = report_path.get_file()
 	dialog.popup_centered_ratio(0.85)
 
@@ -343,7 +354,7 @@ func _process(_delta: float) -> void:
 		return
 	var now := Time.get_ticks_usec()
 	if last_frame>0 and backend != null and not loading:
-		recorder.frame(now-last_frame,player.position,physics_us,traveled,gaps,ground_checks,ground_misses,speed,ready_to_walk,menu.visible or dialog.visible)
+		recorder.frame(now-last_frame,player.position,physics_us,traveled,gaps,ground_checks,ground_misses,speed,ready_to_walk,menu.visible or dialog.visible,get_viewport().get_visible_rect().size)
 		physics_us = 0
 		frame_ms.append(float(now-last_frame)/1000.0)
 		if frame_ms.size()>240:
