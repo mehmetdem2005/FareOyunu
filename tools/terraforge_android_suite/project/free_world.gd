@@ -354,6 +354,7 @@ func _interval_report() -> Dictionary:
 func measurement() -> Dictionary:
     var pixels := get_viewport().get_visible_rect().size
     var screen_pixels := get_window().size
+    var refresh_hz := DisplayServer.screen_get_refresh_rate()
     var inventory: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://suite.json"))
     var report := _interval_report()
     report.merge({
@@ -383,7 +384,7 @@ func measurement() -> Dictionary:
         "scale_3d": get_viewport().scaling_3d_scale,
         "target_3d_height_px": roundi(_render_target.y * get_viewport().scaling_3d_scale),
         "editor_build": OS.has_feature("editor"), "debugger_active": EngineDebugger.is_active(),
-        "fps_limit": Engine.max_fps, "display_refresh_hz": DisplayServer.screen_get_refresh_rate(),
+        "fps_limit": Engine.max_fps, "display_refresh_hz": refresh_hz if is_finite(refresh_hz) and refresh_hz > 0.0 else null,
         "comparison_walk_fps": {"native": _paired_fps("native"), "540p": _paired_fps("540p")} if not _comparison_runs.is_empty() else {},
         "comparison": _comparison_runs,
         "notes": "Frame intervals exclude initial load. Pump and controller timings are wall times within the interval. Delayed viewport CPU/GPU samples are available during comparison only. Unsupported or zero-only timers are null."
