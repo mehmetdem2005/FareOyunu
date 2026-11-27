@@ -2,6 +2,8 @@ extends Node3D
 const Runtime = preload("res://terrain_runtime.gd")
 const Recorder = preload("res://session_recorder.gd")
 const PreviewRange = preload("res://preview_range.gd")
+const ThermalMonitor = preload("res://thermal_monitor.gd")
+var thermal_monitor := ThermalMonitor.new()
 var preview_range := PreviewRange.new()
 var range_label: Label
 var far_material_skip := false
@@ -514,8 +516,14 @@ func _process(_delta: float) -> void:
 			var decision := preview_range.observe(recorder.last_summary,ready_to_walk and not loading and not menu.visible,Engine.max_fps,now)
 			if not decision.is_empty():
 				apply_preview_range(decision)
+		if backend != null and ready_to_walk and not loading and not menu.visible and get_window().has_focus():
+			var thermal := thermal_monitor.sample_if_due(now)
+			if not thermal.is_empty():
+				recorder.event("thermal_status",thermal)
 		# Reuse last completed one-second summary; no second sort or ring shift.
 		var p99 := float(recorder.last_summary.get("p99_ms",0.0))
 		var worst := float(recorder.last_summary.get("max_ms",0.0))
 		status.text = "FPS %d | P99 %.1f ms | MAX %.1f ms | düşme %d | %.0f m" % [Engine.get_frames_per_second(),p99,worst,gaps,traveled]
+		if thermal_monitor.is_currently_reportable() and thermal_monitor.status >= 3:
+			status.text += " | Termal: " + thermal_monitor.label()
 	previous_process_us = Time.get_ticks_usec()-now

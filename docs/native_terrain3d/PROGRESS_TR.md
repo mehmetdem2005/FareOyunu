@@ -106,3 +106,7 @@ Reusable preview_range.gd, camera far only, reference default 850m test profile,
 ## P1.8.5–6 — 27 Kasım 2026
 - 46023920638 package passed: native index 64, 16.777.216 exact heights, 4 mips, 2021ms offline server bake; artifact 15211800852. Device shader performance open. 18/43.
 - P1.8.6 candidate: 100% 3D scale default, manual 90/85% options in preview menu; bilinear, 2D UI unaffected, close view may blur; no auto-scale, no native rebuild, event records change and reset range trial. Package/actual device open. Next P1.8.7.
+
+## P1.8.6–7 — 27 Kasım 2026
+- 46024518373 package passed: native index64, 16.777.216 exact heights, 4 mips, 2020ms server bake; artifact 15210593260. 19/43; scale visual/device pending.
+- P1.8.7 candidate thermal_monitor.gd Android PowerManager API29+; 30s foreground samples in existing HUD, status/cost logged, unknown on unsupported, expensive/failed steady-state polls stop. Advisory severe+ message; no forced quality change. Package/device pending; P1.8.8 next.
