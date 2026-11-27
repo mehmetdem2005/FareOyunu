@@ -1,3 +1,11 @@
+## Ürün kapsamı — kullanıcı netleştirmesi (27 Kasım 2026, bağlayıcı)
+**TerraForge, genel amaçlı terrain oluşturma ve düzenleme aracıdır. Dört Havza yalnızca değiştirilebilir test/önizleme sahnesidir; nihai oyun haritası değildir. Şu an oyun geliştirmiyoruz.** Fare karakteri, joystick, fizik ve dolaşım yalnızca araçtan çıkan arazinin çalışma zamanı doğrulamasına hizmet eder. 4096², 64 bölge, 25 cm, 850 m, 7 LOD ve Dört Havza biyomları referans profilidir; ürünün sabit sınırları veya kullanıcı projelerine zorunlu ayarlar değildir.
+- Araç tasarımı farklı heightmap, dünya boyutu, çözünürlük, seed, bölge düzeni ve materyal setlerine uyarlanabilir olmalı; mevcut formatın desteklemediği seçenekler destekleniyor gibi gösterilmez.
+- Editör ve runtime önizleme ayrı sorumluluklar; mevcut kararlı runtime korunarak import, oluşturma, şekillendirme, kaydetme/yükleme, geri al/yinele, dışa aktarma ve performanslı önizleme iş akışları planlanır. Bunlar henüz gerçekleştirilmiş özellikler değildir.
+- P1.8 performans çalışmaları aracı ve ürettiği araziyi iyileştirmek içindir. P1.9 jeomorfoloji/mikrodetay/biome geçişleri, P2.0 materyal ve boya özellikleri tekrar kullanılabilir araçlar olarak ele alınır; nihai oyun adalarını tasarlama görevi kapsam dışıdır.
+- Oyun hikayesi, yapay zeka, canlı simülasyonu, multiplayer ve oyun içeriği kapsam dışı. Obje/bitki yerleştirme yalnız genel arazi editörü özelliği olarak ileride kapsamı netleşirse değerlendirilir.
+- Başarı yalnız test sahnesi FPS'i değildir: düzenleme etkileşim gecikmesi, fırça/önizleme akıcılığı, veri doğruluğu, farklı arazi girdileri, güvenli kaydetme ve export da ürün kriteridir. Önceki cihaz ölçümleri test referansı olarak geçerlidir.
+
 # Yeni sohbette BURADAN BAŞLA — Native Terrain3D
 
 **Aktif dal:** `feat/terraforge-terrain3d-runtime`

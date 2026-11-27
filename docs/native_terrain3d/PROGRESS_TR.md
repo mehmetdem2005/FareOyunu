@@ -87,3 +87,6 @@ Her sonraki geliştirmede tarih, adım numarası, commit, durum, ölçüm/kanıt
 ## P1.7.10 / P1.8.1 — 27 Kasım 2026
 - 46021022190 paket başarılı, 64 region/indeks, 16.777.216 örnek, 4 mip; artifact 15208371670, sunucu bake 2226ms. Görsel/FPS doğrulaması açık; 13/43.
 - P1.8.1 kaynak analizi: 16/7 baseline 57024 topoloji üçgeni, 144 instance; 16/8 64800, 164. Native snap tüm ring transform/teleport gönderiyor; ring bazlı dedup aday, native patch henüz yok. Kaynak/topoloji, FPS ölçümü değil. NATIVE_LOD_COST_AUDIT_TR.md. 14/43; P1.8.2 sırada. Belge commit, yeni CI yok.
+
+## Kullanıcı kapsam düzeltmesi — 27 Kasım 2026
+Dört Havza yalnız test sahnesi; TerraForge genel terrain oluşturma/düzenleme aracı. Aktif ana plan, README, karar ve handoff güncellendi. P1.9.7–8 nihai oyun haritası değil genel üretim iş akışı; P3 koşullu editör genişletmesi, P4 oyun sistemleri kapsam dışı. 14/43 teknik ilerleme korunur; yeni editör işlerinin kapsamı ve kabul kriterleri ayrıntılandırılacak. Kod ve test sahnesi değişmedi, yeni CI yok.

@@ -6,6 +6,14 @@ Kararlı referans (kullanıcının oynadığı Dört Havza V2): `fdbf49b2b5c1e01
 Durum: P1.5 native temel gerçek cihazda çalıştı; P1.6.1–7 paket/uygulama hedefleri tamamlandı (7/43); yeni runtime cihaz doğrulaması açık. P1.7.1–4 kaynak/uygulama ve paket hedefleri tamamlandı (11/43). P1.7.5–8 mevcut resident dünya için koşullu ertelendi, tamamlanmış sayılmadı; P1.7.9 paket doğrulandı (12/43). P1.7.10 paket başarılı; P1.8.1 kaynak analizi tamamlandı (14/43). Sıradaki P1.8.2.
 Bu belge bu dalın TEK aktif geliştirme planıdır. Eski `addons/terra_forge/` altındaki özel CPU mesh/worker mimarisi planları tarihsel referanstır; görev sırası, faz numaraları ve başarı ölçütleri buraya taşınmaz. Orijinal dal `feat/terraforge-mobile-addon` korunur.
 
+## Ürün kapsamı — kullanıcı netleştirmesi (27 Kasım 2026, bağlayıcı)
+**TerraForge, genel amaçlı terrain oluşturma ve düzenleme aracıdır. Dört Havza yalnızca değiştirilebilir test/önizleme sahnesidir; nihai oyun haritası değildir. Şu an oyun geliştirmiyoruz.** Fare karakteri, joystick, fizik ve dolaşım yalnızca araçtan çıkan arazinin çalışma zamanı doğrulamasına hizmet eder. 4096², 64 bölge, 25 cm, 850 m, 7 LOD ve Dört Havza biyomları referans profilidir; ürünün sabit sınırları veya kullanıcı projelerine zorunlu ayarlar değildir.
+- Araç tasarımı farklı heightmap, dünya boyutu, çözünürlük, seed, bölge düzeni ve materyal setlerine uyarlanabilir olmalı; mevcut formatın desteklemediği seçenekler destekleniyor gibi gösterilmez.
+- Editör ve runtime önizleme ayrı sorumluluklar; mevcut kararlı runtime korunarak import, oluşturma, şekillendirme, kaydetme/yükleme, geri al/yinele, dışa aktarma ve performanslı önizleme iş akışları planlanır. Bunlar henüz gerçekleştirilmiş özellikler değildir.
+- P1.8 performans çalışmaları aracı ve ürettiği araziyi iyileştirmek içindir. P1.9 jeomorfoloji/mikrodetay/biome geçişleri, P2.0 materyal ve boya özellikleri tekrar kullanılabilir araçlar olarak ele alınır; nihai oyun adalarını tasarlama görevi kapsam dışıdır.
+- Oyun hikayesi, yapay zeka, canlı simülasyonu, multiplayer ve oyun içeriği kapsam dışı. Obje/bitki yerleştirme yalnız genel arazi editörü özelliği olarak ileride kapsamı netleşirse değerlendirilir.
+- Başarı yalnız test sahnesi FPS'i değildir: düzenleme etkileşim gecikmesi, fırça/önizleme akıcılığı, veri doğruluğu, farklı arazi girdileri, güvenli kaydetme ve export da ürün kriteridir. Önceki cihaz ölçümleri test referansı olarak geçerlidir.
+
 ## Başlangıç noktası ve kararlar
 - Godot 4.7.2, upstream Terrain3D 1.1.0-stable native C++ çekirdeği, GL Compatibility; Vulkan yazılım renderer hareket testinde geçmiş çökme nedeniyle varsayılan değil.
 - Dört Havza V2: 4096² Float32, 25 cm aralık, 1023,75 m kare, 64 adet 512×512 örnekli region; 7 clipmap LOD; kamera far 850 m; dört prosedürel 512px renk dokusu; ağaç/su/obje yok. Tüm region'lar başlangıçta resident; streaming henüz yok.
@@ -54,8 +62,8 @@ Mevcut 7 LOD teorik örnek aralıkları 25 cm, 50 cm, 1 m, 2 m, 4 m, 8 m, 16 m. 
 - [ ] 1.9.1–1.9.2 Jeomorfoloji: doğal sırtlar, su aşındırması, tortu birikimi ve bağlantılı vadiler.
 - [ ] 1.9.3–1.9.4 Mikro arazi: fare ölçeğinde tümsek, oyuk, hendek ve küçük aşınmalar.
 - [ ] 1.9.5–1.9.6 Bölgesel geçişler: ova, dağ, dik kıyı, yumuşak sahil, doğal biyom sınırları.
-- [ ] 1.9.7–1.9.8 Asıl oyun dünyası: dört adalı özgün haritanın hazırlanması ve fare ölçeğine uyarlanması.
-Geometri fazı; boya ve obje sistemleri ayrı fazlarda. Dört Havza test dünyası asıl dört ada haritası değildir. Özgün harita referansları korunmalı; eski teknik mimari değil.
+- [ ] 1.9.7–1.9.8 Genel amaçlı arazi oluşturma: farklı harita boyutları ve biçimlerinde yeniden kullanılabilir üretim/şekillendirme iş akışı; dört ada yalnız isteğe bağlı doğrulama örneği.
+Geometri fazı yalnız tekrar kullanılabilir terrain araçları içindir; boya ayrı faz. Test dünyası veya dört ada nihai içerik üretimi değildir.
 
 ## P2.0 — Profesyonel materyal ve boyama (10 adım)
 - [ ] 2.0.1 Gerçek 1K PBR materyalleri.
@@ -70,11 +78,11 @@ Geometri fazı; boya ve obje sistemleri ayrı fazlarda. Dört Havza test dünyas
 - [ ] 2.0.10 Editörde arazi boyama araçları.
 Örnek materyaller: toprak, kaya, çam iğneleri, yosun, çakıl. 1K hedef; gerçek kaynak ve lisans kaydı korunur.
 
-## P3.0 — Bitki örtüsü ve obje yerleştirme
-Ağaç, çalı, çimen, taş, kuru dal ve diğer doğal objeler; MultiMesh, mesh LOD, impostor, mesafeye bağlı yoğunluk, pooling, bölgesel yerleştirme, oyuncu yakınında fizik. Alt adımlar henüz ayrıntılandırılmadı.
+## P3.0 — Koşullu editör genişletmesi
+Genel amaçlı bitki/obje yerleştirme aracı ancak kapsamı netleşince değerlendirilir. Oyun içeriği üretimi kapsam dışı.
 
-## P4.0 — Bütünleşik açık dünya altyapısı
-Dünya kaydı, kalıcı obje durumları, canlıların bölgesel simülasyonu, multiplayer uyumluluğu, büyük koordinat hassasiyeti ve oyun sistemleri entegrasyonu. Alt adımlar henüz ayrıntılandırılmadı.
+## P4.0 — Önceki oyun planı (kapsam dışı)
+Canlı simülasyonu, multiplayer ve oyun sistemleri entegrasyonu aktif TerraForge yol haritasından çıkarıldı. Terrain proje kaydı, veri bütünlüğü, export ve motor uyumluluğu araç kapsamındadır.
 
 ## Hedef ölçütler (gerçekleşmiş sonuç değil)
 Redmi Note 8 Pro için normal gezinti 60 FPS, P99 ≤20 ms, 100 ms üzeri oyun içi donma 0, zeminden düşme 0, ilk oynanabilir zemin ≤2 sn, sınırlı ve istikrarlı bellek. FPS cap/VSync, iş yükü, rota, cihaz koşulları ve örneklenen ölçüm türü raporlanır. Normal FPS ile istisnai donmalar ayrı ve birlikte raporlanır.
