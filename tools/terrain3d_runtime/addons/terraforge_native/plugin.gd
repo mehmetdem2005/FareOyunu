@@ -262,6 +262,11 @@ func _toggle_popup() -> void:
         button_position.y + int(_menu_button.size.y) + 3,
         0, maxi(0, window_size.y - height)
     )
+    # The popup can consume the release event; close any active stroke first.
+    _finish_stroke()
+    _touch_session = false
+    _touch_index = -1
+    _multi_touch = false
     _popup.popup(Rect2i(Vector2i(x, y), Vector2i(width, height)))
 
 func _radius_changed(value: float) -> void:
@@ -508,18 +513,21 @@ func _paint_at(camera: Camera3D, position: Vector2) -> void:
     if _active.call("get_camera") != camera:
         _active.call("set_camera",camera)
     var hit: Vector3 = _active.call("get_intersection",camera.project_ray_origin(position),camera.project_ray_normal(position),false)
-    if not hit.is_finite() or absf(hit.x)>1e8 or absf(hit.z)>1e8:
+    if not hit.is_finite() or absf(hit.x)>1e8 or absf(hit.y)>1e8 or absf(hit.z)>1e8:
         _last_input_result = "Input received; terrain ray missed."
+        _set_status(_last_input_result)
         return
     _hit_count += 1
     var result := _brush.dab(hit,_tool_select.selected,float(_radius.value),float(_strength.value))
     if _brush.last_changed_cells>0:
         _changed_count += _brush.last_changed_cells
         _last_input_result = "Edited %d samples in last dab." % _brush.last_changed_cells
+        _brush_button.tooltip_text = _last_input_result
     elif not result.is_empty():
         _last_input_result = result
     else:
         _last_input_result = "Surface hit; no new height change (spacing/flat tool/edge)."
+    _brush_button.tooltip_text = _last_input_result
     _set_status(_last_input_result)
 
 func _start_stroke(camera: Camera3D, position: Vector2) -> void:
@@ -532,7 +540,7 @@ func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
     if not is_instance_valid(_active) or not _brush_button.button_pressed or _popup.visible:
         return EditorPlugin.AFTER_GUI_INPUT_PASS
     var root := get_editor_interface().get_edited_scene_root()
-    if root == null or not root.is_ancestor_of(_active):
+    if root == null or (root != _active and not root.is_ancestor_of(_active)):
         return EditorPlugin.AFTER_GUI_INPUT_PASS
     if event is InputEventScreenTouch:
         _last_touch_ms = Time.get_ticks_msec()

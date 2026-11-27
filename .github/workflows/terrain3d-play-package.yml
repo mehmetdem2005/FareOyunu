@@ -48,6 +48,16 @@ jobs:
           grep -q 'NATIVE_BAKE_OK regions=64 exact_height_samples=16777216' "$RUNNER_TEMP/native-bake.log"
           ! grep -Eq 'SCRIPT ERROR:|Parse Error:|NATIVE_BAKE_FAIL|Shader compilation failed' "$RUNNER_TEMP/native-bake.log"
           rm "$project/world/height.r32"
+      - name: Native brush functional gate (not a performance benchmark)
+        shell: bash
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: |
+          set -euo pipefail
+          project="$GITHUB_WORKSPACE/tools/terrain3d_runtime"
+          timeout 90s xvfb-run -a godot --path "$project" --rendering-method gl_compatibility --rendering-driver opengl3 --audio-driver Dummy --script res://authoring/native_brush_smoke.gd 2>&1 | tee "$RUNNER_TEMP/native-brush.log"
+          grep -q "NATIVE_BRUSH_SMOKE_OK regions=2 raise_lower_undo_redo=true" "$RUNNER_TEMP/native-brush.log"
+          ! grep -Eq "SCRIPT ERROR:|Parse Error:|NATIVE_BRUSH_SMOKE_FAIL|Shader compilation failed" "$RUNNER_TEMP/native-brush.log"
       - name: Package Godot project (no benchmark or regression suite)
         shell: bash
         run: |

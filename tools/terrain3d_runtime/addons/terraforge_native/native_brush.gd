@@ -80,10 +80,12 @@ func dab(hit: Vector3, tool: int, radius: float, power: float) -> String:
 		return "Brush too large for current native edit budget."
 	var low := Vector2i(floori(grid.x-r),floori(grid.y-r))
 	var high := Vector2i(ceili(grid.x+r),ceili(grid.y+r))
-	if not is_finite(flatten_height):
+	# Only Flatten needs a fixed target. Other tools may have a valid footprint
+	# even when the nearest grid vertex is outside a region or a hole.
+	if tool == 3 and not is_finite(flatten_height):
 		flatten_height = _sample(regions,Vector2i(roundi(grid.x),roundi(grid.y)),size,spacing,data)
 		if not is_finite(flatten_height):
-			return ""
+			return "Flatten target is outside editable terrain."
 	var changes := {}
 	var originals := {}
 	# Compute all new values before any writes, including cross-region smoothing.
