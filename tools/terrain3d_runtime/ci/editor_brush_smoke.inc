@@ -138,6 +138,36 @@ func _ci_editor_brush_smoke() -> void:
         push_error("NATIVE_EDITOR_BRUSH_FAIL: Weather setup undo")
         get_tree().quit(1)
         return
+    # Native batch Smooth must visibly reduce a broad peak, not just average
+    # four .25m neighbors. Compare same pre-edit hill and exact undo.
+    var smooth_peak := float(data.call("get_height",center))
+    _brush.begin()
+    var smooth_error := _brush.dab(center,2,24.0,6.0)
+    _brush.end()
+    var smoothed := float(data.call("get_height",center))
+    var filter_m := _brush.last_filter_half_width_m
+    if not smooth_error.is_empty() or _brush.last_changed_cells<=0 or smooth_peak-smoothed<0.25 or filter_m<8.0 or _brush.undo()!="Native undo applied." or float(data.call("get_height",center))!=smooth_peak:
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: scaled Smooth "+smooth_error+" peak "+str(smooth_peak)+" -> "+str(smoothed))
+        get_tree().quit(1)
+        return
+    print("NATIVE_EDITOR_SMOOTH_OK before=",smooth_peak," after=",smoothed," filter_m=",filter_m," plan_us=",_brush.last_plan_us," write_us=",_brush.last_write_us)
+    var target := Vector3(128,0,64)
+    var original_target := float(data.call("get_height",target))
+    _brush.begin()
+    var lower_error := _brush.dab(target,1,8.0,1.0)
+    _brush.end()
+    if not lower_error.is_empty() or absf(float(data.call("get_height",target))-(original_target-1.0))>0.00001 or _brush.undo()!="Native undo applied.":
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: native Lower")
+        get_tree().quit(1)
+        return
+    _brush.begin()
+    var flatten_error := _brush.dab(target,3,8.0,12.0)
+    _brush.end()
+    if not flatten_error.is_empty() or _brush.last_changed_cells<=0 or float(data.call("get_height",target))!=original_target or _brush.undo()!="Native undo applied.":
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: native Flatten")
+        get_tree().quit(1)
+        return
+    print("NATIVE_EDITOR_NATIVE_BATCH_OK lower=true flatten=true undo=true")
     var previous_data_id: int = data.get_instance_id()
     var previous_directory := str(_active.get("data_directory"))
     _save_active()

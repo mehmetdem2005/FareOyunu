@@ -20,6 +20,7 @@ static func build(points: Array[Vector2], radius: float, spacing: float, valley:
 		return {"error":"Corridor exceeds 256m; draw shorter paths.","weights":{}}
 	var weights := {}
 	var visits := 0
+	var warp_cache := {}
 	var noise := FastNoiseLite.new()
 	noise.seed=137
 	noise.frequency=1.0/maxf(28.0,radius*7.0)
@@ -40,14 +41,22 @@ static func build(points: Array[Vector2], radius: float, spacing: float, valley:
 			for x in range(low.x,high.x+1):
 				var key := Vector2i(x,z)
 				var world := Vector2(key)*spacing
-				var warped := world+Vector2(noise.get_noise_2d(world.x,world.y),noise.get_noise_2d(world.x+113.17,world.y-91.73))*radius*0.14
+				var warped: Vector2
+				if warp_cache.has(key):
+					warped=warp_cache[key]
+				else:
+					warped=world+Vector2(noise.get_noise_2d(world.x,world.y),noise.get_noise_2d(world.x+113.17,world.y-91.73))*radius*0.14
+					if warp_cache.size()<65536:
+						warp_cache[key]=warped
 				var t := clampf((warped-a).dot(delta)/maxf(length_sq,0.000001),0.0,1.0)
 				var offset := warped-(a+delta*t)
 				var width := radius*(1.14 if direction.cross(offset)>=0.0 else 0.86)
 				var u := offset.length()/width
 				if u>=1.0:
 					continue
-				var weight := pow(1.0-u,2.5 if valley else 4.0)
+				# Wider shoulders with a smooth zero-slope outer boundary.
+				var shoulder := 1.0-smoothstep(0.0,1.0,u)
+				var weight := pow(shoulder,1.0 if valley else 1.75)
 				if weight>float(weights.get(key,0.0)):
 					weights[key]=weight
 				if weights.size()>MAX_CELLS:

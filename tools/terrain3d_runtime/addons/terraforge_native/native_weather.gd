@@ -21,16 +21,24 @@ static func run(source: PackedFloat64Array, weights: PackedFloat32Array, size: V
 	else:
 		if not _flow(current,weights,size,spacing,mobility,power*0.05):
 			return {"error":"Flow routing incomplete; no changes made.","values":PackedFloat32Array()}
+	# Preserve mass while bounding concentrated basin deposition: scale the
+	# whole conservative delta, never clip one cell independently.
+	var scale := 1.0
+	var limit := maxf(0.25,power)
+	for i in range(count):
+		var delta := current[i]-source[i]
+		if not is_finite(delta):
+			return {"error":"Weather relief limit exceeded; reduce Size or Power.","values":PackedFloat32Array()}
+		if absf(delta)>limit:
+			scale=minf(scale,limit/absf(delta))
 	var result := PackedFloat32Array()
 	result.resize(count)
 	var mass_error := 0.0
 	var moved := 0.0
 	var max_rounding := 0.0
 	for i in range(count):
-		var value := current[i]
-		# Concentrated closed-basin deposition can form unrealistic spikes.
-		# Reject the entire pass rather than clip sediment and silently lose mass.
-		if not is_finite(value) or absf(value)>1000000.0 or absf(value-source[i])>maxf(0.25,power):
+		var value := source[i]+(current[i]-source[i])*scale
+		if not is_finite(value) or absf(value)>1000000.0:
 			return {"error":"Weather relief limit exceeded; reduce Size or Power.","values":PackedFloat32Array()}
 		result[i]=value
 		mass_error+=float(result[i])-source[i]

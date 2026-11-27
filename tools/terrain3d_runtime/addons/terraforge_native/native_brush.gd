@@ -22,6 +22,9 @@ var last_snapshot_path := ""
 var last_snapshot_hashes: Dictionary = {}
 var last_dab_ms := -100000
 var last_dab_duration_ms := 0
+var last_plan_us := 0
+var last_write_us := 0
+var last_filter_half_width_m := 0.0
 
 func attach(node: Node3D) -> void:
 	terrain = node
@@ -62,7 +65,8 @@ func _regions() -> Dictionary:
 			region_error = "Duplicate native location %s." % str(loc)
 			return {}
 		var img: Image = reg.call("get_height_map")
-		if img == null or img.get_format()!=Image.FORMAT_RF or img.get_size()!=Vector2i(size,size):
+		var control: Image = reg.call("get_control_map")
+		if img == null or img.get_format()!=Image.FORMAT_RF or img.get_size()!=Vector2i(size,size) or control==null or control.get_format()!=Image.FORMAT_RF or control.get_size()!=Vector2i(size,size):
 			region_error = "RF source invalid at %s; do not edit converted data." % str(loc)
 			return {}
 		result[loc]={"region":reg,"image":img}
@@ -126,48 +130,24 @@ func dab(hit: Vector3, tool: int, radius: float, power: float) -> String:
 		flatten_height = _sample(regions,Vector2i(roundi(grid.x),roundi(grid.y)),size,spacing,data)
 		if not is_finite(flatten_height):
 			return "Flatten target is outside editable terrain."
-	var changes := {}
-	var originals := {}
-	# Compute all new values before any writes, including cross-region smoothing.
-	for z in range(low.y,high.y+1):
-		for x in range(low.x,high.x+1):
-			var p := Vector2i(x,z)
-			var d := Vector2(p).distance_to(grid)/r
-			if d>=1.0:
-				continue
-			var h := _sample(regions,p,size,spacing,data)
-			if not is_finite(h):
-				continue
-			var weight := 1.0-smoothstep(0.0,1.0,d)
-			var value := h
-			match tool:
-				0: value = h+power*weight
-				1: value = h-power*weight
-				2:
-					var total := 0.0
-					var count := 0
-					for offset: Vector2i in [Vector2i.LEFT,Vector2i.RIGHT,Vector2i.UP,Vector2i.DOWN]:
-						var neighbor := _sample(regions,p+offset,size,spacing,data)
-						if is_finite(neighbor):
-							total+=neighbor
-							count+=1
-					if count>0:
-						value = lerpf(h,total/count,clampf(power/12.0*weight,0.0,1.0))
-				3: value = lerpf(h,flatten_height,clampf(power/12.0*weight,0.0,1.0))
-			if not is_finite(value) or absf(value)>1000000.0:
-				return "Height out of bounds; dab rejected."
-			if value!=h:
-				changes[p]=value
-				if not before.has(p):
-					originals[p]=h
-	if before.size()+originals.size()>MAX_STROKE_CELLS:
-		# Commit a bounded history segment and continue the same gesture.
-		# Rebuild originals from the current pre-dab values, not older segment.
+	if not data.has_method("tf_plan_brush") or not data.has_method("tf_write_brush"):
+		return "Native batch extension missing; install matching package."
+	var plan_started := Time.get_ticks_usec()
+	var planned: Dictionary = data.call("tf_plan_brush",center,tool,radius,power,flatten_height)
+	last_plan_us=Time.get_ticks_usec()-plan_started
+	last_filter_half_width_m=float(planned.get("filter_half_width_m",0.0))
+	if not str(planned["error"]).is_empty():
+		return str(planned["error"])
+	var changes: Dictionary = planned["changes"]
+	var originals: Dictionary = planned["originals"]
+	# Original heights belong to the earliest dab of the current undo segment.
+	var already := 0
+	for key in originals:
+		if before.has(key):
+			already+=1
+	if before.size()+originals.size()-already>MAX_STROKE_CELLS:
 		_commit_segment()
-		originals.clear()
-		for p: Vector2i in changes:
-			originals[p]=_sample(regions,p,size,spacing,data)
-	before.merge(originals)
+	before.merge(originals,false)
 	if not changes.is_empty():
 		var write_error := _write(regions,changes,size,true)
 		if not write_error.is_empty():
@@ -276,45 +256,19 @@ func apply_weather(center: Vector2, radius: float, power: float, mode: int) -> S
 	end()
 	return error
 
-func _write(regions: Dictionary, values: Dictionary, size: int, record: bool) -> String:
-	var bounds := {}
+func _write(_regions_checked: Dictionary, values: Dictionary, _size: int, record: bool) -> String:
 	var data: Object = terrain.get("data")
-	var spacing := float(terrain.get("vertex_spacing"))
-	var write_failures := 0
-	var written := 0
-	for p: Vector2i in values:
-		var loc := _loc(p,size)
-		var img: Image = regions[loc]["image"]
-		var pixel := p-loc*size
-		var old := img.get_pixelv(pixel).r
-		img.set_pixelv(pixel,Color(float(values[p]),0,0,1))
-		var height := img.get_pixelv(pixel).r
-		# RF rounds to float32. Validate actual native readback, not planned edits.
-		if not is_finite(height) or not is_equal_approx(height,float(values[p])):
-			write_failures += 1
-		if not is_finite(height) or height==old:
-			continue
-		written += 1
-		if record:
-			after[p]=height
-		var reg: Resource = regions[loc]["region"]
-		var limits: Vector2 = bounds[loc] if bounds.has(loc) else reg.call("get_height_range")
-		bounds[loc]=Vector2(minf(limits.x,height),maxf(limits.y,height))
-	if not bounds.is_empty():
-		for loc: Vector2i in bounds:
-			var reg: Resource = regions[loc]["region"]
-			reg.call("set_height_range",bounds[loc])
-			reg.call("set_modified",true)
-			reg.call("set_edited",true)
-		data.call("calc_height_range",false)
-		data.call("update_maps",0,false,false)
-		for loc: Vector2i in bounds:
-			regions[loc]["region"].call("set_edited",false)
-		terrain.call("snap")
+	if not data.has_method("tf_write_brush"):
+		return "Native batch extension missing; install matching package."
+	var started := Time.get_ticks_usec()
+	var result: Dictionary = data.call("tf_write_brush",values)
+	last_write_us=Time.get_ticks_usec()-started
+	if not str(result["error"]).is_empty():
+		return str(result["error"])
+	var actual: Dictionary = result["actual"]
 	if record:
-		last_changed_cells = written
-	if write_failures>0:
-		return "Native write readback mismatch: %d/%d." % [write_failures,values.size()]
+		after.merge(actual,true)
+		last_changed_cells=actual.size()
 	return ""
 
 func end() -> void:
