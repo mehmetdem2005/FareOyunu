@@ -24,7 +24,13 @@ var spawn := Vector3.ZERO
 var yaw := 0.0
 var pitch := -0.20
 var speed := 2.5
+const GROUND_GATE_TIMEOUT_US := 3000000
+const GROUND_GATE_TOLERANCE_M := 0.10
+const SPAWN_CLEARANCE_M := 0.20
 var ready_to_walk := false
+var ground_gate_begin_us := 0
+var ground_gate_attempts := 0
+var ground_gate_failed := false
 var loading := false
 var stick := Vector2.ZERO
 var stick_id := -1
@@ -180,14 +186,14 @@ func request_load() -> void:
 		next.free()
 		fail_load("Terrain3D aktarımı başarısız: " + str(result))
 		return
-	backend = next
-	var height: float = backend.surface_height(player.position)
+	var height: float = next.surface_height(player.position)
 	if not is_finite(height):
+		next.free()
 		fail_load("Başlangıç yüksekliği okunamadı")
 		return
-	spawn = Vector3(player.position.x,height+0.20,player.position.z)
+	backend = next
+	spawn = Vector3(player.position.x,height+SPAWN_CLEARANCE_M,player.position.z)
 	respawn()
-	source_label.text = "Dört Havza | %.1f × %.1f m | 64 bölge" % [extent.x,extent.y]
 	loading = false
 	gaps = 0
 	frame_ms.clear()
@@ -238,6 +244,11 @@ func respawn() -> void:
 	recorder.event("respawn", [spawn.x,spawn.y,spawn.z])
 	player.velocity = Vector3.ZERO
 	ready_to_walk = false
+	ground_gate_failed = false
+	ground_gate_begin_us = Time.get_ticks_usec()
+	ground_gate_attempts = 0
+	reset_touch()
+	source_label.text = "Fiziksel zemin doğrulanıyor..."
 	update_camera()
 
 func _input(event: InputEvent) -> void:
@@ -273,19 +284,40 @@ func _input(event: InputEvent) -> void:
 	overlay.queue_redraw()
 
 func _physics_process(delta: float) -> void:
-	if backend == null or loading:
+	if backend == null or loading or ground_gate_failed:
 		return
 	var tick := Time.get_ticks_usec()
 	if not ready_to_walk:
-		var p := player.global_position
-		var ray := PhysicsRayQueryParameters3D.create(p+Vector3.UP,p-Vector3.UP*2.0,1)
+		# One existing startup/respawn ray, no new per-tick work during normal play.
+		# The expected ground height was sampled once at spawn.
+		var expected := spawn.y-SPAWN_CLEARANCE_M
+		var center := Vector3(spawn.x,expected,spawn.z)
+		var ray := PhysicsRayQueryParameters3D.create(center+Vector3.UP,center-Vector3.UP,1)
 		var hit := get_world_3d().direct_space_state.intersect_ray(ray)
-		if hit.is_empty():
+		ground_gate_attempts += 1
+		var valid := false
+		var error_m := -1.0
+		if not hit.is_empty():
+			var hit_position: Vector3 = hit["position"]
+			error_m = absf(hit_position.y-expected)
+			# Native Terrain3D attaches its instance id to the physics body RID.
+			valid = int(hit.get("collider_id",0)) == backend.terrain.get_instance_id() and error_m <= GROUND_GATE_TOLERANCE_M
+		if not valid:
+			if tick-ground_gate_begin_us >= GROUND_GATE_TIMEOUT_US:
+				ground_gate_failed = true
+				player.velocity = Vector3.ZERO
+				reset_touch()
+				source_label.text = "Fiziksel zemin doğrulanamadı. Başa dön ile tekrar dene."
+				recorder.event("ground_gate_timeout",{"attempts":ground_gate_attempts,"hit":not hit.is_empty(),"height_error_m":error_m})
 			return
 		ready_to_walk = true
+		source_label.text = "Dört Havza | %.1f × %.1f m | 64 bölge" % [extent.x,extent.y]
+		recorder.event("ground_gate_pass",{"attempts":ground_gate_attempts,"wait_us":tick-ground_gate_begin_us,"height_error_m":error_m})
 		if first_ground_ms < 0:
 			first_ground_ms = float(Time.get_ticks_usec()-load_begin)/1000.0
 			recorder.event("first_ground_ms",first_ground_ms)
+		# Existing periodic probe starts a second later; avoid duplicating this ray now.
+		last_probe = tick
 	var move := stick
 	if Input.is_physical_key_pressed(KEY_W): move.y -= 1
 	if Input.is_physical_key_pressed(KEY_S): move.y += 1

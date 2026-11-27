@@ -41,3 +41,7 @@ Her sonraki geliştirmede tarih, adım numarası, commit, durum, ölçüm/kanıt
 ## P1.6.3/P1.6.4 — Birleşik paket sonucu ve temizlik
 - CI 46013911229 başarılı: NATIVE_SURFACE_MIPS_OK count=4, NATIVE_BAKE_OK regions=64 exact_height_samples=16777216 elapsed_ms=2892. Önceki parse hatası giderildi. Artifact 15205900568. 4/43 paket/uygulama hedefi; cihaz açılış, shader derleme ve FPS ölçümleri açık.
 - Logda sunucu ses aygıtı ve Vulkan VK_KHR_surface hatası, VSync desteği uyarısı, offline PNG yükleme uyarısı mevcut. GL bake ve artifact başarılı. Ses için import komutunda Dummy seçildi. Offline raw PNG okuması açık byte buffer decode ile değiştirildi; Android baked yoluna, geometriye, shader'a veya fizik ayarına dokunulmadı. Vulkan ve VSync uyarıları maskelenmedi; sunucu ortamına özgü olabileceği için mobil renderer değiştirilmedi. Temizlik commit'inin paket sonucu açık. Sıradaki P1.6.5.
+
+## P1.6.5 — 27 Kasım 2026
+- P1.6.3/4 temizlik CI 46014546324 başarılı: 64 region, 16.777.216 Float32 örnek, dört mip zinciri. Ses ve PNG log uyarıları yok; Vulkan/VSync ortam kayıtları duruyor. Artifact 15204524992.
+- P1.6.5 aday: mevcut spawn/respawn ray kontrolü doğru native collider id + beklenen yükseklik ile güçlendirildi; 3 s hata sınırı ve manuel retry. Geçersiz spawn yüksekliğinde backend aktive edilmez. Normal oynanışta ek ray yok; fizik/LOD ayarları korunur. Gate olayları rapora yazılır. Paket doğrulaması açık, cihaz sonucu yok. 4/43. Sonraki P1.6.6/7: takılma teşhisi ve düşük maliyetli recorder.
