@@ -16,3 +16,5 @@ ZIP boyutu hedef değil. Takılmasız kare akışı, hızlı açılış, bellek 
 Oyuncu çevresindeki geometri, doku, fizik ve görüntü keskinliğini FPS uğruna sessizce düşürme. Global çözünürlük azaltımı varsayılan değil. Karar protokolü ve ana plandaki yakın kalite kabul kriterlerini uygula.
 
 Güncel: P1.6.5 paket başarılı (46015224588); P1.6.6–7 birleşik bellek içi recorder aday. Cihaz davranışı ölçülmedi; sıradaki P1.6.6–7 paket sonucu, ardından P1.7.1 native array maliyeti.
+
+P1.6 paket/uygulama kapanışı: 7/7, genel 7/43. Başarılı CI 46016265505, artifact 15205259073. Yeni runtime gerçek cihaz doğrulaması açık. Sıradaki P1.7.1 (native region ekleme/çıkarma ve GPU texture array yeniden oluşturma maliyetini incele); ölçümsüz agresif streaming/worker yok.
