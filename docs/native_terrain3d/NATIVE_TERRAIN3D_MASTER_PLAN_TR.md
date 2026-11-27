@@ -3,7 +3,7 @@
 Onay: 27 Kasım 2026, kullanıcı mevcut oynanabilir sürümü beğendi ve bu planın eski planlardan ayrı kaydedilmesini istedi.
 Dal: `feat/terraforge-terrain3d-runtime`
 Kararlı referans (kullanıcının oynadığı Dört Havza V2): `fdbf49b2b5c1e0133a050e2a5f5592011f1fbf2c`.
-Durum: P1.5 native temel gerçek cihazda çalıştı; P1.6.1–4 paket üretim hedefleri tamamlandı; yeni runtime cihaz doğrulaması açık. Sıradaki görev P1.6.5.
+Durum: P1.5 native temel gerçek cihazda çalıştı; P1.6.1–5 paket üretim hedefleri tamamlandı; yeni runtime cihaz doğrulaması açık. P1.6.6–7 aday doğrulaması açık.
 Bu belge bu dalın TEK aktif geliştirme planıdır. Eski `addons/terra_forge/` altındaki özel CPU mesh/worker mimarisi planları tarihsel referanstır; görev sırası, faz numaraları ve başarı ölçütleri buraya taşınmaz. Orijinal dal `feat/terraforge-mobile-addon` korunur.
 
 ## Başlangıç noktası ve kararlar
@@ -21,9 +21,9 @@ Bu belge bu dalın TEK aktif geliştirme planıdır. Eski `addons/terra_forge/` 
 - [x] 1.6.2 (paket dönüşümü doğrulandı; gerçek cihaz yüklemesi açık) Heightmap'i önceden native Terrain3D bölgelerine dönüştürme.
 - [x] 1.6.3 (paket doğrulandı; cihaz ölçümü açık) Açılıştaki gereksiz veri kopyalarını kaldırma.
 - [x] 1.6.4 (paket doğrulandı; cihaz ölçümü açık) İlk shader derlemesi gecikmelerini ölçme ve azaltma.
-- [ ] 1.6.5 (aday uygulama; paket/cihaz doğrulaması açık) Fiziksel zemin hazır olmadan oyuncu hareketini engelleme.
-- [ ] 1.6.6 Ani donmaların kaynağını belirleyen teşhis sistemi.
-- [ ] 1.6.7 Düşük maliyetli performans kaydı.
+- [x] 1.6.5 (paket doğrulandı; cihaz davranışı açık) Fiziksel zemin hazır olmadan oyuncu hareketini engelleme.
+- [ ] 1.6.6 (aday; paket doğrulaması açık) Ani donmaların kaynağını belirleyen teşhis sistemi.
+- [ ] 1.6.7 (aday; paket doğrulaması açık) Düşük maliyetli performans kaydı.
 Hedef: ilk fiziksel zemin 6,71 s bazına göre iyileşsin; saniyelik donmaların kök nedeni belirlenip azaltılsın. Mevcut dünya aynı kalsın.
 
 ## P1.7 — Profesyonel chunk ve bellek yönetimi (10 adım)

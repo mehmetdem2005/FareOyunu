@@ -6,6 +6,9 @@ var report_path := ""
 var load_begin := 0
 var first_ground_ms := -1.0
 var physics_us := 0
+var max_physics_tick_us := 0
+var physics_ticks := 0
+var previous_process_us := 0
 var ground_misses := 0
 var ground_checks := 0
 var last_probe := 0
@@ -39,7 +42,6 @@ var stick_origin := Vector2.ZERO
 var overlay: StickOverlay
 var last_frame := 0
 var last_hud := 0
-var frame_ms: Array[float] = []
 var gaps := 0
 
 class StickOverlay extends Control:
@@ -196,7 +198,6 @@ func request_load() -> void:
 	respawn()
 	loading = false
 	gaps = 0
-	frame_ms.clear()
 	last_frame = 0
 	recorder.begin(world_info, float(Time.get_ticks_usec()-load_begin)/1000.0)
 	recorder.event("fps_cap",Engine.max_fps)
@@ -223,6 +224,8 @@ func save_report() -> void:
 		return
 	reset_touch()
 	report_path = recorder.save()
+	# Exclude explicit user-requested export stalls even if file creation fails.
+	recorder.skip_next = true
 	if report_path.is_empty():
 		source_label.text = "Rapor yazılamadı"
 		return
@@ -356,7 +359,10 @@ func _physics_process(delta: float) -> void:
 			recorder.event("ground_probe_miss",[p.x,p.y,p.z])
 		else:
 			recorder.last_ground_error_m = absf(float(hit.position.y)-expected)
-	physics_us += Time.get_ticks_usec()-tick
+	var elapsed_us := Time.get_ticks_usec()-tick
+	physics_us += elapsed_us
+	max_physics_tick_us = maxi(max_physics_tick_us,elapsed_us)
+	physics_ticks += 1
 
 func update_camera() -> void:
 	var aim := player.position + Vector3.UP*0.15
@@ -369,17 +375,15 @@ func _process(_delta: float) -> void:
 		return
 	var now := Time.get_ticks_usec()
 	if last_frame>0 and backend != null and not loading:
-		recorder.frame(now-last_frame,player.position,physics_us,traveled,gaps,ground_checks,ground_misses,speed,ready_to_walk,menu.visible,get_viewport().get_visible_rect().size)
+		recorder.frame(now-last_frame,player.position,physics_us,traveled,gaps,ground_checks,ground_misses,speed,ready_to_walk,menu.visible,get_viewport().get_visible_rect().size,previous_process_us,max_physics_tick_us,physics_ticks)
 		physics_us = 0
-		frame_ms.append(float(now-last_frame)/1000.0)
-		if frame_ms.size()>240:
-			frame_ms.pop_front()
+		max_physics_tick_us = 0
+		physics_ticks = 0
 	last_frame = now
-	if now-last_hud<500000:
-		return
-	last_hud = now
-	var sorted := frame_ms.duplicate()
-	sorted.sort()
-	var p99 := 0.0 if sorted.is_empty() else float(sorted[clampi(ceili(sorted.size()*0.99)-1,0,sorted.size()-1)])
-	var worst := 0.0 if sorted.is_empty() else float(sorted[-1])
-	status.text = "FPS %d | P99 %.1f ms | MAX %.1f ms | düşme %d | %.0f m" % [Engine.get_frames_per_second(),p99,worst,gaps,traveled]
+	if now-last_hud>=1000000:
+		last_hud = now
+		# Reuse last completed one-second summary; no second sort or ring shift.
+		var p99 := float(recorder.last_summary.get("p99_ms",0.0))
+		var worst := float(recorder.last_summary.get("max_ms",0.0))
+		status.text = "FPS %d | P99 %.1f ms | MAX %.1f ms | düşme %d | %.0f m" % [Engine.get_frames_per_second(),p99,worst,gaps,traveled]
+	previous_process_us = Time.get_ticks_usec()-now

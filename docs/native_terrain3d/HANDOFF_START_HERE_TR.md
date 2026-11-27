@@ -14,3 +14,5 @@ ZIP boyutu hedef değil. Takılmasız kare akışı, hızlı açılış, bellek 
 
 ## Yakın kalite kuralı
 Oyuncu çevresindeki geometri, doku, fizik ve görüntü keskinliğini FPS uğruna sessizce düşürme. Global çözünürlük azaltımı varsayılan değil. Karar protokolü ve ana plandaki yakın kalite kabul kriterlerini uygula.
+
+Güncel: P1.6.5 paket başarılı (46015224588); P1.6.6–7 birleşik bellek içi recorder aday. Cihaz davranışı ölçülmedi; sıradaki P1.6.6–7 paket sonucu, ardından P1.7.1 native array maliyeti.

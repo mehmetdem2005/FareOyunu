@@ -45,3 +45,7 @@ Her sonraki geliştirmede tarih, adım numarası, commit, durum, ölçüm/kanıt
 ## P1.6.5 — 27 Kasım 2026
 - P1.6.3/4 temizlik CI 46014546324 başarılı: 64 region, 16.777.216 Float32 örnek, dört mip zinciri. Ses ve PNG log uyarıları yok; Vulkan/VSync ortam kayıtları duruyor. Artifact 15204524992.
 - P1.6.5 aday: mevcut spawn/respawn ray kontrolü doğru native collider id + beklenen yükseklik ile güçlendirildi; 3 s hata sınırı ve manuel retry. Geçersiz spawn yüksekliğinde backend aktive edilmez. Normal oynanışta ek ray yok; fizik/LOD ayarları korunur. Gate olayları rapora yazılır. Paket doğrulaması açık, cihaz sonucu yok. 4/43. Sonraki P1.6.6/7: takılma teşhisi ve düşük maliyetli recorder.
+
+## P1.6.6–7 — 27 Kasım 2026
+- 46015224588 paket sonucu başarılı; P1.6.5 cihaz gate davranışı açık. 5/43 paket/uygulama hedefi.
+- Aday recorder schema 3: normal oyun sırasında disk yazma/flush ve RSS okuma kaldırıldı; RAM sınırları, dropped sayaçları, 50ms+ stall bağlamı ve P99.9, bir saniyelik HUD özetini tekrar kullanma. Manuel export korunur; crash recovery yok, cihaz ölçümü açık. Yeni worker/kalite değişikliği yok. P1.6.6/7 birleşik paket doğrulaması açık.
