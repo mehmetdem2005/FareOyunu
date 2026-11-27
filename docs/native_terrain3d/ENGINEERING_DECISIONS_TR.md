@@ -55,3 +55,6 @@ Mevcut kod normal oyun sırasında her saniye JSON stringify + store_line + /pro
 
 ## Status
 P1.7.1 source analysis complete, not timing benchmark; package untouched. Open: device RSS/driver memory, real upload/array replacement latency, scalability beyond current map. Next P1.7.2. No new CI, no automated performance tests.
+
+## P1.7.2 — Kararlı koordinat indeksi
+Native region_id değişkendir; Vector2i(x,z) tek kararlı anahtar. Mevcut manifest seen sözlüğü yerine salt okunur descriptor sözlüğü (dosya adı + SHA256), yalnız doğrulanan tam kare origin-zero düzen. JSON float tam sayı kontrolü, sonlu değer, boyut/spacing/region sayısı, aralık, tekrar, kanonik dosya ve 64 küçük hex karakter hash denetimi. Dosya hash taraması eskisi gibi tek geçiş, region load batch ve GPU update değişmez. İndeks yalnız başarılı yükleme sonunda yayınlanır; native kaynak veya image saklamaz, GPU slot id saklamaz. Sözlük O(1) ortalama arama, 64 metadata kaydı, her kare iş yok. Sparse/negatif dünya desteği bu formatta iddia edilmez. Paket üreticisi aynı saf parser ile üretilen 64 kaydı doğrular; benchmark yok. P1.7.3 cihaz bütçesi ayrı. Cihaz sonucu açık.

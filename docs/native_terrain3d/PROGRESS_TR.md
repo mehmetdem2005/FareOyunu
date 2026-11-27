@@ -57,3 +57,6 @@ Her sonraki geliştirmede tarih, adım numarası, commit, durum, ölçüm/kanıt
 ## P1.7.1 — kaynak denetimi tamamlandı
 - Native add/remove tüm texture array ve region_map_changed üzerinden fizik rebuild yapabilir; remove_region gerçek RAM eviction değil, save_directory silinmiş disk kaynaklarını silebilir. Ayrıntılı kaynak ve 213.333 MiB teorik harita yükü: NATIVE_RESIDENCY_AUDIT_TR.md. Cihaz GPU/RSS/timing ölçümü yok.
 - 64 region resident korunur, naive streaming reddedildi. 8/43, P1.7 1/10. Sıradaki 1.7.2 kararlı koordinat indeksi. Yalnız belge commit, CI tetiklenmez.
+
+## P1.7.2 — 27 Kasım 2026
+- Aday: mevcut geçici seen kontrolü yerine doğrulanmış salt okunur Vector2i -> dosya/hash indeksi. Tam origin-zero kare format, strict JSON tür/koordinat/region boyutu/hash kontrolleri. Başarılı native yükleme sonunda indeks yayınlanır. Metadata dışında yeni kopya, worker, GPU/fizik değişikliği yok. Baker aynı parser ile 64 descriptor doğrulaması; paket CI açık. 8/43; sıradaki P1.7.3.

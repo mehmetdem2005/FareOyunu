@@ -44,6 +44,7 @@ jobs:
           fi
           timeout 240s xvfb-run -a godot --path "$project" --rendering-method gl_compatibility --rendering-driver opengl3 --audio-driver Dummy --resolution 640x480 res://bake_native.tscn 2>&1 | tee "$RUNNER_TEMP/native-bake.log"
           grep -q 'NATIVE_SURFACE_MIPS_OK count=4' "$RUNNER_TEMP/native-bake.log"
+          grep -q 'NATIVE_REGION_INDEX_OK count=64' "$RUNNER_TEMP/native-bake.log"
           grep -q 'NATIVE_BAKE_OK regions=64 exact_height_samples=16777216' "$RUNNER_TEMP/native-bake.log"
           ! grep -Eq 'SCRIPT ERROR:|Parse Error:|NATIVE_BAKE_FAIL|Shader compilation failed' "$RUNNER_TEMP/native-bake.log"
           rm "$project/world/height.r32"

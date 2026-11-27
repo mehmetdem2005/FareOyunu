@@ -28,7 +28,7 @@ Hedef: ilk fiziksel zemin 6,71 s bazına göre iyileşsin; saniyelik donmaların
 
 ## P1.7 — Profesyonel chunk ve bellek yönetimi (10 adım)
 - [x] 1.7.1 Native bölge ekleme/kaldırma kaynak analizi (gerçek cihaz maliyeti açık).
-- [ ] 1.7.2 Dünya bölge indeksi.
+- [ ] 1.7.2 (aday; paket doğrulaması açık) Dünya bölge indeksi.
 - [ ] 1.7.3 Cihaz kapasitesine göre bellek bütçesi.
 - [ ] 1.7.4 Asenkron disk okuma.
 - [ ] 1.7.5 Hareket yönüne göre akıllı prefetch.

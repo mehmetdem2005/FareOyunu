@@ -7,6 +7,8 @@ var terrain: Node3D
 var render_profile := "lean"
 var region_size := REGION_SIZE
 var startup_phases_us: Dictionary = {}
+# Metadata only; stable coordinates, never native texture-layer IDs.
+var _region_index: Dictionary = {}
 
 func initialize(camera: Camera3D, collision_target: Node3D, spacing: float, profile: String = "lean", region_samples: int = REGION_SIZE, baked: bool = false) -> Error:
 	var phase := Time.get_ticks_usec()
@@ -169,6 +171,67 @@ func surface_height(position: Vector3) -> float:
 		return NAN
 	return float(data.call("get_surface_height", position))
 
+## JSON numbers may be floats; never silently truncate malformed coordinates.
+static func _is_grid_integer(value: Variant, low: int, high: int) -> bool:
+	if not (value is int or value is float):
+		return false
+	var number := float(value)
+	return is_finite(number) and number >= low and number <= high and number == floorf(number)
+
+## Pure metadata validation. Current format is a complete origin-zero square,
+## not a sparse world or arbitrary signed-coordinate streaming format.
+## Empty result means invalid. All descriptors and the map itself are read-only.
+static func build_region_index(manifest: Dictionary, expected_size: int, expected_spacing: float) -> Dictionary:
+	if expected_size not in [256,512] or not is_finite(expected_spacing) or expected_spacing <= 0.0:
+		return {}
+	if not _is_grid_integer(manifest.get("region_samples"),expected_size,expected_size):
+		return {}
+	if not _is_grid_integer(manifest.get("samples"),expected_size,expected_size*16):
+		return {}
+	var spacing: Variant = manifest.get("spacing_m")
+	if not (spacing is int or spacing is float) or float(spacing) != expected_spacing:
+		return {}
+	var side := int(manifest["samples"])
+	if side % expected_size != 0:
+		return {}
+	var width := int(side / expected_size)
+	var entries: Variant = manifest.get("native_regions")
+	if not entries is Array or entries.size() != width*width or entries.size() > MAX_REGIONS:
+		return {}
+	if not _is_grid_integer(manifest.get("regions"),entries.size(),entries.size()):
+		return {}
+	var index := {}
+	for item: Variant in entries:
+		if not item is Dictionary:
+			return {}
+		if not _is_grid_integer(item.get("x"),0,width-1) or not _is_grid_integer(item.get("z"),0,width-1):
+			return {}
+		var loc := Vector2i(int(item["x"]),int(item["z"]))
+		if index.has(loc):
+			return {}
+		var filename := "terrain3d_%02d_%02d.res" % [loc.x,loc.y]
+		var digest: Variant = item.get("sha256")
+		if item.get("file") != filename or not digest is String:
+			return {}
+		if digest.length() != 64 or digest != digest.to_lower():
+			return {}
+		for digit: String in digest:
+			if not "0123456789abcdef".contains(digit):
+				return {}
+		var descriptor := {"file":filename,"sha256":digest}
+		descriptor.make_read_only()
+		index[loc] = descriptor
+	index.make_read_only()
+	return index
+
+## No native resource reference is exposed or retained by this metadata lookup.
+func region_descriptor(location: Vector2i) -> Dictionary:
+	var descriptor: Dictionary = _region_index.get(location,{})
+	return descriptor
+
+func indexed_region_count() -> int:
+	return _region_index.size()
+
 ## Load pre-baked native regions once. Explicit filenames avoid Android directory enumeration.
 ## Verify all files before mutating native data; upload maps once after all regions are loaded.
 func load_baked_regions(manifest: Dictionary) -> Error:
@@ -178,34 +241,24 @@ func load_baked_regions(manifest: Dictionary) -> Error:
 	var data: Object = terrain.get("data")
 	if data == null or int(data.call("get_region_count")) != 0:
 		return ERR_ALREADY_IN_USE
-	var entries: Array = manifest.get("native_regions", [])
-	var side := int(manifest.get("samples",0))
-	var width := int(side / region_size)
-	if width <= 0 or side % region_size != 0 or entries.size() != width * width or entries.size() > MAX_REGIONS:
+	var index := build_region_index(manifest,region_size,float(terrain.get("vertex_spacing")))
+	if index.is_empty():
+		push_error("Invalid native region manifest index")
 		return ERR_INVALID_DATA
 	var directory := "res://world/native"
-	var seen := {}
-	for item in entries:
-		if not item is Dictionary:
-			return ERR_INVALID_DATA
-		var x := int(item.get("x",-1))
-		var z := int(item.get("z",-1))
-		var loc := Vector2i(x,z)
-		if x < 0 or z < 0 or x >= width or z >= width or seen.has(loc):
-			return ERR_INVALID_DATA
-		seen[loc] = true
-		var filename := "terrain3d_%02d_%02d.res" % [x,z]
-		var path := directory.path_join(filename)
-		if str(item.get("file","")) != filename or not FileAccess.file_exists(path):
+	for loc: Vector2i in index:
+		var descriptor: Dictionary = index[loc]
+		var path := directory.path_join(str(descriptor["file"]))
+		if not FileAccess.file_exists(path):
 			push_error("Missing native region: " + path)
 			return ERR_FILE_NOT_FOUND
-		if FileAccess.get_sha256(path) != str(item.get("sha256","")):
+		if FileAccess.get_sha256(path) != descriptor["sha256"]:
 			push_error("Native region checksum mismatch: " + path)
 			return ERR_FILE_CORRUPT
 	startup_phases_us["region_manifest_and_sha256"] = Time.get_ticks_usec()-phase
 	phase = Time.get_ticks_usec()
-	for item in entries:
-		var loc := Vector2i(int(item["x"]),int(item["z"]))
+	# Preserve the manifest insertion order; native GPU IDs remain internal.
+	for loc: Vector2i in index:
 		data.call("load_region",loc,directory,false)
 		var region: Object = data.call("get_region",loc)
 		if region == null or int(region.call("get_region_size")) != region_size:
@@ -221,10 +274,11 @@ func load_baked_regions(manifest: Dictionary) -> Error:
 	# Default map_type TYPE_MAX: update all arrays in one batch.
 	data.call("update_maps")
 	startup_phases_us["native_map_update_submit"] = Time.get_ticks_usec()-phase
-	if int(data.call("get_region_count")) != entries.size():
+	if int(data.call("get_region_count")) != index.size():
 		return ERR_INVALID_DATA
 	if render_profile == "world":
 		terrain.get("material").call("set_show_checkered",false)
+	_region_index = index
 	return OK
 
 ## Raw source only for offline baking / legacy non-baked profile.

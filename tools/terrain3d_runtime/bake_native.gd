@@ -84,6 +84,12 @@ func _ready() -> void:
 	print("NATIVE_SURFACE_MIPS_OK count=4")
 	doc["surface_mips"] = "godot_image_res_lossless"
 	doc["native_regions"] = entries
+	# Use the exact production parser on the generated descriptor metadata.
+	var index := Runtime.build_region_index(doc,512,0.25)
+	if index.size() != 64:
+		fail("native region index invalid")
+		return
+	print("NATIVE_REGION_INDEX_OK count=",index.size())
 	doc["storage"] = "terrain3d_native_res_float32_v1"
 	doc["native_bake_ms"] = Time.get_ticks_msec()-started
 	var output := FileAccess.open("res://world/world.json",FileAccess.WRITE)
