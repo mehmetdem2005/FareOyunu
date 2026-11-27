@@ -8,3 +8,6 @@ Eski `addons/terra_forge/HANDOFF_START_HERE_TR.md`, `P1_5_MASTER_PLAN_TR.md`, `P
 Kullanıcı mevcut native dünyayı beğendi. Çalışan paket commit'i `fdbf49b2b5c1e0133a050e2a5f5592011f1fbf2c`. Önce aktif plan ve ilerleme defterini, sonra son commit/CI sonuçlarını oku. 1.6.1–1.6.2 paket üretim hedefleri tamamlandı; yeni native yükleme cihaz doğrulaması açık. Sıradaki 1.6.3. Kullanıcı onayı olmadan kapsamı daraltma, fazı tamamlanmış sayma, eski dalı değiştirme.
 
 **Zorunlu:** [Mühendislik karar protokolü](ENGINEERING_DECISIONS_TR.md). Her görevden önce alternatifleri değerlendir; sonucu beklemeden gerekçeli karar ver, doğrulamayı karar yerine kullanma.
+
+## Performans önceliği
+ZIP boyutu hedef değil. Takılmasız kare akışı, hızlı açılış, bellek bütçesi ve fizik doğruluğu öncelikli. P1.6.3 öncesi karar protokolündeki sıkıştırma/I/O ayrımını oku.
