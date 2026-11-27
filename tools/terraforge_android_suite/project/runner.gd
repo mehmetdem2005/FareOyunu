@@ -1,6 +1,7 @@
 extends Node
 const CAPTURE = preload("res://capture.gd")
 const PROFILE_PATH = "res://addons/terra_forge/profiling/profile_scene.gd"
+const WORLD_PATH = "res://free_world.tscn"
 const SOAK_SECONDS: float = 1800.0
 const LIFECYCLE_EVENT_LIMIT: int = 32
 const SUITE_MODES: Array[String] = ["quick", "full", "soak", "profiles"]
@@ -9,6 +10,8 @@ var _start: Button
 var _suite_choice: OptionButton
 var _selected_suite: String="quick"
 var _retry: Button
+var _world_button: Button
+var _world: Node3D
 var _logger_installed := false
 var _idle_smoke := false
 var _starting := false
@@ -109,13 +112,14 @@ func _verify_idle() -> void:
     _start.pressed.emit()
 
 func _start_fresh() -> void:
-    if _busy or _starting or _inventory.is_empty():
+    if _busy or _starting or _inventory.is_empty() or is_instance_valid(_world):
         return
     if not _ci or _profile_smoke:
         _selected_suite=SUITE_MODES[_suite_choice.selected]
         _names=_suite_tests(_suite_choice.selected)
     _starting = true
     _suite_choice.disabled=true
+    _world_button.disabled = true
     _start.disabled = true
     _copy.disabled = true
     _full.disabled = true
@@ -131,6 +135,7 @@ func _start_fresh() -> void:
         _run_dir = ""
         _starting = false
         _suite_choice.disabled=false
+        _world_button.disabled = false
         _start.disabled = false
         _status.text = "Yeni oturum klasörü açılamadı."
         return
@@ -138,6 +143,7 @@ func _start_fresh() -> void:
         _run_dir = ""
         _starting = false
         _suite_choice.disabled=false
+        _world_button.disabled = false
         _start.disabled = false
         _status.text = "Ayrıntı klasörü açılamadı."
         return
@@ -259,6 +265,29 @@ func _make_ui() -> void:
     _retry.custom_minimum_size.y=44
     v.add_child(_retry)
     _retry.pressed.connect(_request_retry)
+    _world_button = Button.new()
+    _world_button.text = "SERBEST DÜNYA · FPS TESTİ"
+    _world_button.custom_minimum_size.y = 56
+    v.add_child(_world_button)
+    _world_button.pressed.connect(_open_world)
+    _world_button.visible = not _ci
+
+func _open_world() -> void:
+    if _busy or _starting or _export_dialog_open or is_instance_valid(_world):
+        return
+    var scene := load(WORLD_PATH) as PackedScene
+    if scene == null or not scene.can_instantiate():
+        _detail.text = "Serbest Dünya sahnesi açılamadı."
+        return
+    _world = scene.instantiate()
+    _world.connect("exit_requested", _close_world)
+    _layer.hide()
+    add_child(_world)
+
+func _close_world() -> void:
+    _world.queue_free()
+    _world = null
+    _layer.show()
 
 func _select_suite(index:int) -> void:
     if _busy or _starting or _inventory.is_empty() or _ci:
@@ -466,6 +495,7 @@ func _update_ui() -> void:
     _stop.disabled = not _busy or soak
     _restart.disabled = _starting
     _retry.disabled = _report.is_empty() or _starting or profiles_only
+    _world_button.disabled = _busy or _starting
 
 func _sample_memory() -> void:
     var rss: Variant = _read_rss()
