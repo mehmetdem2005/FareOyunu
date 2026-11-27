@@ -1,0 +1,2 @@
+# Q4c + Q6a birleşim
+Q4c CI46074121896 5/5 PASS: 3 Turkish UI modes frozen through queue, exact undo, reopen; native retention .001225/.888886/.012345; plan 21.210/29.234/16.371ms on this runner. Q6a CI46073625172 5/5 PASS: thermal capture/worker/commit .802/3.773/1.302ms; flow .838/2.477/1.349ms (4m Linux). Cancel pass. Combined gates retained; no device FPS claim. Both independent branches preserved. Q6b corridor and stale/magnitude tests pending. Q5 partial upload pending. Production candidate requires combined package pass before recommending.

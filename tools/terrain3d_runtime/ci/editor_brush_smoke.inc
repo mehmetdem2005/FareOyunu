@@ -125,6 +125,18 @@ func _ci_editor_brush_smoke() -> void:
         _corridor_points.assign([Vector2(128,112)])
         _stroke_active=true
         _finish_stroke(true)
+        if not _brush.weather_busy() or float(data.call("get_height",weather_center))!=peak:
+            push_error("NATIVE_EDITOR_BRUSH_FAIL: async weather dispatch")
+            get_tree().quit(1)
+            return
+        var deadline := Time.get_ticks_msec()+10000
+        while _brush.weather_busy() and Time.get_ticks_msec()<deadline:
+            await get_tree().process_frame
+        if _brush.weather_busy():
+            push_error("NATIVE_EDITOR_BRUSH_FAIL: async weather timeout")
+            get_tree().quit(1)
+            return
+        print("NATIVE_EDITOR_ASYNC_WEATHER_OK mode=",mode," capture_us=",_brush.last_weather_capture_us," worker_us=",_brush.last_weather_worker_us," commit_us=",_brush.last_weather_commit_us)
         var changed_peak := float(data.call("get_height",weather_center))
         var count := _brush.last_changed_cells
         var mass := _brush.last_weather_mass_error
@@ -134,6 +146,20 @@ func _ci_editor_brush_smoke() -> void:
             get_tree().quit(1)
             return
         print("NATIVE_EDITOR_WEATHER_OK mode=",mode," changed=",count," moved=",moved," mass_error=",mass)
+    # Cancel a job and verify its result cannot mutate the live terrain.
+    if not _brush.start_weather(Vector2(128,112),4.0,2.0,0).is_empty():
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: async cancel dispatch")
+        get_tree().quit(1)
+        return
+    _brush.cancel_weather()
+    var cancel_deadline := Time.get_ticks_msec()+10000
+    while _brush.weather_busy() and Time.get_ticks_msec()<cancel_deadline:
+        await get_tree().process_frame
+    if _brush.weather_busy() or float(data.call("get_height",weather_center))!=peak:
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: cancelled worker wrote live heights")
+        get_tree().quit(1)
+        return
+    print("NATIVE_EDITOR_ASYNC_CANCEL_OK")
     if _brush.undo()!="Native undo applied." or not is_zero_approx(float(data.call("get_height",weather_center))):
         push_error("NATIVE_EDITOR_BRUSH_FAIL: Weather setup undo")
         get_tree().quit(1)
