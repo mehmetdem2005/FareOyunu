@@ -3,7 +3,7 @@
 Onay: 27 Kasım 2026, kullanıcı mevcut oynanabilir sürümü beğendi ve bu planın eski planlardan ayrı kaydedilmesini istedi.
 Dal: `feat/terraforge-terrain3d-runtime`
 Kararlı referans (kullanıcının oynadığı Dört Havza V2): `fdbf49b2b5c1e0133a050e2a5f5592011f1fbf2c`.
-Durum: P1.5 native temel gerçek cihazda çalıştı; P1.6.1–7 paket/uygulama hedefleri tamamlandı (7/43); yeni runtime cihaz doğrulaması açık. Sıradaki P1.7.2.
+Durum: P1.5 native temel gerçek cihazda çalıştı; P1.6.1–7 paket/uygulama hedefleri tamamlandı (7/43); yeni runtime cihaz doğrulaması açık. Sıradaki P1.7.4; P1.7.1–3 kaynak/uygulama ve paket hedefleri tamamlandı (10/43).
 Bu belge bu dalın TEK aktif geliştirme planıdır. Eski `addons/terra_forge/` altındaki özel CPU mesh/worker mimarisi planları tarihsel referanstır; görev sırası, faz numaraları ve başarı ölçütleri buraya taşınmaz. Orijinal dal `feat/terraforge-mobile-addon` korunur.
 
 ## Başlangıç noktası ve kararlar
@@ -29,7 +29,7 @@ Hedef: ilk fiziksel zemin 6,71 s bazına göre iyileşsin; saniyelik donmaların
 ## P1.7 — Profesyonel chunk ve bellek yönetimi (10 adım)
 - [x] 1.7.1 Native bölge ekleme/kaldırma kaynak analizi (gerçek cihaz maliyeti açık).
 - [x] 1.7.2 (paket doğrulandı; cihaz yüklemesi açık) Dünya bölge indeksi.
-- [ ] 1.7.3 (aday; cihaz güvenli limitleri ölçülmedi) Cihaz kapasitesine göre bellek bütçesi.
+- [x] 1.7.3 (paket doğrulandı; cihaz güvenli limitleri ölçülmedi) Cihaz kapasitesine göre bellek bütçesi.
 - [ ] 1.7.4 Asenkron disk okuma.
 - [ ] 1.7.5 Hareket yönüne göre akıllı prefetch.
 - [ ] 1.7.6 Bölge verisi önbelleği.

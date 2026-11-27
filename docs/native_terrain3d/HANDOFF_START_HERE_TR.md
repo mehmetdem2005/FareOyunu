@@ -24,3 +24,5 @@ P1.7.1 tamamlandı: 8/43; NATIVE_RESIDENCY_AUDIT_TR.md zorunlu oku. Mevcut 64 re
 P1.7.2 aday: terrain_runtime.gd build_region_index ve region_descriptor; native GPU ID yerine kararlı Vector2i. Metadata only, resident dünya korunur. Paket doğrulaması açık; sonraki P1.7.3.
 
 P1.7.2 paket başarılı 46018260377 (9/43). P1.7.3 advisory memory inventory + başlangıç/elle export snapshot aday; device safe budgets unknown. Sıradaki paket sonucu; P1.7.4–8 gereklilik değerlendirmesi.
+
+P1.7.3 paket başarılı 46018743594, artifact 15207231764; 10/43. Cihaz bellek bütçesi açık; sıradaki P1.7.4, gereklilik analizi önce. Resident dünya korunur.

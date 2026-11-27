@@ -64,3 +64,7 @@ Her sonraki geliştirmede tarih, adım numarası, commit, durum, ölçüm/kanıt
 ## P1.7.3 — 27 Kasım 2026
 - P1.7.2 CI 46018260377 başarılı: NATIVE_REGION_INDEX_OK count=64; tüm 16.777.216 yükseklik örneği ve 4 mip doğrulandı. Artifact 15208290578. 9/43.
 - P1.7.3 aday: yükleme sırasında mevcut native image byte inventory, OS/renderer startup öncesi ve sonrası ayrı snapshots, export snapshot; safe process/GPU budget unknown -1, advisory resident. Yeni per-frame iş, worker, quality change yok. Paket doğrulaması açık, telefon ölçümü yok. P1.7.4–8 gereklilik koşullu; resident dünyada gereksiz streaming kurma.
+
+## P1.7.3 paket sonucu
+- CI 46018743594 başarılı; 64 region ve indeks, 16.777.216 Float32 örnek, dört mip zinciri doğrulandı; offline bake 2193 ms. Artifact 15207231764. Vulkan/VSync sunucu uyarıları devam. Bellek snapshot runtime davranışı ve güvenli cihaz bütçeleri doğrulanmadı; paket CI performans testi değil.
+- 10/43, P1.7 3/10; sıradaki P1.7.4 asenkron disk erişiminin gereklilik analizi; resident dünya için ölçümsüz worker ekleme. Belge güncellemesi yeni CI tetiklemez.
