@@ -66,27 +66,69 @@ jobs:
           fi
           export XDG_RUNTIME_DIR="$RUNNER_TEMP/terrain3d-xdg"
           export XDG_DATA_HOME="$RUNNER_TEMP/terrain3d-data"
+          # Keep original 4-thread workload for comparison; run every probe even if one aborts.
+          # A single-thread software-driver run is a diagnostic, not a production workaround.
           export LP_NUM_THREADS=4
+          mkdir -p "$RUNNER_TEMP/bench-results"
+          status=0
+          run_probe() {
+            local mode="$1" threads="$2" label="$3" rc=0
+            local log="$RUNNER_TEMP/bench-$label.log"
+            local timing="$RUNNER_TEMP/bench-$label.time"
+            LP_NUM_THREADS="$threads" timeout 100s xvfb-run -a /usr/bin/time -f '%M' -o "$timing" godot --path "$project" --render-thread safe --rendering-method "$METHOD" --rendering-driver "$driver" --audio-driver Dummy --resolution 960x540 res://benchmark.tscn -- --mode="$mode" 2>&1 | tee "$log" || rc=$?
+            if [[ "$rc" != 0 ]] || ! grep -q '^TERRAIN3D_BENCH ' "$log" || grep -Eq 'SCRIPT ERROR:|Parse Error:|BENCH_FAIL|handle_crash:|propagate_notification\(\)' "$log"; then
+              [[ "$rc" != 0 ]] || rc=1
+              status=1
+            fi
+            printf '%s\n' "$rc" > "$RUNNER_TEMP/bench-results/$label.exit"
+            if [[ "$rc" == 0 ]]; then
+              find "$XDG_DATA_HOME" -name "terrain3d-bench-$mode.json" -exec cp {} "$RUNNER_TEMP/bench-results/$label.json" \;
+            fi
+          }
           for mode in empty static moving moving_no_collision; do
-            log="$RUNNER_TEMP/bench-$mode.log"
-            timeout 100s xvfb-run -a godot --path "$project" --rendering-method "$METHOD" --rendering-driver "$driver" --audio-driver Dummy --resolution 960x540 res://benchmark.tscn -- --mode="$mode" 2>&1 | tee "$log"
-            grep -q '^TERRAIN3D_BENCH ' "$log"
-            ! grep -E 'SCRIPT ERROR:|Parse Error:|BENCH_FAIL' "$log"
+            run_probe "$mode" 4 "$mode"
           done
+          if [[ "$METHOD" == mobile ]]; then
+            run_probe camera_only 4 camera_only
+            run_probe collision_only 4 collision_only
+            run_probe moving 1 moving_lp1
+            run_probe moving_no_collision 1 moving_no_collision_lp1
+          fi
           python3 - "$RUNNER_TEMP" "$METHOD" <<'PY'
           import json, pathlib, sys
           p=pathlib.Path(sys.argv[1])
           rows=[]
-          for mode in ("empty","static","moving","moving_no_collision"):
-              matches=[line.removeprefix("TERRAIN3D_BENCH ") for line in (p/f"bench-{mode}.log").read_text().splitlines() if line.startswith("TERRAIN3D_BENCH ")]
-              assert len(matches)==1
+          failed=False
+          for result in sorted((p/"bench-results").glob("*.exit")):
+              label=result.stem
+              rc=int(result.read_text())
+              log=p/f"bench-{label}.log"
+              matches=[line.removeprefix("TERRAIN3D_BENCH ") for line in log.read_text().splitlines() if line.startswith("TERRAIN3D_BENCH ")]
+              if rc or len(matches)!=1:
+                  rows.append({"probe":label,"status":"failed","exit":rc})
+                  failed=True
+                  continue
               row=json.loads(matches[0])
-              assert row["mode"]==mode and row["renderer"]==sys.argv[2] and row["frames"]>=10
+              row["probe"]=label
+              row["status"]="complete"
+              timing=p/f"bench-{label}.time"
+              # GNU time reports maximum RSS in KiB for the Godot process, including startup.
+              values=[int(x) for x in timing.read_text().splitlines() if x.strip().isdigit()] if timing.exists() else []
+              row["process_max_rss_bytes"]=values[-1]*1024 if values else None
+              assert row["renderer"]==sys.argv[2] and row["frames"]>=10
               assert row["viewport"]==[960,540], row
+              assert row["process_max_rss_bytes"] and row["process_max_rss_bytes"]>0, row
+              if row["physics_samples"] and (row["missing_rays"] or row["max_ray_error_m"]>0.08):
+                  row["status"]="physics_failure"
+                  failed=True
               rows.append(row)
+          expected=8 if sys.argv[2]=="mobile" else 4
+          assert len(rows)==expected
           (p/"terrain3d-benchmark.json").write_text(json.dumps(rows,indent=2))
           print("BENCHMARK_MATRIX",json.dumps(rows))
+          sys.exit(int(failed))
           PY
+          exit "$status"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -95,6 +137,8 @@ jobs:
             ${{ runner.temp }}/import.log
             ${{ runner.temp }}/smoke.log
             ${{ runner.temp }}/bench-*.log
+            ${{ runner.temp }}/bench-*.time
+            ${{ runner.temp }}/bench-results/
             ${{ runner.temp }}/terrain3d-benchmark.json
             ${{ runner.temp }}/terrain3d-data/**/terrain3d-bench-*.json
             ${{ runner.temp }}/terrain3d-data/**/terrain3d-smoke.png

@@ -5,6 +5,7 @@ const SPACING := 0.25
 const WARM_US := 4000000
 const RUN_US := 12000000
 var mode := "moving"
+var route_started := false
 var backend: Runtime
 var camera: Camera3D
 var target: Node3D
@@ -28,7 +29,7 @@ func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--mode="):
 			mode = arg.trim_prefix("--mode=")
-	if mode not in ["empty", "static", "moving", "moving_no_collision"]:
+	if mode not in ["empty", "static", "moving", "moving_no_collision", "camera_only", "collision_only"]:
 		_fail("invalid mode")
 		return
 	Engine.max_fps = 0
@@ -83,9 +84,12 @@ func _height(x: int, z: int) -> float:
 func _move(t: float) -> void:
 	var x := lerpf(20.0, 108.0, t)
 	var z := 64.0 + 24.0 * sin(t * TAU)
-	target.position = Vector3(x, 3, z)
-	camera.position = target.position + Vector3(0, 13, 15)
-	camera.look_at(target.position, Vector3.UP)
+	var focus := Vector3(x, 3, z)
+	if not route_started or mode != "camera_only":
+		target.position = focus
+	if not route_started or mode != "collision_only":
+		camera.position = focus + Vector3(0, 13, 15)
+		camera.look_at(focus, Vector3.UP)
 
 func _process(_delta: float) -> void:
 	if not active or finished:
@@ -96,6 +100,7 @@ func _process(_delta: float) -> void:
 		return
 	if first == 0:
 		first = now
+		route_started = true
 		previous = now
 		_sample_memory()
 		return
@@ -110,7 +115,7 @@ func _process(_delta: float) -> void:
 		call_deferred("_finish")
 
 func _physics_process(_delta: float) -> void:
-	if not active or finished or first == 0 or mode not in ["static","moving"]:
+	if not active or finished or first == 0 or mode not in ["static","moving","camera_only","collision_only"]:
 		return
 	physics_frames += 1
 	var p := target.global_position
@@ -130,9 +135,14 @@ func _sample_memory() -> void:
 	if FileAccess.file_exists("/proc/self/status"):
 		var file := FileAccess.open("/proc/self/status",FileAccess.READ)
 		if file != null:
-			for line in file.get_as_text().split("\n"):
+			for i in range(128):
+				var line := file.get_line()
 				if line.begins_with("VmRSS:"):
-					rss_peak = maxi(rss_peak,line.trim_prefix("VmRSS:").strip_edges().get_slice(" ",0).to_int() * 1024)
+					var kb := line.trim_prefix("VmRSS:").strip_edges().get_slice(" ",0).to_int()
+					if kb > 0:
+						rss_peak = maxi(rss_peak,kb * 1024)
+					break
+				if file.eof_reached():
 					break
 
 func _percentile(sorted: PackedFloat64Array, p: float) -> float:
@@ -167,7 +177,7 @@ func _finish() -> void:
 	for i in range(sorted.size()-tail_count,sorted.size()):
 		tail_sum += sorted[i]
 	var dims := get_viewport().get_visible_rect().size
-	var row := {"mode":mode,"renderer":RenderingServer.get_current_rendering_method(),"device":OS.get_model_name(),"adapter":RenderingServer.get_video_adapter_name(),"viewport":[int(dims.x),int(dims.y)],"frames":frames.size(),"duration_ms":total,"fps":1000.0*frames.size()/total,"mean_ms":total/frames.size(),"p50_ms":_percentile(sorted,0.5),"p95_ms":_percentile(sorted,0.95),"p99_ms":_percentile(sorted,0.99),"max_ms":sorted[-1],"one_percent_low_fps":1000.0*tail_count/tail_sum,"over_33ms":slow33,"over_50ms":slow50,"over_100ms":slow100,"worst_slow_streak_ms":worst_streak,"sampled_rss_peak_bytes":rss_peak,"sampled_static_peak_bytes":static_peak,"sampled_draw_calls_peak":draw_peak,"sampled_primitives_peak":primitives_peak,"import_ms":import_ms,"physics_samples":physics_frames,"missing_rays":missing_rays,"max_ray_error_m":max_ray_error,"region_count":0 if mode=="empty" else 4}
+	var row := {"mode":mode,"software_driver_threads":OS.get_environment("LP_NUM_THREADS"),"renderer":RenderingServer.get_current_rendering_method(),"device":OS.get_model_name(),"adapter":RenderingServer.get_video_adapter_name(),"viewport":[int(dims.x),int(dims.y)],"frames":frames.size(),"duration_ms":total,"fps":1000.0*frames.size()/total,"mean_ms":total/frames.size(),"p50_ms":_percentile(sorted,0.5),"p95_ms":_percentile(sorted,0.95),"p99_ms":_percentile(sorted,0.99),"max_ms":sorted[-1],"one_percent_low_fps":1000.0*tail_count/tail_sum,"over_33ms":slow33,"over_50ms":slow50,"over_100ms":slow100,"worst_slow_streak_ms":worst_streak,"sampled_rss_peak_bytes":rss_peak,"sampled_static_peak_bytes":static_peak,"sampled_draw_calls_peak":draw_peak,"sampled_primitives_peak":primitives_peak,"import_ms":import_ms,"physics_samples":physics_frames,"missing_rays":missing_rays,"max_ray_error_m":max_ray_error,"region_count":0 if mode=="empty" else 4}
 	var file := FileAccess.open("user://terrain3d-bench-%s.json" % mode,FileAccess.WRITE)
 	if file == null:
 		_fail("cannot save results")
