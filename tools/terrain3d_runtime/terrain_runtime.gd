@@ -60,11 +60,13 @@ func initialize(camera: Camera3D, collision_target: Node3D, spacing: float, prof
 		material.set("shader_override_enabled", true)
 		if profile == "world":
 			for kind in ["soil","rock","sand","grass"]:
-				var tex := load("res://world/"+kind+".png") as Texture2D
-				if tex == null:
+				var pixels := Image.load_from_file("res://world/"+kind+".png")
+				if pixels == null or pixels.is_empty():
 					terrain.free()
 					terrain = null
 					return ERR_CANT_CREATE
+				pixels.generate_mipmaps()
+				var tex := ImageTexture.create_from_image(pixels)
 				material.call("set_shader_param", kind+"_tex", tex)
 		else:
 			material.call("set_shader_param", "textures_enabled", false)

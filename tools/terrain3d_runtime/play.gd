@@ -242,7 +242,7 @@ func respawn() -> void:
 	update_camera()
 
 func _input(event: InputEvent) -> void:
-	if menu == null or menu.visible or loading :
+	if menu == null or menu.visible or loading:
 		return
 	var size := get_viewport().get_visible_rect().size
 	if event is InputEventScreenTouch:
@@ -292,7 +292,7 @@ func _physics_process(delta: float) -> void:
 	if Input.is_physical_key_pressed(KEY_S): move.y += 1
 	if Input.is_physical_key_pressed(KEY_A): move.x -= 1
 	if Input.is_physical_key_pressed(KEY_D): move.x += 1
-	if menu.visible or dialog.visible: move = Vector2.ZERO
+	if menu.visible: move = Vector2.ZERO
 	move = move.limit_length()
 	var direction := Vector3(move.x,0,move.y).rotated(Vector3.UP,yaw)
 	player.velocity.x = direction.x*speed
@@ -338,7 +338,7 @@ func _process(_delta: float) -> void:
 		return
 	var now := Time.get_ticks_usec()
 	if last_frame>0 and backend != null and not loading:
-		recorder.frame(now-last_frame,player.position,physics_us,traveled,gaps,ground_checks,ground_misses,speed,ready_to_walk,menu.visible or dialog.visible,get_viewport().get_visible_rect().size)
+		recorder.frame(now-last_frame,player.position,physics_us,traveled,gaps,ground_checks,ground_misses,speed,ready_to_walk,menu.visible,get_viewport().get_visible_rect().size)
 		physics_us = 0
 		frame_ms.append(float(now-last_frame)/1000.0)
 		if frame_ms.size()>240:
