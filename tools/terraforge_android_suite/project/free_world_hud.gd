@@ -2,6 +2,7 @@ extends Control
 
 signal back_requested
 signal reset_requested
+signal compare_requested
 signal save_requested
 signal look_dragged(delta: Vector2)
 
@@ -22,6 +23,9 @@ const MOUSE_POINTER := -2
 @onready var _reset: Button = $SafeArea/Actions/Reset
 @onready var _save: Button = $SafeArea/Actions/Save
 
+@onready var _compare: Button = $SafeArea/Actions/Compare
+var has_comparison := false
+var _comparing := false
 var _controls_enabled := false
 var _move_pointer := NO_POINTER
 var _look_pointer := NO_POINTER
@@ -29,6 +33,7 @@ var _stick_center := Vector2.ZERO
 var _stick_offset := Vector2.ZERO
 
 func _ready() -> void:
+    _compare.pressed.connect(func(): compare_requested.emit())
     _back.pressed.connect(func(): back_requested.emit())
     _reset.pressed.connect(func(): reset_requested.emit())
     _save.pressed.connect(func(): save_requested.emit())
@@ -59,7 +64,8 @@ func _place_panels() -> void:
 
 func set_controls_enabled(enabled: bool) -> void:
     _controls_enabled = enabled
-    _reset.disabled = not enabled
+    _compare.disabled = not enabled
+    _reset.disabled = not enabled or _comparing
     _save.disabled = true
     _hint.visible = enabled
     if not enabled:
@@ -77,7 +83,14 @@ func show_metrics(live: int, average: float, seconds: float, p95_ms: float) -> v
     _summary.text = "Ort. %.1f FPS   ·   p95 ≤ %.1f ms   ·   %d sn" % [average, p95_ms, int(seconds)] if seconds > 0.0 else "Ölçüm bekliyor"
     _metrics.reset_size()
     _place_panels()
-    _save.disabled = not _controls_enabled or seconds < 1.0
+    _save.disabled = not _controls_enabled or _comparing or (seconds < 1.0 and not has_comparison)
+
+func comparison_caption(caption: String) -> void:
+    _comparing = not caption.is_empty()
+    _reset.disabled = _comparing or not _controls_enabled
+    _compare.text = "Karşılaştırmayı durdur" if _comparing else "FPS karşılaştır"
+    _hint.text = caption if _comparing else "Sağda sürükle · Kamera"
+    clear_input()
 
 func clear_input() -> void:
     _move_pointer = NO_POINTER

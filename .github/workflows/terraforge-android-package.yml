@@ -138,6 +138,10 @@ jobs:
           timeout 100s xvfb-run -a godot --path "$RUNNER_TEMP/tf-android" --display-driver x11 --audio-driver Dummy --rendering-method mobile --rendering-driver vulkan --resolution 960x540 --script res://world_smoke.gd -- --capture 2>&1 | tee "$RUNNER_TEMP/world-smoke.log"
           grep -F 'FREE_WORLD_VERIFIED' "$RUNNER_TEMP/world-smoke.log"
           if grep -E '^SCRIPT ERROR:|Parse Error:|Compile Error:|^ERROR:' "$RUNNER_TEMP/world-smoke.log"; then exit 1; fi
+          cp tools/terraforge_android_suite/compare_smoke.gd "$RUNNER_TEMP/tf-android/"
+          timeout 210s xvfb-run -a -s '-screen 0 1920x1080x24' godot --path "$RUNNER_TEMP/tf-android" --display-driver x11 --audio-driver Dummy --rendering-method mobile --rendering-driver vulkan --resolution 1812x883 --script res://compare_smoke.gd 2>&1 | tee "$RUNNER_TEMP/compare-smoke.log"
+          grep -F 'WORLD_COMPARISON_VERIFIED' "$RUNNER_TEMP/compare-smoke.log"
+          if grep -E '^SCRIPT ERROR:|Parse Error:|Compile Error:|^ERROR:' "$RUNNER_TEMP/compare-smoke.log"; then exit 1; fi
           timeout 720s xvfb-run -a godot --path "$RUNNER_TEMP/tf-android" --display-driver x11 --audio-driver Dummy --rendering-method mobile --rendering-driver vulkan --resolution 640x480 -- --profile-smoke 2>&1 | tee "$RUNNER_TEMP/profile-smoke.log"
           grep -F 'ANDROID_PROFILE_SMOKE_VERIFIED' "$RUNNER_TEMP/profile-smoke.log"
           grep -F '"profiles":60' "$RUNNER_TEMP/profile-smoke.log"
@@ -152,6 +156,7 @@ jobs:
           path: |
             ${{ runner.temp }}/import.log
             ${{ runner.temp }}/world-smoke.log
+            ${{ runner.temp }}/compare-smoke.log
             ${{ runner.temp }}/profile-smoke.log
             ${{ runner.temp }}/soak-smoke.log
           if-no-files-found: warn

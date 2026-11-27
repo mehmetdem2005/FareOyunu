@@ -141,6 +141,12 @@ focus_mode = 0
 disabled = true
 text = "FPS JSON kaydet"
 
+[node name="Compare" type="Button" parent="Interface/HUD/SafeArea/Actions"]
+custom_minimum_size = Vector2(0, 46)
+focus_mode = 0
+disabled = true
+text = "FPS karşılaştır"
+
 [node name="Metrics" type="PanelContainer" parent="Interface/HUD/SafeArea"]
 anchors_preset = 1
 anchor_left = 1.0

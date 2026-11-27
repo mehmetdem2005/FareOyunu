@@ -5,6 +5,8 @@ signal exit_requested
 const PREVIEW = preload("res://addons/terra_forge/terrain/paged_terrain_preview.gd")
 const FIXTURE = preload("res://addons/terra_forge/core/region_fixture_v2.gd")
 const HISTOGRAM = preload("res://addons/terra_forge/core/profile_histogram.gd")
+const FRAME_COST = preload("res://world_frame_cost.gd")
+const COMPARISON = preload("res://world_comparison.gd")
 const WORLD_CELLS := Vector2i(1024, 1024)
 const SPAWN := Vector2(500.0, 500.0)
 const PAGE_LIMIT := 32
@@ -52,7 +54,22 @@ var _waiting_steps := 0
 var _airborne_steps := 0
 var _frame_times = HISTOGRAM.new()
 
+var _cost = FRAME_COST.new()
+var _pump_us := 0
+var _controller_us := 0
+var _physics_steps := 0
+var _pending := 0
+var _render_target := Vector2i.ZERO
+var _original_scale := 1.0
+var _render_timing := false
+var _comparison: COMPARISON
+var _comparison_runs: Array[Dictionary] = []
+
 func _ready() -> void:
+    _original_scale = get_viewport().scaling_3d_scale
+    get_viewport().size_changed.connect(_resize_target)
+    _resize_target()
+    _hud.compare_requested.connect(_toggle_comparison)
     _hud.back_requested.connect(_leave)
     _hud.reset_requested.connect(_reset_measurement)
     _hud.save_requested.connect(_export_report)
@@ -83,8 +100,11 @@ func _process(_delta: float) -> void:
     if _preview == null or _failed or _leaving or _app_paused:
         return
     var focus := _body.global_position if _spawned else Vector3(SPAWN.x, 0.0, SPAWN.y)
+    var pump_start := Time.get_ticks_usec()
     _preview.set_stream_center(focus)
     var stream: Dictionary = _preview.pump_stream()
+    _pump_us = Time.get_ticks_usec() - pump_start
+    _pending = stream.get("pending_tiles", 0)
     if stream["error"] != OK:
         _fail("Arazi akışı durdu", stream["error"])
         return
@@ -98,6 +118,8 @@ func _process(_delta: float) -> void:
         _hud.show_status("")
     if _window_focused and not _dialog_open:
         _sample_frame()
+        if _comparison != null:
+            _advance_comparison()
 
 func _open_terrain() -> void:
     _preview = PREVIEW.new()
@@ -127,9 +149,10 @@ func _physics_process(delta: float) -> void:
     if not _spawned:
         _try_spawn()
         return
+    var began := Time.get_ticks_usec()
     var start := _body.global_position
     var from := Vector2(start.x, start.z)
-    var stick: Vector2 = _hud.movement()
+    var stick: Vector2 = _hud.movement() if _comparison == null else _comparison.direction(from, MOVE_SPEED * delta)
     var heading := Basis(Vector3.UP, _yaw) * Vector3(stick.x, 0.0, stick.y)
     var margin := Vector2.ONE * (SUPPORT_RADIUS + 0.15)
     var target := (from + Vector2(heading.x, heading.z) * MOVE_SPEED * delta).clamp(margin, _extent - margin)
@@ -151,6 +174,8 @@ func _physics_process(delta: float) -> void:
     _orbit.global_position = _body.global_position + Vector3.UP * 0.85
     _orbit.rotation.y = _yaw
     _arm.rotation.x = _pitch
+    _controller_us += Time.get_ticks_usec() - began
+    _physics_steps += 1
     if _playing:
         _distance += from.distance_to(actual)
         _airborne_steps += int(not _body.is_on_floor())
@@ -182,10 +207,15 @@ func _claim_support(point: Vector2) -> bool:
     return true
 
 func _look(drag: Vector2) -> void:
+    if _comparison != null:
+        return
     _yaw = wrapf(_yaw - drag.x * LOOK_SPEED, -PI, PI)
     _pitch = clampf(_pitch - drag.y * LOOK_SPEED, deg_to_rad(-75.0), deg_to_rad(8.0))
 
 func _reset_measurement() -> void:
+    _cost = FRAME_COST.new()
+    _controller_us = 0
+    _physics_steps = 0
     _last_frame_usec = 0
     _elapsed_usec = 0
     _frames = 0
@@ -202,6 +232,12 @@ func _sample_frame() -> void:
     var elapsed := now - _last_frame_usec
     var has_previous := _last_frame_usec > 0
     _last_frame_usec = now
+    if has_previous and elapsed > 0:
+        _cost.frame(elapsed, _pump_us, _controller_us, _physics_steps, _pending)
+        if _render_timing:
+            _cost.sample_renderer(get_viewport().get_viewport_rid(), now)
+    _controller_us = 0
+    _physics_steps = 0
     if not has_previous or elapsed <= 0:
         return
     _frames += 1
@@ -218,13 +254,110 @@ func _sample_frame() -> void:
         _window_frames = 0
         _window_usec = 0
 
-func measurement() -> Dictionary:
+func _resize_target() -> void:
+    var vp := get_viewport()
+    # canvas_items stretches logical coordinates into the letterboxed render
+    # target. ViewportTexture.get_size() also applies the stretch in Godot 4.7.
+    var content_pixels: Rect2 = vp.get_stretch_transform() * vp.get_visible_rect()
+    _render_target = Vector2i(content_pixels.size.round())
+    if _comparison != null:
+        _stop_comparison(false)
+    vp.scaling_3d_scale = _balanced_scale()
+
+func _balanced_scale() -> float:
+    return minf(_original_scale, 540.0 / maxf(1.0, _render_target.y))
+
+func _toggle_comparison() -> void:
+    if _comparison != null:
+        _stop_comparison(false)
+        return
+    if not _playing or _dialog_open or _leaving:
+        return
+    if is_equal_approx(_balanced_scale(), 1.0):
+        _show_notice("Bu ekranda 3B görüntü zaten 540p veya altında.")
+        return
+    _comparison = COMPARISON.new(Vector2(_body.position.x, _body.position.z), _extent)
+    _yaw = 0.0
+    _pitch = deg_to_rad(-24.0)
+    _render_timing = DisplayServer.get_name() != "headless"
+    if _render_timing:
+        RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
+    _begin_arm()
+
+func _begin_arm() -> void:
+    var native: bool = COMPARISON.SCALES[_comparison.arm] == "native"
+    get_viewport().scaling_3d_scale = 1.0 if native else _balanced_scale()
+    _hud.comparison_caption(_comparison.label())
+    _reset_measurement()
+
+func _advance_comparison() -> void:
+    match _comparison.phase:
+        "settle":
+            if _elapsed_usec >= 1000000:
+                _comparison.phase = "idle" if _comparison.arm > 0 else "walk"
+                _reset_measurement()
+                _hud.comparison_caption(_comparison.label())
+        "idle":
+            if _elapsed_usec >= 2500000:
+                _comparison.idle = _interval_report()
+                _comparison.phase = "walk"
+                _reset_measurement()
+                _hud.comparison_caption(_comparison.label())
+        "walk":
+            if _elapsed_usec > 45000000:
+                _stop_comparison(false)
+                _show_notice("Rota zamanında tamamlanamadı.")
+            elif _comparison.lap_done:
+                if _comparison.arm > 0:
+                    var scale_3d := get_viewport().scaling_3d_scale
+                    var target := (Vector2(_render_target) * scale_3d).round()
+                    _comparison.runs.append({"arm": COMPARISON.SCALES[_comparison.arm],
+                        "scale": scale_3d, "target_3d_pixels": [int(target.x), int(target.y)],
+                        "idle": _comparison.idle, "walk": _interval_report()})
+                _comparison.next_arm()
+                if _comparison.arm == COMPARISON.SCALES.size():
+                    _stop_comparison(true)
+                else:
+                    _begin_arm()
+
+func _stop_comparison(completed: bool) -> void:
+    if completed:
+        _comparison_runs = _comparison.runs
+    _comparison = null
+    if _render_timing:
+        RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), false)
+    _render_timing = false
+    get_viewport().scaling_3d_scale = _balanced_scale()
+    _hud.comparison_caption("")
+    _hud.has_comparison = not _comparison_runs.is_empty()
+    _reset_measurement()
+    if completed:
+        var native := _paired_fps("native")
+        var reduced := _paired_fps("540p")
+        _show_notice("Yürüyüş ortalaması\nDoğal %.1f FPS  ·  540p %.1f FPS\nFPS JSON kaydet" % [native, reduced])
+
+func _paired_fps(arm: String) -> float:
+    var seconds := 0.0
+    var frames := 0
+    for run in _comparison_runs:
+        if run["arm"] == arm:
+            seconds += float(run["walk"]["seconds"])
+            frames += int(run["walk"]["frame_intervals_ms"]["count"])
+    return float(frames) / seconds if seconds > 0.0 else 0.0
+
+func _interval_report() -> Dictionary:
     var duration := float(_elapsed_usec) / 1000000.0
+    return {"seconds": duration, "average_fps": float(_frames) / duration if duration > 0.0 else 0.0,
+        "frame_intervals_ms": _frame_times.report(), "player_distance_m": _distance,
+        "streaming_wait_steps": _waiting_steps, "airborne_steps": _airborne_steps, "cost": _cost.report()}
+
+func measurement() -> Dictionary:
     var pixels := get_viewport().get_visible_rect().size
     var screen_pixels := get_window().size
     var inventory: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://suite.json"))
-    return {
-        "schema": "TF_FREE_WORLD_1",
+    var report := _interval_report()
+    report.merge({
+        "schema": "TF_FREE_WORLD_2",
         "build_commit": inventory.get("build_commit") if inventory is Dictionary else null,
         "terrain_tree": inventory.get("terrain_tree") if inventory is Dictionary else null,
         "recorded_utc": Time.get_datetime_string_from_system(true),
@@ -246,17 +379,19 @@ func measurement() -> Dictionary:
         "tile_limit": TILE_LIMIT,
         "view_distance": VIEW_DISTANCE,
         "shadows": false,
-        "seconds": duration,
-        "average_fps": float(_frames) / duration if duration > 0.0 else 0.0,
-        "frame_intervals_ms": _frame_times.report(),
-        "player_distance_m": _distance,
-        "streaming_wait_steps": _waiting_steps,
-        "airborne_steps": _airborne_steps,
-        "notes": "Monotonic process frame intervals after initial load, including in-play streaming; excludes focus loss and save dialog. Not GPU timings."
-    }
+        "render_target_pixels": [_render_target.x, _render_target.y],
+        "scale_3d": get_viewport().scaling_3d_scale,
+        "target_3d_height_px": roundi(_render_target.y * get_viewport().scaling_3d_scale),
+        "editor_build": OS.has_feature("editor"), "debugger_active": EngineDebugger.is_active(),
+        "fps_limit": Engine.max_fps, "display_refresh_hz": DisplayServer.screen_get_refresh_rate(),
+        "comparison_walk_fps": {"native": _paired_fps("native"), "540p": _paired_fps("540p")} if not _comparison_runs.is_empty() else {},
+        "comparison": _comparison_runs,
+        "notes": "Frame intervals exclude initial load. Pump and controller timings are wall times within the interval. Delayed viewport CPU/GPU samples are available during comparison only. Unsupported or zero-only timers are null."
+    })
+    return report
 
 func _export_report() -> void:
-    if _dialog_open or _elapsed_usec < 1000000:
+    if _dialog_open or _comparison != null or (_elapsed_usec < 1000000 and _comparison_runs.is_empty()):
         return
     var payload := JSON.stringify(measurement(), "  ")
     var filename := "TerraForge_Dunya_FPS_%s.json" % Time.get_datetime_string_from_system().replace(":", "-")
@@ -307,6 +442,8 @@ func _notification(what: int) -> void:
             _window_focused = true
 
 func _interrupt_input() -> void:
+    if _comparison != null:
+        _stop_comparison(false)
     _last_frame_usec = 0
     _window_usec = 0
     _window_frames = 0
@@ -336,6 +473,9 @@ func _return_to_menu() -> void:
         exit_requested.emit()
 
 func _exit_tree() -> void:
+    get_viewport().scaling_3d_scale = _original_scale
+    if _render_timing:
+        RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), false)
     if _fixture != null:
         _fixture.request_cancel()
         var result: Dictionary = _fixture.take_result()

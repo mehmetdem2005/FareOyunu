@@ -15,6 +15,10 @@ Ana menüde **Serbest Dünya · FPS Testi** düğmesine bas. Sahne 1024 × 1024 
 
 Sağ üstte anlık FPS, oturum ortalaması, p95 kare süresi ve ölçüm süresi görünür. İlk yükleme ve arka planda geçen süre ölçümden çıkarılır. Yürürken yeni parçaların yüklenmesi ölçüme girer. **Ölçümü sıfırla** yeni bir aralık başlatır. **FPS JSON kaydet** cihaz, Mobile Renderer, ekran boyutu, kare süreleri, kat edilen mesafe ve zemin verilerini kaydeder. Gerekirse Android bir kaydetme konumu seçmeni ister.
 
+Serbest Dünya, 3B görüntünün yüksekliğini 540 pikselle sınırlar. Arayüz pencerenin çözünürlüğünde çizilir. **FPS karşılaştır** kamera açısını sabitler ve başlangıç noktasından aynı 72 metrelik gidiş dönüşü otomatik yürür. Bir ısınma turundan sonra dört ölçüm sırasıyla doğal çözünürlük, 540p, 540p ve doğal çözünürlükte çalışır. Her tur sabit kamera ölçümüyle başlar. Ekran boyutu veya uygulama odağı değişirse karşılaştırma durur. Sonuç ekrana gelince **FPS JSON kaydet** ile dört turu tek dosyada paylaşabilirsin.
+
+Rapordaki `comparison_walk_fps` iki ayarın yürüyüş ortalamalarını, `comparison` her turun hareketsiz ve hareketli bölümlerini içerir. En yavaş kareler için `pump_us` arazi akışına, `controller_us` oyuncu fizik koduna harcanan süreyi gösterir. GPU ölçümleri sürücünün desteklediği cihazlarda karşılaştırma sırasında örneklenir.
+
 Ölçüm, gölgelerin kapalı olduğu bu test arazisi ve kapsül karakteri için geçerlidir. Linux yazılım çizicisiyle yapılan doğrulamanın FPS değeri Android cihaz sonucunu temsil etmez.
 
 ## Regresyon ve kamera profilleri
