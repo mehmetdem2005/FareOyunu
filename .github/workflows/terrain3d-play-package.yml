@@ -173,7 +173,13 @@ jobs:
           cp "$RUNNER_TEMP/native-plugin-original.gd" "$plugin"
           trap - EXIT
           cmp "$plugin" "$GITHUB_WORKSPACE/tools/terrain3d_runtime/addons/terraforge_native/plugin.gd"
-          rm -rf "$package/.godot"
+          grep -q "NATIVE_EDITOR_LARGE_BRUSH_OK radius=29.5" "$RUNNER_TEMP/native-editor-brush.log"
+          grep -q "NATIVE_EDITOR_LARGE_BRUSH_OK radius=36" "$RUNNER_TEMP/native-editor-brush.log"
+          grep -q "NATIVE_EDITOR_EXTERNAL_STORAGE_OK" "$RUNNER_TEMP/native-editor-brush.log"
+          # Restore empty shipped workspace after disposable save verification.
+          cp "$GITHUB_WORKSPACE/tools/terrain3d_runtime/terraforge_workspace.tscn" "$package/terraforge_workspace.tscn"
+          rm -rf "$package/terraforge_data" "$package/.godot"
+          cmp "$package/terraforge_workspace.tscn" "$GITHUB_WORKSPACE/tools/terrain3d_runtime/terraforge_workspace.tscn"
           echo "TERRAFORGE_NATIVE_EDITOR_PACKAGED"
       - uses: actions/upload-artifact@v4
         with:

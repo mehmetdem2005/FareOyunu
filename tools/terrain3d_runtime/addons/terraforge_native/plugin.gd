@@ -529,11 +529,13 @@ func _externalize_surfaces(node: Node3D) -> bool:
         return false
     var folder := str(node.get("data_directory")).path_join("surfaces")
     for kind: String in ["soil","rock","sand","grass"]:
-        var texture := material.call("get_shader_param",kind+"_tex") as Texture2D
+        var value: Variant = material.call("get_shader_param",kind+"_tex")
+        var texture: Texture2D = value if value is Texture2D else null
         if texture == null:
             # Terrain3D property storage holds the actual resource if getter returns RID.
             var params: Dictionary = material.call("_get_shader_parameters")
-            texture = params.get(kind+"_tex") as Texture2D
+            var stored: Variant = params.get(kind+"_tex")
+            texture = stored if stored is Texture2D else null
         if texture == null:
             return false
         if not texture.resource_path.is_empty() and not texture.resource_path.contains("::"):
