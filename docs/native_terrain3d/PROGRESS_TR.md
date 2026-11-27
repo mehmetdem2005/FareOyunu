@@ -118,3 +118,8 @@ Reusable preview_range.gd, camera far only, reference default 850m test profile,
 ## P1.8.8 / P1.9.1 — 27 Kasım 2026
 - 46025759250 passed: 64 regions, 16.777.216 exact heights, 4 mips, 1522ms server bake, artifact 15210674580. 21/43. P1.8 technical scope closed, device validation open.
 - P1.9.1 candidate separate authoring/landform_tool.tscn with reusable RF stamp kernel, metre parameters, deterministic seed, preview-only L8, manual RF resource+JSON export. Fixture unchanged. No erosion/full editor yet. Package pending; P1.9.2 next.
+
+P1.9.1 correctness/package passed; P1.9.2/3 inactive kernels 3/3 CI 46027043596, latest package 46027043547 artifact 15212108928. 22/43.
+
+## Öncelikli düzeltme — orijinal TerraForge paneli (27 Kasım 2026)
+Kullanıcı son ZIP'te yalnız upstream Terrain3D alt panelini gördü. Kök neden: paket workflow'u sadece addons/terrain_3d kopyalıyordu; repo kökündeki tam addons/terra_forge (316 dosya, önceki dal ile aynı) pakete dahil değildi. Düzeltme: tam eski addon byte-for-byte pakete kopyalanır, paket project.godot içinde yalnız TerraForge Mobile varsayılan etkinleştirilir, terraforge_workspace.tscn boş Node3D düzenleme başlangıcı eklenir. Native GDExtension ve play.tscn korunur; upstream editor plugin varsayılan kapalı. Eski panel hâlâ kendi legacy renderer'ıyla çalışır; native backend entegrasyonu ve yeni kernel bağlantısı henüz yok. Paket editör import kontrolü eklendi; telefon görünümü doğrulanmadı. P1.9 ilerlemesi 22/43; önce panel/native veri bağlama ve mevcut özelliklerin korunması, ardından yeni şekillendirme araçları. Orijinal addon/dal değiştirilmedi.

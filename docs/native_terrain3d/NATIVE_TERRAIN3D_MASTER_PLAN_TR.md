@@ -59,6 +59,7 @@ Native 1.1 aktif bölgeleri GPU belleğinde tutuyor. GPU texture array yeniden o
 Mevcut 7 LOD teorik örnek aralıkları 25 cm, 50 cm, 1 m, 2 m, 4 m, 8 m, 16 m. Yakın arazi kalitesi/fizik korunur. Adaptif kararlar kararlı ve histerezisli olmalı.
 
 ## P1.9 — Gerçekçi arazi geometrisi (8 adım)
+**Entegrasyon kapısı (kullanıcı önceliği):** Orijinal kompakt TerraForge paneli pakette bulunmalı ve etkin olmalı. Legacy araçların davranışı korunarak native backend'e bağlanması ve yeni kernel entegrasyonu tamamlanmadan yeni bağımsız UI/araç geliştirmeye geçilmez. Paket düzeltmesi native bağlantı değildir.
 - [x] 1.9.1 (paket ve temel deterministik doğruluk CI geçti; panel/cihaz entegrasyonu açık) Doğal sırt ve vadi şekillendirme.
 - [ ] 1.9.2 Su aşındırması, tortu birikimi ve bağlantılı vadiler — D8 çekirdek doğruluk testi geçti; tam araç açık.
 - [ ] 1.9.3–1.9.4 (P1.9.3 kompakt stamp çekirdeği doğruluk testi geçti; editör ve sınırlar açık) Mikro arazi: fare ölçeğinde tümsek, oyuk, hendek ve küçük aşınmalar.

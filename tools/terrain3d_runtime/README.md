@@ -23,3 +23,6 @@ Terrain3D automatically injects DEBUG_CHECKERED when its texture asset list is e
 
 ## P1.9 — TerraForge authoring
 Ayrı araç sahnesi: res://authoring/landform_tool.tscn (F6). [Kullanım](authoring/README_TR.md). Dört Havza sadece performans fixture; ana play.tscn değişmez.
+
+## Orijinal TerraForge paneli — paket kullanımı
+Yeni paket tam `addons/terra_forge` içerir ve TerraForge Mobile varsayılan etkin. `res://terraforge_workspace.tscn` sahnesini aç, 3B araç çubuğunda Terrain → + New, Brush ile düzenle. Sahneyi ve arazi verisini ayrı kaydet. F5 mevcut native performans test sahnesini açar. Bunlar henüz iki ayrı backend; eski panelin native motora bağlantısı tamamlanmış değildir. Terrain3D upstream editör eklentisi varsayılan etkin değil. Eski eklenti dosyaları değiştirilmedi.
