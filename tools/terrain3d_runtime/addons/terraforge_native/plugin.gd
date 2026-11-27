@@ -12,6 +12,7 @@ var _popup: PopupPanel
 var _status: Label
 var _stats_label: Label
 var _tool_select: OptionButton
+var _tool_help: Label
 var _radius: HSlider
 var _strength: HSlider
 var _profile_select: OptionButton
@@ -101,7 +102,7 @@ func _enter_tree() -> void:
     label.text = "Araç"
     tool_row.add_child(label)
     _tool_select = OptionButton.new()
-    for tool_name in ["Yükselt", "Alçalt", "Yumuşat", "Düzleştir", "Dağ sırtı", "Vadi", "Rampa", "Damga", "Aşındır"]:
+    for tool_name in ["Yükselt", "Alçalt", "Yumuşat", "Düzleştir", "Dağ Sırtı", "Vadi", "Rampa", "Şekil Bas", "Aşındır"]:
         _tool_select.add_item(tool_name)
     var tool_tips := ["Yüzeyi yükselt.", "Yüzeyi alçalt.", "Yükseklik geçişlerini yumuşat.", "Başlangıç yüksekliğine doğru düzleştir.", "Hat çiz; bırakınca dağ sırtı oluşur.", "Hat çiz; bırakınca vadi açılır.", "Eğimli geçiş (henüz hazır değil).", "Hazır arazi biçimleri (henüz hazır değil).", "Yamaç veya su aşınması; dokun ve bırak."]
     for i in range(tool_tips.size()):
@@ -121,6 +122,12 @@ func _enter_tree() -> void:
     redo_button.tooltip_text = "Geri alınan işlemi yinele."
     redo_button.pressed.connect(_redo)
     tool_row.add_child(redo_button)
+    _tool_help = Label.new()
+    _tool_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    _tool_help.add_theme_font_size_override("font_size",13)
+    _tool_help.modulate.a=0.85
+    _tool_help.text=tool_tips[0]
+    content.add_child(_tool_help)
 
     var radius_row: HBoxContainer = HBoxContainer.new()
     content.add_child(radius_row)
@@ -184,12 +191,15 @@ func _enter_tree() -> void:
     _advanced_row.add_child(_ramp_rise)
     _ramp_rise.visible = false
     _weather_mode = OptionButton.new()
-    _weather_mode.add_item("Yamaç aşınması",0)
-    _weather_mode.add_item("Su aşınması",1)
+    _weather_mode.add_item("Yamaç Aşınması",0)
+    _weather_mode.add_item("Su Aşınması",1)
     _weather_mode.tooltip_text = "Yamaç: 3 aşınma geçişi. Su: D8 yönlü, kapalı alanlı tek tortu geçişi."
     _weather_mode.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     _advanced_row.add_child(_weather_mode)
     _weather_mode.visible = false
+    _weather_mode.item_selected.connect(func(_index: int): _refresh_tool_help())
+    _weather_mode.get_popup().set_item_tooltip(0,"Dik yamaçlardaki malzemeyi aşağı taşır.")
+    _weather_mode.get_popup().set_item_tooltip(1,"Akış yönüne göre aşındırır ve tortu biriktirir.")
 
     var profile_row: HBoxContainer = HBoxContainer.new()
     content.add_child(profile_row)
@@ -277,7 +287,7 @@ func _toggle_popup() -> void:
     var window_size: Vector2i = get_editor_interface().get_base_control().get_window().size
     var button_position: Vector2i = Vector2i(_menu_button.get_screen_position())
     var width: int = mini(300, maxi(240, window_size.x - 16))
-    var required_height: int = 350 if _advanced_row.visible else 315
+    var required_height: int = 390 if _advanced_row.visible else 355
     var height: int = mini(required_height, maxi(180, window_size.y - 16))
     var x: int = clampi(button_position.x, 0, maxi(0, window_size.x - width))
     var y: int = clampi(
@@ -383,10 +393,24 @@ func _on_tool_changed(tool: int) -> void:
     _stamp_preset.visible = false
     _ramp_rise.visible = false
     _weather_mode.visible = tool==8
+    _refresh_tool_help()
     if tool==8:
         _set_status("Weather: touch area, release to apply one pass.")
     else:
         _set_status("Ridge/Valley: draw a path, release to apply." if tool in [4,5] else "Brush ON: drag to edit native heights.")
+
+func _refresh_tool_help() -> void:
+    if not is_instance_valid(_tool_help):
+        return
+    var index := _tool_select.selected
+    if index<0:
+        _tool_help.text="Bir araç seç."
+        return
+    var description := _tool_select.get_popup().get_item_tooltip(index)
+    if index==8 and is_instance_valid(_weather_mode):
+        description="Dokun ve bırak. "+_weather_mode.get_popup().get_item_tooltip(clampi(_weather_mode.selected,0,1))
+    _tool_help.text=description
+    _tool_select.tooltip_text=description
 
 func _tr_status(message: String) -> String:
     # Presentation only: raw backend status and CI contracts stay unchanged.

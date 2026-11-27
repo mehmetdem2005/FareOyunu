@@ -12,7 +12,7 @@ func _ci_editor_brush_smoke() -> void:
     if OS.get_environment("TF_EDITOR_REOPEN")=="1":
         await _ci_verify_reopened()
         return
-    if _tool_select.get_item_text(0)!="Yükselt" or _tool_select.get_item_text(8)!="Aşındır" or _weather_mode.get_item_text(1)!="Su aşınması" or not _tool_select.is_item_disabled(6) or not _tool_select.is_item_disabled(7):
+    if _tool_select.get_item_text(0)!="Yükselt" or _tool_select.get_item_text(8)!="Aşındır" or _weather_mode.get_item_text(1)!="Su Aşınması" or _tool_select.get_item_text(4)!="Dağ Sırtı" or _tool_help.text.is_empty() or not _tool_select.is_item_disabled(6) or not _tool_select.is_item_disabled(7):
         push_error("NATIVE_EDITOR_BRUSH_FAIL: Turkish labels / tool IDs")
         get_tree().quit(1)
         return
