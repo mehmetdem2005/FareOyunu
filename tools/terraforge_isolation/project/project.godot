@@ -1,0 +1,17 @@
+config_version=5
+[application]
+config/name="TerraForge Darboğaz Ölçümü"
+config/use_custom_user_dir=true
+config/custom_user_dir_name="TerraForge_Isolation"
+run/main_scene="res://main.tscn"
+[display]
+window/size/viewport_width=960
+window/size/viewport_height=540
+window/stretch/mode="canvas_items"
+window/handheld/orientation=0
+[rendering]
+textures/vram_compression/import_etc2_astc=true
+renderer/rendering_method="mobile"
+renderer/rendering_method.mobile="mobile"
+[physics]
+common/physics_ticks_per_second=60
