@@ -201,6 +201,28 @@ func _ci_editor_brush_smoke() -> void:
         get_tree().quit(1)
         return
     print("NATIVE_EDITOR_STROKE_QUEUE_OK dabs=",_basic_dabs," max_dab_us=",_basic_max_us," undo=true")
+    # Small interior vs region seam: actual native transaction counters.
+    var region_size := int(_active.call("get_region_size"))
+    var spacing := float(_active.get("vertex_spacing"))
+    var layer_bytes := region_size*region_size*4
+    var centers := [Vector3(192,0,192),Vector3(256,0,192)]
+    for i in range(centers.size()):
+        var p: Vector3 = centers[i]
+        var previous := float(data.call("get_height",p))
+        _brush.begin()
+        var profile_error := _brush.dab(p,0,2.0,1.0)
+        _brush.end()
+        var profile := _brush.last_write_profile
+        var expected := i+1
+        if not profile_error.is_empty() or not bool(profile.get("incremental_expected",false)) or int(profile.get("dirty_regions",0))!=expected or int(profile.get("layer_bytes_est",0))!=expected*layer_bytes or int(profile.get("changed_samples",0))<=0:
+            push_error("NATIVE_EDITOR_BRUSH_FAIL: upload profile "+str(profile)+" "+profile_error)
+            get_tree().quit(1)
+            return
+        print("NATIVE_EDITOR_UPLOAD_PROFILE_OK case=",i," spacing=",spacing," profile=",JSON.stringify(profile))
+        if _brush.undo()!="Native undo applied." or float(data.call("get_height",p))!=previous:
+            push_error("NATIVE_EDITOR_BRUSH_FAIL: upload profile undo")
+            get_tree().quit(1)
+            return
     var previous_data_id: int = data.get_instance_id()
     var previous_directory := str(_active.get("data_directory"))
     _save_active()

@@ -1,7 +1,7 @@
 name: TerraForge isolated stroke sampler
 on:
   push:
-    branches: [experiment/terraforge-stroke-resampler]
+    branches: [experiment/terraforge-stroke-resampler, fix/terraforge-rf-mobile-packed]
   workflow_dispatch:
 permissions:
   contents: read

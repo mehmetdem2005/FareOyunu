@@ -24,6 +24,7 @@ var last_dab_ms := -100000
 var last_dab_duration_ms := 0
 var last_plan_us := 0
 var last_write_us := 0
+var last_write_profile: Dictionary = {}
 var last_filter_half_width_m := 0.0
 
 func attach(node: Node3D) -> void:
@@ -263,6 +264,7 @@ func _write(_regions_checked: Dictionary, values: Dictionary, _size: int, record
 	var started := Time.get_ticks_usec()
 	var result: Dictionary = data.call("tf_write_brush",values)
 	last_write_us=Time.get_ticks_usec()-started
+	last_write_profile = result.get("profile",{})
 	if not str(result["error"]).is_empty():
 		return str(result["error"])
 	var actual: Dictionary = result["actual"]

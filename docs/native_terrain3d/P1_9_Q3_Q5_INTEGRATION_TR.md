@@ -1,0 +1,3 @@
+# P1.9-Q3/Q5a birleşik üretim adayı
+Q3 CI46069399549 5/5 PASS: 11/11 dabs, max 2331us (4m Linux), exact undo + reopen. Q5a CI46069472572 5/5 PASS: 193 samples each, one/two regions 1/2 MiB estimated layer payload; publish CPU 167/236us, not GPU completion. Smooth Q1 same test 35.266ms, Q3 26.837ms, Q5a 26.186ms across runners; no causal speedup claimed.
+Merge tree from Q3 plus Q5a patch, both GDScript changes and both editor gates; keep pure sampler gate also on production branch. Combined package must pass before recommendation. Q4 numerical pass separate; Q6 pending. No Android frame timing yet. Prior stable Q1 artifact 15231126278 retained. No panel/layout or data format change.
