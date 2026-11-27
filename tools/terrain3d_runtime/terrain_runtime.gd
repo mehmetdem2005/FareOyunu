@@ -11,6 +11,11 @@ var startup_phases_us: Dictionary = {}
 var _region_index: Dictionary = {}
 var _surface_source_bytes := 0
 var _memory_inventory: Dictionary = {}
+var _verification_thread: Thread
+var _prepared_index: Dictionary = {}
+var _prepared_region_size := 0
+var _prepared_spacing := 0.0
+var startup_io: Dictionary = {}
 
 func initialize(camera: Camera3D, collision_target: Node3D, spacing: float, profile: String = "lean", region_samples: int = REGION_SIZE, baked: bool = false) -> Error:
 	var phase := Time.get_ticks_usec()
@@ -235,31 +240,77 @@ func region_descriptor(location: Vector2i) -> Dictionary:
 func indexed_region_count() -> int:
 	return _region_index.size()
 
-## Load pre-baked native regions once. Explicit filenames avoid Android directory enumeration.
-## Verify all files before mutating native data; upload maps once after all regions are loaded.
-func load_baked_regions(manifest: Dictionary) -> Error:
+## Worker entry: immutable metadata and independent FileAccess calls only.
+## No scene, ResourceLoader, native terrain, rendering or physics access here.
+static func _verify_region_files(index: Dictionary) -> Dictionary:
+	var started := Time.get_ticks_usec()
+	for loc: Vector2i in index:
+		var descriptor: Dictionary = index[loc]
+		var path := "res://world/native".path_join(str(descriptor["file"]))
+		if not FileAccess.file_exists(path):
+			return {"error":ERR_FILE_NOT_FOUND,"path":path}
+		if FileAccess.get_sha256(path) != descriptor["sha256"]:
+			return {"error":ERR_FILE_CORRUPT,"path":path}
+	return {"error":OK,"worker_us":Time.get_ticks_usec()-started}
+
+## Only while loading, before a native terrain exists. Single finite task.
+## Join before publishing results; fall back to the original sync path if thread
+## creation fails. There is no worker or poll loop in steady-state gameplay.
+func prepare_baked_regions(manifest: Dictionary, expected_size: int, expected_spacing: float) -> Error:
+	if terrain != null or _verification_thread != null or not _prepared_index.is_empty():
+		return ERR_ALREADY_IN_USE
 	var phase := Time.get_ticks_usec()
-	if terrain == null:
+	var index := build_region_index(manifest,expected_size,expected_spacing)
+	if index.is_empty():
+		push_error("Invalid native region manifest index")
+		return ERR_INVALID_DATA
+	var result: Dictionary
+	_verification_thread = Thread.new()
+	var thread_error := _verification_thread.start(_verify_region_files.bind(index))
+	if thread_error == OK:
+		while _verification_thread != null and _verification_thread.is_alive():
+			await get_tree().process_frame
+			if not is_inside_tree():
+				return ERR_UNAVAILABLE
+		if _verification_thread == null:
+			return ERR_UNAVAILABLE
+		result = _verification_thread.wait_to_finish()
+		_verification_thread = null
+	else:
+		_verification_thread = null
+		result = _verify_region_files(index)
+	var code: Error = result.get("error",FAILED)
+	startup_phases_us["region_manifest_and_sha256"] = Time.get_ticks_usec()-phase
+	startup_io = {"mode":"startup_thread" if thread_error == OK else "sync_fallback","verification_worker_us":int(result.get("worker_us",-1)),"regions":index.size()}
+	if code != OK:
+		push_error("Native region verification failed: " + str(result.get("path","")))
+		return code
+	_prepared_index = index
+	_prepared_region_size = expected_size
+	_prepared_spacing = expected_spacing
+	return OK
+
+func _exit_tree() -> void:
+	# Thread is finite and does not call into the tree. Never free a live Thread.
+	if _verification_thread != null:
+		if _verification_thread.is_started():
+			_verification_thread.wait_to_finish()
+		_verification_thread = null
+
+## Consume verified metadata exactly once on the main thread.
+## Native load_region and the one batched map update remain main-thread only.
+func load_baked_regions() -> Error:
+	var phase := Time.get_ticks_usec()
+	if terrain == null or _prepared_index.is_empty():
 		return ERR_UNCONFIGURED
 	var data: Object = terrain.get("data")
 	if data == null or int(data.call("get_region_count")) != 0:
 		return ERR_ALREADY_IN_USE
-	var index := build_region_index(manifest,region_size,float(terrain.get("vertex_spacing")))
-	if index.is_empty():
-		push_error("Invalid native region manifest index")
+	if region_size != _prepared_region_size or float(terrain.get("vertex_spacing")) != _prepared_spacing:
 		return ERR_INVALID_DATA
+	var index := _prepared_index
+	_prepared_index = {}
 	var directory := "res://world/native"
-	for loc: Vector2i in index:
-		var descriptor: Dictionary = index[loc]
-		var path := directory.path_join(str(descriptor["file"]))
-		if not FileAccess.file_exists(path):
-			push_error("Missing native region: " + path)
-			return ERR_FILE_NOT_FOUND
-		if FileAccess.get_sha256(path) != descriptor["sha256"]:
-			push_error("Native region checksum mismatch: " + path)
-			return ERR_FILE_CORRUPT
-	startup_phases_us["region_manifest_and_sha256"] = Time.get_ticks_usec()-phase
-	phase = Time.get_ticks_usec()
 	var height_bytes := 0
 	var control_bytes := 0
 	var active_color_bytes := 0

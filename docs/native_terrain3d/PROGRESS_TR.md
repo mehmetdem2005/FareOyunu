@@ -68,3 +68,6 @@ Her sonraki geliştirmede tarih, adım numarası, commit, durum, ölçüm/kanıt
 ## P1.7.3 paket sonucu
 - CI 46018743594 başarılı; 64 region ve indeks, 16.777.216 Float32 örnek, dört mip zinciri doğrulandı; offline bake 2193 ms. Artifact 15207231764. Vulkan/VSync sunucu uyarıları devam. Bellek snapshot runtime davranışı ve güvenli cihaz bütçeleri doğrulanmadı; paket CI performans testi değil.
 - 10/43, P1.7 3/10; sıradaki P1.7.4 asenkron disk erişiminin gereklilik analizi; resident dünya için ölçümsüz worker ekleme. Belge güncellemesi yeni CI tetiklemez.
+
+## P1.7.4 — 27 Kasım 2026
+- Aday: salt okunur region index ile SHA256 doğrulaması tek açılış Thread'ine ayrıldı, native kurulumdan önce biter; join, sync fallback, fail-closed, tek tüketim. Oyun sırasında worker yok, ResourceLoader/native/GPU main thread. startup_io raporu ekli. Toplam açılış hızı ve cihaz davranışı açık; paket doğrulaması bekliyor. 10/43.

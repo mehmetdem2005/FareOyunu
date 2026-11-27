@@ -182,9 +182,13 @@ func request_load() -> void:
 	var memory_before := Recorder.memory_snapshot()
 	var next := Runtime.new()
 	add_child(next)
-	var result: Error = next.initialize(camera,player,spacing,"world",512,true)
+	source_label.text = "Arazi dosyaları doğrulanıyor..."
+	var result: Error = await next.prepare_baked_regions(world_info,512,spacing)
 	if result == OK:
-		result = next.load_baked_regions(world_info)
+		source_label.text = "Native arazi hazırlanıyor..."
+		result = next.initialize(camera,player,spacing,"world",512,true)
+	if result == OK:
+		result = next.load_baked_regions()
 	if result != OK:
 		next.free()
 		fail_load("Terrain3D aktarımı başarısız: " + str(result))
@@ -206,6 +210,7 @@ func request_load() -> void:
 	phases["manifest_and_spawn_setup"] = manifest_us
 	# CPU wall-clock calls, not GPU completion timestamps. Recorded once, not per frame.
 	recorder.event("startup_phases_us",phases)
+	recorder.event("startup_io",backend.startup_io)
 	recorder.event("memory_budget",{"policy":"resident_advisory_no_automatic_eviction","before_native_load":memory_before,"after_native_submit":Recorder.memory_snapshot(),"inventory":backend.memory_inventory(),"process_safe_budget_bytes":-1,"gpu_safe_budget_bytes":-1,"notes":"Device safe limits not established; no automatic quality changes. After-submit counters may lag renderer completion."})
 
 func fail_load(message: String) -> void:

@@ -30,7 +30,7 @@ Hedef: ilk fiziksel zemin 6,71 s bazına göre iyileşsin; saniyelik donmaların
 - [x] 1.7.1 Native bölge ekleme/kaldırma kaynak analizi (gerçek cihaz maliyeti açık).
 - [x] 1.7.2 (paket doğrulandı; cihaz yüklemesi açık) Dünya bölge indeksi.
 - [x] 1.7.3 (paket doğrulandı; cihaz güvenli limitleri ölçülmedi) Cihaz kapasitesine göre bellek bütçesi.
-- [ ] 1.7.4 Asenkron disk okuma.
+- [ ] 1.7.4 (aday; açılışa özel tek doğrulama işi; paket/cihaz açık) Asenkron disk okuma.
 - [ ] 1.7.5 Hareket yönüne göre akıllı prefetch.
 - [ ] 1.7.6 Bölge verisi önbelleği.
 - [ ] 1.7.7 Yükleme/boşaltma mesafelerinde histerezis.
