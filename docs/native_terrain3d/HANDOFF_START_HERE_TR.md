@@ -46,3 +46,5 @@ P1.7.10 candidate: world shader bounds guard; render_coverage report (nominal ou
 P1.7.10 paket başarılı 46021022190 artifact 15208371670. P1.8.1 kaynak/topoloji analizi NATIVE_LOD_COST_AUDIT_TR.md; 14/43. Native snap ring dedup aday (native patch yok); set_mesh_lods/size runtime rebuild, default 16/7/.25 unchanged. P1.8.2 sırada. 4 deferred streaming tasks remain open.
 
 P1.8.2 candidate: preview_range.gd + test preview UI, default reference, manual/adaptive opt-in camera far only; no native setters/worker. Device comparison not proven; actual editor integration pending. Next P1.8.3 after package.
+
+P1.8.2 package passed 46022529495 artifact 15208633565, 15/43. P1.8.3 candidate exact endpoint/shift-zero sample reduction + exact stationary camera transform no-op. Morph/near/physics unchanged; package/device visual pending. Native dedup not implemented. Next P1.8.4.

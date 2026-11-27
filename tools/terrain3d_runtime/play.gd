@@ -46,6 +46,10 @@ var overlay: StickOverlay
 var last_frame := 0
 var last_hud := 0
 var gaps := 0
+var _camera_pose_valid := false
+var _camera_last_player := Vector3.ZERO
+var _camera_last_yaw := 0.0
+var _camera_last_pitch := 0.0
 
 class StickOverlay extends Control:
 	var center := Vector2.ZERO
@@ -429,7 +433,16 @@ func _physics_process(delta: float) -> void:
 	physics_ticks += 1
 
 func update_camera() -> void:
-	var aim := player.position + Vector3.UP*0.15
+	# Exact unchanged pose only, never quantize or smooth the camera relative
+	# to the native clipmap. No repeated transform/look_at while stationary.
+	var current_pos := player.position
+	if _camera_pose_valid and current_pos == _camera_last_player and yaw == _camera_last_yaw and pitch == _camera_last_pitch:
+		return
+	_camera_pose_valid = true
+	_camera_last_player = current_pos
+	_camera_last_yaw = yaw
+	_camera_last_pitch = pitch
+	var aim := current_pos + Vector3.UP*0.15
 	var offset := Vector3(0,0.25,0.85).rotated(Vector3.RIGHT,pitch).rotated(Vector3.UP,yaw)
 	camera.position = aim+offset
 	camera.look_at(aim,Vector3.UP)

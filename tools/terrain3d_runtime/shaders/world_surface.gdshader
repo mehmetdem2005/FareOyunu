@@ -252,8 +252,18 @@ void vertex() {
 			h = interpolated_height(UV);
 			u = interpolated_height(UV + vec2(1, 0));
 			v = interpolated_height(UV + vec2(0, 1));
+		} else if (vertex_lerp <= 0.0 || all(equal(shift, vec2(0.0)))) {
+			// Exact morph endpoints and unchanged grid vertices need only one
+			// sample set. Preserve the native grid, normals and morph band.
+			h = sample_height(v_region);
+			u = sample_height(get_index_coord(start_pos + vec2(1, 0)));
+			v = sample_height(get_index_coord(start_pos + vec2(0, 1)));
+		} else if (vertex_lerp >= 1.0) {
+			h = sample_height(get_index_coord(end_pos));
+			u = sample_height(get_index_coord(end_pos + vec2(1, 0)));
+			v = sample_height(get_index_coord(end_pos + vec2(0, 1)));
 		} else {
-			ivec3 coord_a = get_index_coord(start_pos);
+			ivec3 coord_a = v_region;
 			ivec3 coord_b = get_index_coord(end_pos);
 			ivec3 coord_ua = get_index_coord(start_pos + vec2(1, 0));
 			ivec3 coord_ub = get_index_coord(end_pos + vec2(1, 0));

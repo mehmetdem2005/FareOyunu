@@ -93,3 +93,7 @@ Dört Havza yalnız test sahnesi; TerraForge genel terrain oluşturma/düzenleme
 
 ## P1.8.2 — aday
 Reusable preview_range.gd, camera far only, reference default 850m test profile, manual 75%, explicit adaptive one-shot trial with rollback/no repeated rebuild, existing summary reuse. New file packaged. 14/43 confirmed, package pending. Editor integration and real device impact open.
+
+## P1.8.2–3 — 27 Kasım 2026
+- P1.8.2 CI 46022529495 successful, 64 native index, 16.777.216 height samples, 4 mip chains, 2023ms server bake; artifact 15208633565. 15/43; adaptive runtime/device pending.
+- P1.8.3 candidate: exact morph endpoints/unchanged shifts sample 3 rather than 6 height texels; true morph band unchanged. Exact camera pose no-op in test fixture only. No LOD/near quality/physics changes. GPU branch cost and device visual equivalence open; package pending. P1.8.4 next.

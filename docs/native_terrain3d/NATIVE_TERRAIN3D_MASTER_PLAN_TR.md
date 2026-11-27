@@ -3,7 +3,7 @@
 Onay: 27 Kasım 2026, kullanıcı mevcut oynanabilir sürümü beğendi ve bu planın eski planlardan ayrı kaydedilmesini istedi.
 Dal: `feat/terraforge-terrain3d-runtime`
 Kararlı referans (kullanıcının oynadığı Dört Havza V2): `fdbf49b2b5c1e0133a050e2a5f5592011f1fbf2c`.
-Durum: P1.5 native temel gerçek cihazda çalıştı; P1.6.1–7 paket/uygulama hedefleri tamamlandı (7/43); yeni runtime cihaz doğrulaması açık. P1.7.1–4 kaynak/uygulama ve paket hedefleri tamamlandı (11/43). P1.7.5–8 mevcut resident dünya için koşullu ertelendi, tamamlanmış sayılmadı; P1.7.9 paket doğrulandı (12/43). P1.7.10 paket başarılı; P1.8.1 kaynak analizi tamamlandı (14/43). Sıradaki P1.8.2.
+Durum: P1.5 native temel gerçek cihazda çalıştı; P1.6.1–7 paket/uygulama hedefleri tamamlandı (7/43); yeni runtime cihaz doğrulaması açık. P1.7.1–4 kaynak/uygulama ve paket hedefleri tamamlandı (11/43). P1.7.5–8 mevcut resident dünya için koşullu ertelendi, tamamlanmış sayılmadı; P1.7.9 paket doğrulandı (12/43). P1.7.10 paket başarılı; P1.8.1 kaynak analizi tamamlandı (14/43). P1.8.2 paket doğrulandı (15/43). P1.8.3 aday.
 Bu belge bu dalın TEK aktif geliştirme planıdır. Eski `addons/terra_forge/` altındaki özel CPU mesh/worker mimarisi planları tarihsel referanstır; görev sırası, faz numaraları ve başarı ölçütleri buraya taşınmaz. Orijinal dal `feat/terraforge-mobile-addon` korunur.
 
 ## Ürün kapsamı — kullanıcı netleştirmesi (27 Kasım 2026, bağlayıcı)
@@ -49,8 +49,8 @@ Native 1.1 aktif bölgeleri GPU belleğinde tutuyor. GPU texture array yeniden o
 
 ## P1.8 — Profesyonel LOD ve çizim optimizasyonu (8 adım)
 - [x] 1.8.1 LOD profillerinin kaynak/topoloji maliyet analizi (cihaz ölçümü açık).
-- [ ] 1.8.2 (aday; opt-in kamera uzak düzlemi, paket/cihaz açık) Cihaz performansına göre adaptif görüş mesafesi.
-- [ ] 1.8.3 LOD geçişlerinde titreşim ve şekil değişimi kontrolü.
+- [x] 1.8.2 (paket doğrulandı; opt-in adaptif cihaz davranışı açık) Cihaz performansına göre adaptif görüş mesafesi.
+- [ ] 1.8.3 (aday; morph endpoint eşdeğer örnekleme ve kamera no-op; cihaz görsel doğrulaması açık) LOD geçişlerinde titreşim ve şekil değişimi kontrolü.
 - [ ] 1.8.4 Horizon culling fizibilitesi.
 - [ ] 1.8.5 Mesafeye bağlı shader kalitesi.
 - [ ] 1.8.6 Dinamik render çözünürlüğü.
