@@ -1,0 +1,30 @@
+name: TerraForge isolated stroke sampler
+on:
+  push:
+    branches: [experiment/terraforge-stroke-resampler]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  stroke-sampler:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: solarlabyrinth/action-setup-godot@v3
+        with:
+          version: 4.7.2-stable
+          export-templates: false
+          name: godot
+      - name: Test pure world-space sampler without native compilation
+        shell: bash
+        run: |
+          set -euo pipefail
+          p="$RUNNER_TEMP/tf-stroke-test"
+          mkdir -p "$p"
+          printf 'config_version=5\n[application]\nconfig/name="Stroke test"\n' > "$p/project.godot"
+          cp tools/terrain3d_runtime/addons/terraforge_native/native_stroke_sampler.gd "$p/"
+          cp tools/terrain3d_runtime/ci/test_native_stroke_sampler.gd "$p/"
+          timeout 60s godot --headless --path "$p" --script res://test_native_stroke_sampler.gd 2>&1 | tee "$RUNNER_TEMP/stroke.log"
+          grep -q TF_STROKE_SAMPLER_PASS "$RUNNER_TEMP/stroke.log"
+          ! grep -Eq 'SCRIPT ERROR:|Parse Error:|TF_STROKE_SAMPLER_FAIL' "$RUNNER_TEMP/stroke.log"
