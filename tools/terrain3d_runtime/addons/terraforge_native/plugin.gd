@@ -41,6 +41,12 @@ var _changed_count := 0
 var _last_input_result := "Brush OFF"
 var _touch_index := -1
 var _multi_touch := false
+var _corridor_points: Array[Vector2] = []
+var _corridor_error := ""
+var _corridor_length := 0.0
+var _corridor_tool := -1
+var _corridor_radius := 0.0
+var _corridor_power := 0.0
 
 func _enter_tree() -> void:
     # Forward viewport events even when the native node is locked/deselected.
@@ -94,7 +100,7 @@ func _enter_tree() -> void:
     _tool_select = OptionButton.new()
     for tool_name in ["Raise", "Lower", "Smooth", "Flatten", "Ridge", "Valley", "Ramp", "Stamp", "Weather"]:
         _tool_select.add_item(tool_name)
-    for index in range(4,9):
+    for index in range(6,9):
         _tool_select.set_item_disabled(index,true)
     _tool_select.item_selected.connect(_on_tool_changed)
     _tool_select.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -355,8 +361,9 @@ func _view_profile_changed(index: int) -> void:
     _set_status(_last_input_result)
 
 func _on_tool_changed(tool: int) -> void:
+    _finish_stroke()
     _current_tool = tool
-    _set_status("Brush ON: drag to edit native heights.")
+    _set_status("Ridge/Valley: draw a path, release to apply." if tool in [4,5] else "Brush ON: drag to edit native heights.")
 
 func _set_status(message: String) -> void:
     if is_instance_valid(_status):
@@ -619,10 +626,42 @@ func _run_self_test() -> void:
     var data: Object = _active.get("data")
     _set_status("Native %d regions | %.2fm | %d LOD\nInput %d | Hit %d | Edit %d\n%s" % [data.call("get_region_count"),_active.get("vertex_spacing"),_active.get("mesh_lods"),_input_count,_hit_count,_changed_count,_last_input_result])
 
-func _finish_stroke() -> void:
+func _finish_stroke(apply_path: bool = false) -> void:
     if _stroke_active and is_instance_valid(_active):
-        _brush.end()
+        if _corridor_tool in [4,5]:
+            if apply_path and _corridor_error.is_empty() and not _corridor_points.is_empty():
+                var result := _brush.apply_corridor(_corridor_points,_corridor_tool,_corridor_radius,_corridor_power)
+                _changed_count += _brush.last_changed_cells
+                _last_input_result = result if not result.is_empty() else "Corridor edited %d samples." % _brush.last_changed_cells
+            elif not _corridor_error.is_empty():
+                _last_input_result = _corridor_error
+            else:
+                _last_input_result = "Corridor cancelled."
+            _set_status(_last_input_result)
+        else:
+            _brush.end()
+    _corridor_points.clear()
+    _corridor_error = ""
+    _corridor_length = 0.0
+    _corridor_tool = -1
     _stroke_active = false
+
+func _collect_corridor(hit: Vector3) -> void:
+    if not _corridor_error.is_empty():
+        return
+    var point := Vector2(hit.x,hit.z)
+    if not _corridor_points.is_empty():
+        var segment := point.distance_to(_corridor_points.back())
+        if segment<maxf(0.5,_corridor_radius*0.35):
+            return
+        if _corridor_length+segment>256.0 or _corridor_points.size()>=128:
+            _corridor_error = "Path too long; release and draw a shorter corridor."
+            _set_status(_corridor_error)
+            return
+        _corridor_length+=segment
+    _corridor_points.append(point)
+    _last_input_result = "Path %d points | release to apply" % _corridor_points.size()
+    _set_status(_last_input_result)
 
 func _paint_at(camera: Camera3D, position: Vector2) -> void:
     if not is_instance_valid(_active):
@@ -636,10 +675,15 @@ func _paint_at(camera: Camera3D, position: Vector2) -> void:
         _active.call("set_camera",camera)
     var hit: Vector3 = _active.call("get_intersection",camera.project_ray_origin(position),camera.project_ray_normal(position),false)
     if not hit.is_finite() or absf(hit.x)>1e8 or absf(hit.y)>1e8 or absf(hit.z)>1e8:
+        if _corridor_tool in [4,5]:
+            _corridor_error = "Path left editable surface; corridor cancelled."
         _last_input_result = "Input received; terrain ray missed."
         _set_status(_last_input_result)
         return
     _hit_count += 1
+    if _corridor_tool in [4,5]:
+        _collect_corridor(hit)
+        return
     var result := _brush.dab(hit,_tool_select.selected,float(_radius.value),float(_strength.value))
     _changed_count += _brush.last_changed_cells
     if not result.is_empty():
@@ -655,6 +699,9 @@ func _paint_at(camera: Camera3D, position: Vector2) -> void:
 func _start_stroke(camera: Camera3D, position: Vector2) -> void:
     _finish_stroke()
     _brush.begin()
+    _corridor_tool = _tool_select.selected
+    _corridor_radius = float(_radius.value)
+    _corridor_power = float(_strength.value)
     _stroke_active = true
     _paint_at(camera,position)
 
@@ -677,7 +724,7 @@ func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
             _touch_session = true
             _start_stroke(camera,event.position)
         elif event.index == _touch_index:
-            _finish_stroke()
+            _finish_stroke(not _multi_touch)
             _touch_session = false
             _touch_index = -1
             _multi_touch = false
@@ -700,7 +747,7 @@ func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
         if event.pressed:
             _start_stroke(camera,event.position)
         else:
-            _finish_stroke()
+            _finish_stroke(true)
         return EditorPlugin.AFTER_GUI_INPUT_STOP
     if event is InputEventMouseMotion and _stroke_active:
         if not (event.button_mask & MOUSE_BUTTON_MASK_LEFT):

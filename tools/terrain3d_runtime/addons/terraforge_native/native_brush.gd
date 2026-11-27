@@ -1,6 +1,7 @@
 @tool
 extends RefCounted
 ## Native RF maps are authoritative; no legacy terrain copy or mesh worker.
+const Landform = preload("res://addons/terraforge_native/native_landform.gd")
 const MAX_DAB_CELLS := 85000 # 36m at .25m: at most 290x290 candidate cells
 const MAX_STROKE_CELLS := 131072
 const HISTORY_LIMIT := 8
@@ -174,6 +175,42 @@ func dab(hit: Vector3, tool: int, radius: float, power: float) -> String:
 	if changes.is_empty() and tool == 0:
 		return "Raise: no editable samples at %.2f, %.2f (grid %d / %.2fm)." % [hit.x,hit.z,size,spacing]
 	return ""
+
+# One complete corridor transaction; no repeated dab accumulation.
+func apply_corridor(points: Array[Vector2], tool: int, radius: float, power: float) -> String:
+	last_changed_cells=0
+	if tool not in [4,5] or not is_finite(power) or power<=0.0 or power>12.0:
+		return "Invalid corridor tool or power."
+	var regions := _regions()
+	if regions.is_empty():
+		return region_error
+	var size := int(terrain.call("get_region_size"))
+	var spacing := float(terrain.get("vertex_spacing"))
+	var data: Object=terrain.get("data")
+	var result := Landform.build(points,radius,spacing,tool==5)
+	if not str(result["error"]).is_empty():
+		return str(result["error"])
+	var changes := {}
+	var originals := {}
+	var amplitude := power*0.42*(-1.0 if tool==5 else 1.0)
+	for key: Vector2i in result["weights"]:
+		var old := _sample(regions,key,size,spacing,data)
+		if not is_finite(old):
+			continue
+		var value := old+amplitude*float(result["weights"][key])
+		if not is_finite(value) or absf(value)>1000000.0:
+			return "Corridor height out of bounds; no changes made."
+		if value!=old:
+			originals[key]=old
+			changes[key]=value
+	if changes.is_empty():
+		return "Corridor has no editable samples."
+	# The kernel caps the whole action to the existing history segment budget.
+	begin()
+	before=originals
+	var error := _write(regions,changes,size,true)
+	end()
+	return error
 
 func _write(regions: Dictionary, values: Dictionary, size: int, record: bool) -> String:
 	var bounds := {}

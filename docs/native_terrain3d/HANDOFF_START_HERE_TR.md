@@ -8,7 +8,7 @@
 
 # Yeni sohbette BURADAN BAŞLA — Native Terrain3D
 
-**Aktif dal:** `feat/terraforge-terrain3d-runtime`
+**Aktif dal:** `fix/terraforge-rf-mobile-packed` (native ana dalın devamı; deney dalı ayrıdır)
 **Tek aktif plan:** [NATIVE_TERRAIN3D_MASTER_PLAN_TR.md](NATIVE_TERRAIN3D_MASTER_PLAN_TR.md)
 **İlerleme:** [PROGRESS_TR.md](PROGRESS_TR.md)
 
@@ -98,3 +98,6 @@ Last successful 46051156699: 5/5, 29.5m changed43705, 36m changed65097, single-r
 
 ## Streaming S2 — source identity and pins (isolated, 27 Nov 2026)
 CI 46057341699 5/5 success, 16-region actual editor save/reopen map hashes match, 4,194,304 exact height samples, scene2480 bytes, artifact15228165400. Preserve packed RF and current save/brush implementation. Added inactive experiments/native_residency/snapshot_catalog.gd parses existing backup manifest schema1, validates coordinates/filename/hash/map metadata, uses manifest digest generation, calculates logical map bytes, explicitly verifies individual source SHA256 and rechecks ticket before eventual commit. No automatic resource load; verified flag is not permanent proof, no TOCTOU guarantee without future staged immutable decode. region_pins.gd unions dirty/undo/redo/active footprint+one-sample smooth halo/physics metadata; caller must intersect brush halo with actual world catalog, recompute on changes and reject unknown pins. No runtime hookup, no benchmark or CI triggered; code not yet executed. S2 partial: verified manifest metadata and pin set implemented, async decode and generation-safe native transaction remain. S3 native slot replacement needs explicit non-destructive API and Android compatibility; no remove_region misuse. Last package unchanged; Android save/reopen remains unverified.
+
+## Ana plana dönüş — P1.9.1 panel entegrasyonu adayı
+Aktif kullanıcı geliştirme dalı fix/terraforge-rf-mobile-packed (eski native dalı atası, 5 ileri/0 geri ec0a525). Son paket 46057341699/15228165400, 16 bölge kayıt/reopen başarılı. P1.7.5–8 S1/S2 ve S3.1 ayrı deney experiment/terraforge-native-slot-swap, CI46060117071 son kontrolde aktif; production promotion yok, 4 görev açık. P1.9.1 Ridge/Valley: native_landform.gd eski max-nearest-segment influence, asimetrik sırt/vadi profili, world noise, .42 amplitude mantığı native RF global grid'e port; legacy backend yok. 128 point/256m/600k visit/131072 cell bounded, reject before write, no partial planned result; one synchronous release transaction, same native partial upload and undo. Popup, tool switch, scene switch, multitouch cancel path; release commits, missed ray cancels. Size/Power captured at start; path no live preview, no per-frame worker. Large release may stall; no measured Android latency. Actual editor package gate extends prior 16-region save/reopen with signed cross-region corridor and undo. 22/43 unchanged until integration verified; P1.9.2/3 kernels remain partial; next Weather/erosion and Stamp. Preserve packed shader/native, save, large basic brushes. Do not reset phases or count CI as FPS.

@@ -77,6 +77,28 @@ func _ci_editor_brush_smoke() -> void:
         push_error("NATIVE_EDITOR_BRUSH_FAIL: boundary or far edit")
         get_tree().quit(1)
         return
+    # Ridge/Valley uses the same panel gesture commit path; cross-region path.
+    var path: Array[Vector2] = [Vector2(120,96),Vector2(136,96)]
+    var ridge_pos := Vector3(128,0,96)
+    var prior := float(data.call("get_height",ridge_pos))
+    _tool_select.select(4)
+    _corridor_tool=4
+    _corridor_radius=6.0
+    _corridor_power=5.0
+    _corridor_points.assign(path)
+    _stroke_active=true
+    _finish_stroke(true)
+    var ridge_height := float(data.call("get_height",ridge_pos))
+    if ridge_height<=prior or _brush.last_changed_cells<=0 or _brush.undo()!="Native undo applied." or float(data.call("get_height",ridge_pos))!=prior:
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: Ridge corridor")
+        get_tree().quit(1)
+        return
+    var valley_error := _brush.apply_corridor(path,5,6.0,5.0)
+    if not valley_error.is_empty() or float(data.call("get_height",ridge_pos))>=prior or _brush.undo()!="Native undo applied." or float(data.call("get_height",ridge_pos))!=prior:
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: Valley corridor "+valley_error)
+        get_tree().quit(1)
+        return
+    print("NATIVE_EDITOR_RIDGE_VALLEY_OK signed=true undo=true")
     var previous_data_id: int = data.get_instance_id()
     var previous_directory := str(_active.get("data_directory"))
     _save_active()
