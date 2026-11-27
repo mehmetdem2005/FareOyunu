@@ -25,7 +25,6 @@ func initialize(camera: Camera3D, collision_target: Node3D, spacing: float, prof
 	if terrain == null:
 		return ERR_CANT_CREATE
 	terrain.name = "Terrain3D"
-	terrain.set("region_size", region_size)
 	terrain.set("vertex_spacing", spacing)
 	terrain.set("mesh_size", 16)
 	terrain.set("mesh_lods", 7 if profile == "world" else (4 if profile == "lean_lod4" else 5))
@@ -39,6 +38,14 @@ func initialize(camera: Camera3D, collision_target: Node3D, spacing: float, prof
 	terrain.set("collision_radius", 32)
 	terrain.set("collision_shape_size", 16)
 	add_child(terrain)
+	# change_region_size requires initialized native data; pre-tree call is a no-op.
+	if int(terrain.call("get_region_size")) != region_size:
+		terrain.call("change_region_size", region_size)
+	if int(terrain.call("get_region_size")) != region_size:
+		push_error("Native region size mismatch: requested %d, got %d" % [region_size, int(terrain.call("get_region_size"))])
+		terrain.free()
+		terrain = null
+		return ERR_UNCONFIGURED
 	terrain.set("clipmap_target", camera)
 	terrain.set("collision_target", collision_target)
 	var material: Object = terrain.get("material")
@@ -85,6 +92,9 @@ func import_height_snapshot(image: Image, origin: Vector3 = Vector3.ZERO, contro
 	var data: Object = terrain.get("data")
 	if data == null or int(data.call("get_region_count")) != 0:
 		return ERR_ALREADY_IN_USE
+	if int(terrain.call("get_region_size")) != region_size:
+		push_error("Native region size changed before import")
+		return ERR_UNCONFIGURED
 	var w: int = image.get_width()
 	var h: int = image.get_height()
 	if w % region_size != 0 or h % region_size != 0:
@@ -105,7 +115,10 @@ func import_height_snapshot(image: Image, origin: Vector3 = Vector3.ZERO, contro
 		return ERR_INVALID_PARAMETER
 	var maps: Array[Image] = [image, control, null]
 	data.call("import_images", maps, origin, 0.0, 1.0)
-	if int(data.call("get_region_count")) != (w / region_size) * (h / region_size):
+	var expected_count := (w / region_size) * (h / region_size)
+	var actual_count := int(data.call("get_region_count"))
+	if actual_count != expected_count:
+		push_error("Terrain3D import incomplete: expected %d regions, got %d; native region size %d" % [expected_count, actual_count, int(terrain.call("get_region_size"))])
 		return ERR_INVALID_DATA
 	if render_profile == "world":
 		var material: Object = terrain.get("material")
