@@ -56,3 +56,5 @@ P1.8.5 CI 46023920638 successful artifact 15211800852, 18/43. P1.8.6 candidate m
 P1.8.6 CI 46024518373 successful artifact 15210593260, 19/43. P1.8.7 candidate thermal_monitor.gd Android API29+ status advisory, no worker/auto downscale, 30s sampling via existing HUD, unsupported/slow stop. Device bridge and query latency unverified. Next P1.8.8.
 
 P1.8.7 package passed 46025159030 artifact 15211157179; 20/43. P1.8.8 candidate existing range controller hardened, context/full window guards and mean+tail acceptance, no second controller or automatic resolution/LOD downgrade. Package/device pending. P1.9 generic terrain authoring next; Dört Havza fixture only.
+
+P1.8.8 package passed 46025759250 artifact 15210674580, 21/43. P1.9.1 candidate generic authoring/landform_tool.tscn F6, RF ridge/valley stamp, export, fixture unchanged. Not erosion or complete editor yet. P1.9.2 next.

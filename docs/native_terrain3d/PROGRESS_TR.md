@@ -114,3 +114,7 @@ Reusable preview_range.gd, camera far only, reference default 850m test profile,
 ## P1.8.7–8 — 27 Kasım 2026
 - 46025159030 package passed, 64 native regions, 16.777.216 exact samples, 4 mips, 1530ms server bake; artifact 15211157179. 20/43; Android actual thermal status open.
 - P1.8.8 candidate: one controller, full-context/contiguous windows and export exclusion, immediate context invalidation, no repeated trials without opt-in, >=5% mean improvement and nonworsening avg window p95/p99, verdict evidence. Default reference. Package/device pending; P1.9 next.
+
+## P1.8.8 / P1.9.1 — 27 Kasım 2026
+- 46025759250 passed: 64 regions, 16.777.216 exact heights, 4 mips, 1522ms server bake, artifact 15210674580. 21/43. P1.8 technical scope closed, device validation open.
+- P1.9.1 candidate separate authoring/landform_tool.tscn with reusable RF stamp kernel, metre parameters, deterministic seed, preview-only L8, manual RF resource+JSON export. Fixture unchanged. No erosion/full editor yet. Package pending; P1.9.2 next.

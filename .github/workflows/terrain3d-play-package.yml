@@ -54,7 +54,7 @@ jobs:
           set -euo pipefail
           cd tools/terrain3d_runtime
           mkdir -p "$RUNNER_TEMP/TerraForge-Play-Godot"
-          cp -a project.godot play.tscn play.gd terrain_runtime.gd session_recorder.gd preview_range.gd thermal_monitor.gd world shaders README.md "$RUNNER_TEMP/TerraForge-Play-Godot/"
+          cp -a project.godot play.tscn play.gd terrain_runtime.gd session_recorder.gd preview_range.gd thermal_monitor.gd world shaders authoring README.md "$RUNNER_TEMP/TerraForge-Play-Godot/"
           mkdir -p "$RUNNER_TEMP/TerraForge-Play-Godot/addons"
           cp -a addons/terrain_3d "$RUNNER_TEMP/TerraForge-Play-Godot/addons/"
       - uses: actions/upload-artifact@v4
