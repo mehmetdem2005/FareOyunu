@@ -35,7 +35,7 @@ func _ready() -> void:
 	var runtime := Runtime.new()
 	add_child(runtime)
 	# Bake uses the same native importer, region size and spacing as the working V2.
-	var result := runtime.initialize(camera,target,0.25,"lean",512)
+	var result := runtime.initialize(camera,target,0.25,"world",512)
 	if result == OK:
 		result = runtime.import_height_snapshot(image)
 	if result != OK:

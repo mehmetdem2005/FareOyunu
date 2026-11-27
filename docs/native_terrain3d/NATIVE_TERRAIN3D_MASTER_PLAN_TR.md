@@ -20,7 +20,7 @@ Bu belge bu dalın TEK aktif geliştirme planıdır. Eski `addons/terra_forge/` 
 - [x] 1.6.1 Çalışan sürümü güvenli GitHub dalında koruma.
 - [x] 1.6.2 (paket dönüşümü doğrulandı; gerçek cihaz yüklemesi açık) Heightmap'i önceden native Terrain3D bölgelerine dönüştürme.
 - [ ] 1.6.3 (aday uygulama; paket doğrulaması açık) Açılıştaki gereksiz veri kopyalarını kaldırma.
-- [ ] 1.6.4 İlk shader derlemesi gecikmelerini ölçme ve azaltma.
+- [ ] 1.6.4 (aday; paket/cihaz doğrulaması açık) İlk shader derlemesi gecikmelerini ölçme ve azaltma.
 - [ ] 1.6.5 Fiziksel zemin hazır olmadan oyuncu hareketini engelleme.
 - [ ] 1.6.6 Ani donmaların kaynağını belirleyen teşhis sistemi.
 - [ ] 1.6.7 Düşük maliyetli performans kaydı.

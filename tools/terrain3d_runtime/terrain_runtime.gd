@@ -39,6 +39,23 @@ func initialize(camera: Camera3D, collision_target: Node3D, spacing: float, prof
 	terrain.set("collision_mode", 1)
 	terrain.set("collision_radius", 32)
 	terrain.set("collision_shape_size", 16)
+	if profile == "world":
+		# Configure the resource before native initialization. Setters store settings
+		# while uninitialized, and Terrain3D initializes the final shader on entry.
+		var prepared := ClassDB.instantiate("Terrain3DMaterial") as Resource
+		var world_shader := load("res://shaders/world_surface.gdshader") as Shader
+		if prepared == null or world_shader == null:
+			terrain.free()
+			terrain = null
+			return ERR_CANT_CREATE
+		prepared.set("max_regions", MAX_REGIONS)
+		prepared.set("world_background", 0)
+		prepared.set("texture_filtering", 1)
+		prepared.set("shader_override", world_shader)
+		prepared.set("shader_override_enabled", true)
+		terrain.set("material", prepared)
+		startup_phases_us["material_preconfigure"] = Time.get_ticks_usec()-phase
+		phase = Time.get_ticks_usec()
 	add_child(terrain)
 	startup_phases_us["native_node_init"] = Time.get_ticks_usec()-phase
 	phase = Time.get_ticks_usec()
@@ -60,23 +77,25 @@ func initialize(camera: Camera3D, collision_target: Node3D, spacing: float, prof
 		terrain.free()
 		terrain = null
 		return ERR_UNCONFIGURED
-	material.set("max_regions", MAX_REGIONS)
+	if profile != "world":
+		material.set("max_regions", MAX_REGIONS)
 	if profile != "reference":
-		material.set("world_background", 0)
-		material.set("texture_filtering", 1)
-		var shader_path := "res://shaders/world_surface.gdshader" if profile == "world" else "res://shaders/terrain3d_lightweight.gdshader"
-		var shader := load(shader_path) as Shader
-		if shader == null:
-			terrain.free()
-			terrain = null
-			return ERR_CANT_CREATE
-		material.call("set_show_checkered", false)
-		material.set("shader_override", shader)
-		material.set("shader_override_enabled", true)
+		if profile != "world":
+			material.set("world_background", 0)
+			material.set("texture_filtering", 1)
+			var shader := load("res://shaders/terrain3d_lightweight.gdshader") as Shader
+			if shader == null:
+				terrain.free()
+				terrain = null
+				return ERR_CANT_CREATE
+			material.call("set_show_checkered", false)
+			material.set("shader_override", shader)
+			material.set("shader_override_enabled", true)
 		startup_phases_us["material_setup"] = Time.get_ticks_usec()-phase
 		if profile == "world":
 			material.call("set_shader_param", "textures_enabled", false)
-			material.call("set_shader_param", "macro_variation_enabled", false)
+			# Native empty-asset checker may be enabled during map updates.
+			# Disable it once after the real maps are submitted, not before each update.
 			for kind in ["soil","rock","sand","grass"]:
 				phase = Time.get_ticks_usec()
 				var pixels: Image
