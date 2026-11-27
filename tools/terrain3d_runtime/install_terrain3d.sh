@@ -22,7 +22,10 @@ for path in sorted(pathlib.Path(sys.argv[1]).glob("*.zip")):
 if len(archives) != 1:
     raise SystemExit(f"Expected exactly one compatible multi-platform release archive; found {len(archives)}")
 path, root, files = archives[0]
-print("Terrain3D release archive", path.name, "SHA256", hashlib.sha256(path.read_bytes()).hexdigest())
+digest = hashlib.sha256(path.read_bytes()).hexdigest()
+if digest != "51b78bc758f5759cbc8eaaab14e5cf4e8661717e265fdd760f5abf945f15b243":
+    raise SystemExit("Pinned Terrain3D release SHA256 mismatch")
+print("Terrain3D release archive", path.name, "SHA256", digest)
 with zipfile.ZipFile(path) as z:
     for name in files:
         rel = pathlib.PurePosixPath(name[len(root):])

@@ -5,6 +5,7 @@ const SPACING := 0.25
 const WARM_US := 4000000
 const RUN_US := 12000000
 var mode := "moving"
+var profile := "lean"
 var route_started := false
 var backend: Runtime
 var camera: Camera3D
@@ -29,6 +30,11 @@ func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--mode="):
 			mode = arg.trim_prefix("--mode=")
+		if arg.begins_with("--profile="):
+			profile = arg.trim_prefix("--profile=")
+	if profile not in ["reference","lean","lean_lod4"]:
+		_fail("invalid profile")
+		return
 	if mode not in ["empty", "static", "moving", "moving_no_collision", "camera_only", "collision_only"]:
 		_fail("invalid mode")
 		return
@@ -61,7 +67,7 @@ func _ready() -> void:
 		backend = Runtime.new()
 		add_child(backend)
 		var begin := Time.get_ticks_usec()
-		if backend.initialize(camera, target, SPACING) != OK:
+		if backend.initialize(camera, target, SPACING, profile) != OK:
 			_fail("native initialization")
 			return
 		if mode == "moving_no_collision":
@@ -177,8 +183,8 @@ func _finish() -> void:
 	for i in range(sorted.size()-tail_count,sorted.size()):
 		tail_sum += sorted[i]
 	var dims := get_viewport().get_visible_rect().size
-	var row := {"mode":mode,"software_driver_threads":OS.get_environment("LP_NUM_THREADS"),"renderer":RenderingServer.get_current_rendering_method(),"device":OS.get_model_name(),"adapter":RenderingServer.get_video_adapter_name(),"viewport":[int(dims.x),int(dims.y)],"frames":frames.size(),"duration_ms":total,"fps":1000.0*frames.size()/total,"mean_ms":total/frames.size(),"p50_ms":_percentile(sorted,0.5),"p95_ms":_percentile(sorted,0.95),"p99_ms":_percentile(sorted,0.99),"max_ms":sorted[-1],"one_percent_low_fps":1000.0*tail_count/tail_sum,"over_33ms":slow33,"over_50ms":slow50,"over_100ms":slow100,"worst_slow_streak_ms":worst_streak,"sampled_rss_peak_bytes":rss_peak,"sampled_static_peak_bytes":static_peak,"sampled_draw_calls_peak":draw_peak,"sampled_primitives_peak":primitives_peak,"import_ms":import_ms,"physics_samples":physics_frames,"missing_rays":missing_rays,"max_ray_error_m":max_ray_error,"region_count":0 if mode=="empty" else 4}
-	var file := FileAccess.open("user://terrain3d-bench-%s.json" % mode,FileAccess.WRITE)
+	var row := {"mode":mode,"profile":profile,"mesh_lods":0 if backend == null else int(backend.terrain.get("mesh_lods")),"software_driver_threads":OS.get_environment("LP_NUM_THREADS"),"renderer":RenderingServer.get_current_rendering_method(),"device":OS.get_model_name(),"adapter":RenderingServer.get_video_adapter_name(),"viewport":[int(dims.x),int(dims.y)],"frames":frames.size(),"duration_ms":total,"fps":1000.0*frames.size()/total,"mean_ms":total/frames.size(),"p50_ms":_percentile(sorted,0.5),"p95_ms":_percentile(sorted,0.95),"p99_ms":_percentile(sorted,0.99),"max_ms":sorted[-1],"one_percent_low_fps":1000.0*tail_count/tail_sum,"over_33ms":slow33,"over_50ms":slow50,"over_100ms":slow100,"worst_slow_streak_ms":worst_streak,"sampled_rss_peak_bytes":rss_peak,"sampled_static_peak_bytes":static_peak,"sampled_draw_calls_peak":draw_peak,"sampled_primitives_peak":primitives_peak,"import_ms":import_ms,"physics_samples":physics_frames,"missing_rays":missing_rays,"max_ray_error_m":max_ray_error,"region_count":0 if mode=="empty" else 4}
+	var file := FileAccess.open("user://terrain3d-bench-%s-%s.json" % [profile,mode],FileAccess.WRITE)
 	if file == null:
 		_fail("cannot save results")
 		return

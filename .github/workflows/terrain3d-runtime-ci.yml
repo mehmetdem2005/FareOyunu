@@ -72,28 +72,26 @@ jobs:
           mkdir -p "$RUNNER_TEMP/bench-results"
           status=0
           run_probe() {
-            local mode="$1" threads="$2" label="$3" rc=0
+            local mode="$1" threads="$2" label="$3" profile="$4" rc=0
             local log="$RUNNER_TEMP/bench-$label.log"
             local timing="$RUNNER_TEMP/bench-$label.time"
-            LP_NUM_THREADS="$threads" timeout 100s xvfb-run -a /usr/bin/time -f '%M' -o "$timing" godot --path "$project" --render-thread safe --rendering-method "$METHOD" --rendering-driver "$driver" --audio-driver Dummy --resolution 960x540 res://benchmark.tscn -- --mode="$mode" 2>&1 | tee "$log" || rc=$?
+            LP_NUM_THREADS="$threads" timeout 100s xvfb-run -a /usr/bin/time -f '%M' -o "$timing" godot --path "$project" --render-thread safe --rendering-method "$METHOD" --rendering-driver "$driver" --audio-driver Dummy --resolution 960x540 res://benchmark.tscn -- --mode="$mode" --profile="$profile" 2>&1 | tee "$log" || rc=$?
             if [[ "$rc" != 0 ]] || ! grep -q '^TERRAIN3D_BENCH ' "$log" || grep -Eq 'SCRIPT ERROR:|Parse Error:|BENCH_FAIL|handle_crash:|propagate_notification\(\)' "$log"; then
               [[ "$rc" != 0 ]] || rc=1
               status=1
             fi
             printf '%s\n' "$rc" > "$RUNNER_TEMP/bench-results/$label.exit"
             if [[ "$rc" == 0 ]]; then
-              find "$XDG_DATA_HOME" -name "terrain3d-bench-$mode.json" -exec cp {} "$RUNNER_TEMP/bench-results/$label.json" \;
+              find "$XDG_DATA_HOME" -name "terrain3d-bench-$profile-$mode.json" -exec cp {} "$RUNNER_TEMP/bench-results/$label.json" \;
             fi
           }
-          for mode in empty static moving moving_no_collision; do
-            run_probe "$mode" 4 "$mode"
+          run_probe empty 4 empty reference
+          for profile in reference lean; do
+            for mode in static moving moving_no_collision; do
+              run_probe "$mode" 4 "$profile-$mode" "$profile"
+            done
           done
-          if [[ "$METHOD" == mobile ]]; then
-            run_probe camera_only 4 camera_only
-            run_probe collision_only 4 collision_only
-            run_probe moving 1 moving_lp1
-            run_probe moving_no_collision 1 moving_no_collision_lp1
-          fi
+          run_probe moving 4 lean_lod4-moving lean_lod4
           python3 - "$RUNNER_TEMP" "$METHOD" <<'PY'
           import json, pathlib, sys
           p=pathlib.Path(sys.argv[1])
@@ -122,7 +120,7 @@ jobs:
                   row["status"]="physics_failure"
                   failed=True
               rows.append(row)
-          expected=8 if sys.argv[2]=="mobile" else 4
+          expected=8
           assert len(rows)==expected
           (p/"terrain3d-benchmark.json").write_text(json.dumps(rows,indent=2))
           print("BENCHMARK_MATRIX",json.dumps(rows))

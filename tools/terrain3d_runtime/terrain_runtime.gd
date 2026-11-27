@@ -4,8 +4,12 @@ extends Node3D
 const REGION_SIZE := 256
 const MAX_REGIONS := 64
 var terrain: Node3D
+var render_profile := "lean"
 
-func initialize(camera: Camera3D, collision_target: Node3D, spacing: float) -> Error:
+func initialize(camera: Camera3D, collision_target: Node3D, spacing: float, profile: String = "lean") -> Error:
+	if profile not in ["reference", "lean", "lean_lod4"]:
+		return ERR_INVALID_PARAMETER
+	render_profile = profile
 	if terrain != null or not is_instance_valid(camera) or not is_instance_valid(collision_target):
 		return ERR_INVALID_PARAMETER
 	if not is_finite(spacing) or spacing < 0.1 or spacing > 100.0:
@@ -20,7 +24,10 @@ func initialize(camera: Camera3D, collision_target: Node3D, spacing: float) -> E
 	terrain.set("region_size", REGION_SIZE)
 	terrain.set("vertex_spacing", spacing)
 	terrain.set("mesh_size", 16)
-	terrain.set("mesh_lods", 5)
+	terrain.set("mesh_lods", 4 if profile == "lean_lod4" else 5)
+	terrain.set("tessellation_level", 0)
+	# Fixture has no texture asset resource on disk.
+	terrain.set("free_editor_textures", false)
 	terrain.set("save_16_bit", false)
 	terrain.set("cast_shadows", 0)
 	terrain.set("gi_mode", 0)
@@ -36,6 +43,18 @@ func initialize(camera: Camera3D, collision_target: Node3D, spacing: float) -> E
 		terrain = null
 		return ERR_UNCONFIGURED
 	material.set("max_regions", MAX_REGIONS)
+	if profile != "reference":
+		material.set("world_background", 0)
+		material.set("texture_filtering", 1)
+		var shader := load("res://shaders/terrain3d_lightweight.gdshader") as Shader
+		if shader == null:
+			terrain.free()
+			terrain = null
+			return ERR_CANT_CREATE
+		material.set("shader_override", shader)
+		material.set("shader_override_enabled", true)
+		material.call("set_shader_param", "textures_enabled", false)
+		material.call("set_shader_param", "macro_variation_enabled", false)
 	return OK
 
 ## Input is already in world height units. No normalization or 8-bit conversion.
