@@ -1,7 +1,7 @@
 name: TerraForge packed RF mobile candidate
 on:
   push:
-    branches: [fix/terraforge-rf-mobile-packed]
+    branches: [fix/terraforge-rf-mobile-packed, experiment/terraforge-stroke-resampler]
     paths: ["tools/terrain3d_runtime/**", "addons/terra_forge/**", ".github/workflows/terrain3d-play-package.yml"]
   workflow_dispatch:
 permissions:
@@ -173,6 +173,7 @@ jobs:
           ! grep -Eq 'SCRIPT ERROR:|Parse Error:|NATIVE_EDITOR_BRUSH_FAIL|Shader compilation failed' "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_SMOOTH_OK" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_NATIVE_BATCH_OK lower=true flatten=true undo=true" "$RUNNER_TEMP/native-editor-brush.log"
+          grep -q "NATIVE_EDITOR_STROKE_QUEUE_OK dabs=11" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_RIDGE_VALLEY_OK signed=true undo=true" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_WEATHER_OK mode=0" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_WEATHER_OK mode=1" "$RUNNER_TEMP/native-editor-brush.log"

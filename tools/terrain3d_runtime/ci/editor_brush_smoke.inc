@@ -168,6 +168,39 @@ func _ci_editor_brush_smoke() -> void:
         get_tree().quit(1)
         return
     print("NATIVE_EDITOR_NATIVE_BATCH_OK lower=true flatten=true undo=true")
+    # Exercise the actual editor queue/pump/release lifecycle, including
+    # the native scheduled bypass and one-dab-per-pump guarantee.
+    var queue_a := Vector3(200,0,200)
+    var queue_b := Vector3(208,0,200)
+    var queue_before := float(data.call("get_height",queue_a))
+    var queue_end_before := float(data.call("get_height",queue_b))
+    _brush.begin()
+    _corridor_tool=0
+    _corridor_radius=4.0
+    _corridor_power=1.0
+    _stroke_active=true
+    _begin_basic()
+    _offer_basic(Vector2(queue_a.x,queue_a.z))
+    _offer_basic(Vector2(queue_b.x,queue_b.z))
+    if _stroke_sampler.pending_count()!=11 or float(data.call("get_height",queue_a))!=queue_before:
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: queued input mutation or count")
+        get_tree().quit(1)
+        return
+    _finish_stroke(true)
+    _pump_basic()
+    if _basic_dabs!=1 or _stroke_sampler.pending_count()!=10 or not _stroke_active:
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: frame pump budget")
+        get_tree().quit(1)
+        return
+    for frame in range(30):
+        if not _stroke_active:
+            break
+        await get_tree().process_frame
+    if _stroke_active or _basic_dabs!=11 or float(data.call("get_height",queue_a))<=queue_before or float(data.call("get_height",queue_b))<=queue_end_before or _brush.undo()!="Native undo applied." or float(data.call("get_height",queue_a))!=queue_before or float(data.call("get_height",queue_b))!=queue_end_before:
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: queued release / undo")
+        get_tree().quit(1)
+        return
+    print("NATIVE_EDITOR_STROKE_QUEUE_OK dabs=",_basic_dabs," max_dab_us=",_basic_max_us," undo=true")
     var previous_data_id: int = data.get_instance_id()
     var previous_directory := str(_active.get("data_directory"))
     _save_active()

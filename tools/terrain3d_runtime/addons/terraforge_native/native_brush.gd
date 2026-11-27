@@ -96,7 +96,7 @@ func begin() -> void:
 	last_dab_ms = -100000
 	last_dab_duration_ms = 0
 
-func dab(hit: Vector3, tool: int, radius: float, power: float) -> String:
+func dab(hit: Vector3, tool: int, radius: float, power: float, scheduled: bool = false) -> String:
 	last_changed_cells = 0
 	if tool<0 or tool>3 or not hit.is_finite() or not is_finite(radius) or radius<=0 or not is_finite(power):
 		return "Unsupported native brush."
@@ -109,7 +109,7 @@ func dab(hit: Vector3, tool: int, radius: float, power: float) -> String:
 	if size <= 0 or not is_finite(spacing) or spacing <= 0.0:
 		return "Native grid invalid: %d / %.3f." % [size,spacing]
 	var center := Vector2(hit.x,hit.z)
-	if last_hit.is_finite() and center.distance_to(last_hit)<maxf(spacing,radius*0.2):
+	if not scheduled and last_hit.is_finite() and center.distance_to(last_hit)<maxf(spacing,radius*0.2):
 		return ""
 	var grid := center/spacing
 	var r := radius/spacing
@@ -121,7 +121,7 @@ func dab(hit: Vector3, tool: int, radius: float, power: float) -> String:
 	# No queued backlog. Large dabs are spaced by measured previous cost;
 	# the first dab always runs, and full-resolution footprint is preserved.
 	var now := Time.get_ticks_msec()
-	if cells>16384 and now-last_dab_ms<maxi(75,last_dab_duration_ms*2):
+	if not scheduled and cells>16384 and now-last_dab_ms<maxi(75,last_dab_duration_ms*2):
 		return ""
 	var started := now
 	# Only Flatten needs a fixed target. Other tools may have a valid footprint
@@ -147,11 +147,11 @@ func dab(hit: Vector3, tool: int, radius: float, power: float) -> String:
 			already+=1
 	if before.size()+originals.size()-already>MAX_STROKE_CELLS:
 		_commit_segment()
-	before.merge(originals,false)
 	if not changes.is_empty():
 		var write_error := _write(regions,changes,size,true)
 		if not write_error.is_empty():
 			return write_error
+		before.merge(originals,false)
 	last_dab_ms = Time.get_ticks_msec()
 	last_dab_duration_ms = last_dab_ms-started
 	last_hit = center

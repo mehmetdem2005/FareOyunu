@@ -4,6 +4,14 @@ extends EditorPlugin
 ## Settings appear in a dismissible popup rather than a permanent bottom panel.
 const Brush = preload("res://addons/terraforge_native/native_brush.gd")
 var _brush := Brush.new()
+const StrokeSampler = preload("res://addons/terraforge_native/native_stroke_sampler.gd")
+var _stroke_sampler := StrokeSampler.new()
+var _basic_released := false
+var _basic_accepting := false
+var _basic_sealed := false
+var _basic_dabs := 0
+var _basic_max_us := 0
+var _basic_error := ""
 
 var _toolbar: HBoxContainer
 var _menu_button: Button
@@ -312,6 +320,9 @@ func _strength_changed(value: float) -> void:
 func _process(_delta: float) -> void:
     if not is_instance_valid(_active):
         return
+    # A single native dab is an indivisible main-thread transaction for now.
+    # Never catch up by executing multiple expensive dabs in one frame.
+    _pump_basic()
     var now := Time.get_ticks_msec()
     if now - _last_stats_update_ms < 200:
         return
@@ -730,6 +741,9 @@ func _toggle_brush(enabled: bool) -> void:
     _brush_button.text = "Fırça açık" if enabled else "Fırça"
 
 func _save_active() -> void:
+    if _stroke_active and _is_basic() and _stroke_sampler.pending_count()>0:
+        _set_status("Fırça işlemi sürüyor; tamamlanınca yeniden dene.")
+        return
     _finish_stroke()
     if not is_instance_valid(_active):
         _set_status("No native terrain selected.")
@@ -758,11 +772,17 @@ func _save_active() -> void:
     _set_status(_last_input_result)
 
 func _undo() -> void:
+    if _stroke_active and _is_basic() and _stroke_sampler.pending_count()>0:
+        _set_status("Fırça işlemi sürüyor; tamamlanınca yeniden dene.")
+        return
     _finish_stroke()
     if is_instance_valid(_active):
         _set_status(_brush.undo())
 
 func _redo() -> void:
+    if _stroke_active and _is_basic() and _stroke_sampler.pending_count()>0:
+        _set_status("Fırça işlemi sürüyor; tamamlanınca yeniden dene.")
+        return
     _finish_stroke()
     if is_instance_valid(_active):
         _set_status(_brush.redo())
@@ -774,7 +794,71 @@ func _run_self_test() -> void:
     var data: Object = _active.get("data")
     _set_status("Float32 | %d bölge | %.2fm | %d LOD\nGirdi %d | Temas %d | Düzenleme %d\n%s" % [data.call("get_region_count"),_active.get("vertex_spacing"),_active.get("mesh_lods"),_input_count,_hit_count,_changed_count,_tr_status(_last_input_result)])
 
+func _is_basic() -> bool:
+    return _corridor_tool >= 0 and _corridor_tool <= 3
+
+func _begin_basic() -> void:
+    _basic_released = false
+    _basic_sealed = false
+    _basic_error = ""
+    _basic_dabs = 0
+    _basic_max_us = 0
+    _basic_accepting = _stroke_sampler.begin(maxf(float(_active.get("vertex_spacing")),_corridor_radius*0.2))
+
+func _offer_basic(point: Vector2) -> void:
+    if not _basic_accepting or _basic_released:
+        return
+    if not _stroke_sampler.offer(point):
+        # Explicit backpressure: keep accepted samples; never silently bridge
+        # over the rejected input or grow the queue without bound.
+        _basic_accepting = false
+        _basic_error = "Fırça kuyruğu doldu; kalan hareket alınmadı. Daha kısa çiz."
+        _set_status(_basic_error)
+
+func _pump_basic() -> void:
+    if not _stroke_active or not _is_basic() or not is_instance_valid(_active):
+        return
+    if _basic_released and not _basic_sealed:
+        _basic_sealed = _stroke_sampler.seal()
+    if _stroke_sampler.pending_count()>0:
+        var point: Vector2 = _stroke_sampler.take_next()
+        var started := Time.get_ticks_usec()
+        var error := _brush.dab(Vector3(point.x,0.0,point.y),_corridor_tool,_corridor_radius,_corridor_power,true)
+        _basic_max_us = maxi(_basic_max_us,Time.get_ticks_usec()-started)
+        _basic_dabs += 1
+        _changed_count += _brush.last_changed_cells
+        if not error.is_empty():
+            _basic_error = error
+            _last_input_result = error
+            _finish_stroke(false)
+            return
+        _last_input_result = _basic_error if not _basic_error.is_empty() else "Fırça: %d örnek bekliyor." % _stroke_sampler.pending_count()
+    if _basic_released and _basic_sealed and _stroke_sampler.is_complete():
+        _brush.end()
+        _stroke_sampler.cancel()
+        _stroke_active = false
+        _corridor_tool = -1
+        _basic_accepting = false
+        _basic_released = false
+        _last_input_result = _basic_error if not _basic_error.is_empty() else "Fırça tamamlandı: %d uygulama." % _basic_dabs
+    _set_status(_last_input_result)
+
 func _finish_stroke(apply_path: bool = false) -> void:
+    if _stroke_active and _is_basic() and apply_path and is_instance_valid(_active):
+        _basic_released = true
+        _basic_accepting = false
+        _basic_sealed = _stroke_sampler.seal()
+        return
+    if _stroke_active and _is_basic():
+        var dropped := _stroke_sampler.pending_count()
+        _stroke_sampler.cancel()
+        _basic_accepting = false
+        _basic_released = false
+        _basic_sealed = false
+        if dropped>0 or not _basic_error.is_empty():
+            _last_input_result = "Fırça kesildi; %d bekleyen örnek iptal. %s" % [dropped,_basic_error]
+            _set_status(_last_input_result)
+            push_warning(_last_input_result)
     if _stroke_active and is_instance_valid(_active):
         if _corridor_tool in [4,5]:
             if apply_path and _corridor_error.is_empty() and not _corridor_points.is_empty():
@@ -820,7 +904,7 @@ func _collect_corridor(hit: Vector3) -> void:
     _set_status(_last_input_result)
 
 func _paint_at(camera: Camera3D, position: Vector2) -> void:
-    if not is_instance_valid(_active):
+    if not is_instance_valid(_active) or (_is_basic() and _basic_released):
         return
     _input_count += 1
     # Weather is a single local action, not repeated per motion event.
@@ -836,6 +920,8 @@ func _paint_at(camera: Camera3D, position: Vector2) -> void:
     if not hit.is_finite() or absf(hit.x)>1e8 or absf(hit.y)>1e8 or absf(hit.z)>1e8:
         if _corridor_tool in [4,5,8]:
             _corridor_error = "Path left editable surface; action cancelled."
+        elif _is_basic():
+            _stroke_sampler.break_path()
         _last_input_result = "Input received; terrain ray missed."
         _set_status(_last_input_result)
         return
@@ -848,19 +934,13 @@ func _paint_at(camera: Camera3D, position: Vector2) -> void:
     if _corridor_tool in [4,5]:
         _collect_corridor(hit)
         return
-    var result := _brush.dab(hit,_tool_select.selected,float(_radius.value),float(_strength.value))
-    _changed_count += _brush.last_changed_cells
-    if not result.is_empty():
-        _last_input_result = result
-    elif _brush.last_changed_cells>0:
-        _last_input_result = "Edited %d samples in last dab." % _brush.last_changed_cells
-        _brush_button.tooltip_text = _tr_status(_last_input_result)
-    else:
-        _last_input_result = "Surface hit; no new height change (spacing/flat tool/edge)."
-    _brush_button.tooltip_text = _tr_status(_last_input_result)
-    _set_status(_last_input_result)
+    if _is_basic():
+        _offer_basic(Vector2(hit.x,hit.z))
 
 func _start_stroke(camera: Camera3D, position: Vector2) -> void:
+    if _stroke_active and _is_basic() and _basic_released:
+        _set_status("Önceki fırça tamamlanıyor.")
+        return
     _finish_stroke()
     _brush.begin()
     _corridor_tool = _tool_select.selected
@@ -868,6 +948,8 @@ func _start_stroke(camera: Camera3D, position: Vector2) -> void:
     _corridor_power = float(_strength.value)
     _weather_mode_at_press = _weather_mode.selected
     _stroke_active = true
+    if _is_basic():
+        _begin_basic()
     _paint_at(camera,position)
 
 func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
