@@ -80,3 +80,6 @@ Her sonraki geliştirmede tarih, adım numarası, commit, durum, ölçüm/kanıt
 ## P1.7.9 paket sonucu
 - CI 46020199322 başarılı; 64 region ve indeks, 16.777.216 Float32 örnek, dört mip zinciri doğrulandı; offline bake 2521 ms. Artifact 15207522916. Vulkan/VSync sunucu uyarıları devam. Bu CI paket üretimidir; resident set ve ground probe runtime davranışı gerçek cihazda doğrulanmadı.
 - 12/43; P1.7 5/10 tamamlanan kaynak/uygulama/paket hedefi, 4 koşullu ertelenen, 1 sırada. Sonraki P1.7.10. Belge commit yeni CI tetiklemez.
+
+## P1.7.10 — 27 Kasım 2026
+- Candidate world shader bounds safe region map, safe layer index and missing texel guards. Native resident world, seven LOD, 850m far and near spacing unchanged. Nominal outer tile half-width 544m (not measured visibility); startup render_coverage event. Edge appearance and GPU cost unverified. No forced LOD8; P1.8.1 profiles next. 12/43, four deferred streaming tasks remain open. Package CI pending.

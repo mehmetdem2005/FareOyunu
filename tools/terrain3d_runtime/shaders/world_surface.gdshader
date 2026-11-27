@@ -97,7 +97,8 @@ ivec3 get_index_coord(const vec2 uv) {
 	vec2 r_uv = round(uv);
 	ivec2 pos = ivec2(floor(r_uv * _region_texel_size)) + (_region_map_size / 2);
 	int bounds = int(uint(pos.x | pos.y) < uint(_region_map_size));
-	int map_val = _region_map[pos.y * _region_map_size + pos.x];
+	ivec2 safe_pos = clamp(pos, ivec2(0), ivec2(_region_map_size - 1));
+	int map_val = _region_map[safe_pos.y * _region_map_size + safe_pos.x];
 	int raw_index = map_val - 1;
 	// Real regions limited by max_regions
 	int is_region = bounds * int(raw_index >= 0) * int(raw_index < MAX_REGIONS);
@@ -115,14 +116,17 @@ ivec3 get_index_coord(const vec2 uv) {
 vec3 get_index_uv(const vec2 uv2) {
 	ivec2 pos = ivec2(floor(uv2)) + (_region_map_size / 2);
 	int bounds = int(uint(pos.x | pos.y) < uint(_region_map_size));
-	int map_val = _region_map[pos.y * _region_map_size + pos.x];
+	ivec2 safe_pos = clamp(pos, ivec2(0), ivec2(_region_map_size - 1));
+	int map_val = _region_map[safe_pos.y * _region_map_size + safe_pos.x];
 	int raw_index = map_val - 1;
 	int is_region = bounds * int(raw_index >= 0) * int(raw_index < MAX_REGIONS);
 	int is_dummy = bounds * int(map_val < 0);
 	int layer_index = is_region * raw_index
 	               + is_dummy * (map_val - 1)
 	               - (1 - is_region - is_dummy);
-	return vec3(uv2 - _region_locations[layer_index], float(layer_index));
+	// Keep the missing-region sentinel, but never index a uniform array with it.
+	int safe_layer = clamp(layer_index, 0, MAX_REGIONS - 1);
+	return vec3(uv2 - _region_locations[safe_layer], float(layer_index));
 }
 
 // Takes in world space XZ (UV) and returns if the coordinate should be part of the NONE background.
@@ -139,7 +143,8 @@ bool is_none_bg(const vec2 uv) {
 float check_region(const vec2 uv2) {
 	ivec2 pos = ivec2(floor(uv2)) + (_region_map_size / 2);
     int bounds = int(uint(pos.x | pos.y) < uint(_region_map_size));
-    int raw_index = _region_map[pos.y * _region_map_size + pos.x] - 1;
+    ivec2 safe_pos = clamp(pos, ivec2(0), ivec2(_region_map_size - 1));
+    int raw_index = _region_map[safe_pos.y * _region_map_size + safe_pos.x] - 1;
     int is_valid = bounds * int(raw_index >= 0) * int(raw_index < MAX_REGIONS);
 	return float(is_valid);
 }
@@ -159,6 +164,23 @@ float get_region_blend(vec2 uv2) {
 	return (1.0 - blend) * 2.0;
 }
 
+// Invalid region indices are not valid texelFetch layer coordinates.
+// Missing data remains missing for the NONE background; ground_level is used
+// only as a defined sample for boundary normals/morphs, not as a new region.
+float sample_height(ivec3 coord) {
+	if (coord.z < 0 || coord.z >= MAX_REGIONS) {
+		return ground_level;
+	}
+	return texelFetch(_height_maps, coord, 0).r;
+}
+
+uint sample_control(ivec3 coord) {
+	if (coord.z < 0 || coord.z >= MAX_REGIONS) {
+		return 0u;
+	}
+	return floatBitsToUint(texelFetch(_control_maps, coord, 0)).r;
+}
+
 float interpolated_height(vec2 pos) {
 	const vec2 offsets = vec2(0, 1);
 	vec2 index_id = floor(pos);
@@ -167,10 +189,10 @@ float interpolated_height(vec2 pos) {
 	index[1] = get_index_coord(index_id + offsets.yy);
 	index[2] = get_index_coord(index_id + offsets.yx);
 	index[3] = get_index_coord(index_id + offsets.xx);
-	float h0 = texelFetch(_height_maps, index[0], 0).r;
-	float h1 = texelFetch(_height_maps, index[1], 0).r;
-	float h2 = texelFetch(_height_maps, index[2], 0).r;
-	float h3 = texelFetch(_height_maps, index[3], 0).r;
+	float h0 = sample_height(index[0]);
+	float h1 = sample_height(index[1]);
+	float h2 = sample_height(index[2]);
+	float h3 = sample_height(index[3]);
 	vec2 f = fract(pos);
 	vec2 i = 1.0 - f;
 	vec4 w = vec4(i.x * f.y, f.x * f.y, f.x * i.y, i.x * i.y);
@@ -214,7 +236,7 @@ void vertex() {
 
 	// Discard vertices for Holes. 1 lookup
 	ivec3 v_region = get_index_coord(start_pos);
-	uint control = floatBitsToUint(texelFetch(_control_maps, v_region, 0)).r;
+	uint control = sample_control(v_region);
 	bool hole = DECODE_HOLE(control);
 
 	// Show holes to all cameras except mouse camera (on exactly 1 layer)
@@ -237,9 +259,9 @@ void vertex() {
 			ivec3 coord_ub = get_index_coord(end_pos + vec2(1, 0));
 			ivec3 coord_va = get_index_coord(start_pos + vec2(0, 1));
 			ivec3 coord_vb = get_index_coord(end_pos + vec2(0, 1));
-			h = mix(texelFetch(_height_maps, coord_a, 0).r, texelFetch(_height_maps, coord_b, 0).r, vertex_lerp);
-			u = mix(texelFetch(_height_maps, coord_ua, 0).r, texelFetch(_height_maps, coord_ub, 0).r, vertex_lerp);
-			v = mix(texelFetch(_height_maps, coord_va, 0).r, texelFetch(_height_maps, coord_vb, 0).r, vertex_lerp);
+			h = mix(sample_height(coord_a), sample_height(coord_b), vertex_lerp);
+			u = mix(sample_height(coord_ua), sample_height(coord_ub), vertex_lerp);
+			v = mix(sample_height(coord_va), sample_height(coord_vb), vertex_lerp);
 		}
 
 		// Apply background ground level and region blend
@@ -312,7 +334,7 @@ void fragment() {
 	float region_mip = log2(max(length(base_ddx.xz), length(base_ddy.xz)) * _vertex_density);
 
 	// Color map
-	vec4 color_map = region_uv.z > -1.0 ? textureLod(_color_maps, region_uv, region_mip) : COLOR_MAP;
+	vec4 color_map = region_uv.z >= 0.0 && region_uv.z < float(MAX_REGIONS) ? textureLod(_color_maps, region_uv, region_mip) : COLOR_MAP;
 
 	if (flat_terrain_normals) {
 		NORMAL = normalize(cross(dFdyCoarse(VERTEX),dFdxCoarse(VERTEX)));
@@ -338,11 +360,9 @@ void fragment() {
 
 		// Get index control data
 		// 1 - 4 lookups
-		uvec4 control = floatBitsToUint(vec4(
-			texelFetch(_control_maps, index[0], 0).r,
-			texelFetch(_control_maps, index[1], 0).r,
-			texelFetch(_control_maps, index[2], 0).r,
-			texelFetch(_control_maps, index[3], 0).r));
+		uvec4 control = uvec4(
+			sample_control(index[0]), sample_control(index[1]),
+			sample_control(index[2]), sample_control(index[3]));
 
 		{
 			// Auto blend calculation

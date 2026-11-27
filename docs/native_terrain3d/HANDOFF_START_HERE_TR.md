@@ -32,3 +32,5 @@ P1.7.4 aday: startup-only verification Thread, prepare_baked_regions await -> in
 P1.7.4 paket başarılı 46019414487 (11/43). P1.7.5–8 deferred/conditional for bigger world, not completed, no speculative background queue. P1.7.9 candidate exact resident membership, spawn and existing ray diagnostic; no extra steady-state ray. CI pending; then P1.7.10.
 
 P1.7.9 paket başarılı 46020199322, artifact 15207522916; 12/43. P1.7.5–8 ertelenmiş ve tamamlanmış sayılmadı; P1.7.10 sırada. Cihaz doğrulaması açık.
+
+P1.7.10 candidate: world shader bounds guard; render_coverage report (nominal outer tile half-width 544m vs camera far850m, not measured). No forced LOD8, near unchanged. Package/visual device validation pending. Next P1.8.1 source profile cost analysis. P1.7.5–8 remain deferred, not done.

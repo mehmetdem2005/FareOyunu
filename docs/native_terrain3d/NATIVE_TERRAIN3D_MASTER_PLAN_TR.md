@@ -36,7 +36,7 @@ Hedef: ilk fiziksel zemin 6,71 s bazına göre iyileşsin; saniyelik donmaların
 - [ ] 1.7.7 Yükleme/boşaltma mesafelerinde histerezis — runtime eviction yok; streaming koşullu.
 - [ ] 1.7.8 Kare başına yükleme bütçesi — runtime yükleme kuyruğu yok; streaming koşullu, başlangıç GPU upload ayrı.
 - [x] 1.7.9 (paket doğrulandı; cihaz fizik davranışı açık) Fizik bölgelerini koruma: eksiksiz resident set ve mevcut fizik probe doğruluğu.
-- [ ] 1.7.10 Uzak arazinin kesintisiz görünmesini sağlama.
+- [ ] 1.7.10 (aday; shader sınır güvenliği ve coverage raporu; görsel cihaz doğrulaması açık) Uzak arazinin kesintisiz görünmesini sağlama.
 Native 1.1 aktif bölgeleri GPU belleğinde tutuyor. GPU texture array yeniden oluşturma maliyeti ölçülmeden streaming ana sürüme kabul edilmez. Görsel LOD Terrain3D'ye ait kalır; disk önbelleği ile fizik alanı ve görsel alan birbirinden ayrılır. Uzak siluet kaybolması ve fizik boşluğu kabul edilmez; çözüm fizibilitesi açık.
 
 ## P1.8 — Profesyonel LOD ve çizim optimizasyonu (8 adım)

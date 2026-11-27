@@ -223,6 +223,12 @@ func request_load() -> void:
 	# CPU wall-clock calls, not GPU completion timestamps. Recorded once, not per frame.
 	recorder.event("startup_phases_us",phases)
 	recorder.event("startup_io",backend.startup_io)
+	# Analytical clipmap tile coverage, not a visibility or GPU timing measurement.
+	var lod_count := int(backend.terrain.get("mesh_lods"))
+	var tile_size := int(backend.terrain.get("mesh_size"))
+	var sample_spacing := float(backend.terrain.get("vertex_spacing"))
+	var outer_spacing := sample_spacing*pow(2.0,lod_count-1)
+	recorder.event("render_coverage",{"camera_far_m":camera.far,"mesh_lods":lod_count,"mesh_size":tile_size,"near_spacing_m":sample_spacing,"outer_spacing_m":outer_spacing,"nominal_outer_tile_half_width_m":(2*tile_size+2)*outer_spacing,"notes":"Square tile extent around snapped target; edge strips, geomorph, frustum and occlusion affect visible coverage. No adaptive range change."})
 	recorder.event("memory_budget",{"policy":"resident_advisory_no_automatic_eviction","before_native_load":memory_before,"after_native_submit":Recorder.memory_snapshot(),"inventory":backend.memory_inventory(),"process_safe_budget_bytes":-1,"gpu_safe_budget_bytes":-1,"notes":"Device safe limits not established; no automatic quality changes. After-submit counters may lag renderer completion."})
 
 func fail_load(message: String) -> void:
