@@ -1,0 +1,33 @@
+name: TerraForge isolated native slot compile
+on:
+  push:
+    branches: [experiment/terraforge-native-slot-swap]
+    paths: ["experiments/native_residency/native_slot_swap.py", ".github/workflows/native-slot-experiment.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: TokisanGames/Terrain3D
+          ref: 629bbd65526bbdc3d1aa371840c7028055c30b02
+          submodules: recursive
+          path: upstream-native
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install scons==4.10.1
+      - name: Compile isolated slot exchange prototype (no package)
+        run: |
+          set -euo pipefail
+          python3 tools/terrain3d_runtime/native_patch/pack_rf.py upstream-native
+          python3 experiments/native_residency/native_slot_swap.py upstream-native
+          cd upstream-native
+          scons target=template_debug platform=linux arch=x86_64 debug_symbols=no -j4
+          test -s project/addons/terrain_3d/bin/libterrain.linux.debug.x86_64.so
+          echo TF_NATIVE_SLOT_EXPERIMENT_COMPILED
