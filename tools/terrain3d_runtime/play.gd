@@ -5,6 +5,8 @@ const PreviewRange = preload("res://preview_range.gd")
 var preview_range := PreviewRange.new()
 var range_label: Label
 var far_material_skip := false
+const PREVIEW_RENDER_SCALES := [1.0,0.90,0.85]
+var render_scale_options: OptionButton
 var recorder := Recorder.new()
 var report_path := ""
 var load_begin := 0
@@ -64,6 +66,8 @@ class StickOverlay extends Control:
 
 func _ready() -> void:
 	Engine.max_fps = 60
+	get_viewport().scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
+	get_viewport().scaling_3d_scale = 1.0
 	var light := DirectionalLight3D.new()
 	light.rotation_degrees = Vector3(-55,-35,0)
 	light.shadow_enabled = false
@@ -181,6 +185,40 @@ func make_ui() -> void:
 		recorder.event("far_texture_skip",enabled)
 	)
 	box.add_child(far_skip)
+	render_scale_options = OptionButton.new()
+	render_scale_options.add_item("3B çözünürlük: %100",0)
+	render_scale_options.add_item("3B çözünürlük: %90 (deneysel)",1)
+	render_scale_options.add_item("3B çözünürlük: %85 (deneysel)",2)
+	render_scale_options.select(0)
+	render_scale_options.item_selected.connect(apply_preview_render_scale)
+	box.add_child(render_scale_options)
+
+## Preview-only user action, never part of an automatic quality loop.
+## 2D interface stays native; near 3D image can soften, so default stays 1.0.
+func apply_preview_render_scale(selected: int) -> void:
+	if selected < 0 or selected >= PREVIEW_RENDER_SCALES.size():
+		return
+	if loading or backend == null or not menu.visible:
+		var current := get_viewport().scaling_3d_scale
+		for i in range(PREVIEW_RENDER_SCALES.size()):
+			if is_equal_approx(current,PREVIEW_RENDER_SCALES[i]):
+				render_scale_options.select(i)
+				break
+		return
+	var viewport := get_viewport()
+	var requested: float = PREVIEW_RENDER_SCALES[selected]
+	var old_scale := viewport.scaling_3d_scale
+	if is_equal_approx(old_scale,requested):
+		return
+	# Bilinear is available on the current GL Compatibility renderer.
+	viewport.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
+	viewport.scaling_3d_scale = requested
+	recorder.event("preview_render_scale",{"reason":"manual_menu_selection","old_scale":old_scale,"requested_scale":requested,"property_scale":viewport.scaling_3d_scale,"viewport_size":[int(viewport.get_visible_rect().size.x),int(viewport.get_visible_rect().size.y)],"automatic":false,"notes":"Property value is not a measured framebuffer size; render target reallocation may stall."})
+	# Restart an explicitly selected range trial at its reference so samples
+	# collected under different pixel workloads are not compared.
+	if preview_range.mode == 2:
+		preview_range.select_mode(2)
+		apply_preview_range("render_scale_changed_reset_trial")
 
 func apply_preview_range(reason: String) -> void:
 	var old_far := camera.far
@@ -262,6 +300,7 @@ func request_load() -> void:
 	recorder.event("startup_phases_us",phases)
 	recorder.event("startup_io",backend.startup_io)
 	recorder.event("far_texture_skip",far_material_skip)
+	recorder.event("preview_render_scale",{"reason":"initial_reference","property_scale":get_viewport().scaling_3d_scale,"automatic":false})
 	# Analytical clipmap tile coverage, not a visibility or GPU timing measurement.
 	var lod_count := int(backend.terrain.get("mesh_lods"))
 	var tile_size := int(backend.terrain.get("mesh_size"))

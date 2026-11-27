@@ -50,3 +50,5 @@ P1.8.2 candidate: preview_range.gd + test preview UI, default reference, manual/
 P1.8.2 package passed 46022529495 artifact 15208633565, 15/43. P1.8.3 candidate exact endpoint/shift-zero sample reduction + exact stationary camera transform no-op. Morph/near/physics unchanged; package/device visual pending. Native dedup not implemented. Next P1.8.4.
 
 P1.8.3 package successful 46023381680 artifact 15212205063, 16/43. P1.8.4 feasibility closed, implementation deferred (17/43); audit NATIVE_HORIZON_CULLING_AUDIT_TR.md. P1.8.5 candidate opt-in exact zero weight far material sampling, default reference. Package and device visual/FPS open. Next P1.8.6.
+
+P1.8.5 CI 46023920638 successful artifact 15211800852, 18/43. P1.8.6 candidate manual 3D scale 100(default)/90/85 percent in preview; no autonomous downscale or FSR on GL. Device/editor open; next P1.8.7.

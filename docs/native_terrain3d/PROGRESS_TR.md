@@ -102,3 +102,7 @@ Reusable preview_range.gd, camera far only, reference default 850m test profile,
 - 46023381680 package successful, native bake 2370ms, 64/16.777.216/4 verified; artifact 15212205063; visual/device validation open. 16/43.
 - P1.8.4 feasibility closed (17/43), horizon culling implementation deferred: NATIVE_HORIZON_CULLING_AUDIT_TR.md. No redundant CPU occluder or unsafe visibility cutoff.
 - P1.8.5 candidate opt-in far exact zero-weight texture skip, default reference, gradients valid in nonuniform branches. Source reads 1–4 instead of always 4 in eligible far branch, not measured GPU instructions. Package/device pending. Next P1.8.6.
+
+## P1.8.5–6 — 27 Kasım 2026
+- 46023920638 package passed: native index 64, 16.777.216 exact heights, 4 mips, 2021ms offline server bake; artifact 15211800852. Device shader performance open. 18/43.
+- P1.8.6 candidate: 100% 3D scale default, manual 90/85% options in preview menu; bilinear, 2D UI unaffected, close view may blur; no auto-scale, no native rebuild, event records change and reset range trial. Package/actual device open. Next P1.8.7.
