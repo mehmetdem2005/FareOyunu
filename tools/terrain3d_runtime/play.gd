@@ -159,19 +159,12 @@ func request_load() -> void:
 	world_info = parsed
 	var side := int(world_info.get("samples",0))
 	var spacing := float(world_info.get("spacing_m",0))
-	var world_path := "res://world/height.r32"
-	if side != 4096 or spacing != 0.25 or not FileAccess.file_exists(world_path):
+	if side != 4096 or spacing != 0.25 or int(world_info.get("region_samples",0)) != 512:
 		fail_load("Dünya boyutu veya verisi geçersiz")
 		return
-	if FileAccess.get_sha256(world_path) != str(world_info.get("sha256","")):
-		fail_load("Dünya SHA256 uyuşmuyor")
+	if not world_info.has("native_regions"):
+		fail_load("Hazır native bölgeler eksik; doğru paketi yükle")
 		return
-	var bytes := FileAccess.get_file_as_bytes(world_path)
-	if bytes.size() != side*side*4:
-		fail_load("Float32 veri boyutu geçersiz")
-		return
-	var image := Image.create_from_data(side,side,false,Image.FORMAT_RF,bytes)
-	bytes = PackedByteArray()
 	extent = Vector2(side-1,side-1)*spacing
 	var start: Array = world_info.get("spawn_m",[512.0,512.0])
 	player.position = Vector3(float(start[0]),0,float(start[1]))
@@ -180,7 +173,7 @@ func request_load() -> void:
 	add_child(next)
 	var result: Error = next.initialize(camera,player,spacing,"world",512)
 	if result == OK:
-		result = next.import_height_snapshot(image)
+		result = next.load_baked_regions(world_info)
 	if result != OK:
 		next.free()
 		fail_load("Terrain3D aktarımı başarısız: " + str(result))

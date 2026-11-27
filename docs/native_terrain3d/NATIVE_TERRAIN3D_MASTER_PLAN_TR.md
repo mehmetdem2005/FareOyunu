@@ -3,7 +3,7 @@
 Onay: 27 Kasım 2026, kullanıcı mevcut oynanabilir sürümü beğendi ve bu planın eski planlardan ayrı kaydedilmesini istedi.
 Dal: `feat/terraforge-terrain3d-runtime`
 Kararlı referans (kullanıcının oynadığı Dört Havza V2): `fdbf49b2b5c1e0133a050e2a5f5592011f1fbf2c`.
-Durum: P1.5 native temel gerçek cihazda çalıştı; P1.6–4.0 planlandı, henüz uygulanmadı. Sıradaki görev P1.6.1.
+Durum: P1.5 native temel gerçek cihazda çalıştı; P1.6–4.0 planlandı, henüz uygulanmadı. Sıradaki görev P1.6.2 (native bake paket doğrulaması bekliyor).
 Bu belge bu dalın TEK aktif geliştirme planıdır. Eski `addons/terra_forge/` altındaki özel CPU mesh/worker mimarisi planları tarihsel referanstır; görev sırası, faz numaraları ve başarı ölçütleri buraya taşınmaz. Orijinal dal `feat/terraforge-mobile-addon` korunur.
 
 ## Başlangıç noktası ve kararlar
@@ -17,8 +17,8 @@ Bu belge bu dalın TEK aktif geliştirme planıdır. Eski `addons/terra_forge/` 
 - Aktif görevler aşağıdaki sıradan izlenir. Her adımın durumunu ilerleme defterinde güncelle.
 
 ## P1.6 — Kararlılık ve açılış (7 adım)
-- [ ] 1.6.1 Çalışan sürümü güvenli GitHub dalında koruma.
-- [ ] 1.6.2 Heightmap'i önceden native Terrain3D bölgelerine dönüştürme.
+- [x] 1.6.1 Çalışan sürümü güvenli GitHub dalında koruma.
+- [ ] 1.6.2 (uygulandı; paket doğrulaması açık) Heightmap'i önceden native Terrain3D bölgelerine dönüştürme.
 - [ ] 1.6.3 Açılıştaki gereksiz veri kopyalarını kaldırma.
 - [ ] 1.6.4 İlk shader derlemesi gecikmelerini ölçme ve azaltma.
 - [ ] 1.6.5 Fiziksel zemin hazır olmadan oyuncu hareketini engelleme.

@@ -132,3 +132,53 @@ func surface_height(position: Vector3) -> float:
 	if data == null:
 		return NAN
 	return float(data.call("get_surface_height", position))
+
+## Load pre-baked native regions once. Explicit filenames avoid Android directory enumeration.
+## Verify all files before mutating native data; upload maps once after all regions are loaded.
+func load_baked_regions(manifest: Dictionary) -> Error:
+	if terrain == null or int(terrain.call("get_region_size")) != region_size:
+		return ERR_UNCONFIGURED
+	var data: Object = terrain.get("data")
+	if data == null or int(data.call("get_region_count")) != 0:
+		return ERR_ALREADY_IN_USE
+	var entries: Array = manifest.get("native_regions", [])
+	var side := int(manifest.get("samples",0))
+	var width := int(side / region_size)
+	if width <= 0 or side % region_size != 0 or entries.size() != width * width or entries.size() > MAX_REGIONS:
+		return ERR_INVALID_DATA
+	var directory := "res://world/native"
+	var seen := {}
+	for item in entries:
+		if not item is Dictionary:
+			return ERR_INVALID_DATA
+		var x := int(item.get("x",-1))
+		var z := int(item.get("z",-1))
+		var loc := Vector2i(x,z)
+		if x < 0 or z < 0 or x >= width or z >= width or seen.has(loc):
+			return ERR_INVALID_DATA
+		seen[loc] = true
+		var filename := "terrain3d_%02d_%02d.res" % [x,z]
+		var path := directory.path_join(filename)
+		if str(item.get("file","")) != filename or not FileAccess.file_exists(path):
+			push_error("Missing native region: " + path)
+			return ERR_FILE_NOT_FOUND
+		if FileAccess.get_sha256(path) != str(item.get("sha256","")):
+			push_error("Native region checksum mismatch: " + path)
+			return ERR_FILE_CORRUPT
+	for item in entries:
+		var loc := Vector2i(int(item["x"]),int(item["z"]))
+		data.call("load_region",loc,directory,false)
+		var region: Object = data.call("get_region",loc)
+		if region == null or int(region.call("get_region_size")) != region_size:
+			push_error("Invalid native region: " + str(loc))
+			return ERR_INVALID_DATA
+		var heights: Image = region.call("get_height_map")
+		if heights == null or heights.get_format() != Image.FORMAT_RF or heights.get_size() != Vector2i(region_size,region_size):
+			return ERR_INVALID_DATA
+	# Default map_type TYPE_MAX: update all arrays in one batch.
+	data.call("update_maps")
+	if int(data.call("get_region_count")) != entries.size():
+		return ERR_INVALID_DATA
+	if render_profile == "world":
+		terrain.get("material").call("set_show_checkered",false)
+	return OK

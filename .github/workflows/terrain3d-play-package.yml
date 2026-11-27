@@ -9,7 +9,7 @@ permissions:
 jobs:
   package:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -23,6 +23,25 @@ jobs:
         run: python3 -m pip install numpy==2.2.6 scipy==1.15.3 pillow==11.2.1
       - name: Bake fixed full-size world (offline Float32)
         run: python3 tools/terrain3d_runtime/bake_world.py
+      - uses: solarlabyrinth/action-setup-godot@v3
+        with:
+          version: 4.7.2-stable
+          export-templates: false
+          name: godot
+      - name: Install offline conversion graphics dependencies
+        run: sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri
+      - name: Serialize native regions (package production, not FPS test)
+        shell: bash
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: |
+          set -euo pipefail
+          project="$GITHUB_WORKSPACE/tools/terrain3d_runtime"
+          xvfb-run -a godot --path "$project" --editor --import --quit --rendering-method gl_compatibility --rendering-driver opengl3 2>&1 | tee "$RUNNER_TEMP/native-import.log"
+          timeout 240s xvfb-run -a godot --path "$project" --rendering-method gl_compatibility --rendering-driver opengl3 --audio-driver Dummy --resolution 640x480 res://bake_native.tscn 2>&1 | tee "$RUNNER_TEMP/native-bake.log"
+          grep -q 'NATIVE_BAKE_OK regions=64 exact_height_samples=16777216' "$RUNNER_TEMP/native-bake.log"
+          ! grep -Eq 'SCRIPT ERROR:|Parse Error:|NATIVE_BAKE_FAIL|Shader compilation failed' "$RUNNER_TEMP/native-bake.log"
+          rm "$project/world/height.r32"
       - name: Package Godot project (no benchmark or regression suite)
         shell: bash
         run: |
