@@ -57,17 +57,15 @@ jobs:
           cp -a project.godot terraforge_workspace.tscn play.tscn play.gd terrain_runtime.gd session_recorder.gd preview_range.gd thermal_monitor.gd world shaders authoring README.md "$RUNNER_TEMP/TerraForge-Play-Godot/"
           mkdir -p "$RUNNER_TEMP/TerraForge-Play-Godot/addons"
           cp -a addons/terrain_3d "$RUNNER_TEMP/TerraForge-Play-Godot/addons/"
-          # The runtime source tree contains only legacy codecs. Copy the entire
-          # unchanged original addon, not that partial tree.
-          cp -a "$GITHUB_WORKSPACE/addons/terra_forge" "$RUNNER_TEMP/TerraForge-Play-Godot/addons/terra_forge"
-          diff -qr "$GITHUB_WORKSPACE/addons/terra_forge" "$RUNNER_TEMP/TerraForge-Play-Godot/addons/terra_forge"
-          test -f "$RUNNER_TEMP/TerraForge-Play-Godot/addons/terra_forge/plugin.cfg"
+          cp -a addons/terraforge_native "$RUNNER_TEMP/TerraForge-Play-Godot/addons/"
+          test ! -e "$RUNNER_TEMP/TerraForge-Play-Godot/addons/terra_forge"
+          test -f "$RUNNER_TEMP/TerraForge-Play-Godot/addons/terraforge_native/plugin.cfg"
           cat >>"$RUNNER_TEMP/TerraForge-Play-Godot/project.godot" <<'GODOTPLUGINS'
 
           [editor_plugins]
-          enabled=PackedStringArray("res://addons/terra_forge/plugin.cfg")
+          enabled=PackedStringArray("res://addons/terraforge_native/plugin.cfg")
           GODOTPLUGINS
-      - name: Verify packaged editor starts with original TerraForge plugin
+      - name: Verify packaged native TerraForge editor starts
         shell: bash
         env:
           LIBGL_ALWAYS_SOFTWARE: "1"
@@ -76,9 +74,9 @@ jobs:
           package="$RUNNER_TEMP/TerraForge-Play-Godot"
           timeout 120s xvfb-run -a godot --path "$package" --editor --import --quit --rendering-method gl_compatibility --rendering-driver opengl3 --audio-driver Dummy 2>&1 | tee "$RUNNER_TEMP/packaged-editor.log"
           ! grep -Ei 'SCRIPT ERROR:|Parse Error:|Parser Error:|Compile Error:|Failed to load script|Unable to load addon script|Error loading addon' "$RUNNER_TEMP/packaged-editor.log"
-          grep -Fq 'enabled=PackedStringArray("res://addons/terra_forge/plugin.cfg")' "$package/project.godot"
+          grep -Fq 'enabled=PackedStringArray("res://addons/terraforge_native/plugin.cfg")' "$package/project.godot"
           rm -rf "$package/.godot"
-          echo "TERRAFORGE_ORIGINAL_EDITOR_PACKAGED"
+          echo "TERRAFORGE_NATIVE_EDITOR_PACKAGED"
       - uses: actions/upload-artifact@v4
         with:
           name: TerraForge-Play-Godot
