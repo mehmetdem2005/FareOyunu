@@ -51,6 +51,42 @@ jobs:
           grep -q TERRAIN3D_SMOKE_PASS "$RUNNER_TEMP/smoke.log"
           grep -q "\"renderer\":\"$METHOD\"" "$RUNNER_TEMP/smoke.log"
           ! grep -E 'SCRIPT ERROR:|Parse Error:|TERRAIN3D_SMOKE_FAIL' "$RUNNER_TEMP/"*.log
+      - name: Measure frame intervals and collision cost
+        shell: bash
+        run: |
+          set -euo pipefail
+          project="$GITHUB_WORKSPACE/tools/terrain3d_runtime"
+          driver=opengl3
+          if [[ "$METHOD" == mobile ]]; then
+            driver=vulkan
+            unset VK_ICD_FILENAMES VK_DRIVER_FILES VK_ADD_DRIVER_FILES
+            mapfile -t icds < <(find /usr/share/vulkan/icd.d /etc/vulkan/icd.d -maxdepth 1 -type f -name 'lvp_icd*.json' 2>/dev/null | sort -u || true)
+            [[ "${#icds[@]}" == 1 ]]
+            export VK_DRIVER_FILES="${icds[0]}"
+          fi
+          export XDG_RUNTIME_DIR="$RUNNER_TEMP/terrain3d-xdg"
+          export XDG_DATA_HOME="$RUNNER_TEMP/terrain3d-data"
+          export LP_NUM_THREADS=4
+          for mode in empty static moving moving_no_collision; do
+            log="$RUNNER_TEMP/bench-$mode.log"
+            timeout 100s xvfb-run -a godot --path "$project" --rendering-method "$METHOD" --rendering-driver "$driver" --audio-driver Dummy --resolution 960x540 res://benchmark.tscn -- --mode="$mode" 2>&1 | tee "$log"
+            grep -q '^TERRAIN3D_BENCH ' "$log"
+            ! grep -E 'SCRIPT ERROR:|Parse Error:|BENCH_FAIL' "$log"
+          done
+          python3 - "$RUNNER_TEMP" "$METHOD" <<'PY'
+          import json, pathlib, sys
+          p=pathlib.Path(sys.argv[1])
+          rows=[]
+          for mode in ("empty","static","moving","moving_no_collision"):
+              matches=[line.removeprefix("TERRAIN3D_BENCH ") for line in (p/f"bench-{mode}.log").read_text().splitlines() if line.startswith("TERRAIN3D_BENCH ")]
+              assert len(matches)==1
+              row=json.loads(matches[0])
+              assert row["mode"]==mode and row["renderer"]==sys.argv[2] and row["frames"]>=10
+              assert row["viewport"]==[960,540], row
+              rows.append(row)
+          (p/"terrain3d-benchmark.json").write_text(json.dumps(rows,indent=2))
+          print("BENCHMARK_MATRIX",json.dumps(rows))
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -58,4 +94,7 @@ jobs:
           path: |
             ${{ runner.temp }}/import.log
             ${{ runner.temp }}/smoke.log
+            ${{ runner.temp }}/bench-*.log
+            ${{ runner.temp }}/terrain3d-benchmark.json
+            ${{ runner.temp }}/terrain3d-data/**/terrain3d-bench-*.json
             ${{ runner.temp }}/terrain3d-data/**/terrain3d-smoke.png
