@@ -9,14 +9,17 @@ func _ci_editor_brush_smoke() -> void:
         push_error("NATIVE_EDITOR_BRUSH_FAIL: workspace not open")
         get_tree().quit(1)
         return
-    _create_terrain(1)
+    if OS.get_environment("TF_EDITOR_REOPEN")=="1":
+        await _ci_verify_reopened()
+        return
+    _create_terrain(4)
     await get_tree().process_frame
     if not is_instance_valid(_active):
         push_error("NATIVE_EDITOR_BRUSH_FAIL: create terrain: " + _status.text)
         get_tree().quit(1)
         return
     var data: Object = _active.get("data")
-    if data == null or int(data.call("get_region_count")) != 1:
+    if data == null or int(data.call("get_region_count")) != 16:
         push_error("NATIVE_EDITOR_BRUSH_FAIL: native region count")
         get_tree().quit(1)
         return
@@ -62,10 +65,23 @@ func _ci_editor_brush_smoke() -> void:
         return
     print("NATIVE_EDITOR_LARGE_BRUSH_OK radius=36 changed=",_brush.last_changed_cells)
     _toggle_brush(false)
-    print("NATIVE_EDITOR_BRUSH_OK regions=1 radius=8 power=3 changed=",changed," height=",height)
-    # Disposable CI workspace only. Native pre-save should persist region files.
-    if get_editor_interface().save_scene()!=OK:
-        push_error("NATIVE_EDITOR_BRUSH_FAIL: editor save")
+    print("NATIVE_EDITOR_BRUSH_OK regions=16 radius=8 power=3 changed=",changed," height=",height)
+    # Test actual panel save with a region boundary and a far-region sentinel.
+    _brush.begin()
+    var boundary_error := _brush.dab(Vector3(128,0,64),0,8.0,2.0)
+    _brush.end()
+    _brush.begin()
+    var far_error := _brush.dab(Vector3(448,0,448),0,8.0,7.0)
+    _brush.end()
+    if not boundary_error.is_empty() or not far_error.is_empty() or absf(float(data.call("get_height",Vector3(128,0,64)))-2.0)>0.00001 or float(data.call("get_height",Vector3(127.75,0,64)))<=0.0:
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: boundary or far edit")
+        get_tree().quit(1)
+        return
+    var previous_data_id: int = data.get_instance_id()
+    var previous_directory := str(_active.get("data_directory"))
+    _save_active()
+    if not _status.text.begins_with("Terrain and scene saved;") or _brush.last_snapshot_path.is_empty() or str(_active.get("data_directory"))!=previous_directory or _active.get("data").get_instance_id()!=previous_data_id:
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: panel save / live data identity: "+_status.text)
         get_tree().quit(1)
         return
     var scene_bytes := FileAccess.get_file_as_bytes("res://terraforge_workspace.tscn").size()
@@ -81,4 +97,50 @@ func _ci_editor_brush_smoke() -> void:
         get_tree().quit(1)
         return
     print("NATIVE_EDITOR_EXTERNAL_STORAGE_OK scene_bytes=",scene_bytes)
+    print("NATIVE_EDITOR_SNAPSHOT_OK regions=16 no_reload=true")
+    get_tree().quit(0)
+
+func _ci_verify_reopened() -> void:
+    var root := get_editor_interface().get_edited_scene_root()
+    var nodes: Array[Node3D] = []
+    _find_workspaces(root,nodes)
+    if nodes.size()!=1:
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: reopened workspace missing")
+        get_tree().quit(1)
+        return
+    var terrain := nodes[0]
+    var data: Object = terrain.get("data")
+    if data==null or int(data.call("get_region_count"))!=16:
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: reopened region count")
+        get_tree().quit(1)
+        return
+    for probe in [[Vector3(64,0,64),13.25],[Vector3(128,0,64),2.0],[Vector3(448,0,448),7.0]]:
+        if absf(float(data.call("get_height",probe[0]))-float(probe[1]))>0.00001:
+            push_error("NATIVE_EDITOR_BRUSH_FAIL: reopened height "+str(probe))
+            get_tree().quit(1)
+            return
+    var live_folder := str(terrain.get("data_directory"))
+    var backup_dirs := DirAccess.get_directories_at("res://terraforge_data/backups")
+    if backup_dirs.size()!=1:
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: backup count")
+        get_tree().quit(1)
+        return
+    var backup_folder := "res://terraforge_data/backups".path_join(backup_dirs[0])
+    var manifest := JSON.parse_string(FileAccess.get_file_as_string(backup_folder.path_join("snapshot.json"))) as Dictionary
+    if not manifest.has("regions") or manifest["regions"].size()!=16:
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: backup manifest")
+        get_tree().quit(1)
+        return
+    var verifier := Brush.new()
+    for entry in manifest["regions"]:
+        var loc := Vector2i(int(entry["x"]),int(entry["z"]))
+        var live: Resource = data.call("get_region",loc)
+        var backup_path := backup_folder.path_join(str(entry["file"]))
+        var backup := ResourceLoader.load(backup_path,"Terrain3DRegion",ResourceLoader.CACHE_MODE_IGNORE)
+        var disk := ResourceLoader.load(live_folder.path_join(str(entry["file"])),"Terrain3DRegion",ResourceLoader.CACHE_MODE_IGNORE)
+        if live==null or backup==null or disk==null or FileAccess.get_sha256(backup_path)!=entry["sha256"] or verifier._map_hashes(live)!=verifier._map_hashes(backup) or verifier._map_hashes(disk)!=verifier._map_hashes(backup):
+            push_error("NATIVE_EDITOR_BRUSH_FAIL: reopened map hash mismatch "+str(loc))
+            get_tree().quit(1)
+            return
+    print("NATIVE_EDITOR_REOPEN_OK regions=16 exact_height_samples=4194304 maps_match=true")
     get_tree().quit(0)

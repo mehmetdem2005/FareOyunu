@@ -14,11 +14,15 @@ var last_hit := Vector2(INF,INF)
 var flatten_height := NAN
 var last_changed_cells := 0
 var region_error := ""
+var last_snapshot_path := ""
+var last_snapshot_hashes: Dictionary = {}
 var last_dab_ms := -100000
 var last_dab_duration_ms := 0
 
 func attach(node: Node3D) -> void:
 	terrain = node
+	last_snapshot_path = ""
+	last_snapshot_hashes.clear()
 	before.clear()
 	after.clear()
 	history.clear()
@@ -266,43 +270,69 @@ func _filename(loc: Vector2i) -> String:
 	var z := "_%02d"%loc.y if loc.y>=0 else "%03d"%loc.y
 	return "terrain3d"+x+z+".res"
 
+# Manual backup: no changes to live data-directory or active native resource
+# paths. Never use native remove_region/save_region as an eviction mechanism.
+func _map_hashes(reg: Resource) -> Dictionary:
+	var hashes := {}
+	var size := int(reg.call("get_region_size"))
+	for getter: String in ["get_height_map","get_control_map","get_color_map"]:
+		var img: Image = reg.call(getter)
+		if img==null or img.is_empty() or img.get_size()!=Vector2i(size,size):
+			return {}
+		if getter!="get_color_map" and img.get_format()!=Image.FORMAT_RF:
+			return {}
+		var ctx := HashingContext.new()
+		if ctx.start(HashingContext.HASH_SHA256)!=OK or ctx.update(img.get_data())!=OK:
+			return {}
+		hashes[getter]=[int(img.get_format()),img.has_mipmaps(),ctx.finish().hex_encode()]
+	return hashes
+
 func save_snapshot() -> String:
+	last_snapshot_path = ""
+	last_snapshot_hashes.clear()
 	var regions := _regions()
 	if regions.is_empty():
 		return region_error
-	var folder := "res://terraforge_data/native_"+Crypto.new().generate_random_bytes(12).hex_encode()
+	var folder := "res://terraforge_data/backups/native_"+Crypto.new().generate_random_bytes(12).hex_encode()
 	if DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(folder)) != OK:
 		return "Cannot create snapshot folder."
-	# Manual operation. Preserve previous directory; no destructive overwrite.
+	var entries: Array[Dictionary] = []
+	var expected := {}
 	for loc: Vector2i in regions:
 		var reg: Resource = regions[loc]["region"]
-		var source: Image = reg.call("get_height_map")
-		if source == null or source.get_format()!=Image.FORMAT_RF or source.get_size()!=Vector2i(int(terrain.call("get_region_size")),int(terrain.call("get_region_size"))):
-			return "Save blocked: native RF image metadata mismatch at %s." % str(loc)
+		var hashes := _map_hashes(reg)
+		if hashes.is_empty():
+			return "Backup blocked: invalid RF map at %s." % str(loc)
 		reg.call("calc_height_range")
 		var path := folder.path_join(_filename(loc))
 		var err := ResourceSaver.save(reg,path,ResourceSaver.FLAG_COMPRESS)
 		if err!=OK:
-			return "Native save failed: "+error_string(err)
-		var saved := ResourceLoader.load(path,"",ResourceLoader.CACHE_MODE_IGNORE)
-		if saved==null or not saved.has_method("get_height_map"):
-			return "Snapshot readback failed; old directory untouched."
-		for getter: String in ["get_height_map","get_control_map","get_color_map"]:
-			var current: Image = reg.call(getter)
-			var check: Image = saved.call(getter)
-			if current==null or check==null or check.get_format()!=current.get_format() or check.get_size()!=current.get_size() or check.get_data()!=current.get_data():
-				return "Snapshot verification failed; old directory untouched."
-	var data: Object = terrain.get("data")
+			return "Native backup failed: "+error_string(err)
+		var saved := ResourceLoader.load(path,"Terrain3DRegion",ResourceLoader.CACHE_MODE_IGNORE)
+		if saved==null or _map_hashes(saved)!=hashes:
+			return "Backup readback failed at %s; live directory untouched." % str(loc)
+		expected[loc]=hashes
+		entries.append({"x":loc.x,"z":loc.y,"file":_filename(loc),"sha256":FileAccess.get_sha256(path),"maps":hashes})
+	# Manifest written last: only complete, verified backups have this marker.
+	var manifest := FileAccess.open(folder.path_join("snapshot.json"),FileAccess.WRITE)
+	if manifest==null:
+		return "Backup manifest write failed; live directory untouched."
+	manifest.store_string(JSON.stringify({"schema":1,"region_size":int(terrain.call("get_region_size")),"spacing":float(terrain.get("vertex_spacing")),"regions":entries},"\t"))
+	manifest.close()
+	last_snapshot_path=folder
+	last_snapshot_hashes=expected
+	var data: Object=terrain.get("data")
 	data.call("calc_height_range",false)
-	# Only verified snapshots become the scene's native data directory.
-	# Native directory reload is synchronous; Android reopen behavior still needs validation.
-	var expected := regions.size()
-	terrain.call("set_data_directory",folder)
-	terrain.get("material").call("set_show_checkered",false)
-	var reopened := _regions()
-	if reopened.size()!=expected:
-		return "Saved data verified on disk, native reload incomplete: "+folder
-	for loc: Vector2i in regions:
-		if not reopened.has(loc):
-			return "Saved data verified, native location reload mismatch: "+folder
-	return "Native RF saved (%d regions). Save scene separately."%expected
+	# No directory swap, no reload or clipmap rebuild here.
+	return "Native RF saved (%d regions). Backup: %s" % [regions.size(),folder]
+
+func verify_scene_storage() -> String:
+	if last_snapshot_hashes.is_empty() or not is_instance_valid(terrain):
+		return "No verified backup for current save."
+	var folder := str(terrain.get("data_directory"))
+	for loc: Vector2i in last_snapshot_hashes:
+		var path := folder.path_join(_filename(loc))
+		var saved := ResourceLoader.load(path,"Terrain3DRegion",ResourceLoader.CACHE_MODE_IGNORE)
+		if saved==null or _map_hashes(saved)!=last_snapshot_hashes[loc]:
+			return "Scene region write mismatch at %s. Verified backup: %s" % [str(loc),last_snapshot_path]
+	return ""

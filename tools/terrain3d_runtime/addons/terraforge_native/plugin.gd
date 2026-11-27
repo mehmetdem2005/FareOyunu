@@ -589,8 +589,18 @@ func _save_active() -> void:
     if not result.begins_with("Native RF saved"):
         _set_status(result)
         return
+    # Native pre-save uses the live directory. Explicit backup already exists.
+    _active.set("save_16_bit",false)
     var error := get_editor_interface().save_scene()
-    _set_status("Terrain and scene saved." if error==OK else "Terrain snapshot saved; scene save failed: "+error_string(error))
+    if error!=OK:
+        _set_status("Verified backup saved; scene save failed: "+error_string(error)+" | "+_brush.last_snapshot_path)
+        return
+    var verify_error := _brush.verify_scene_storage()
+    if not verify_error.is_empty():
+        _set_status(verify_error)
+        return
+    _last_input_result = "Terrain and scene saved; verified backup retained."
+    _set_status(_last_input_result)
 
 func _undo() -> void:
     _finish_stroke()
