@@ -3,7 +3,7 @@
 Onay: 27 Kasım 2026, kullanıcı mevcut oynanabilir sürümü beğendi ve bu planın eski planlardan ayrı kaydedilmesini istedi.
 Dal: `feat/terraforge-terrain3d-runtime`
 Kararlı referans (kullanıcının oynadığı Dört Havza V2): `fdbf49b2b5c1e0133a050e2a5f5592011f1fbf2c`.
-Durum: P1.5 native temel gerçek cihazda çalıştı; P1.6–4.0 planlandı, henüz uygulanmadı. Sıradaki görev P1.6.2 (native bake paket doğrulaması bekliyor).
+Durum: P1.5 native temel gerçek cihazda çalıştı; P1.6–4.0 planlandı, henüz uygulanmadı. Sıradaki görev P1.6.3 (açılış aşamalarını ayır, gereksiz kopyaları değerlendir).
 Bu belge bu dalın TEK aktif geliştirme planıdır. Eski `addons/terra_forge/` altındaki özel CPU mesh/worker mimarisi planları tarihsel referanstır; görev sırası, faz numaraları ve başarı ölçütleri buraya taşınmaz. Orijinal dal `feat/terraforge-mobile-addon` korunur.
 
 ## Başlangıç noktası ve kararlar
@@ -18,7 +18,7 @@ Bu belge bu dalın TEK aktif geliştirme planıdır. Eski `addons/terra_forge/` 
 
 ## P1.6 — Kararlılık ve açılış (7 adım)
 - [x] 1.6.1 Çalışan sürümü güvenli GitHub dalında koruma.
-- [ ] 1.6.2 (uygulandı; paket doğrulaması açık) Heightmap'i önceden native Terrain3D bölgelerine dönüştürme.
+- [x] 1.6.2 (paket dönüşümü doğrulandı; gerçek cihaz yüklemesi açık) Heightmap'i önceden native Terrain3D bölgelerine dönüştürme.
 - [ ] 1.6.3 Açılıştaki gereksiz veri kopyalarını kaldırma.
 - [ ] 1.6.4 İlk shader derlemesi gecikmelerini ölçme ve azaltma.
 - [ ] 1.6.5 Fiziksel zemin hazır olmadan oyuncu hareketini engelleme.
@@ -79,3 +79,6 @@ Dünya kaydı, kalıcı obje durumları, canlıların bölgesel simülasyonu, mu
 ## Hedef ölçütler (gerçekleşmiş sonuç değil)
 Redmi Note 8 Pro için normal gezinti 60 FPS, P99 ≤20 ms, 100 ms üzeri oyun içi donma 0, zeminden düşme 0, ilk oynanabilir zemin ≤2 sn, sınırlı ve istikrarlı bellek. FPS cap/VSync, iş yükü, rota, cihaz koşulları ve örneklenen ölçüm türü raporlanır. Normal FPS ile istisnai donmalar ayrı ve birlikte raporlanır.
 Toplam P1.6–P2.0: 43 ana adım. P3.0 ve P4.0 bu sayıya dahil değil.
+
+## Zorunlu karar protokolü
+Her görev öncesi [ENGINEERING_DECISIONS_TR.md](ENGINEERING_DECISIONS_TR.md) okunur; alternatifler, bedeller ve gerekçe kaydedilir. CI başarı işareti kararın yerine geçmez.
