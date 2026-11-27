@@ -1,0 +1,29 @@
+name: TerraForge playable Godot package
+on:
+  push:
+    branches: [feat/terraforge-terrain3d-runtime]
+    paths: ["tools/terrain3d_runtime/**", ".github/workflows/terrain3d-play-package.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned native Terrain3D distribution
+        run: bash tools/terrain3d_runtime/install_terrain3d.sh
+      - name: Package Godot project (no benchmark or regression suite)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd tools/terrain3d_runtime
+          zip -q -r "$RUNNER_TEMP/TerraForge-Play-Godot.zip" project.godot play.tscn play.gd terrain_runtime.gd import_source.gd addons shaders README.md
+          unzip -t "$RUNNER_TEMP/TerraForge-Play-Godot.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TerraForge-Play-Godot
+          path: ${{ runner.temp }}/TerraForge-Play-Godot.zip

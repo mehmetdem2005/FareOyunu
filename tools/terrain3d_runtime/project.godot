@@ -2,7 +2,7 @@ config_version=5
 
 [application]
 config/name="TerraForge Terrain3D Runtime"
-run/main_scene="res://runtime_demo.tscn"
+run/main_scene="res://play.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 
 [display]

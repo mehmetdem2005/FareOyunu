@@ -1,8 +1,5 @@
 name: Terrain3D native runtime smoke
 on:
-  push:
-    branches: [feat/terraforge-terrain3d-runtime]
-    paths: ["tools/terrain3d_runtime/**", ".github/workflows/terrain3d-runtime-ci.yml"]
   workflow_dispatch:
 permissions:
   contents: read
@@ -47,7 +44,7 @@ jobs:
           chmod 700 "$XDG_RUNTIME_DIR"
           export XDG_DATA_HOME="$RUNNER_TEMP/terrain3d-data"
           xvfb-run -a godot --path "$project" --editor --import --quit --rendering-method "$METHOD" --rendering-driver "$driver" 2>&1 | tee "$RUNNER_TEMP/import.log"
-          timeout 180s xvfb-run -a godot --path "$project" --rendering-method "$METHOD" --rendering-driver "$driver" --audio-driver Dummy --resolution 640x480 -- --smoke 2>&1 | tee "$RUNNER_TEMP/smoke.log"
+          timeout 180s xvfb-run -a godot --path "$project" --rendering-method "$METHOD" --rendering-driver "$driver" --audio-driver Dummy --resolution 640x480 res://runtime_demo.tscn -- --smoke 2>&1 | tee "$RUNNER_TEMP/smoke.log"
           grep -q TERRAIN3D_SMOKE_PASS "$RUNNER_TEMP/smoke.log"
           grep -q "\"renderer\":\"$METHOD\"" "$RUNNER_TEMP/smoke.log"
           ! grep -E 'SCRIPT ERROR:|Parse Error:|TERRAIN3D_SMOKE_FAIL' "$RUNNER_TEMP/"*.log
