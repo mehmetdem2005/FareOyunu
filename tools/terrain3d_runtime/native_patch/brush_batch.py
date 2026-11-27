@@ -20,7 +20,7 @@ edit("src/terrain_3d_data.h",
 	void set_pixel(const MapType p_map_type, const Vector3 &p_global_position, const Color &p_pixel);""")
 edit("src/terrain_3d_data.cpp",
     '#include "terrain_3d_data.h"',
-    '#include "terrain_3d_data.h"\n#include <algorithm>\n#include <array>\n#include <cmath>\n#include <limits>\n#include <vector>')
+    '#include "terrain_3d_data.h"\n#include <algorithm>\n#include <array>\n#include <cmath>\n#include <chrono>\n#include <limits>\n#include <vector>')
 edit("src/terrain_3d_data.cpp",
     "void Terrain3DData::set_pixel(const MapType p_map_type, const Vector3 &p_global_position, const Color &p_pixel) {",
     r"""// All samples are on the integer global vertex grid; no world-float roundtrip.
@@ -124,6 +124,11 @@ Dictionary Terrain3DData::tf_plan_brush(const Vector2 &center, int tool, double 
 }
 
 Dictionary Terrain3DData::tf_write_brush(const Dictionary &values) {
+	using TFClock = std::chrono::steady_clock;
+	const auto started = TFClock::now();
+	auto elapsed_us = [](TFClock::time_point a, TFClock::time_point b) -> int64_t {
+		return std::chrono::duration_cast<std::chrono::microseconds>(b-a).count();
+	};
 	Dictionary out;
 	out["error"]="Native batch rejected; no changes made.";
 	out["actual"]=Dictionary();
@@ -157,6 +162,7 @@ Dictionary Terrain3DData::tf_write_brush(const Dictionary &values) {
 		bounds[index].y=std::max(bounds[index].y,real_t(actual));
 		writes.push_back({p,reg->get_map_ptr(TYPE_HEIGHT),vgrid_to_pixelv(p),float(old),actual,index});
 	}
+	const auto validated = TFClock::now();
 	Dictionary actual;
 	for (const Sample &v:writes) {
 		v.image->set_pixelv(v.pixel,Color(v.height,0.f,0.f,1.f));
@@ -169,6 +175,7 @@ Dictionary Terrain3DData::tf_write_brush(const Dictionary &values) {
 		}
 		actual[v.key]=read;
 	}
+	const auto written = TFClock::now();
 	int dirty=0;
 	for (int i=0;i<1024;++i) if (touched[i]) {
 		touched[i]->set_height_range(bounds[i]);
@@ -176,12 +183,46 @@ Dictionary Terrain3DData::tf_write_brush(const Dictionary &values) {
 		touched[i]->set_edited(true);
 		++dirty;
 	}
+	const auto marked = TFClock::now();
+	auto ranged = marked;
+	auto uploaded = marked;
+	auto snapped = marked;
+	int64_t layer_bytes_est = 0;
+	int64_t edited_regions_est = 0;
+	bool incremental_expected = false;
 	if (dirty>0) {
+		// These counters describe expected CPU-side full-layer payload, not
+		// GPU completion. Dirty arrays may rebuild more than the edited layers.
+		incremental_expected = !_region_map_dirty && !_generated_height_maps.is_dirty() &&
+			!_generated_control_maps.is_dirty() && !_generated_color_maps.is_dirty();
+		for (const Vector2i &loc : _region_locations) {
+			const Terrain3DRegion *reg = get_region_ptr(loc);
+			if (reg && reg->is_edited()) ++edited_regions_est;
+		}
+		if (incremental_expected)
+			layer_bytes_est = edited_regions_est * int64_t(_region_size) * _region_size * 4;
 		calc_height_range(false);
+		ranged = TFClock::now();
 		update_maps(TYPE_HEIGHT,false,false);
+		uploaded = TFClock::now();
 		for (Terrain3DRegion *reg:touched) if (reg) reg->set_edited(false);
 		_terrain->snap();
+		snapped = TFClock::now();
 	}
+	out["profile"] = Dictionary();
+	Dictionary profile;
+	profile["validate_us"] = elapsed_us(started,validated);
+	profile["pixel_write_us"] = elapsed_us(validated,written);
+	profile["mark_us"] = elapsed_us(written,marked);
+	profile["range_us"] = elapsed_us(marked,ranged);
+	profile["publish_cpu_us"] = elapsed_us(ranged,uploaded);
+	profile["snap_us"] = elapsed_us(uploaded,snapped);
+	profile["changed_samples"] = int64_t(writes.size());
+	profile["dirty_regions"] = dirty;
+	profile["edited_regions_est"] = edited_regions_est;
+	profile["incremental_expected"] = incremental_expected;
+	profile["layer_bytes_est"] = layer_bytes_est;
+	out["profile"] = profile;
 	out["error"]="";
 	out["actual"]=actual;
 	out["dirty_regions"]=dirty;

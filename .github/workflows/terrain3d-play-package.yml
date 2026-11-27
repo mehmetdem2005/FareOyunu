@@ -1,7 +1,7 @@
 name: TerraForge packed RF mobile candidate
 on:
   push:
-    branches: [fix/terraforge-rf-mobile-packed]
+    branches: [fix/terraforge-rf-mobile-packed, experiment/terraforge-brush-upload-profile]
     paths: ["tools/terrain3d_runtime/**", "addons/terra_forge/**", ".github/workflows/terrain3d-play-package.yml"]
   workflow_dispatch:
 permissions:
@@ -172,6 +172,8 @@ jobs:
           grep -q 'NATIVE_EDITOR_BRUSH_OK regions=16 radius=8 power=3 changed=' "$RUNNER_TEMP/native-editor-brush.log"
           ! grep -Eq 'SCRIPT ERROR:|Parse Error:|NATIVE_EDITOR_BRUSH_FAIL|Shader compilation failed' "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_SMOOTH_OK" "$RUNNER_TEMP/native-editor-brush.log"
+          grep -q "NATIVE_EDITOR_UPLOAD_PROFILE_OK case=0" "$RUNNER_TEMP/native-editor-brush.log"
+          grep -q "NATIVE_EDITOR_UPLOAD_PROFILE_OK case=1" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_NATIVE_BATCH_OK lower=true flatten=true undo=true" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_RIDGE_VALLEY_OK signed=true undo=true" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_WEATHER_OK mode=0" "$RUNNER_TEMP/native-editor-brush.log"
