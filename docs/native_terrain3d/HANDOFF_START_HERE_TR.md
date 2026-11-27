@@ -28,3 +28,5 @@ P1.7.2 paket başarılı 46018260377 (9/43). P1.7.3 advisory memory inventory + 
 P1.7.3 paket başarılı 46018743594, artifact 15207231764; 10/43. Cihaz bellek bütçesi açık; sıradaki P1.7.4, gereklilik analizi önce. Resident dünya korunur.
 
 P1.7.4 aday: startup-only verification Thread, prepare_baked_regions await -> initialize -> load_baked_regions() consumes verified metadata. No gameplay streaming, native mutation main thread, worker joined. Paket/cihaz açık; 1.7.5–8 conditional.
+
+P1.7.4 paket başarılı 46019414487 (11/43). P1.7.5–8 deferred/conditional for bigger world, not completed, no speculative background queue. P1.7.9 candidate exact resident membership, spawn and existing ray diagnostic; no extra steady-state ray. CI pending; then P1.7.10.

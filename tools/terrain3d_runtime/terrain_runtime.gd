@@ -348,11 +348,25 @@ func load_baked_regions() -> Error:
 	startup_phases_us["native_map_update_submit"] = Time.get_ticks_usec()-phase
 	if int(data.call("get_region_count")) != index.size():
 		return ERR_INVALID_DATA
+	# Startup-only membership check, not just a matching count.
+	var native_locations: Array = data.call("get_region_locations")
+	if native_locations.size() != index.size():
+		return ERR_INVALID_DATA
+	var native_seen := {}
+	for loc: Vector2i in native_locations:
+		if not index.has(loc) or native_seen.has(loc):
+			push_error("Native resident region set mismatch: " + str(loc))
+			return ERR_INVALID_DATA
+		native_seen[loc] = true
 	if render_profile == "world":
 		terrain.get("material").call("set_show_checkered",false)
 	_region_index = index
 	_memory_inventory = {
 		"resident_regions":index.size(),
+		"resident_policy":"all_verified_regions_pinned_for_session",
+		"runtime_streaming_enabled":false,
+		"runtime_prefetch_enabled":false,
+		"runtime_eviction_enabled":false,
 		"height_image_bytes":height_bytes,
 		"control_image_bytes":control_bytes,
 		"active_color_image_bytes":active_color_bytes,

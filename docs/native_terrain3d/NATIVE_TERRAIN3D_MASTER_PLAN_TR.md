@@ -3,7 +3,7 @@
 Onay: 27 Kasım 2026, kullanıcı mevcut oynanabilir sürümü beğendi ve bu planın eski planlardan ayrı kaydedilmesini istedi.
 Dal: `feat/terraforge-terrain3d-runtime`
 Kararlı referans (kullanıcının oynadığı Dört Havza V2): `fdbf49b2b5c1e0133a050e2a5f5592011f1fbf2c`.
-Durum: P1.5 native temel gerçek cihazda çalıştı; P1.6.1–7 paket/uygulama hedefleri tamamlandı (7/43); yeni runtime cihaz doğrulaması açık. Sıradaki P1.7.4; P1.7.1–3 kaynak/uygulama ve paket hedefleri tamamlandı (10/43).
+Durum: P1.5 native temel gerçek cihazda çalıştı; P1.6.1–7 paket/uygulama hedefleri tamamlandı (7/43); yeni runtime cihaz doğrulaması açık. P1.7.1–4 kaynak/uygulama ve paket hedefleri tamamlandı (11/43). P1.7.5–8 mevcut resident dünya için koşullu ertelendi, tamamlanmış sayılmadı; P1.7.9 aday.
 Bu belge bu dalın TEK aktif geliştirme planıdır. Eski `addons/terra_forge/` altındaki özel CPU mesh/worker mimarisi planları tarihsel referanstır; görev sırası, faz numaraları ve başarı ölçütleri buraya taşınmaz. Orijinal dal `feat/terraforge-mobile-addon` korunur.
 
 ## Başlangıç noktası ve kararlar
@@ -30,12 +30,12 @@ Hedef: ilk fiziksel zemin 6,71 s bazına göre iyileşsin; saniyelik donmaların
 - [x] 1.7.1 Native bölge ekleme/kaldırma kaynak analizi (gerçek cihaz maliyeti açık).
 - [x] 1.7.2 (paket doğrulandı; cihaz yüklemesi açık) Dünya bölge indeksi.
 - [x] 1.7.3 (paket doğrulandı; cihaz güvenli limitleri ölçülmedi) Cihaz kapasitesine göre bellek bütçesi.
-- [ ] 1.7.4 (aday; açılışa özel tek doğrulama işi; paket/cihaz açık) Asenkron disk okuma.
-- [ ] 1.7.5 Hareket yönüne göre akıllı prefetch.
-- [ ] 1.7.6 Bölge verisi önbelleği.
-- [ ] 1.7.7 Yükleme/boşaltma mesafelerinde histerezis.
-- [ ] 1.7.8 Kare başına yükleme bütçesi.
-- [ ] 1.7.9 Fizik bölgelerini koruma.
+- [x] 1.7.4 (paket doğrulandı; gerçek cihaz thread davranışı açık) Asenkron disk okuma.
+- [ ] 1.7.5 Hareket yönüne göre akıllı prefetch — mevcut tam resident dünya için gereksiz; büyük dünya streaming koşullu, uygulanmadı.
+- [ ] 1.7.6 Bölge verisi önbelleği — native resident kaynaklar mevcut; ikinci cache reddedildi, büyük dünya koşullu.
+- [ ] 1.7.7 Yükleme/boşaltma mesafelerinde histerezis — runtime eviction yok; streaming koşullu.
+- [ ] 1.7.8 Kare başına yükleme bütçesi — runtime yükleme kuyruğu yok; streaming koşullu, başlangıç GPU upload ayrı.
+- [ ] 1.7.9 (aday; paket/cihaz açık) Fizik bölgelerini koruma: eksiksiz resident set ve mevcut fizik probe doğruluğu.
 - [ ] 1.7.10 Uzak arazinin kesintisiz görünmesini sağlama.
 Native 1.1 aktif bölgeleri GPU belleğinde tutuyor. GPU texture array yeniden oluşturma maliyeti ölçülmeden streaming ana sürüme kabul edilmez. Görsel LOD Terrain3D'ye ait kalır; disk önbelleği ile fizik alanı ve görsel alan birbirinden ayrılır. Uzak siluet kaybolması ve fizik boşluğu kabul edilmez; çözüm fizibilitesi açık.
 

@@ -71,3 +71,8 @@ Her sonraki geliştirmede tarih, adım numarası, commit, durum, ölçüm/kanıt
 
 ## P1.7.4 — 27 Kasım 2026
 - Aday: salt okunur region index ile SHA256 doğrulaması tek açılış Thread'ine ayrıldı, native kurulumdan önce biter; join, sync fallback, fail-closed, tek tüketim. Oyun sırasında worker yok, ResourceLoader/native/GPU main thread. startup_io raporu ekli. Toplam açılış hızı ve cihaz davranışı açık; paket doğrulaması bekliyor. 10/43.
+
+## P1.7.4–9 — 27 Kasım 2026
+- 46019414487 başarılı: 64 native region/indeks, 16.777.216 Float32 örnek, dört mip; artifact 15207077561. Native bake 2014ms sunucu ölçümü. Thread davranışı gerçek cihazda açık. 11/43.
+- P1.7.5–8 resident dünya için koşullu ertelendi; tamamlanmış sayılmadı; prefetch/cache/hysteresis/budget döngüsü yok. Büyük dünya fixed-slot/ölçüm önkoşulları karar defterinde.
+- P1.7.9 aday: tüm resident koordinat seti doğrulanır, spawn validation, mevcut 1Hz ray terrain height merkezli ve native collider id doğrulamalı, miss reason. Yeni worker, ek ray, eviction yok. Paket doğrulaması açık. Sonraki P1.7.10 uzak arazi.

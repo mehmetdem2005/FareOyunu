@@ -175,8 +175,20 @@ func request_load() -> void:
 		fail_load("Hazır native bölgeler eksik; doğru paketi yükle")
 		return
 	extent = Vector2(side-1,side-1)*spacing
-	var start: Array = world_info.get("spawn_m",[512.0,512.0])
-	player.position = Vector3(float(start[0]),0,float(start[1]))
+	var start: Variant = world_info.get("spawn_m")
+	if not start is Array or start.size() != 2:
+		fail_load("Başlangıç koordinatı geçersiz")
+		return
+	for axis: Variant in start:
+		if not (axis is int or axis is float) or not is_finite(float(axis)):
+			fail_load("Başlangıç koordinatı geçersiz")
+			return
+	var sx := float(start[0])
+	var sz := float(start[1])
+	if sx < 0.15 or sz < 0.15 or sx > extent.x-0.15 or sz > extent.y-0.15:
+		fail_load("Başlangıç dünya sınırları dışında")
+		return
+	player.position = Vector3(sx,0,sz)
 	update_camera()
 	var manifest_us := Time.get_ticks_usec()-manifest_start
 	var memory_before := Recorder.memory_snapshot()
@@ -354,18 +366,34 @@ func _physics_process(delta: float) -> void:
 	previous_position = player.position
 	has_previous_position = true
 	var now := Time.get_ticks_usec()
-	if now-last_probe>=1000000:
+	if ready_to_walk and now-last_probe>=1000000:
 		last_probe = now
 		var p := player.global_position
 		var expected := backend.surface_height(p)
-		var ray := PhysicsRayQueryParameters3D.create(p+Vector3.UP*2.0,p-Vector3.UP*3.0,1)
-		var hit := get_world_3d().direct_space_state.intersect_ray(ray)
 		ground_checks += 1
-		if hit.is_empty() or not is_finite(expected):
-			ground_misses += 1
-			recorder.event("ground_probe_miss",[p.x,p.y,p.z])
+		var reason := ""
+		var error_m := -1.0
+		if not is_finite(expected):
+			reason = "surface_data_missing"
 		else:
-			recorder.last_ground_error_m = absf(float(hit.position.y)-expected)
+			# Probe at the known terrain height, not the airborne player's height.
+			# Same one ray per second; no extra per-physics-tick ray.
+			var center := Vector3(p.x,expected,p.z)
+			var ray := PhysicsRayQueryParameters3D.create(center+Vector3.UP,center-Vector3.UP,1)
+			var hit := get_world_3d().direct_space_state.intersect_ray(ray)
+			if hit.is_empty():
+				reason = "terrain_shape_missing"
+			elif int(hit.get("collider_id",0)) != backend.terrain.get_instance_id():
+				reason = "different_collider"
+			else:
+				var hit_position: Vector3 = hit["position"]
+				error_m = absf(hit_position.y-expected)
+				if error_m > GROUND_GATE_TOLERANCE_M:
+					reason = "height_mismatch"
+		recorder.last_ground_error_m = error_m
+		if not reason.is_empty():
+			ground_misses += 1
+			recorder.event("ground_probe_miss",{"reason":reason,"pos":[p.x,p.y,p.z],"expected_height_m":expected if is_finite(expected) else null,"height_error_m":error_m,"on_floor":player.is_on_floor()})
 	var elapsed_us := Time.get_ticks_usec()-tick
 	physics_us += elapsed_us
 	max_physics_tick_us = maxi(max_physics_tick_us,elapsed_us)
