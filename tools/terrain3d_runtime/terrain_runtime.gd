@@ -96,7 +96,7 @@ func initialize(camera: Camera3D, collision_target: Node3D, spacing: float, prof
 			material.call("set_shader_param", "textures_enabled", false)
 			# Native empty-asset checker may be enabled during map updates.
 			# Disable it once after the real maps are submitted, not before each update.
-			for kind in ["soil","rock","sand","grass"]:
+			for kind: String in ["soil","rock","sand","grass"]:
 				phase = Time.get_ticks_usec()
 				var pixels: Image
 				if baked:

@@ -33,3 +33,7 @@ Her sonraki geliştirmede tarih, adım numarası, commit, durum, ölçüm/kanıt
 ## P1.6.4 — 27 Kasım 2026
 - P1.6.3 paket çalışması 46012663880 son kontrolde aktif; bağımsız materyal kaynağı incelemesi sürdürüldü.
 - World profili final Terrain3DMaterial ayarları tree öncesi hazırlanır. Native macro variation her zaman kapalıydı; kullanılmayan noise uniform'u ve branch kaldırıldı. Native otomatik NoiseTexture2D üretim ihtiyacı azalır, görünüm ve yakın kalite korunması hedeflenir. Checker final map update sonrası kapatılır. Baker world shader yolunu kullanır. Yeni worker yok. Karar protokolünde kaynak gerekçeleri ve riskler yazılı. Paket ve telefon doğrulaması açık; 2/43.
+
+## P1.6.3/P1.6.4 — Paket hatası ve düzeltme
+- 46012663880 ve 46013072810 başarısız: bake_native.gd texture_path değişkeninde Variant kaynaklı GDScript tür çıkarımı hatası; native bake ve shader çalışma aşamasına geçilmedi. Önceki başarılı paket korunuyor.
+- Her iki yüzey döngüsü String olarak tiplendi, texture_path açık String oldu. Import logunda parse hatası görülürse 240 s timeout beklemeden paket kesilir; dört mip zinciri başarı işareti ayrıca zorunlu. Yeni tek birleşik paketleme doğrulaması; benchmark yok. P1.6.3/4 doğrulanmadı, 2/43.
