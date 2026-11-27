@@ -3,7 +3,7 @@
 Onay: 27 Kasım 2026, kullanıcı mevcut oynanabilir sürümü beğendi ve bu planın eski planlardan ayrı kaydedilmesini istedi.
 Dal: `feat/terraforge-terrain3d-runtime`
 Kararlı referans (kullanıcının oynadığı Dört Havza V2): `fdbf49b2b5c1e0133a050e2a5f5592011f1fbf2c`.
-Durum: P1.5 native temel gerçek cihazda çalıştı; P1.6.1–7 paket/uygulama hedefleri tamamlandı (7/43); yeni runtime cihaz doğrulaması açık. P1.7.1–4 kaynak/uygulama ve paket hedefleri tamamlandı (11/43). P1.7.5–8 mevcut resident dünya için koşullu ertelendi, tamamlanmış sayılmadı; P1.7.9 paket doğrulandı (12/43). P1.7.10 paket başarılı; P1.8.1 kaynak analizi tamamlandı (14/43). P1.8.2–3 paket doğrulandı (16/43); P1.8.4 fizibilite tamamlandı (17/43), uygulama ertelendi; P1.8.5 paket doğrulandı (18/43). P1.8.6 paket doğrulandı (19/43). P1.8.7 paket doğrulandı (20/43). P1.8.8 paket doğrulandı (21/43); P1.9.1 aday.
+Durum: P1.5 native temel gerçek cihazda çalıştı; P1.6.1–7 paket/uygulama hedefleri tamamlandı (7/43); yeni runtime cihaz doğrulaması açık. P1.7.1–4 kaynak/uygulama ve paket hedefleri tamamlandı (11/43). P1.7.5–8 mevcut resident dünya için koşullu ertelendi, tamamlanmış sayılmadı; P1.7.9 paket doğrulandı (12/43). P1.7.10 paket başarılı; P1.8.1 kaynak analizi tamamlandı (14/43). P1.8.2–3 paket doğrulandı (16/43); P1.8.4 fizibilite tamamlandı (17/43), uygulama ertelendi; P1.8.5 paket doğrulandı (18/43). P1.8.6 paket doğrulandı (19/43). P1.8.7 paket doğrulandı (20/43). P1.8.8 paket doğrulandı (21/43); P1.9.1 paket ve temel doğruluk testi tamam (22/43); P1.9.2/3 çekirdek adayları doğruluk CI geçti, entegrasyon açık.
 Bu belge bu dalın TEK aktif geliştirme planıdır. Eski `addons/terra_forge/` altındaki özel CPU mesh/worker mimarisi planları tarihsel referanstır; görev sırası, faz numaraları ve başarı ölçütleri buraya taşınmaz. Orijinal dal `feat/terraforge-mobile-addon` korunur.
 
 ## Ürün kapsamı — kullanıcı netleştirmesi (27 Kasım 2026, bağlayıcı)
@@ -59,9 +59,9 @@ Native 1.1 aktif bölgeleri GPU belleğinde tutuyor. GPU texture array yeniden o
 Mevcut 7 LOD teorik örnek aralıkları 25 cm, 50 cm, 1 m, 2 m, 4 m, 8 m, 16 m. Yakın arazi kalitesi/fizik korunur. Adaptif kararlar kararlı ve histerezisli olmalı.
 
 ## P1.9 — Gerçekçi arazi geometrisi (8 adım)
-- [ ] 1.9.1 (aday; bağımsız parametrik Float32 sırt/vadi stamp aracı ve kaynak export) Doğal sırt ve vadi şekillendirme.
-- [ ] 1.9.2 Su aşındırması, tortu birikimi ve bağlantılı vadiler.
-- [ ] 1.9.3–1.9.4 Mikro arazi: fare ölçeğinde tümsek, oyuk, hendek ve küçük aşınmalar.
+- [x] 1.9.1 (paket ve temel deterministik doğruluk CI geçti; panel/cihaz entegrasyonu açık) Doğal sırt ve vadi şekillendirme.
+- [ ] 1.9.2 Su aşındırması, tortu birikimi ve bağlantılı vadiler — D8 çekirdek doğruluk testi geçti; tam araç açık.
+- [ ] 1.9.3–1.9.4 (P1.9.3 kompakt stamp çekirdeği doğruluk testi geçti; editör ve sınırlar açık) Mikro arazi: fare ölçeğinde tümsek, oyuk, hendek ve küçük aşınmalar.
 - [ ] 1.9.5–1.9.6 Bölgesel geçişler: ova, dağ, dik kıyı, yumuşak sahil, doğal biyom sınırları.
 - [ ] 1.9.7–1.9.8 Genel amaçlı arazi oluşturma: farklı harita boyutları ve biçimlerinde yeniden kullanılabilir üretim/şekillendirme iş akışı; dört ada yalnız isteğe bağlı doğrulama örneği.
 Geometri fazı yalnız tekrar kullanılabilir terrain araçları içindir; boya ayrı faz. Test dünyası veya dört ada nihai içerik üretimi değildir.
@@ -103,3 +103,7 @@ Arka plan iş yükü de maliyet sayılır: öncelik gereksiz işi tamamen kaldı
 P1.7.1 kararı: [NATIVE_RESIDENCY_AUDIT_TR.md](NATIVE_RESIDENCY_AUDIT_TR.md). Mevcut dünya resident kalır; naive add/remove streaming reddedildi. P1.7.4–8 gereklilik ve ölçüm koşullu; gereksiz worker/cache/prefetch oluşturma. 8/43.
 
 P1.8.1 kararları: [NATIVE_LOD_COST_AUDIT_TR.md](NATIVE_LOD_COST_AUDIT_TR.md). 16/7/0.25 korunur, native snap gereksiz transform adayını ayrı incele, yürürken mesh rebuild yaptırma.
+
+
+## P1.9.1–3 — 27 Kasım 2026, paralel doğruluk CI
+Package 46026392317 success (64 regions / 16,777,216 exact height samples; native bake 2590 ms, not FPS). Candidate 84a7ed8fb2bf281c0095c0535dfdd8b6bd6dc21c correctness run 46026922437: ridge, flow, micro all passed (3/3). Promote inactive reusable kernels only to active development branch; no editor or runtime call sites changed, no performance/default-quality promotion. P1.9.1 package + basic deterministic test complete (22/43); P1.9.2/3 kernel-only partial, UI/cancel/undo/region integration and device latency open. Existing user panel Terrain toggle, Brush switch, collapsible tool controls, quality, save/undo must survive integration. Next: bounded interactive integration and regional micro details; preserve stable runtime and legacy branch. Details: [P1_9_FLOW_MICRO_CANDIDATE_TR.md](P1_9_FLOW_MICRO_CANDIDATE_TR.md).
