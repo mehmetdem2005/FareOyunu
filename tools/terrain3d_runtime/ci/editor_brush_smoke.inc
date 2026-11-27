@@ -93,16 +93,49 @@ func _ci_editor_brush_smoke() -> void:
     _corridor_points.assign(path)
     _stroke_active=true
     _finish_stroke(true)
+    if not _brush.corridor_busy() or float(data.call("get_height",ridge_pos))!=prior:
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: async corridor dispatch")
+        get_tree().quit(1)
+        return
+    var ridge_deadline := Time.get_ticks_msec()+10000
+    while _brush.corridor_busy() and Time.get_ticks_msec()<ridge_deadline:
+        await get_tree().process_frame
+    if _brush.corridor_busy():
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: async ridge timeout")
+        get_tree().quit(1)
+        return
+    print("NATIVE_EDITOR_ASYNC_CORRIDOR_OK tool=4 worker_us=",_brush.last_corridor_worker_us," commit_us=",_brush.last_corridor_commit_us)
     var ridge_height := float(data.call("get_height",ridge_pos))
     if ridge_height<=prior or _brush.last_changed_cells<=0 or _brush.undo()!="Native undo applied." or float(data.call("get_height",ridge_pos))!=prior:
         push_error("NATIVE_EDITOR_BRUSH_FAIL: Ridge corridor")
         get_tree().quit(1)
         return
-    var valley_error := _brush.apply_corridor(path,5,6.0,5.0)
-    if not valley_error.is_empty() or float(data.call("get_height",ridge_pos))>=prior or _brush.undo()!="Native undo applied." or float(data.call("get_height",ridge_pos))!=prior:
+    var valley_error := _brush.start_corridor(path,5,6.0,5.0)
+    var valley_deadline := Time.get_ticks_msec()+10000
+    while _brush.corridor_busy() and Time.get_ticks_msec()<valley_deadline:
+        await get_tree().process_frame
+    if not valley_error.is_empty() or _brush.corridor_busy() or float(data.call("get_height",ridge_pos))>=prior or _brush.undo()!="Native undo applied." or float(data.call("get_height",ridge_pos))!=prior:
         push_error("NATIVE_EDITOR_BRUSH_FAIL: Valley corridor "+valley_error)
         get_tree().quit(1)
         return
+    print("NATIVE_EDITOR_ASYNC_CORRIDOR_OK tool=5 worker_us=",_brush.last_corridor_worker_us," commit_us=",_brush.last_corridor_commit_us)
+    if not _brush.start_corridor(path,4,6.0,5.0).is_empty():
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: corridor cancel setup")
+        get_tree().quit(1)
+        return
+    if _brush.start_weather(Vector2(128,96),4.0,2.0,0).is_empty():
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: advanced mutual exclusion")
+        get_tree().quit(1)
+        return
+    _brush.cancel_advanced()
+    var corridor_cancel_deadline := Time.get_ticks_msec()+10000
+    while _brush.corridor_busy() and Time.get_ticks_msec()<corridor_cancel_deadline:
+        await get_tree().process_frame
+    if _brush.advanced_busy() or float(data.call("get_height",ridge_pos))!=prior:
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: cancelled corridor wrote")
+        get_tree().quit(1)
+        return
+    print("NATIVE_EDITOR_ASYNC_CORRIDOR_CANCEL_OK")
     print("NATIVE_EDITOR_RIDGE_VALLEY_OK signed=true undo=true")
     # One steep peak across region seam; each process is independently undoable.
     var weather_center := Vector3(128,0,112)

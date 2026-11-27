@@ -291,7 +291,7 @@ func _enter_tree() -> void:
 
 func _exit_tree() -> void:
     _finish_stroke()
-    _brush.shutdown_weather()
+    _brush.shutdown_advanced()
     var selection: EditorSelection = get_editor_interface().get_selection()
     if selection.selection_changed.is_connected(_on_selection_changed):
         selection.selection_changed.disconnect(_on_selection_changed)
@@ -332,6 +332,11 @@ func _strength_changed(value: float) -> void:
 
 
 func _process(_delta: float) -> void:
+    var corridor := _brush.poll_corridor()
+    if not corridor.is_empty():
+        _changed_count += _brush.last_changed_cells if str(corridor["error"]).is_empty() else 0
+        _last_input_result = str(corridor["error"]) if not str(corridor["error"]).is_empty() else "Corridor edited %d samples." % _brush.last_changed_cells
+        _set_status(_last_input_result)
     var weather := _brush.poll_weather()
     if not weather.is_empty():
         _changed_count += _brush.last_changed_cells if str(weather["error"]).is_empty() else 0
@@ -750,7 +755,7 @@ func _toggle_brush(enabled: bool) -> void:
         return
     if not enabled:
         _finish_stroke()
-        _brush.cancel_weather()
+        _brush.cancel_advanced()
         _touch_session = false
         _touch_index = -1
         _multi_touch = false
@@ -765,8 +770,8 @@ func _toggle_brush(enabled: bool) -> void:
     _brush_button.text = "Fırça açık" if enabled else "Fırça"
 
 func _save_active() -> void:
-    if _brush.weather_busy():
-        _set_status("Aşındırma hesaplanıyor; işlem bitince yeniden dene.")
+    if _brush.advanced_busy():
+        _set_status("Arazi işlemi hesaplanıyor; bitince yeniden dene.")
         return
     if _stroke_active and _is_basic() and _stroke_sampler.pending_count()>0:
         _set_status("Fırça işlemi sürüyor; tamamlanınca yeniden dene.")
@@ -799,8 +804,8 @@ func _save_active() -> void:
     _set_status(_last_input_result)
 
 func _undo() -> void:
-    if _brush.weather_busy():
-        _set_status("Aşındırma hesaplanıyor; işlem bitince yeniden dene.")
+    if _brush.advanced_busy():
+        _set_status("Arazi işlemi hesaplanıyor; bitince yeniden dene.")
         return
     if _stroke_active and _is_basic() and _stroke_sampler.pending_count()>0:
         _set_status("Fırça işlemi sürüyor; tamamlanınca yeniden dene.")
@@ -810,8 +815,8 @@ func _undo() -> void:
         _set_status(_brush.undo())
 
 func _redo() -> void:
-    if _brush.weather_busy():
-        _set_status("Aşındırma hesaplanıyor; işlem bitince yeniden dene.")
+    if _brush.advanced_busy():
+        _set_status("Arazi işlemi hesaplanıyor; bitince yeniden dene.")
         return
     if _stroke_active and _is_basic() and _stroke_sampler.pending_count()>0:
         _set_status("Fırça işlemi sürüyor; tamamlanınca yeniden dene.")
@@ -896,9 +901,8 @@ func _finish_stroke(apply_path: bool = false) -> void:
     if _stroke_active and is_instance_valid(_active):
         if _corridor_tool in [4,5]:
             if apply_path and _corridor_error.is_empty() and not _corridor_points.is_empty():
-                var result := _brush.apply_corridor(_corridor_points,_corridor_tool,_corridor_radius,_corridor_power)
-                _changed_count += _brush.last_changed_cells
-                _last_input_result = result if not result.is_empty() else "Corridor edited %d samples." % _brush.last_changed_cells
+                var result := _brush.start_corridor(_corridor_points,_corridor_tool,_corridor_radius,_corridor_power)
+                _last_input_result = result if not result.is_empty() else "Dağ sırtı/vadi arka planda hesaplanıyor."
             elif not _corridor_error.is_empty():
                 _last_input_result = _corridor_error
             else:
@@ -971,8 +975,8 @@ func _paint_at(camera: Camera3D, position: Vector2) -> void:
         _offer_basic(Vector2(hit.x,hit.z))
 
 func _start_stroke(camera: Camera3D, position: Vector2) -> void:
-    if _brush.weather_busy():
-        _set_status("Aşındırma hesaplanıyor; işlem bitince yeniden dene.")
+    if _brush.advanced_busy():
+        _set_status("Arazi işlemi hesaplanıyor; bitince yeniden dene.")
         return
     if _stroke_active and _is_basic() and _basic_released:
         _set_status("Önceki fırça tamamlanıyor.")

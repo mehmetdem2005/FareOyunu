@@ -5,6 +5,11 @@ const Landform = preload("res://addons/terraforge_native/native_landform.gd")
 const Weather = preload("res://addons/terraforge_native/native_weather.gd")
 const WeatherWorker = preload("res://addons/terraforge_native/native_weather_worker.gd")
 var _weather_worker := WeatherWorker.new()
+const CorridorWorker = preload("res://addons/terraforge_native/native_corridor_worker.gd")
+var _corridor_worker := CorridorWorker.new()
+var _corridor_context: Dictionary = {}
+var last_corridor_worker_us := 0
+var last_corridor_commit_us := 0
 var _weather_snapshot: Dictionary = {}
 var last_weather_capture_us := 0
 var last_weather_worker_us := 0
@@ -34,7 +39,7 @@ var last_write_profile: Dictionary = {}
 var last_filter_half_width_m := 0.0
 
 func attach(node: Node3D) -> void:
-	cancel_weather()
+	cancel_advanced()
 	terrain = node
 	last_snapshot_path = ""
 	last_snapshot_hashes.clear()
@@ -168,8 +173,66 @@ func dab(hit: Vector3, tool: int, radius: float, power: float, scheduled: bool =
 	return ""
 
 # One complete corridor transaction; no repeated dab accumulation.
+func advanced_busy() -> bool:
+	return weather_busy() or corridor_busy()
+
+func cancel_advanced() -> void:
+	cancel_weather()
+	_corridor_worker.cancel()
+	_corridor_context.clear()
+
+func shutdown_advanced() -> void:
+	cancel_advanced()
+	shutdown_weather()
+	_corridor_worker.shutdown()
+
+func corridor_busy() -> bool:
+	return _corridor_worker.busy()
+
+func start_corridor(points: Array[Vector2], tool: int, radius: float, power: float) -> String:
+	if advanced_busy():
+		return "Başka bir arazi işlemi hesaplanıyor."
+	if not is_instance_valid(terrain) or tool not in [4,5] or not is_finite(power) or power<=0.0 or power>12.0:
+		return "Invalid corridor tool or power."
+	var data: Object=terrain.get("data")
+	var spacing := float(terrain.get("vertex_spacing"))
+	var size := int(terrain.call("get_region_size"))
+	if data==null or not is_finite(spacing) or spacing<0.25 or size<=0:
+		return "Invalid corridor grid."
+	var error := _corridor_worker.start(points,radius,spacing,tool==5)
+	if error!=OK:
+		return "Corridor worker start failed: "+error_string(error)
+	last_corridor_worker_us=0
+	last_corridor_commit_us=0
+	_corridor_context={"terrain_id":terrain.get_instance_id(),"data_id":data.get_instance_id(),"spacing":spacing,"size":size,"tool":tool,"power":power}
+	return ""
+
+func poll_corridor() -> Dictionary:
+	var result := _corridor_worker.poll()
+	if result.is_empty():
+		return {}
+	var context := _corridor_context
+	_corridor_context={}
+	last_corridor_worker_us=int(result.get("worker_us",0))
+	if not str(result["error"]).is_empty():
+		return {"done":true,"error":str(result["error"])}
+	if context.is_empty() or not is_instance_valid(terrain) or terrain.get_instance_id()!=int(context["terrain_id"]):
+		return {"done":true,"error":"Dağ sırtı/vadi iptal: arazi değişti."}
+	var data: Object=terrain.get("data")
+	var spacing := float(terrain.get("vertex_spacing"))
+	var size := int(terrain.call("get_region_size"))
+	if data==null or data.get_instance_id()!=int(context["data_id"]) or spacing!=float(context["spacing"]) or size!=int(context["size"]):
+		return {"done":true,"error":"Dağ sırtı/vadi iptal: arazi verisi değişti."}
+	var started := Time.get_ticks_usec()
+	var regions := _regions()
+	var error := region_error if regions.is_empty() else _commit_corridor(result,regions,size,spacing,data,int(context["tool"]),float(context["power"]))
+	last_corridor_commit_us=Time.get_ticks_usec()-started
+	return {"done":true,"error":error}
+
 func apply_corridor(points: Array[Vector2], tool: int, radius: float, power: float) -> String:
 	last_changed_cells=0
+	if advanced_busy():
+		return "Başka bir arazi işlemi hesaplanıyor."
 	if tool not in [4,5] or not is_finite(power) or power<=0.0 or power>12.0:
 		return "Invalid corridor tool or power."
 	var regions := _regions()
@@ -179,6 +242,12 @@ func apply_corridor(points: Array[Vector2], tool: int, radius: float, power: flo
 	var spacing := float(terrain.get("vertex_spacing"))
 	var data: Object=terrain.get("data")
 	var result := Landform.build(points,radius,spacing,tool==5)
+	return _commit_corridor(result,regions,size,spacing,data,tool,power)
+
+# Additive geometry: read current heights at commit time, never overwrite with
+# stale absolute heights. Native validation checks every destination.
+func _commit_corridor(result: Dictionary, regions: Dictionary, size: int, spacing: float, data: Object, tool: int, power: float) -> String:
+	last_changed_cells=0
 	if not str(result["error"]).is_empty():
 		return str(result["error"])
 	var changes := {}
@@ -198,8 +267,9 @@ func apply_corridor(points: Array[Vector2], tool: int, radius: float, power: flo
 		return "Corridor has no editable samples."
 	# The kernel caps the whole action to the existing history segment budget.
 	begin()
-	before=originals
 	var error := _write(regions,changes,size,true)
+	if error.is_empty():
+		before=originals
 	end()
 	return error
 
@@ -248,7 +318,7 @@ func weather_busy() -> bool:
 	return _weather_worker.busy()
 
 func start_weather(center: Vector2, radius: float, power: float, mode: int) -> String:
-	if weather_busy():
+	if advanced_busy():
 		return "Aşındırma zaten hesaplanıyor."
 	var started := Time.get_ticks_usec()
 	var snapshot := _capture_weather(center,radius,power,mode)
@@ -287,7 +357,7 @@ func poll_weather() -> Dictionary:
 
 # Synchronous reference retained for tests and direct callers.
 func apply_weather(center: Vector2, radius: float, power: float, mode: int) -> String:
-	if weather_busy():
+	if advanced_busy():
 		return "Aşındırma zaten hesaplanıyor."
 	var snapshot := _capture_weather(center,radius,power,mode)
 	if not str(snapshot["error"]).is_empty():

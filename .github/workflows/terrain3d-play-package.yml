@@ -1,7 +1,7 @@
 name: TerraForge packed RF mobile candidate
 on:
   push:
-    branches: [fix/terraforge-rf-mobile-packed, experiment/terraforge-stroke-resampler, experiment/terraforge-async-weather, experiment/terraforge-smooth-native]
+    branches: [fix/terraforge-rf-mobile-packed, experiment/terraforge-stroke-resampler, experiment/terraforge-async-weather, experiment/terraforge-smooth-native, experiment/terraforge-async-corridor]
     paths: ["tools/terrain3d_runtime/**", "addons/terra_forge/**", ".github/workflows/terrain3d-play-package.yml"]
   workflow_dispatch:
 permissions:
@@ -177,6 +177,9 @@ jobs:
           grep -q "NATIVE_EDITOR_ASYNC_WEATHER_OK mode=0" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_ASYNC_WEATHER_OK mode=1" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_ASYNC_CANCEL_OK" "$RUNNER_TEMP/native-editor-brush.log"
+          grep -q "NATIVE_EDITOR_ASYNC_CORRIDOR_OK tool=4" "$RUNNER_TEMP/native-editor-brush.log"
+          grep -q "NATIVE_EDITOR_ASYNC_CORRIDOR_OK tool=5" "$RUNNER_TEMP/native-editor-brush.log"
+          grep -q "NATIVE_EDITOR_ASYNC_CORRIDOR_CANCEL_OK" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_NATIVE_BATCH_OK lower=true flatten=true undo=true" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_STROKE_QUEUE_OK dabs=11" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_UPLOAD_PROFILE_OK case=0" "$RUNNER_TEMP/native-editor-brush.log"
