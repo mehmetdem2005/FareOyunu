@@ -179,6 +179,7 @@ func request_load() -> void:
 	player.position = Vector3(float(start[0]),0,float(start[1]))
 	update_camera()
 	var manifest_us := Time.get_ticks_usec()-manifest_start
+	var memory_before := Recorder.memory_snapshot()
 	var next := Runtime.new()
 	add_child(next)
 	var result: Error = next.initialize(camera,player,spacing,"world",512,true)
@@ -205,6 +206,7 @@ func request_load() -> void:
 	phases["manifest_and_spawn_setup"] = manifest_us
 	# CPU wall-clock calls, not GPU completion timestamps. Recorded once, not per frame.
 	recorder.event("startup_phases_us",phases)
+	recorder.event("memory_budget",{"policy":"resident_advisory_no_automatic_eviction","before_native_load":memory_before,"after_native_submit":Recorder.memory_snapshot(),"inventory":backend.memory_inventory(),"process_safe_budget_bytes":-1,"gpu_safe_budget_bytes":-1,"notes":"Device safe limits not established; no automatic quality changes. After-submit counters may lag renderer completion."})
 
 func fail_load(message: String) -> void:
 	source_label.text = message

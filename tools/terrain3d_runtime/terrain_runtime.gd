@@ -9,6 +9,8 @@ var region_size := REGION_SIZE
 var startup_phases_us: Dictionary = {}
 # Metadata only; stable coordinates, never native texture-layer IDs.
 var _region_index: Dictionary = {}
+var _surface_source_bytes := 0
+var _memory_inventory: Dictionary = {}
 
 func initialize(camera: Camera3D, collision_target: Node3D, spacing: float, profile: String = "lean", region_samples: int = REGION_SIZE, baked: bool = false) -> Error:
 	var phase := Time.get_ticks_usec()
@@ -113,6 +115,7 @@ func initialize(camera: Camera3D, collision_target: Node3D, spacing: float, prof
 					pixels.generate_mipmaps()
 				startup_phases_us[kind+"_image_load"] = Time.get_ticks_usec()-phase
 				phase = Time.get_ticks_usec()
+				_surface_source_bytes += pixels.get_data_size()
 				var tex := ImageTexture.create_from_image(pixels)
 				material.call("set_shader_param", kind+"_tex", tex)
 				startup_phases_us[kind+"_texture_create_submit"] = Time.get_ticks_usec()-phase
@@ -257,6 +260,10 @@ func load_baked_regions(manifest: Dictionary) -> Error:
 			return ERR_FILE_CORRUPT
 	startup_phases_us["region_manifest_and_sha256"] = Time.get_ticks_usec()-phase
 	phase = Time.get_ticks_usec()
+	var height_bytes := 0
+	var control_bytes := 0
+	var active_color_bytes := 0
+	var retained_color_bytes := 0
 	# Preserve the manifest insertion order; native GPU IDs remain internal.
 	for loc: Vector2i in index:
 		data.call("load_region",loc,directory,false)
@@ -267,6 +274,20 @@ func load_baked_regions(manifest: Dictionary) -> Error:
 		var heights: Image = region.call("get_height_map")
 		if heights == null or heights.get_format() != Image.FORMAT_RF or heights.get_size() != Vector2i(region_size,region_size):
 			return ERR_INVALID_DATA
+		var control: Image = region.call("get_control_map")
+		var color: Image = region.call("get_active_color_map")
+		var uncompressed: Image = region.call("get_color_map")
+		var compressed: Image = region.call("get_compressed_color_map")
+		if control == null or control.is_empty() or color == null or color.is_empty():
+			return ERR_INVALID_DATA
+		# get_data_size does not allocate a duplicate pixel buffer.
+		height_bytes += heights.get_data_size()
+		control_bytes += control.get_data_size()
+		active_color_bytes += color.get_data_size()
+		if uncompressed != null:
+			retained_color_bytes += uncompressed.get_data_size()
+		if compressed != null and compressed != uncompressed:
+			retained_color_bytes += compressed.get_data_size()
 	startup_phases_us["region_decode_and_attach"] = Time.get_ticks_usec()-phase
 	if int(terrain.call("get_region_size")) != region_size:
 		return ERR_INVALID_DATA
@@ -279,7 +300,22 @@ func load_baked_regions(manifest: Dictionary) -> Error:
 	if render_profile == "world":
 		terrain.get("material").call("set_show_checkered",false)
 	_region_index = index
+	_memory_inventory = {
+		"resident_regions":index.size(),
+		"height_image_bytes":height_bytes,
+		"control_image_bytes":control_bytes,
+		"active_color_image_bytes":active_color_bytes,
+		"retained_color_image_bytes":retained_color_bytes,
+		"cpu_region_image_logical_bytes":height_bytes+control_bytes+retained_color_bytes,
+		"gpu_region_array_source_logical_bytes":height_bytes+control_bytes+active_color_bytes,
+		"surface_upload_source_bytes":_surface_source_bytes,
+		"notes":"Logical image payload sums, not unique physical RAM or driver VRAM. Excludes allocator, staging, geometry, physics and other resources. Source RGB may expand on GPU."
+	}
+	_memory_inventory.make_read_only()
 	return OK
+
+func memory_inventory() -> Dictionary:
+	return _memory_inventory
 
 ## Raw source only for offline baking / legacy non-baked profile.
 ## The Android playable path uses the verified precomputed Image resources.

@@ -60,3 +60,7 @@ Her sonraki geliştirmede tarih, adım numarası, commit, durum, ölçüm/kanıt
 
 ## P1.7.2 — 27 Kasım 2026
 - Aday: mevcut geçici seen kontrolü yerine doğrulanmış salt okunur Vector2i -> dosya/hash indeksi. Tam origin-zero kare format, strict JSON tür/koordinat/region boyutu/hash kontrolleri. Başarılı native yükleme sonunda indeks yayınlanır. Metadata dışında yeni kopya, worker, GPU/fizik değişikliği yok. Baker aynı parser ile 64 descriptor doğrulaması; paket CI açık. 8/43; sıradaki P1.7.3.
+
+## P1.7.3 — 27 Kasım 2026
+- P1.7.2 CI 46018260377 başarılı: NATIVE_REGION_INDEX_OK count=64; tüm 16.777.216 yükseklik örneği ve 4 mip doğrulandı. Artifact 15208290578. 9/43.
+- P1.7.3 aday: yükleme sırasında mevcut native image byte inventory, OS/renderer startup öncesi ve sonrası ayrı snapshots, export snapshot; safe process/GPU budget unknown -1, advisory resident. Yeni per-frame iş, worker, quality change yok. Paket doğrulaması açık, telefon ölçümü yok. P1.7.4–8 gereklilik koşullu; resident dünyada gereksiz streaming kurma.

@@ -54,6 +54,23 @@ func event(name: String, value: Variant) -> void:
 		return
 	events.append({"type":"event","t_ms":float(Time.get_ticks_usec()-start_us)/1000.0,"name":name,"value":value})
 
+## Snapshots only during startup and explicit export. Unknown is -1, never zero.
+static func memory_snapshot() -> Dictionary:
+	var os_info := OS.get_memory_info()
+	var texture_bytes := int(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TEXTURE_MEM_USED))
+	var buffer_bytes := int(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_BUFFER_MEM_USED))
+	var video_bytes := int(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_VIDEO_MEM_USED))
+	return {
+		"system_physical_bytes":int(os_info.get("physical",-1)),
+		"system_free_bytes":int(os_info.get("free",-1)),
+		"system_available_bytes":int(os_info.get("available",-1)),
+		"engine_static_bytes":OS.get_static_memory_usage(),
+		"renderer_texture_bytes":texture_bytes if texture_bytes>0 else -1,
+		"renderer_buffer_bytes":buffer_bytes if buffer_bytes>0 else -1,
+		"renderer_video_bytes":video_bytes if video_bytes>0 else -1,
+		"notes":"System-wide memory is not Android process budget. Renderer counters are engine accounting, not verified physical VRAM. Zero or unsupported renderer counters reported unknown."
+	}
+
 func rss_bytes() -> int:
 	var f := FileAccess.open("/proc/self/status",FileAccess.READ)
 	if f == null:
@@ -135,7 +152,7 @@ func summarize(values: PackedInt32Array) -> Dictionary:
 
 func save() -> String:
 	event("manual_export_begin",raw.size())
-	var report := {"schema":3,"world":world,"metadata":session_metadata,"startup_ms":startup_ms,"elapsed_ms":float(Time.get_ticks_usec()-start_us)/1000.0,"recorded_interval_ms":total_us/1000.0,"total_frames":total_frames,"raw_frames_dropped_from_memory":dropped_frames,"seconds_dropped":dropped_seconds,"events_dropped":dropped_events,"stalls_dropped":dropped_stalls,"excluded_export_frames":excluded_export_frames,"excluded_export_us":excluded_export_us,"summary_scope":"retained raw frames only","summary":summarize(raw),"per_second":seconds,"partial_second":summarize(bucket),"events":events,"stalls":stalls,"frame_intervals_us":Array(raw),"rss_bytes_at_export":rss_bytes(),"recovery_jsonl":null,"recording_mode":"bounded_memory_manual_export"}
+	var report := {"schema":3,"world":world,"metadata":session_metadata,"startup_ms":startup_ms,"elapsed_ms":float(Time.get_ticks_usec()-start_us)/1000.0,"recorded_interval_ms":total_us/1000.0,"total_frames":total_frames,"raw_frames_dropped_from_memory":dropped_frames,"seconds_dropped":dropped_seconds,"events_dropped":dropped_events,"stalls_dropped":dropped_stalls,"excluded_export_frames":excluded_export_frames,"excluded_export_us":excluded_export_us,"summary_scope":"retained raw frames only","summary":summarize(raw),"per_second":seconds,"partial_second":summarize(bucket),"events":events,"stalls":stalls,"frame_intervals_us":Array(raw),"rss_bytes_at_export":rss_bytes(),"memory_at_export":memory_snapshot(),"recovery_jsonl":null,"recording_mode":"bounded_memory_manual_export"}
 	var path := "user://"+session_name+".json"
 	var output := FileAccess.open(path,FileAccess.WRITE)
 	if output == null:
