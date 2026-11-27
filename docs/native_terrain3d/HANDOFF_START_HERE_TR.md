@@ -11,3 +11,6 @@ Kullanıcı mevcut native dünyayı beğendi. Çalışan paket commit'i `fdbf49b
 
 ## Performans önceliği
 ZIP boyutu hedef değil. Takılmasız kare akışı, hızlı açılış, bellek bütçesi ve fizik doğruluğu öncelikli. P1.6.3 öncesi karar protokolündeki sıkıştırma/I/O ayrımını oku.
+
+## Yakın kalite kuralı
+Oyuncu çevresindeki geometri, doku, fizik ve görüntü keskinliğini FPS uğruna sessizce düşürme. Global çözünürlük azaltımı varsayılan değil. Karar protokolü ve ana plandaki yakın kalite kabul kriterlerini uygula.
