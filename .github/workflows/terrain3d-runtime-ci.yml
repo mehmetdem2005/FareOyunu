@@ -1,0 +1,61 @@
+name: Terrain3D native runtime smoke
+on:
+  push:
+    branches: [feat/terraforge-terrain3d-runtime]
+    paths: ["tools/terrain3d_runtime/**", ".github/workflows/terrain3d-runtime-ci.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        method: [mobile, gl_compatibility]
+    env:
+      GH_TOKEN: ${{ github.token }}
+      METHOD: ${{ matrix.method }}
+      LIBGL_ALWAYS_SOFTWARE: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: solarlabyrinth/action-setup-godot@v3
+        with:
+          version: 4.7.2-stable
+          export-templates: false
+          name: godot
+      - name: Install graphics dependencies
+        run: sudo apt-get update && sudo apt-get install -y xvfb mesa-vulkan-drivers libgl1-mesa-dri vulkan-tools
+      - name: Install pinned upstream extension
+        run: bash tools/terrain3d_runtime/install_terrain3d.sh
+      - name: Import and render
+        shell: bash
+        run: |
+          set -euo pipefail
+          project="$GITHUB_WORKSPACE/tools/terrain3d_runtime"
+          driver=opengl3
+          if [[ "$METHOD" == mobile ]]; then
+            driver=vulkan
+            unset VK_ICD_FILENAMES VK_DRIVER_FILES VK_ADD_DRIVER_FILES
+            mapfile -t icds < <(find /usr/share/vulkan/icd.d /etc/vulkan/icd.d -maxdepth 1 -type f -name 'lvp_icd*.json' 2>/dev/null | sort -u || true)
+            [[ "${#icds[@]}" == 1 ]]
+            export VK_DRIVER_FILES="${icds[0]}"
+          fi
+          export XDG_RUNTIME_DIR="$RUNNER_TEMP/terrain3d-xdg"
+          mkdir -p "$XDG_RUNTIME_DIR"
+          chmod 700 "$XDG_RUNTIME_DIR"
+          export XDG_DATA_HOME="$RUNNER_TEMP/terrain3d-data"
+          xvfb-run -a godot --path "$project" --editor --import --quit --rendering-method "$METHOD" --rendering-driver "$driver" 2>&1 | tee "$RUNNER_TEMP/import.log"
+          timeout 180s xvfb-run -a godot --path "$project" --rendering-method "$METHOD" --rendering-driver "$driver" --audio-driver Dummy --resolution 640x480 -- --smoke 2>&1 | tee "$RUNNER_TEMP/smoke.log"
+          grep -q TERRAIN3D_SMOKE_PASS "$RUNNER_TEMP/smoke.log"
+          grep -q "\"renderer\":\"$METHOD\"" "$RUNNER_TEMP/smoke.log"
+          ! grep -E 'SCRIPT ERROR:|Parse Error:|TERRAIN3D_SMOKE_FAIL' "$RUNNER_TEMP/"*.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: terrain3d-${{ matrix.method }}-smoke
+          path: |
+            ${{ runner.temp }}/import.log
+            ${{ runner.temp }}/smoke.log
+            ${{ runner.temp }}/terrain3d-data/**/terrain3d-smoke.png

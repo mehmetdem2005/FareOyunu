@@ -1,0 +1,9 @@
+# TerraForge — Terrain3D runtime geçişi (T0)
+
+Karar: özel A–I runtime motorları, mesh yayınlama, sayfa/LOD kontrolü ve deneysel scheduler'lar bu yeni runtime'da kullanılmaz. Yerlerine doğrudan MIT lisanslı TokisanGames Terrain3D v1.1.0-stable GDExtension gelir. Kaynak: https://terrain3d.readthedocs.io/en/1.1/docs/system_architecture.html ve https://github.com/TokisanGames/Terrain3D/releases/tag/v1.1.0-stable. Upstream lisans ve telif bildirimleri korunmalıdır.
+
+Mevcut TerraForge dalı ve dosyaları değişmez. Bu izole Godot projesi gerçek native Terrain3D nesnesini oluşturur, RF Float32 örnek verisini ölçek değiştirmeden içe aktarır, sabit clipmap hedefini kameraya ve dinamik collision hedefini ayrı Node3D'ye bağlar. Veri eksikse düz zemin uydurmaz. Başlangıçta 256 piksel bölge, 0.25 m vertex spacing, mesh size 16, 5 LOD, 64 region cap, gölge kapalı: bunlar deney ayarı, performans garantisi değil. Kamera rotasında CPU mesh üretimi yapılmaz.
+
+Kurulum: bu klasörde bash install_terrain3d.sh (gh CLI gereklidir); Godot 4.7.2 ile project.godot aç. CLI'da -- --smoke ile örnek height parity, gerçek fizik raycast ve ekran kontrolü. CI yazılımsal Vulkan/GL kontrolüdür, Android FPS değildir. APK henüz üretilmedi.
+
+Sonraki tek iş: CI sonucunu doğrula; ardından TerraForge gerçek TFM/TFH veri formatını salt okunur doğrulanmış Float32 region import'una çevir (sınır örnekleri, koordinat, yükseklik, boşluk ve katmanları kaybetmeden). Mevcut verinin üzerine yazma. Büyük çok adalı dünya için region cap ve GPU bellek doğrulaması şarttır; tam dünyayı 64 bölgeye kırpma veya 8-bit'e indirme yasaktır. Gerçek dünya dönüştürücüsü henüz yok; şu an fixture demo çalıştırılmak üzere hazırlandı. Native Android uyumluluğu ve cihaz kare süreleri açık. Eski motor ile eşdeğer sahne karşılaştırılmadan ana dal veya eski proje değiştirilmez.

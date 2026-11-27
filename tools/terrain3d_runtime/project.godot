@@ -1,0 +1,15 @@
+config_version=5
+
+[application]
+config/name="TerraForge Terrain3D Runtime"
+run/main_scene="res://runtime_demo.tscn"
+config/features=PackedStringArray("4.7", "Mobile")
+
+[display]
+window/size/viewport_width=960
+window/size/viewport_height=540
+
+[rendering]
+renderer/rendering_method="mobile"
+renderer/rendering_method.mobile="mobile"
+textures/vram_compression/import_etc2_astc=true
