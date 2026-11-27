@@ -90,3 +90,6 @@ Her sonraki geliştirmede tarih, adım numarası, commit, durum, ölçüm/kanıt
 
 ## Kullanıcı kapsam düzeltmesi — 27 Kasım 2026
 Dört Havza yalnız test sahnesi; TerraForge genel terrain oluşturma/düzenleme aracı. Aktif ana plan, README, karar ve handoff güncellendi. P1.9.7–8 nihai oyun haritası değil genel üretim iş akışı; P3 koşullu editör genişletmesi, P4 oyun sistemleri kapsam dışı. 14/43 teknik ilerleme korunur; yeni editör işlerinin kapsamı ve kabul kriterleri ayrıntılandırılacak. Kod ve test sahnesi değişmedi, yeni CI yok.
+
+## P1.8.2 — aday
+Reusable preview_range.gd, camera far only, reference default 850m test profile, manual 75%, explicit adaptive one-shot trial with rollback/no repeated rebuild, existing summary reuse. New file packaged. 14/43 confirmed, package pending. Editor integration and real device impact open.

@@ -1,6 +1,9 @@
 extends Node3D
 const Runtime = preload("res://terrain_runtime.gd")
 const Recorder = preload("res://session_recorder.gd")
+const PreviewRange = preload("res://preview_range.gd")
+var preview_range := PreviewRange.new()
+var range_label: Label
 var recorder := Recorder.new()
 var report_path := ""
 var load_begin := 0
@@ -83,6 +86,7 @@ func _ready() -> void:
 	camera = Camera3D.new()
 	camera.far = 850
 	camera.near = 0.025
+	preview_range.configure(camera.far)
 	add_child(camera)
 	camera.current = true
 	make_ui()
@@ -150,6 +154,25 @@ func make_ui() -> void:
 	slider.value = speed
 	slider.value_changed.connect(func(v: float): speed = v; speed_label.text = "Hareket hızı: %.1f m/s" % v; recorder.event("speed_mps",v))
 	box.add_child(slider)
+	range_label = Label.new()
+	range_label.text = "Önizleme görüşü: %.0f m" % camera.far
+	box.add_child(range_label)
+	var range_options := OptionButton.new()
+	range_options.add_item("Referans (sabit)",0)
+	range_options.add_item("Kısa görüş (isteğe bağlı)",1)
+	range_options.add_item("Adaptif görüş (deneysel)",2)
+	range_options.select(0)
+	range_options.item_selected.connect(func(selected: int):
+		preview_range.select_mode(selected)
+		apply_preview_range("manual_selection")
+	)
+	box.add_child(range_options)
+
+func apply_preview_range(reason: String) -> void:
+	var old_far := camera.far
+	camera.far = preview_range.active_far_m
+	range_label.text = "Önizleme görüşü: %.0f m" % camera.far
+	recorder.event("preview_range",{"reason":reason,"mode":preview_range.mode,"old_far_m":old_far,"far_m":camera.far,"native_mesh_unchanged":true})
 
 func request_load() -> void:
 	loading = true
@@ -228,7 +251,7 @@ func request_load() -> void:
 	var tile_size := int(backend.terrain.get("mesh_size"))
 	var sample_spacing := float(backend.terrain.get("vertex_spacing"))
 	var outer_spacing := sample_spacing*pow(2.0,lod_count-1)
-	recorder.event("render_coverage",{"camera_far_m":camera.far,"mesh_lods":lod_count,"mesh_size":tile_size,"near_spacing_m":sample_spacing,"outer_spacing_m":outer_spacing,"nominal_outer_tile_half_width_m":(2*tile_size+2)*outer_spacing,"notes":"Square tile extent around snapped target; edge strips, geomorph, frustum and occlusion affect visible coverage. No adaptive range change."})
+	recorder.event("render_coverage",{"camera_far_m":camera.far,"mesh_lods":lod_count,"mesh_size":tile_size,"near_spacing_m":sample_spacing,"outer_spacing_m":outer_spacing,"nominal_outer_tile_half_width_m":(2*tile_size+2)*outer_spacing,"notes":"Square tile extent around snapped target; edge strips, geomorph, frustum and occlusion affect visible coverage. Camera range may change only by explicit preview mode."})
 	recorder.event("memory_budget",{"policy":"resident_advisory_no_automatic_eviction","before_native_load":memory_before,"after_native_submit":Recorder.memory_snapshot(),"inventory":backend.memory_inventory(),"process_safe_budget_bytes":-1,"gpu_safe_budget_bytes":-1,"notes":"Device safe limits not established; no automatic quality changes. After-submit counters may lag renderer completion."})
 
 func fail_load(message: String) -> void:
@@ -423,6 +446,10 @@ func _process(_delta: float) -> void:
 	last_frame = now
 	if now-last_hud>=1000000:
 		last_hud = now
+		if preview_range.mode == 2 and backend != null:
+			var decision := preview_range.observe(recorder.last_summary,ready_to_walk and not loading and not menu.visible,Engine.max_fps,now)
+			if not decision.is_empty():
+				apply_preview_range(decision)
 		# Reuse last completed one-second summary; no second sort or ring shift.
 		var p99 := float(recorder.last_summary.get("p99_ms",0.0))
 		var worst := float(recorder.last_summary.get("max_ms",0.0))

@@ -44,3 +44,5 @@ P1.7.9 paket başarılı 46020199322, artifact 15207522916; 12/43. P1.7.5–8 er
 P1.7.10 candidate: world shader bounds guard; render_coverage report (nominal outer tile half-width 544m vs camera far850m, not measured). No forced LOD8, near unchanged. Package/visual device validation pending. Next P1.8.1 source profile cost analysis. P1.7.5–8 remain deferred, not done.
 
 P1.7.10 paket başarılı 46021022190 artifact 15208371670. P1.8.1 kaynak/topoloji analizi NATIVE_LOD_COST_AUDIT_TR.md; 14/43. Native snap ring dedup aday (native patch yok); set_mesh_lods/size runtime rebuild, default 16/7/.25 unchanged. P1.8.2 sırada. 4 deferred streaming tasks remain open.
+
+P1.8.2 candidate: preview_range.gd + test preview UI, default reference, manual/adaptive opt-in camera far only; no native setters/worker. Device comparison not proven; actual editor integration pending. Next P1.8.3 after package.

@@ -49,7 +49,7 @@ Native 1.1 aktif bölgeleri GPU belleğinde tutuyor. GPU texture array yeniden o
 
 ## P1.8 — Profesyonel LOD ve çizim optimizasyonu (8 adım)
 - [x] 1.8.1 LOD profillerinin kaynak/topoloji maliyet analizi (cihaz ölçümü açık).
-- [ ] 1.8.2 Cihaz performansına göre adaptif görüş mesafesi.
+- [ ] 1.8.2 (aday; opt-in kamera uzak düzlemi, paket/cihaz açık) Cihaz performansına göre adaptif görüş mesafesi.
 - [ ] 1.8.3 LOD geçişlerinde titreşim ve şekil değişimi kontrolü.
 - [ ] 1.8.4 Horizon culling fizibilitesi.
 - [ ] 1.8.5 Mesafeye bağlı shader kalitesi.
