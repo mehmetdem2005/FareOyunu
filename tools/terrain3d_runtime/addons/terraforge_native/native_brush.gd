@@ -2,6 +2,7 @@
 extends RefCounted
 ## Native RF maps are authoritative; no legacy terrain copy or mesh worker.
 const Landform = preload("res://addons/terraforge_native/native_landform.gd")
+const Weather = preload("res://addons/terraforge_native/native_weather.gd")
 const MAX_DAB_CELLS := 85000 # 36m at .25m: at most 290x290 candidate cells
 const MAX_STROKE_CELLS := 131072
 const HISTORY_LIMIT := 8
@@ -14,6 +15,8 @@ var redo_history: Array[Dictionary] = []
 var last_hit := Vector2(INF,INF)
 var flatten_height := NAN
 var last_changed_cells := 0
+var last_weather_mass_error := 0.0
+var last_weather_moved := 0.0
 var region_error := ""
 var last_snapshot_path := ""
 var last_snapshot_hashes: Dictionary = {}
@@ -206,6 +209,67 @@ func apply_corridor(points: Array[Vector2], tool: int, radius: float, power: flo
 	if changes.is_empty():
 		return "Corridor has no editable samples."
 	# The kernel caps the whole action to the existing history segment budget.
+	begin()
+	before=originals
+	var error := _write(regions,changes,size,true)
+	end()
+	return error
+
+# One bounded local process, committed only after the entire result is valid.
+func apply_weather(center: Vector2, radius: float, power: float, mode: int) -> String:
+	last_changed_cells=0
+	last_weather_mass_error=0.0
+	last_weather_moved=0.0
+	if not center.is_finite() or absf(center.x)>10000000.0 or absf(center.y)>10000000.0 or not is_finite(radius) or radius<1.0 or radius>36.0:
+		return "Invalid Weather center or size."
+	var regions := _regions()
+	if regions.is_empty():
+		return region_error
+	var size := int(terrain.call("get_region_size"))
+	var spacing := float(terrain.get("vertex_spacing"))
+	var data: Object=terrain.get("data")
+	if size<=0 or not is_finite(spacing) or spacing<0.25:
+		return "Invalid Weather grid."
+	var grid := center/spacing
+	var r := radius/spacing
+	var low := Vector2i(floori(grid.x-r),floori(grid.y-r))
+	var high := Vector2i(ceili(grid.x+r),ceili(grid.y+r))
+	var dim := high-low+Vector2i.ONE
+	var count := dim.x*dim.y
+	if count>MAX_DAB_CELLS:
+		return "Weather footprint exceeds grid budget."
+	var source := PackedFloat64Array()
+	var weights := PackedFloat32Array()
+	source.resize(count)
+	weights.resize(count)
+	for z in range(dim.y):
+		for x in range(dim.x):
+			var key := low+Vector2i(x,z)
+			var distance := Vector2(key).distance_to(grid)/r
+			if distance>=1.0:
+				continue
+			var old := _sample(regions,key,size,spacing,data)
+			if not is_finite(old):
+				continue
+			var i := z*dim.x+x
+			source[i]=old
+			weights[i]=smoothstep(0.0,0.24,1.0-distance)
+	var result := Weather.run(source,weights,dim,spacing,power,mode)
+	if not str(result["error"]).is_empty():
+		return str(result["error"])
+	var values: PackedFloat32Array=result["values"]
+	var changes := {}
+	var originals := {}
+	for i in range(count):
+		if weights[i]<=0.0 or float(values[i])==source[i]:
+			continue
+		var key := low+Vector2i(i%dim.x,floori(float(i)/dim.x))
+		originals[key]=source[i]
+		changes[key]=values[i]
+	last_weather_mass_error=float(result["mass_error"])
+	last_weather_moved=float(result["moved"])
+	if changes.is_empty():
+		return "Weather: no movable material at this slope."
 	begin()
 	before=originals
 	var error := _write(regions,changes,size,true)

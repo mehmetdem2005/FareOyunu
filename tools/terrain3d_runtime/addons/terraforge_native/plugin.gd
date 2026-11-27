@@ -24,6 +24,8 @@ var _layer_restore: Button
 var _advanced_row: HBoxContainer
 var _advanced_label: Label
 var _stamp_preset: OptionButton
+var _weather_mode: OptionButton
+var _weather_mode_at_press := 0
 var _ramp_rise: SpinBox
 var _current_tool: int = 0
 var _ramp_setting: float = 5.0
@@ -100,7 +102,7 @@ func _enter_tree() -> void:
     _tool_select = OptionButton.new()
     for tool_name in ["Raise", "Lower", "Smooth", "Flatten", "Ridge", "Valley", "Ramp", "Stamp", "Weather"]:
         _tool_select.add_item(tool_name)
-    for index in range(6,9):
+    for index in [6,7]:
         _tool_select.set_item_disabled(index,true)
     _tool_select.item_selected.connect(_on_tool_changed)
     _tool_select.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -175,6 +177,13 @@ func _enter_tree() -> void:
     _ramp_rise.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     _advanced_row.add_child(_ramp_rise)
     _ramp_rise.visible = false
+    _weather_mode = OptionButton.new()
+    _weather_mode.add_item("Thermal",0)
+    _weather_mode.add_item("Flow",1)
+    _weather_mode.tooltip_text = "Thermal: 3 talus passes. Flow: one closed-boundary D8 sediment pass."
+    _weather_mode.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    _advanced_row.add_child(_weather_mode)
+    _weather_mode.visible = false
 
     var profile_row: HBoxContainer = HBoxContainer.new()
     content.add_child(profile_row)
@@ -363,7 +372,15 @@ func _view_profile_changed(index: int) -> void:
 func _on_tool_changed(tool: int) -> void:
     _finish_stroke()
     _current_tool = tool
-    _set_status("Ridge/Valley: draw a path, release to apply." if tool in [4,5] else "Brush ON: drag to edit native heights.")
+    _advanced_row.visible = tool==8
+    _advanced_label.text = "Mode" if tool==8 else "Shape"
+    _stamp_preset.visible = false
+    _ramp_rise.visible = false
+    _weather_mode.visible = tool==8
+    if tool==8:
+        _set_status("Weather: touch area, release to apply one pass.")
+    else:
+        _set_status("Ridge/Valley: draw a path, release to apply." if tool in [4,5] else "Brush ON: drag to edit native heights.")
 
 func _set_status(message: String) -> void:
     if is_instance_valid(_status):
@@ -638,6 +655,14 @@ func _finish_stroke(apply_path: bool = false) -> void:
             else:
                 _last_input_result = "Corridor cancelled."
             _set_status(_last_input_result)
+        elif _corridor_tool==8:
+            if apply_path and _corridor_error.is_empty() and not _corridor_points.is_empty():
+                var result := _brush.apply_weather(_corridor_points[0],_corridor_radius,_corridor_power,_weather_mode_at_press)
+                _changed_count+=_brush.last_changed_cells
+                _last_input_result=result if not result.is_empty() else "Weather edited %d samples." % _brush.last_changed_cells
+            else:
+                _last_input_result="Weather cancelled."
+            _set_status(_last_input_result)
         else:
             _brush.end()
     _corridor_points.clear()
@@ -667,6 +692,9 @@ func _paint_at(camera: Camera3D, position: Vector2) -> void:
     if not is_instance_valid(_active):
         return
     _input_count += 1
+    # Weather is a single local action, not repeated per motion event.
+    if _corridor_tool==8 and not _corridor_points.is_empty():
+        return
     var data: Object = _active.get("data")
     if data == null:
         _last_input_result = "Native data not ready."
@@ -675,12 +703,17 @@ func _paint_at(camera: Camera3D, position: Vector2) -> void:
         _active.call("set_camera",camera)
     var hit: Vector3 = _active.call("get_intersection",camera.project_ray_origin(position),camera.project_ray_normal(position),false)
     if not hit.is_finite() or absf(hit.x)>1e8 or absf(hit.y)>1e8 or absf(hit.z)>1e8:
-        if _corridor_tool in [4,5]:
-            _corridor_error = "Path left editable surface; corridor cancelled."
+        if _corridor_tool in [4,5,8]:
+            _corridor_error = "Path left editable surface; action cancelled."
         _last_input_result = "Input received; terrain ray missed."
         _set_status(_last_input_result)
         return
     _hit_count += 1
+    if _corridor_tool==8:
+        if _corridor_error.is_empty():
+            _corridor_points.append(Vector2(hit.x,hit.z))
+            _set_status("Weather: release to apply.")
+        return
     if _corridor_tool in [4,5]:
         _collect_corridor(hit)
         return
@@ -702,6 +735,7 @@ func _start_stroke(camera: Camera3D, position: Vector2) -> void:
     _corridor_tool = _tool_select.selected
     _corridor_radius = float(_radius.value)
     _corridor_power = float(_strength.value)
+    _weather_mode_at_press = _weather_mode.selected
     _stroke_active = true
     _paint_at(camera,position)
 

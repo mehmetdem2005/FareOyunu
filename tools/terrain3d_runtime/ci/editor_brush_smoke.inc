@@ -99,6 +99,40 @@ func _ci_editor_brush_smoke() -> void:
         get_tree().quit(1)
         return
     print("NATIVE_EDITOR_RIDGE_VALLEY_OK signed=true undo=true")
+    # One steep peak across region seam; each process is independently undoable.
+    var weather_center := Vector3(128,0,112)
+    _brush.begin()
+    var peak_error := _brush.dab(weather_center,0,1.0,8.0)
+    _brush.end()
+    var peak := float(data.call("get_height",weather_center))
+    if not peak_error.is_empty() or peak<7.9:
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: Weather peak")
+        get_tree().quit(1)
+        return
+    for mode in [0,1]:
+        _tool_select.select(8)
+        _on_tool_changed(8)
+        _weather_mode.select(mode)
+        _weather_mode_at_press=mode
+        _corridor_tool=8
+        _corridor_radius=4.0
+        _corridor_power=2.0
+        _corridor_points.assign([Vector2(128,112)])
+        _stroke_active=true
+        _finish_stroke(true)
+        var changed_peak := float(data.call("get_height",weather_center))
+        var count := _brush.last_changed_cells
+        var mass := _brush.last_weather_mass_error
+        var moved := _brush.last_weather_moved
+        if count<=0 or changed_peak>=peak or moved<=0.0 or absf(mass)>0.001 or _brush.undo()!="Native undo applied." or float(data.call("get_height",weather_center))!=peak:
+            push_error("NATIVE_EDITOR_BRUSH_FAIL: Weather mode "+str(mode)+" "+_last_input_result)
+            get_tree().quit(1)
+            return
+        print("NATIVE_EDITOR_WEATHER_OK mode=",mode," changed=",count," moved=",moved," mass_error=",mass)
+    if _brush.undo()!="Native undo applied." or not is_zero_approx(float(data.call("get_height",weather_center))):
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: Weather setup undo")
+        get_tree().quit(1)
+        return
     var previous_data_id: int = data.get_instance_id()
     var previous_directory := str(_active.get("data_directory"))
     _save_active()
