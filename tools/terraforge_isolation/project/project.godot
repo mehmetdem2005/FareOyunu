@@ -1,5 +1,6 @@
 config_version=5
 [application]
+config/icon="res://icon.png"
 config/name="TerraForge Darboğaz Ölçümü"
 config/use_custom_user_dir=true
 config/custom_user_dir_name="TerraForge_Isolation"
