@@ -30,3 +30,5 @@ Aç: res://terraforge_workspace.tscn; Terrain → + New, Brush. Original layout 
 Native panel migration 2: +New offers 1/4/16 regions (128/256/512m side at .25m); cross-region basic brushes, holes preserved, global grid history, verified multi-region height/control/color snapshots. Native directory reload remains synchronous/Android unverified. 7 LOD default unchanged.
 
 Brush ON hides popup; Check reports Input / Hit / Edit counts and last reason. If no edits on Android, report these counters; input forwarding change is not yet touch-tested. Streaming and adjustable editor range remain planned, not implemented in this fix.
+
+Native panel View: Near/Medium/Full (5/6/7 native LODs, nominal 136/272/544m at .25m/mesh16). Explicit undoable scene property; not a temporary editor camera setting. 7 default. Changes can rebuild geometry once, no auto switching; no region memory eviction yet.

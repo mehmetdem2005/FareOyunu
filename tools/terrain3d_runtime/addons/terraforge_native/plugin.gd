@@ -173,17 +173,18 @@ func _enter_tree() -> void:
     var profile_row: HBoxContainer = HBoxContainer.new()
     content.add_child(profile_row)
     var profile_label: Label = Label.new()
-    profile_label.text = "Quality"
+    profile_label.text = "View"
     profile_label.custom_minimum_size.x = 58
     profile_row.add_child(profile_label)
     _profile_select = OptionButton.new()
-    _profile_select.add_item("Mobile")
-    _profile_select.add_item("Balanced")
-    _profile_select.add_item("High")
-    _profile_select.select(0)
+    _profile_select.add_item("Near",5)
+    _profile_select.add_item("Medium",6)
+    _profile_select.add_item("Full",7)
+    _profile_select.select(2)
     _profile_select.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     _profile_select.disabled = true
-    _profile_select.tooltip_text = "Native reference profile locked during integration"
+    _profile_select.tooltip_text = "Native clipmap range; changes the scene's LOD count, not height data. Rebuild once per explicit selection."
+    _profile_select.item_selected.connect(_view_profile_changed)
     profile_row.add_child(_profile_select)
     var diagnostics_button: Button = Button.new()
     diagnostics_button.text = "Check"
@@ -267,6 +268,7 @@ func _toggle_popup() -> void:
     _touch_session = false
     _touch_index = -1
     _multi_touch = false
+    _sync_view_profile()
     _popup.popup(Rect2i(Vector2i(x, y), Vector2i(width, height)))
 
 func _radius_changed(value: float) -> void:
@@ -290,7 +292,11 @@ func _process(_delta: float) -> void:
             _active.call("set_camera",camera)
     if _popup.visible:
         var data: Object = _active.get("data")
-        _stats_label.text = "Native C++ | RF Float32 | %d regions\nInput %d | Hit %d | Edit %d" % [int(data.call("get_region_count")),_input_count,_hit_count,_changed_count]
+        if data == null:
+            return
+        if _profile_select.get_selected_id() != int(_active.get("mesh_lods")):
+            _sync_view_profile()
+        _stats_label.text = "Native RF | %d regions | %d LOD\nInput %d | Hit %d | Edit %d" % [int(data.call("get_region_count")),int(_active.get("mesh_lods")),_input_count,_hit_count,_changed_count]
         if _brush_button.button_pressed:
             _status.text = _last_input_result
 
@@ -302,6 +308,51 @@ func _refresh_layer_ui() -> void:
     _layer_add.hide()
     _layer_visible.hide()
     _layer_restore.hide()
+
+func _sync_view_profile() -> void:
+    if not is_instance_valid(_profile_select):
+        return
+    _profile_select.disabled = not is_instance_valid(_active)
+    if not is_instance_valid(_active):
+        return
+    var mesh_size := int(_active.get("mesh_size"))
+    var spacing := float(_active.get("vertex_spacing"))
+    var lods := int(_active.get("mesh_lods"))
+    for i in range(3):
+        var levels := _profile_select.get_item_id(i)
+        var half_width := (2.0*mesh_size+2.0)*spacing*pow(2.0,levels-1)
+        var label := ["Near","Medium","Full"][i] as String
+        _profile_select.set_item_text(i,"%s %.0fm" % [label,half_width])
+    var index := _profile_select.get_item_index(lods)
+    if index >= 0:
+        _profile_select.select(index)
+    else:
+        # Do not mutate a pre-existing custom profile just by selecting a node.
+        _profile_select.select(-1)
+    _profile_select.tooltip_text = "Nominal clipmap half-width (not exact circular visibility). Explicit selection changes saved terrain LOD count. Near spacing unchanged."
+
+func _view_profile_changed(index: int) -> void:
+    if not is_instance_valid(_active) or index < 0 or index >= 3:
+        return
+    var levels := _profile_select.get_item_id(index)
+    var old := int(_active.get("mesh_lods"))
+    if old == levels:
+        return
+    _finish_stroke()
+    _touch_session = false
+    _touch_index = -1
+    _multi_touch = false
+    _brush_button.set_pressed_no_signal(false)
+    _brush_button.text = "Brush"
+    # Undoable explicit scene property change; no automatic rebuilding on camera moves.
+    var undo_redo := get_undo_redo()
+    undo_redo.create_action("TerraForge native view range",UndoRedo.MERGE_DISABLE,_active)
+    undo_redo.add_do_property(_active,"mesh_lods",levels)
+    undo_redo.add_undo_property(_active,"mesh_lods",old)
+    undo_redo.commit_action()
+    _sync_view_profile()
+    _last_input_result = "View updated; Brush OFF. Near resolution unchanged."
+    _set_status(_last_input_result)
 
 func _on_tool_changed(tool: int) -> void:
     _current_tool = tool
@@ -324,6 +375,7 @@ func _set_active(node: Node3D) -> void:
     _finish_stroke()
     _active = node
     _brush.attach(node)
+    _sync_view_profile()
     _touch_session = false
     _touch_index = -1
     _multi_touch = false
