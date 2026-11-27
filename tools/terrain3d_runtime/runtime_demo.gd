@@ -1,6 +1,6 @@
 extends Node3D
 const Runtime = preload("res://terrain_runtime.gd")
-var backend: Node3D
+var backend: Runtime
 var camera: Camera3D
 var target: Node3D
 var smoke := false
