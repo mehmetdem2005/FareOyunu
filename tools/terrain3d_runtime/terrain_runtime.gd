@@ -6,8 +6,10 @@ const MAX_REGIONS := 64
 var terrain: Node3D
 var render_profile := "lean"
 var region_size := REGION_SIZE
+var startup_phases_us: Dictionary = {}
 
-func initialize(camera: Camera3D, collision_target: Node3D, spacing: float, profile: String = "lean", region_samples: int = REGION_SIZE) -> Error:
+func initialize(camera: Camera3D, collision_target: Node3D, spacing: float, profile: String = "lean", region_samples: int = REGION_SIZE, baked: bool = false) -> Error:
+	var phase := Time.get_ticks_usec()
 	if profile not in ["reference", "lean", "lean_lod4", "world"]:
 		return ERR_INVALID_PARAMETER
 	render_profile = profile
@@ -38,14 +40,19 @@ func initialize(camera: Camera3D, collision_target: Node3D, spacing: float, prof
 	terrain.set("collision_radius", 32)
 	terrain.set("collision_shape_size", 16)
 	add_child(terrain)
-	# change_region_size requires initialized native data; pre-tree call is a no-op.
-	if int(terrain.call("get_region_size")) != region_size:
+	startup_phases_us["native_node_init"] = Time.get_ticks_usec()-phase
+	phase = Time.get_ticks_usec()
+	# Native load_region sets the first region size itself. Avoid rebuilding empty maps.
+	# Keep the explicit resize for raw snapshots and the offline baker.
+	if not baked and int(terrain.call("get_region_size")) != region_size:
 		terrain.call("change_region_size", region_size)
-	if int(terrain.call("get_region_size")) != region_size:
+	if not baked and int(terrain.call("get_region_size")) != region_size:
 		push_error("Native region size mismatch: requested %d, got %d" % [region_size, int(terrain.call("get_region_size"))])
 		terrain.free()
 		terrain = null
 		return ERR_UNCONFIGURED
+	startup_phases_us["empty_region_setup"] = Time.get_ticks_usec()-phase
+	phase = Time.get_ticks_usec()
 	terrain.set("clipmap_target", camera)
 	terrain.set("collision_target", collision_target)
 	var material: Object = terrain.get("material")
@@ -66,18 +73,28 @@ func initialize(camera: Camera3D, collision_target: Node3D, spacing: float, prof
 		material.call("set_show_checkered", false)
 		material.set("shader_override", shader)
 		material.set("shader_override_enabled", true)
+		startup_phases_us["material_setup"] = Time.get_ticks_usec()-phase
 		if profile == "world":
 			material.call("set_shader_param", "textures_enabled", false)
 			material.call("set_shader_param", "macro_variation_enabled", false)
 			for kind in ["soil","rock","sand","grass"]:
-				var pixels := Image.load_from_file("res://world/"+kind+".png")
-				if pixels == null or pixels.is_empty():
+				phase = Time.get_ticks_usec()
+				var pixels: Image
+				if baked:
+					pixels = ResourceLoader.load("res://world/"+kind+"_mips.res", "Image", ResourceLoader.CACHE_MODE_IGNORE) as Image
+				else:
+					pixels = Image.load_from_file("res://world/"+kind+".png")
+				if pixels == null or pixels.is_empty() or (baked and not pixels.has_mipmaps()):
 					terrain.free()
 					terrain = null
 					return ERR_CANT_CREATE
-				pixels.generate_mipmaps()
+				if not baked:
+					pixels.generate_mipmaps()
+				startup_phases_us[kind+"_image_load"] = Time.get_ticks_usec()-phase
+				phase = Time.get_ticks_usec()
 				var tex := ImageTexture.create_from_image(pixels)
 				material.call("set_shader_param", kind+"_tex", tex)
+				startup_phases_us[kind+"_texture_create_submit"] = Time.get_ticks_usec()-phase
 		else:
 			material.call("set_shader_param", "textures_enabled", false)
 			material.call("set_shader_param", "macro_variation_enabled", false)
@@ -136,7 +153,8 @@ func surface_height(position: Vector3) -> float:
 ## Load pre-baked native regions once. Explicit filenames avoid Android directory enumeration.
 ## Verify all files before mutating native data; upload maps once after all regions are loaded.
 func load_baked_regions(manifest: Dictionary) -> Error:
-	if terrain == null or int(terrain.call("get_region_size")) != region_size:
+	var phase := Time.get_ticks_usec()
+	if terrain == null:
 		return ERR_UNCONFIGURED
 	var data: Object = terrain.get("data")
 	if data == null or int(data.call("get_region_count")) != 0:
@@ -165,6 +183,8 @@ func load_baked_regions(manifest: Dictionary) -> Error:
 		if FileAccess.get_sha256(path) != str(item.get("sha256","")):
 			push_error("Native region checksum mismatch: " + path)
 			return ERR_FILE_CORRUPT
+	startup_phases_us["region_manifest_and_sha256"] = Time.get_ticks_usec()-phase
+	phase = Time.get_ticks_usec()
 	for item in entries:
 		var loc := Vector2i(int(item["x"]),int(item["z"]))
 		data.call("load_region",loc,directory,false)
@@ -175,8 +195,13 @@ func load_baked_regions(manifest: Dictionary) -> Error:
 		var heights: Image = region.call("get_height_map")
 		if heights == null or heights.get_format() != Image.FORMAT_RF or heights.get_size() != Vector2i(region_size,region_size):
 			return ERR_INVALID_DATA
+	startup_phases_us["region_decode_and_attach"] = Time.get_ticks_usec()-phase
+	if int(terrain.call("get_region_size")) != region_size:
+		return ERR_INVALID_DATA
+	phase = Time.get_ticks_usec()
 	# Default map_type TYPE_MAX: update all arrays in one batch.
 	data.call("update_maps")
+	startup_phases_us["native_map_update_submit"] = Time.get_ticks_usec()-phase
 	if int(data.call("get_region_count")) != entries.size():
 		return ERR_INVALID_DATA
 	if render_profile == "world":

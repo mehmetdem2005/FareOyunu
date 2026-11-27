@@ -19,7 +19,7 @@ Bu belge bu dalın TEK aktif geliştirme planıdır. Eski `addons/terra_forge/` 
 ## P1.6 — Kararlılık ve açılış (7 adım)
 - [x] 1.6.1 Çalışan sürümü güvenli GitHub dalında koruma.
 - [x] 1.6.2 (paket dönüşümü doğrulandı; gerçek cihaz yüklemesi açık) Heightmap'i önceden native Terrain3D bölgelerine dönüştürme.
-- [ ] 1.6.3 Açılıştaki gereksiz veri kopyalarını kaldırma.
+- [ ] 1.6.3 (aday uygulama; paket doğrulaması açık) Açılıştaki gereksiz veri kopyalarını kaldırma.
 - [ ] 1.6.4 İlk shader derlemesi gecikmelerini ölçme ve azaltma.
 - [ ] 1.6.5 Fiziksel zemin hazır olmadan oyuncu hareketini engelleme.
 - [ ] 1.6.6 Ani donmaların kaynağını belirleyen teşhis sistemi.
@@ -88,3 +88,5 @@ Paket/ZIP boyutu optimizasyon hedefi değildir. En önemli hedef oyun içi takı
 
 ## Yakın alan görsel kalite koruması — 27 Kasım 2026
 Kullanıcı şartı: yakın grafik kalitesi bozulmadan akıcı FPS ve düşük gecikme hedeflenir. Fare ölçeğinde oyuncu/kamera çevresi birincil kalite alanıdır. Mevcut referans Dört Havza V2 (stable/native-terrain3d-dort-havza-v2): 25 cm yükseklik örnek aralığı, Float32, mevcut geometrik detay, dört doku, yedi clipmap LOD. Yakın LOD0 örnek aralığı, fizik doğruluğu, doku keskinliği/filtreleme, materyal ve siluet görünümü sırf FPS için düşürülmez; oyuncunun yakınında pop-in, doku bulanıklığı ve şekil değişimi kabul edilmez. İleride daha ayrıntılı mikro geometri ve 1K PBR hedefi korunur. Önce gereksiz CPU/GPU işi, görünmeyen geometri, uzak LOD ve uzak shader maliyeti, tekrarlanan texture fetch, kaynak kopyası, upload ve I/O optimizasyonu; sonra profil bazlı bütçe. Uzak kalite düşüşü de görünür geçiş ve siluet kaybı oluşturmamalı. Global dinamik çözünürlük (P1.8.6) yakın görüntüyü de etkilediğinden otomatik varsayılan değil; opt-in deney olarak değerlendirilir, yakın kalite koruması sağlanamıyorsa reddedilir veya kullanıcıya açık seçenek olarak sunulur. 60 FPS hedefi 16.67 ms toplam kare bütçesidir, gerçek GPU/CPU zamanları ve frame pacing ayrı ölçülür. Yeni materyal/obje özellikleri performans rezervi olmadan zorunlu açılmaz. Karşılaştırmalar aynı kamera, rota, görüş mesafesi, çözünürlük ve kalite ayarlarında yapılır; yakın görünüm referans kareleri ve ölçümleri saklanır. Görsel kalite ve kare süresi birlikte kabul kriteridir; donanım sınırında ikisi aynı anda sağlanamıyorsa bedel açıkça raporlanır, kullanıcıya danışmadan yakın kaliteyi düşürerek başarı ilan edilmez.
+
+Arka plan iş yükü de maliyet sayılır: öncelik gereksiz işi tamamen kaldırmak ve offline hazırlamak; ölçülmemiş worker, agresif prefetch ve sınırsız kuyruk eklenmez.

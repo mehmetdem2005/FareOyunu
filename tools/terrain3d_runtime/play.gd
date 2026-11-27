@@ -148,6 +148,7 @@ func request_load() -> void:
 	source_label.text = "Dünya hazırlanıyor..."
 	await get_tree().process_frame
 	await get_tree().process_frame
+	var manifest_start := Time.get_ticks_usec()
 	var manifest := FileAccess.open("res://world/world.json",FileAccess.READ)
 	if manifest == null:
 		fail_load("Dünya manifesti eksik")
@@ -169,9 +170,10 @@ func request_load() -> void:
 	var start: Array = world_info.get("spawn_m",[512.0,512.0])
 	player.position = Vector3(float(start[0]),0,float(start[1]))
 	update_camera()
+	var manifest_us := Time.get_ticks_usec()-manifest_start
 	var next := Runtime.new()
 	add_child(next)
-	var result: Error = next.initialize(camera,player,spacing,"world",512)
+	var result: Error = next.initialize(camera,player,spacing,"world",512,true)
 	if result == OK:
 		result = next.load_baked_regions(world_info)
 	if result != OK:
@@ -192,6 +194,10 @@ func request_load() -> void:
 	last_frame = 0
 	recorder.begin(world_info, float(Time.get_ticks_usec()-load_begin)/1000.0)
 	recorder.event("fps_cap",Engine.max_fps)
+	var phases := backend.startup_phases_us.duplicate()
+	phases["manifest_and_spawn_setup"] = manifest_us
+	# CPU wall-clock calls, not GPU completion timestamps. Recorded once, not per frame.
+	recorder.event("startup_phases_us",phases)
 
 func fail_load(message: String) -> void:
 	source_label.text = message

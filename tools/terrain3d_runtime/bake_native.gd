@@ -66,6 +66,23 @@ func _ready() -> void:
 				fail("height bytes changed " + filename)
 				return
 			entries.append({"x":x,"z":z,"file":filename,"sha256":FileAccess.get_sha256(region_path)})
+	# Precompute identical Godot mip chains offline. Keep original pixels and format.
+	# Uncompressed Image resources: avoid PNG decode and mip generation on the phone.
+	for kind in ["soil","rock","sand","grass"]:
+		var pixels := Image.load_from_file("res://world/"+kind+".png")
+		if pixels == null or pixels.is_empty() or pixels.generate_mipmaps() != OK:
+			fail("surface mip generation "+kind)
+			return
+		var texture_path := "res://world/"+kind+"_mips.res"
+		if ResourceSaver.save(pixels,texture_path) != OK:
+			fail("surface save "+kind)
+			return
+		var saved := ResourceLoader.load(texture_path,"Image",ResourceLoader.CACHE_MODE_IGNORE) as Image
+		if saved == null or saved.get_format() != pixels.get_format() or saved.get_size() != pixels.get_size() or not saved.has_mipmaps() or saved.get_data() != pixels.get_data():
+			fail("surface mip bytes changed "+kind)
+			return
+	print("NATIVE_SURFACE_MIPS_OK count=4")
+	doc["surface_mips"] = "godot_image_res_lossless"
 	doc["native_regions"] = entries
 	doc["storage"] = "terrain3d_native_res_float32_v1"
 	doc["native_bake_ms"] = Time.get_ticks_msec()-started
