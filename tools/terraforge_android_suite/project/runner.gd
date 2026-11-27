@@ -3,6 +3,7 @@ const CAPTURE = preload("res://capture.gd")
 const PROFILE_PATH = "res://addons/terra_forge/profiling/profile_scene.gd"
 const SOAK_SECONDS: float = 1800.0
 const LIFECYCLE_EVENT_LIMIT: int = 32
+const SUITE_MODES: Array[String] = ["quick", "full", "soak", "profiles"]
 var _run_dir: String = ""
 var _start: Button
 var _suite_choice: OptionButton
@@ -63,7 +64,8 @@ func _ready() -> void:
     if not _ci:
         _names=_inventory["quick_tests"].duplicate()
     if _profile_smoke or _soak_smoke:
-        _selected_suite="soak" if _soak_smoke else "full"
+        _selected_suite="soak" if _soak_smoke else "profiles"
+        _suite_choice.select(SUITE_MODES.find(_selected_suite))
         _names=[]
         if DisplayServer.get_name().to_lower()=="headless" or RenderingServer.get_current_rendering_method()!="mobile":
             push_error("Profile smoke requires actual Mobile renderer")
@@ -109,8 +111,8 @@ func _verify_idle() -> void:
 func _start_fresh() -> void:
     if _busy or _starting or _inventory.is_empty():
         return
-    if not _ci:
-        _selected_suite=["quick","full","soak"][_suite_choice.selected]
+    if not _ci or _profile_smoke:
+        _selected_suite=SUITE_MODES[_suite_choice.selected]
         _names=_suite_tests(_suite_choice.selected)
     _starting = true
     _suite_choice.disabled=true
@@ -146,10 +148,10 @@ func _start_fresh() -> void:
     _stop.text = "Sıradaki testte dur"
     _report = _new_report()
     _report["session_id"] = token
-    _report["suite_mode"] = "ci" if _ci and not _soak_smoke else _selected_suite
+    _report["suite_mode"] = "ci" if _ci and not (_profile_smoke or _soak_smoke) else _selected_suite
     _report["terrain_tree"] = _inventory.get("terrain_tree","")
     _report["planned_profiles"] = 0 if _ci and not (_profile_smoke or _soak_smoke) else _profile_plan(_selected_suite).size()
-    _report["qualification_note"] = "Quick screens candidates. Full separates 56 timing profiles from four observer profiles. Soak uses a single, slower 30-minute camera sweep. Lifecycle events and renderer timing are not physics tests."
+    _report["qualification_note"] = "Quick screens candidates. Full and profiles use the same 56 timing profiles and four observer profiles. Soak uses a single, slower 30-minute camera sweep. Guarded capsule regressions provide separate physics evidence."
     _report["application_lifecycle"] = {"events":[],"paused":0,"resumed":0,"dropped":0}
     _report["runtime_features"] = {"editor":OS.has_feature("editor"),"template":OS.has_feature("template"),"debug":OS.has_feature("debug"),"release":OS.has_feature("release")}
     _report["thermal_status"] = null
@@ -218,6 +220,7 @@ func _make_ui() -> void:
     _suite_choice.add_item("Hedefli: 4 M9 testi + 12 profil")
     _suite_choice.add_item("Tam: tüm regresyonlar + 60 profil")
     _suite_choice.add_item("Dayanıklılık: 30 dakika, F / 32 sayfa")
+    _suite_choice.add_item("Yalnız profiller: 60 render ölçümü")
     _suite_choice.select(0)
     _suite_choice.item_selected.connect(_select_suite)
     v.add_child(_suite_choice)
@@ -264,12 +267,13 @@ func _select_suite(index:int) -> void:
         _detail.text="Yeni seçim yalnız sıfırdan başlatınca uygulanır."
         return
     _names=_suite_tests(index)
-    _progress.max_value=_names.size()
+    var profiles_only: bool = _names.is_empty()
+    _progress.max_value=_profile_plan(SUITE_MODES[index]).size() if profiles_only else _names.size()
     _progress.value=0
-    _detail.text="0/%d | Başlat yeni oturum açar." % _names.size()
+    _detail.text="0/%d %s | Başlat yeni oturum açar." % [int(_progress.max_value), "profil" if profiles_only else "test"]
 
 func _suite_tests(index: int) -> Array:
-    if index==2:
+    if SUITE_MODES[index] in ["soak", "profiles"]:
         return []
     return _inventory["quick_tests" if index==0 else "tests"].duplicate()
 
@@ -445,13 +449,14 @@ func _reset() -> void:
 
 func _update_ui() -> void:
     var soak: bool = _selected_suite=="soak"
-    _progress.max_value = 1 if soak else _names.size()
-    _progress.value = _report["profiles"].size() if soak else _report["tests"].size()
+    var profiles_only: bool = soak or _selected_suite=="profiles"
+    _progress.max_value = int(_report["planned_profiles"]) if profiles_only else _names.size()
+    _progress.value = _report["profiles"].size() if profiles_only else _report["tests"].size()
     var counts := {}
     for t in _report["tests"]:
         counts[t["status"]] = int(counts.get(t["status"],0))+1
-    if soak:
-        _detail.text = "Profil %d/1 | Kesinti %d" % [_report["profiles"].size(),_report["profile_interruptions"].size()]
+    if profiles_only:
+        _detail.text = "Profil %d/%d | Kesinti %d" % [_report["profiles"].size(),_report["planned_profiles"],_report["profile_interruptions"].size()]
     else:
         _detail.text = "%d/%d | PASS %d | FAIL %d | Kesildi %d | Profil %d" % [_report["tests"].size(),_names.size(),counts.get("pass",0),counts.get("fail",0),counts.get("interrupted",0),_report["profiles"].size()]
     _start.disabled = _busy or _starting
@@ -460,7 +465,7 @@ func _update_ui() -> void:
     _full.disabled = _busy or _starting or _report.is_empty()
     _stop.disabled = not _busy or soak
     _restart.disabled = _starting
-    _retry.disabled = _report.is_empty() or _starting or soak
+    _retry.disabled = _report.is_empty() or _starting or profiles_only
 
 func _sample_memory() -> void:
     var rss: Variant = _read_rss()
@@ -551,7 +556,7 @@ func _run_all() -> void:
             if t["status"]!="pass":
                 failures+=1
         if _profile_smoke:
-            if not complete:
+            if not complete or _report["suite_mode"]!="profiles" or _report["planned_tests"]!=0 or not _report["tests"].is_empty():
                 failures+=1
             var expected_plan: Array[Dictionary]=_profile_plan("full")
             var snapshot: String=""
@@ -820,7 +825,7 @@ func _finish_scope(scope:String) -> void:
 func _profile_plan(suite: String) -> Array[Dictionary]:
     if suite=="soak":
         return [_profile_spec(1,1,false)]
-    var full: bool = suite=="full"
+    var full: bool = suite in ["full", "profiles"]
     var pairs: Array = [[0,1],[1,3],[1,5]]
     if full:
         pairs=[[0,1],[2,3],[4,5],[0,2],[0,4],[1,3],[1,5]]
