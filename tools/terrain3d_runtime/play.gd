@@ -102,6 +102,8 @@ func _ready() -> void:
 	camera.current = true
 	make_ui()
 	menu.hide()
+	get_window().focus_exited.connect(func(): invalidate_preview_trial("focus_lost",true))
+	get_window().focus_entered.connect(func(): invalidate_preview_trial("focus_returned",true))
 	load_begin = Time.get_ticks_usec()
 	request_load()
 
@@ -131,7 +133,11 @@ func make_ui() -> void:
 	top.add_child(bar)
 	var open := Button.new()
 	open.text = "Ayarlar"
-	open.pressed.connect(func(): menu.visible = not menu.visible; reset_touch())
+	open.pressed.connect(func():
+		menu.visible = not menu.visible
+		reset_touch()
+		invalidate_preview_trial("menu_visibility_changed")
+	)
 	bar.add_child(open)
 	var reset := Button.new()
 	reset.text = "Başa dön"
@@ -153,7 +159,13 @@ func make_ui() -> void:
 	var cap := CheckButton.new()
 	cap.text = "60 FPS sınırı"
 	cap.button_pressed = true
-	cap.toggled.connect(func(on: bool): Engine.max_fps = 60 if on else 0; DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if on else DisplayServer.VSYNC_DISABLED); recorder.event("fps_cap",Engine.max_fps); recorder.event("vsync_mode",DisplayServer.window_get_vsync_mode()))
+	cap.toggled.connect(func(on: bool):
+		Engine.max_fps = 60 if on else 0
+		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if on else DisplayServer.VSYNC_DISABLED)
+		recorder.event("fps_cap",Engine.max_fps)
+		recorder.event("vsync_mode",DisplayServer.window_get_vsync_mode())
+		invalidate_preview_trial("fps_cap_changed",true)
+	)
 	box.add_child(cap)
 	var speed_label := Label.new()
 	speed_label.text = "Hareket hızı: 2.5 m/s"
@@ -163,7 +175,12 @@ func make_ui() -> void:
 	slider.max_value = 12.0
 	slider.step = 0.5
 	slider.value = speed
-	slider.value_changed.connect(func(v: float): speed = v; speed_label.text = "Hareket hızı: %.1f m/s" % v; recorder.event("speed_mps",v))
+	slider.value_changed.connect(func(v: float):
+		speed = v
+		speed_label.text = "Hareket hızı: %.1f m/s" % v
+		recorder.event("speed_mps",v)
+		invalidate_preview_trial("speed_changed",true)
+	)
 	box.add_child(slider)
 	range_label = Label.new()
 	range_label.text = "Önizleme görüşü: %.0f m" % camera.far
@@ -185,6 +202,7 @@ func make_ui() -> void:
 		if backend != null:
 			backend.terrain.get("material").call("set_shader_param","far_exact_texture_skip",enabled)
 		recorder.event("far_texture_skip",enabled)
+		invalidate_preview_trial("material_changed",true)
 	)
 	box.add_child(far_skip)
 	render_scale_options = OptionButton.new()
@@ -216,17 +234,19 @@ func apply_preview_render_scale(selected: int) -> void:
 	viewport.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
 	viewport.scaling_3d_scale = requested
 	recorder.event("preview_render_scale",{"reason":"manual_menu_selection","old_scale":old_scale,"requested_scale":requested,"property_scale":viewport.scaling_3d_scale,"viewport_size":[int(viewport.get_visible_rect().size.x),int(viewport.get_visible_rect().size.y)],"automatic":false,"notes":"Property value is not a measured framebuffer size; render target reallocation may stall."})
-	# Restart an explicitly selected range trial at its reference so samples
-	# collected under different pixel workloads are not compared.
-	if preview_range.mode == 2:
-		preview_range.select_mode(2)
-		apply_preview_range("render_scale_changed_reset_trial")
+	invalidate_preview_trial("render_scale_changed",true)
+
+func invalidate_preview_trial(reason: String, restore_kept: bool = false) -> void:
+	var decision := preview_range.invalidate(Time.get_ticks_usec(),restore_kept)
+	if not decision.is_empty():
+		apply_preview_range(decision + ":" + reason)
 
 func apply_preview_range(reason: String) -> void:
 	var old_far := camera.far
-	camera.far = preview_range.active_far_m
+	if not is_equal_approx(old_far,preview_range.active_far_m):
+		camera.far = preview_range.active_far_m
 	range_label.text = "Önizleme görüşü: %.0f m" % camera.far
-	recorder.event("preview_range",{"reason":reason,"mode":preview_range.mode,"old_far_m":old_far,"far_m":camera.far,"native_mesh_unchanged":true})
+	recorder.event("preview_range",{"reason":reason,"mode":preview_range.mode,"old_far_m":old_far,"far_m":camera.far,"native_mesh_unchanged":true,"evidence":preview_range.last_evidence.duplicate()})
 
 func request_load() -> void:
 	loading = true
@@ -328,6 +348,7 @@ func save_report() -> void:
 	if not recorder.active:
 		return
 	reset_touch()
+	invalidate_preview_trial("manual_export")
 	report_path = recorder.save()
 	# Exclude explicit user-requested export stalls even if file creation fails.
 	recorder.skip_next = true
@@ -347,6 +368,7 @@ func save_report() -> void:
 func respawn() -> void:
 	if backend == null:
 		return
+	invalidate_preview_trial("respawn",true)
 	player.position = spawn
 	has_previous_position = false
 	recorder.event("respawn", [spawn.x,spawn.y,spawn.z])
@@ -513,7 +535,7 @@ func _process(_delta: float) -> void:
 	if now-last_hud>=1000000:
 		last_hud = now
 		if preview_range.mode == 2 and backend != null:
-			var decision := preview_range.observe(recorder.last_summary,ready_to_walk and not loading and not menu.visible,Engine.max_fps,now)
+			var decision := preview_range.observe(recorder.last_summary,ready_to_walk and not loading and not menu.visible and get_window().has_focus(),Engine.max_fps,now)
 			if not decision.is_empty():
 				apply_preview_range(decision)
 		if backend != null and ready_to_walk and not loading and not menu.visible and get_window().has_focus():

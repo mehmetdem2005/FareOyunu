@@ -54,3 +54,5 @@ P1.8.3 package successful 46023381680 artifact 15212205063, 16/43. P1.8.4 feasib
 P1.8.5 CI 46023920638 successful artifact 15211800852, 18/43. P1.8.6 candidate manual 3D scale 100(default)/90/85 percent in preview; no autonomous downscale or FSR on GL. Device/editor open; next P1.8.7.
 
 P1.8.6 CI 46024518373 successful artifact 15210593260, 19/43. P1.8.7 candidate thermal_monitor.gd Android API29+ status advisory, no worker/auto downscale, 30s sampling via existing HUD, unsupported/slow stop. Device bridge and query latency unverified. Next P1.8.8.
+
+P1.8.7 package passed 46025159030 artifact 15211157179; 20/43. P1.8.8 candidate existing range controller hardened, context/full window guards and mean+tail acceptance, no second controller or automatic resolution/LOD downgrade. Package/device pending. P1.9 generic terrain authoring next; Dört Havza fixture only.

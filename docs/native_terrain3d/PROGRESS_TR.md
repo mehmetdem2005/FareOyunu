@@ -110,3 +110,7 @@ Reusable preview_range.gd, camera far only, reference default 850m test profile,
 ## P1.8.6–7 — 27 Kasım 2026
 - 46024518373 package passed: native index64, 16.777.216 exact heights, 4 mips, 2020ms server bake; artifact 15210593260. 19/43; scale visual/device pending.
 - P1.8.7 candidate thermal_monitor.gd Android PowerManager API29+; 30s foreground samples in existing HUD, status/cost logged, unknown on unsupported, expensive/failed steady-state polls stop. Advisory severe+ message; no forced quality change. Package/device pending; P1.8.8 next.
+
+## P1.8.7–8 — 27 Kasım 2026
+- 46025159030 package passed, 64 native regions, 16.777.216 exact samples, 4 mips, 1530ms server bake; artifact 15211157179. 20/43; Android actual thermal status open.
+- P1.8.8 candidate: one controller, full-context/contiguous windows and export exclusion, immediate context invalidation, no repeated trials without opt-in, >=5% mean improvement and nonworsening avg window p95/p99, verdict evidence. Default reference. Package/device pending; P1.9 next.

@@ -26,6 +26,7 @@ var dropped_stalls := 0
 var total_frames := 0
 var excluded_export_frames := 0
 var excluded_export_us := 0
+var _window_excluded_export_frames := 0
 var last_summary: Dictionary = {}
 var bucket_max_physics_us := 0
 var bucket_max_previous_process_us := 0
@@ -89,6 +90,7 @@ func frame(interval: int, pos: Vector3, phys: int, distance: float, falls: int, 
 	if skip_next:
 		skip_next = false
 		excluded_export_frames += 1
+		_window_excluded_export_frames += 1
 		excluded_export_us += interval
 		return
 	total_frames += 1
@@ -110,7 +112,7 @@ func frame(interval: int, pos: Vector3, phys: int, distance: float, falls: int, 
 	if now-last_second<1000000:
 		return
 	var summary := summarize(bucket)
-	summary.merge({"type":"second","t_ms":float(now-start_us)/1000.0,"pos":[pos.x,pos.y,pos.z],"distance_m":distance,"respawn_falls":falls,"ground_checks":checks,"ground_misses":misses,"ground_error_last_m":last_ground_error_m,"physics_script_us":bucket_physics_us,"speed_mps":speed,"ground_ready":grounded_ready,"menu_open":menu,"fps_cap":Engine.max_fps,"viewport":[int(viewport_size.x),int(viewport_size.y)],"rss_bytes":-1,"max_physics_tick_us":bucket_max_physics_us,"max_previous_process_script_us":bucket_max_previous_process_us,"static_bytes":OS.get_static_memory_usage(),"draw_calls":int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),"primitives":int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)),"physics_process_ms":Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS)*1000.0,"process_ms":Performance.get_monitor(Performance.TIME_PROCESS)*1000.0})
+	summary.merge({"type":"second","window_begin_us":last_second,"window_end_us":now,"window_excluded_export_frames":_window_excluded_export_frames,"t_ms":float(now-start_us)/1000.0,"pos":[pos.x,pos.y,pos.z],"distance_m":distance,"respawn_falls":falls,"ground_checks":checks,"ground_misses":misses,"ground_error_last_m":last_ground_error_m,"physics_script_us":bucket_physics_us,"speed_mps":speed,"ground_ready":grounded_ready,"menu_open":menu,"fps_cap":Engine.max_fps,"viewport":[int(viewport_size.x),int(viewport_size.y)],"rss_bytes":-1,"max_physics_tick_us":bucket_max_physics_us,"max_previous_process_script_us":bucket_max_previous_process_us,"static_bytes":OS.get_static_memory_usage(),"draw_calls":int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),"primitives":int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)),"physics_process_ms":Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS)*1000.0,"process_ms":Performance.get_monitor(Performance.TIME_PROCESS)*1000.0})
 	last_summary = summary
 	if seconds.size() < MAX_SECONDS:
 		seconds.append(summary)
@@ -120,6 +122,7 @@ func frame(interval: int, pos: Vector3, phys: int, distance: float, falls: int, 
 	bucket_physics_us = 0
 	bucket_max_physics_us = 0
 	bucket_max_previous_process_us = 0
+	_window_excluded_export_frames = 0
 	last_second = now
 
 func summarize(values: PackedInt32Array) -> Dictionary:
