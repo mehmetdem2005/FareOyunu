@@ -278,6 +278,7 @@ func _enter_tree() -> void:
 
 func _exit_tree() -> void:
     _finish_stroke()
+    _brush.shutdown_weather()
     var selection: EditorSelection = get_editor_interface().get_selection()
     if selection.selection_changed.is_connected(_on_selection_changed):
         selection.selection_changed.disconnect(_on_selection_changed)
@@ -318,6 +319,11 @@ func _strength_changed(value: float) -> void:
 
 
 func _process(_delta: float) -> void:
+    var weather := _brush.poll_weather()
+    if not weather.is_empty():
+        _changed_count += _brush.last_changed_cells if str(weather["error"]).is_empty() else 0
+        _last_input_result = str(weather["error"]) if not str(weather["error"]).is_empty() else "Weather edited %d samples." % _brush.last_changed_cells
+        _set_status(_last_input_result)
     if not is_instance_valid(_active):
         return
     # A single native dab is an indivisible main-thread transaction for now.
@@ -727,6 +733,7 @@ func _toggle_brush(enabled: bool) -> void:
         return
     if not enabled:
         _finish_stroke()
+        _brush.cancel_weather()
         _touch_session = false
         _touch_index = -1
         _multi_touch = false
@@ -741,6 +748,9 @@ func _toggle_brush(enabled: bool) -> void:
     _brush_button.text = "Fırça açık" if enabled else "Fırça"
 
 func _save_active() -> void:
+    if _brush.weather_busy():
+        _set_status("Aşındırma hesaplanıyor; işlem bitince yeniden dene.")
+        return
     if _stroke_active and _is_basic() and _stroke_sampler.pending_count()>0:
         _set_status("Fırça işlemi sürüyor; tamamlanınca yeniden dene.")
         return
@@ -772,6 +782,9 @@ func _save_active() -> void:
     _set_status(_last_input_result)
 
 func _undo() -> void:
+    if _brush.weather_busy():
+        _set_status("Aşındırma hesaplanıyor; işlem bitince yeniden dene.")
+        return
     if _stroke_active and _is_basic() and _stroke_sampler.pending_count()>0:
         _set_status("Fırça işlemi sürüyor; tamamlanınca yeniden dene.")
         return
@@ -780,6 +793,9 @@ func _undo() -> void:
         _set_status(_brush.undo())
 
 func _redo() -> void:
+    if _brush.weather_busy():
+        _set_status("Aşındırma hesaplanıyor; işlem bitince yeniden dene.")
+        return
     if _stroke_active and _is_basic() and _stroke_sampler.pending_count()>0:
         _set_status("Fırça işlemi sürüyor; tamamlanınca yeniden dene.")
         return
@@ -872,9 +888,8 @@ func _finish_stroke(apply_path: bool = false) -> void:
             _set_status(_last_input_result)
         elif _corridor_tool==8:
             if apply_path and _corridor_error.is_empty() and not _corridor_points.is_empty():
-                var result := _brush.apply_weather(_corridor_points[0],_corridor_radius,_corridor_power,_weather_mode_at_press)
-                _changed_count+=_brush.last_changed_cells
-                _last_input_result=result if not result.is_empty() else "Weather edited %d samples." % _brush.last_changed_cells
+                var result := _brush.start_weather(_corridor_points[0],_corridor_radius,_corridor_power,_weather_mode_at_press)
+                _last_input_result=result if not result.is_empty() else "Aşındırma arka planda hesaplanıyor."
             else:
                 _last_input_result="Weather cancelled."
             _set_status(_last_input_result)
@@ -938,6 +953,9 @@ func _paint_at(camera: Camera3D, position: Vector2) -> void:
         _offer_basic(Vector2(hit.x,hit.z))
 
 func _start_stroke(camera: Camera3D, position: Vector2) -> void:
+    if _brush.weather_busy():
+        _set_status("Aşındırma hesaplanıyor; işlem bitince yeniden dene.")
+        return
     if _stroke_active and _is_basic() and _basic_released:
         _set_status("Önceki fırça tamamlanıyor.")
         return

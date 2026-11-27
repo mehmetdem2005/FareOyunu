@@ -3,6 +3,12 @@ extends RefCounted
 ## Native RF maps are authoritative; no legacy terrain copy or mesh worker.
 const Landform = preload("res://addons/terraforge_native/native_landform.gd")
 const Weather = preload("res://addons/terraforge_native/native_weather.gd")
+const WeatherWorker = preload("res://addons/terraforge_native/native_weather_worker.gd")
+var _weather_worker := WeatherWorker.new()
+var _weather_snapshot: Dictionary = {}
+var last_weather_capture_us := 0
+var last_weather_worker_us := 0
+var last_weather_commit_us := 0
 const MAX_DAB_CELLS := 85000 # 36m at .25m: at most 290x290 candidate cells
 const MAX_STROKE_CELLS := 131072
 const HISTORY_LIMIT := 8
@@ -28,6 +34,7 @@ var last_write_profile: Dictionary = {}
 var last_filter_half_width_m := 0.0
 
 func attach(node: Node3D) -> void:
+	cancel_weather()
 	terrain = node
 	last_snapshot_path = ""
 	last_snapshot_hashes.clear()
@@ -197,20 +204,20 @@ func apply_corridor(points: Array[Vector2], tool: int, radius: float, power: flo
 	return error
 
 # One bounded local process, committed only after the entire result is valid.
-func apply_weather(center: Vector2, radius: float, power: float, mode: int) -> String:
+func _capture_weather(center: Vector2, radius: float, power: float, mode: int) -> Dictionary:
 	last_changed_cells=0
 	last_weather_mass_error=0.0
 	last_weather_moved=0.0
 	if not center.is_finite() or absf(center.x)>10000000.0 or absf(center.y)>10000000.0 or not is_finite(radius) or radius<1.0 or radius>36.0:
-		return "Invalid Weather center or size."
+		return {"error":"Invalid Weather center or size."}
 	var regions := _regions()
 	if regions.is_empty():
-		return region_error
+		return {"error":region_error}
 	var size := int(terrain.call("get_region_size"))
 	var spacing := float(terrain.get("vertex_spacing"))
 	var data: Object=terrain.get("data")
 	if size<=0 or not is_finite(spacing) or spacing<0.25:
-		return "Invalid Weather grid."
+		return {"error":"Invalid Weather grid."}
 	var grid := center/spacing
 	var r := radius/spacing
 	var low := Vector2i(floori(grid.x-r),floori(grid.y-r))
@@ -218,7 +225,7 @@ func apply_weather(center: Vector2, radius: float, power: float, mode: int) -> S
 	var dim := high-low+Vector2i.ONE
 	var count := dim.x*dim.y
 	if count>MAX_DAB_CELLS:
-		return "Weather footprint exceeds grid budget."
+		return {"error":"Weather footprint exceeds grid budget."}
 	var source := PackedFloat64Array()
 	var weights := PackedFloat32Array()
 	source.resize(count)
@@ -235,25 +242,108 @@ func apply_weather(center: Vector2, radius: float, power: float, mode: int) -> S
 			var i := z*dim.x+x
 			source[i]=old
 			weights[i]=smoothstep(0.0,0.24,1.0-distance)
-	var result := Weather.run(source,weights,dim,spacing,power,mode)
+	return {"error":"","source":source,"weights":weights,"dim":dim,"low":low,"size":size,"spacing":spacing,"data_id":data.get_instance_id(),"terrain_id":terrain.get_instance_id(),"center":center,"radius":radius,"power":power,"mode":mode}
+
+func weather_busy() -> bool:
+	return _weather_worker.busy()
+
+func start_weather(center: Vector2, radius: float, power: float, mode: int) -> String:
+	if weather_busy():
+		return "Aşındırma zaten hesaplanıyor."
+	var started := Time.get_ticks_usec()
+	var snapshot := _capture_weather(center,radius,power,mode)
+	last_weather_capture_us=Time.get_ticks_usec()-started
+	if not str(snapshot["error"]).is_empty():
+		return str(snapshot["error"])
+	last_weather_worker_us=0
+	last_weather_commit_us=0
+	var error := _weather_worker.start(snapshot["source"],snapshot["weights"],snapshot["dim"],snapshot["spacing"],power,mode)
+	if error!=OK:
+		return "Weather worker start failed: "+error_string(error)
+	_weather_snapshot=snapshot
+	return ""
+
+func cancel_weather() -> void:
+	_weather_worker.cancel()
+	_weather_snapshot.clear()
+
+func shutdown_weather() -> void:
+	cancel_weather()
+	_weather_worker.shutdown()
+
+func poll_weather() -> Dictionary:
+	var result := _weather_worker.poll()
+	if result.is_empty():
+		return {}
+	var snapshot := _weather_snapshot
+	_weather_snapshot={}
+	last_weather_worker_us=int(result.get("worker_us",0))
+	if not str(result["error"]).is_empty():
+		return {"done":true,"error":str(result["error"])}
+	var started := Time.get_ticks_usec()
+	var error := _commit_weather(snapshot,result)
+	last_weather_commit_us=Time.get_ticks_usec()-started
+	return {"done":true,"error":error}
+
+# Synchronous reference retained for tests and direct callers.
+func apply_weather(center: Vector2, radius: float, power: float, mode: int) -> String:
+	if weather_busy():
+		return "Aşındırma zaten hesaplanıyor."
+	var snapshot := _capture_weather(center,radius,power,mode)
+	if not str(snapshot["error"]).is_empty():
+		return str(snapshot["error"])
+	var result := Weather.run(snapshot["source"],snapshot["weights"],snapshot["dim"],snapshot["spacing"],power,mode)
+	return _commit_weather(snapshot,result)
+
+func _commit_weather(snapshot: Dictionary, result: Dictionary) -> String:
+	last_changed_cells=0
 	if not str(result["error"]).is_empty():
 		return str(result["error"])
+	if snapshot.is_empty() or not is_instance_valid(terrain) or terrain.get_instance_id()!=int(snapshot["terrain_id"]):
+		return "Aşındırma iptal: arazi değişti."
+	var data: Object=terrain.get("data")
+	var size := int(terrain.call("get_region_size"))
+	var spacing := float(terrain.get("vertex_spacing"))
+	if data==null or data.get_instance_id()!=int(snapshot["data_id"]) or size!=int(snapshot["size"]) or spacing!=float(snapshot["spacing"]):
+		return "Aşındırma iptal: arazi verisi değişti."
+	var regions := _regions()
+	if regions.is_empty():
+		return region_error
+	var source: PackedFloat64Array=snapshot["source"]
+	var weights: PackedFloat32Array=snapshot["weights"]
+	var dim: Vector2i=snapshot["dim"]
+	var low: Vector2i=snapshot["low"]
+	var center: Vector2=snapshot["center"]
+	var radius: float=snapshot["radius"]
 	var values: PackedFloat32Array=result["values"]
+	if values.size()!=source.size():
+		return "Weather result size mismatch."
 	var changes := {}
 	var originals := {}
-	for i in range(count):
-		if weights[i]<=0.0 or float(values[i])==source[i]:
-			continue
+	# Verify all in-footprint samples including previously invalid cells.
+	# No stale worker result may overwrite another editor/native modification.
+	for i in range(source.size()):
 		var key := low+Vector2i(i%dim.x,floori(float(i)/dim.x))
-		originals[key]=source[i]
-		changes[key]=values[i]
+		if (Vector2(key)-center/spacing).length()>=radius/spacing:
+			continue
+		var live := _sample(regions,key,size,spacing,data)
+		if weights[i]<=0.0:
+			if is_finite(live):
+				return "Aşındırma iptal: yüzey maskesi değişti."
+			continue
+		if not is_finite(live) or live!=source[i]:
+			return "Aşındırma iptal: yükseklik değişti."
+		if float(values[i])!=source[i]:
+			originals[key]=source[i]
+			changes[key]=values[i]
 	last_weather_mass_error=float(result["mass_error"])
 	last_weather_moved=float(result["moved"])
 	if changes.is_empty():
 		return "Weather: no movable material at this slope."
 	begin()
-	before=originals
 	var error := _write(regions,changes,size,true)
+	if error.is_empty():
+		before=originals
 	end()
 	return error
 
