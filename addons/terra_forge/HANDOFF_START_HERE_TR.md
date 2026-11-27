@@ -1,5 +1,11 @@
 # TerraForge Mobile — YENİ SOHBETTE BURADAN BAŞLA
 
+## 27 Kasım 2026 — Redmi Note 8 Pro 147/147 ve ayrı profil oturumu
+
+Tam oturumda 147 regresyonun tamamı geçti. Eksik yükseklik, eksik katman ve bozuk katman kayıtları üç beklenen veri koruma testiyle eşleşti. Optimize M9 dört test ve 12 rota boyunca 8.640 fizik adımı kaydetti. Eksik ray ve havada kalma sıfır. Android üçüncü performans profili sırasında duraklama bildirdi. İki tamamlanmış profil ve 152 ayrıntı kaydı korundu. İlk ABBA bloğu eksik kaldığı için kare hızı kararı açık. [Karar defteri](P1_5_11_DECISION_LEDGER.json)
+
+`20f114aa3948` paketi **Yalnız profiller** seçeneğine 56 eşleştirilmiş ve dört gözlem profilinin tamamını ekler. Aynı terrain ağacını kullanır ve 147 regresyon kaydı ayrı kalır. Profil sırası, ayarlar ve JSON dışa aktarımı yazılımsal Mobile Renderer üzerinde doğrulandı. Sırada cihazda yalnız profil oturumu ve 30 dakikalık dayanıklılık var. [Paket CI](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45968613300) · [Paket](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45968613300/artifacts/15183853223)
+
 ## 26 Kasım 2026 — Redmi Note 8 Pro hedefli test ve M9 düzeltmesi
 
 M10 `164fb6a7b789` ile 12/12 profil ve 18 ayrıntı kaydı tamamlandı. Dört M9 testinden ikisi, aynı rotanın bir fizik adımı geç bitmesini farklı rota saydı. Kaydedilen dokuz rotada 6.480 fizik adımı boyunca eksik ray veya havada kalma görülmedi. M9 karşılaştırması artık tamamlanan hedefleri ve rota sayaçlarını kullanıyor. Varış adımları ölçüm olarak kaydediliyor. [PR #90](https://github.com/mehmetdem2005/FareOyunu/pull/90) · [Birleşik CI](https://github.com/mehmetdem2005/FareOyunu/actions/runs/45862782494)

@@ -40,9 +40,9 @@
     }
   },
   "device_gate": {
-    "status": "OPTIMIZED_QUICK_CAPTURED_M9_RETEST_OPEN",
+    "status": "PHONE_REGRESSIONS_COMPLETE_FULL_PROFILES_AND_SOAK_OPEN",
     "baseline": "P1_5_11_ANDROID_BASELINE.json",
-    "note": "Optimized Redmi Note 8 Pro run captured all 12 profiles. Two M9 assertions rejected safe one-tick arrival differences. The corrected package is ready for a phone retest. Full, soak and Android lifecycle remain open.",
+    "note": "All 147 tests passed on the Redmi Note 8 Pro. Android paused profile 3 and the report preserved two completed profiles. The 60-profile matrix can now be run in a fresh session without repeating regressions.",
     "quick_report": "P1_5_11_ANDROID_QUICK_20261126.json"
   },
   "experiments": [
@@ -1925,9 +1925,9 @@
     }
   ],
   "next": [
-    "Confirm the four M9 tests on the Redmi Note 8 Pro with the corrected package.",
-    "Carry F/32 forward as the leading device candidate and retain paired frame p95/p99 and completed work. The main phone frame target remains open.",
-    "Record full, 30-minute soak and separate real Android background/resume evidence before device closure."
+    "Run the 60-profile matrix in the Yalnız profiller mode and keep the 147/147 Android regression evidence from the prior session.",
+    "Evaluate the completed ABBA/BAAB blocks before choosing an engine and cache cap for promotion.",
+    "Complete the 30-minute endurance run and record any remaining device qualification evidence."
   ],
   "rule": "Every experiment must end in a decision: adopt opt-in code, keep existing, reject, park, or diagnostic-only. Record exact commit/run, baseline/candidate, equal-work caveat, safety, cost, next action; do not rerun identical experiments without a named new hypothesis. PASS is correctness evidence not performance promotion. No force push, no default change without authorization.",
   "revisit_register": {
@@ -2930,7 +2930,7 @@
       },
       "combined_ci_status": "SUCCESS_147_OF_147_PLUS_EXISTING_RENDERER",
       "android_waypoint_fix": {
-        "status": "MERGED_CI_VERIFIED_PHONE_RETEST_OPEN",
+        "status": "DEVICE_VERIFIED_4_OF_4",
         "cause": "The test required identical arrival tick arrays for corresponding ordered waypoints.",
         "reported_arrivals": [
           [
@@ -2953,11 +2953,19 @@
         "package_sha": "c44d427b3c4746d24b7c35671f64338eb4034f29",
         "package_ci": 45860846130,
         "artifact": 15138167040,
-        "verification": "Replayed both timestamp orders. Both pass. A missing ray and unequal support-transfer count still fail. Verified all four Godot M9 routes and corresponding adapted tests."
+        "verification": "Replayed both timestamp orders. Both pass. A missing ray and unequal support-transfer count still fail. Verified all four Godot M9 routes and corresponding adapted tests.",
+        "phone_full_confirmation": {
+          "tests_pass": 4,
+          "routes": 12,
+          "ticks": 8640,
+          "missing_rays": 0,
+          "airborne_ticks": 0,
+          "denied_ticks": 13
+        }
       }
     },
     "m10": {
-      "status": "QUICK_DEVICE_SCREEN_CAPTURED_M9_RETEST_OPEN",
+      "status": "PHONE_REGRESSION_VERIFIED_FULL_MATRIX_PENDING",
       "sha": "f5a2cb3e1f143ad087e1aaa44881cf1eb3441cfa",
       "branch": "tools/terraforge-android-m10-preflight",
       "ci": 45840847374,
@@ -3174,6 +3182,89 @@
         "thermal_status": null,
         "gpu_frame_time_ms": null,
         "decision": "Select F/32 for the next controlled device run. Keep runtime defaults. I-G is slower in its paired block and I-H shows no clear frame-rate gain. The prior-version device recording came from a separate session and completed fewer meshes. Use same-session version comparisons for attribution."
+      },
+      "full_device_partial": {
+        "source_sha256": "ac19633e3453f2fac123e5c255c3ac13344d4412f199a9f08406a42fa67f74c0",
+        "build_commit": "c44d427b3c4746d24b7c35671f64338eb4034f29",
+        "terrain_commit": "5700c89dd6232a59abe80e9be95cd4a577939aac",
+        "terrain_tree": "6bfc84bf954513398cdd9407a40a948f289e9c2f",
+        "device": {
+          "adapter": "Mali-G76 MC4",
+          "cores": 8,
+          "cpu": "",
+          "display": "Android",
+          "godot": "4.7.2-stable (official)",
+          "headless": false,
+          "model": "Redmi Note 8 Pro",
+          "os": "Android",
+          "os_version": "30.V12.5.8.0.RGGMIXM",
+          "physics_hz": 60,
+          "renderer": "mobile",
+          "viewport": [
+            1812,
+            883
+          ]
+        },
+        "runtime_features": {
+          "debug": true,
+          "editor": true,
+          "release": false,
+          "template": false
+        },
+        "tests_passed": 147,
+        "tests_failed": 0,
+        "expected_error_cases": [
+          "test_data_safety",
+          "test_live_layers",
+          "test_layer_integrity"
+        ],
+        "completed_profiles": 2,
+        "planned_profiles": 60,
+        "profile_interruptions": [
+          "application paused during profile 3"
+        ],
+        "lifecycle_pause_count": 4,
+        "lifecycle_resume_count": 3,
+        "last_pause_profile": 3,
+        "complete_details": 152,
+        "missing_details": 0,
+        "completed_profile_rows": [
+          {
+            "sequence": 1,
+            "arm": "F",
+            "pages": 16,
+            "fps": 45.147,
+            "p95_bucket_ms": 40.0,
+            "p99_bucket_ms": 40.0,
+            "accepted_reads": 1102,
+            "meshes": 282
+          },
+          {
+            "sequence": 2,
+            "arm": "F",
+            "pages": 32,
+            "fps": 41.504,
+            "p95_bucket_ms": 40.0,
+            "p99_bucket_ms": 40.0,
+            "accepted_reads": 508,
+            "meshes": 318
+          }
+        ],
+        "decision": "Preserve regression and lifecycle evidence. Profile 3 was interrupted, leaving the first ABBA comparison incomplete. Use a fresh full profile sequence with the same terrain tree."
+      },
+      "profiles_only_package": {
+        "build_commit": "20f114aa394881e32a945aebe016bed7fc9f4900",
+        "terrain_commit": "5700c89dd6232a59abe80e9be95cd4a577939aac",
+        "addon_tree": "6bfc84bf954513398cdd9407a40a948f289e9c2f",
+        "ci": 45968613300,
+        "artifact": 15183853223,
+        "ci_tests": 147,
+        "software_mobile_profiles": 60,
+        "mode_planned_tests": 0,
+        "mode_timing_profiles": 56,
+        "mode_observer_profiles": 4,
+        "profile_seconds_device": 20,
+        "status": "CI_VERIFIED_PHONE_PROFILES_PENDING"
       }
     },
     "geometry_and_streaming": {
