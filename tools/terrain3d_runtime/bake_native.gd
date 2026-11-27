@@ -81,6 +81,16 @@ func _ready() -> void:
 		if saved == null or saved.get_format() != pixels.get_format() or saved.get_size() != pixels.get_size() or not saved.has_mipmaps() or saved.get_data() != pixels.get_data():
 			fail("surface mip bytes changed "+kind)
 			return
+		# External ImageTexture resources keep binary images out of text scenes.
+		var texture := ImageTexture.create_from_image(pixels)
+		var external := "res://world/"+kind+"_texture.res"
+		if ResourceSaver.save(texture,external,ResourceSaver.FLAG_COMPRESS) != OK:
+			fail("external surface texture "+kind)
+			return
+		var loaded := ResourceLoader.load(external,"Texture2D",ResourceLoader.CACHE_MODE_IGNORE) as Texture2D
+		if loaded == null or loaded.get_image()==null or loaded.get_image().get_data()!=pixels.get_data():
+			fail("external surface texture bytes changed "+kind)
+			return
 	print("NATIVE_SURFACE_MIPS_OK count=4")
 	doc["surface_mips"] = "godot_image_res_lossless"
 	doc["native_regions"] = entries

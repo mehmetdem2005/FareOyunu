@@ -1,10 +1,10 @@
 @tool
 extends RefCounted
 ## Native RF maps are authoritative; no legacy terrain copy or mesh worker.
-const MAX_DAB_CELLS := 16384
-const MAX_STROKE_CELLS := 65536
+const MAX_DAB_CELLS := 85000 # 36m at .25m: at most 290x290 candidate cells
+const MAX_STROKE_CELLS := 131072
 const HISTORY_LIMIT := 8
-const HISTORY_CELL_LIMIT := 131072
+const HISTORY_CELL_LIMIT := 262144
 var terrain: Node3D
 var before: Dictionary = {}
 var after: Dictionary = {}
@@ -14,6 +14,8 @@ var last_hit := Vector2(INF,INF)
 var flatten_height := NAN
 var last_changed_cells := 0
 var region_error := ""
+var last_dab_ms := -100000
+var last_dab_duration_ms := 0
 
 func attach(node: Node3D) -> void:
 	terrain = node
@@ -51,7 +53,11 @@ func _regions() -> Dictionary:
 		if result.has(loc):
 			region_error = "Duplicate native location %s." % str(loc)
 			return {}
-		result[loc]={"region":reg}
+		var img: Image = reg.call("get_height_map")
+		if img == null or img.get_format()!=Image.FORMAT_RF or img.get_size()!=Vector2i(size,size):
+			region_error = "RF source invalid at %s; do not edit converted data." % str(loc)
+			return {}
+		result[loc]={"region":reg,"image":img}
 	return result
 
 func _loc(p: Vector2i, size: int) -> Vector2i:
@@ -61,18 +67,22 @@ func _world(p: Vector2i, spacing: float) -> Vector3:
 	return Vector3(p.x*spacing,0,p.y*spacing)
 
 func _sample(regions: Dictionary, p: Vector2i, size: int, spacing: float, data: Object) -> float:
-	if not regions.has(_loc(p,size)):
+	var loc := _loc(p,size)
+	if not regions.has(loc):
 		return NAN
 	var pos := _world(p,spacing)
 	if bool(data.call("get_control_hole",pos)):
 		return NAN
-	return float(data.call("get_height",pos))
+	var img: Image = regions[loc]["image"]
+	return img.get_pixelv(p-loc*size).r
 
 func begin() -> void:
 	before = {}
 	after = {}
 	last_hit = Vector2(INF,INF)
 	flatten_height = NAN
+	last_dab_ms = -100000
+	last_dab_duration_ms = 0
 
 func dab(hit: Vector3, tool: int, radius: float, power: float) -> String:
 	last_changed_cells = 0
@@ -91,10 +101,17 @@ func dab(hit: Vector3, tool: int, radius: float, power: float) -> String:
 		return ""
 	var grid := center/spacing
 	var r := radius/spacing
-	if (2*ceili(r)+1)*(2*ceili(r)+1)>MAX_DAB_CELLS:
-		return "Brush too large for current native edit budget."
 	var low := Vector2i(floori(grid.x-r),floori(grid.y-r))
 	var high := Vector2i(ceili(grid.x+r),ceili(grid.y+r))
+	var cells := (high.x-low.x+1)*(high.y-low.y+1)
+	if cells>MAX_DAB_CELLS:
+		return "Brush footprint exceeds grid budget; reduce radius for this spacing."
+	# No queued backlog. Large dabs are spaced by measured previous cost;
+	# the first dab always runs, and full-resolution footprint is preserved.
+	var now := Time.get_ticks_msec()
+	if cells>16384 and now-last_dab_ms<maxi(75,last_dab_duration_ms*2):
+		return ""
+	var started := now
 	# Only Flatten needs a fixed target. Other tools may have a valid footprint
 	# even when the nearest grid vertex is outside a region or a hole.
 	if tool == 3 and not is_finite(flatten_height):
@@ -136,12 +153,19 @@ func dab(hit: Vector3, tool: int, radius: float, power: float) -> String:
 				if not before.has(p):
 					originals[p]=h
 	if before.size()+originals.size()>MAX_STROKE_CELLS:
-		return "Stroke budget reached; release and continue."
+		# Commit a bounded history segment and continue the same gesture.
+		# Rebuild originals from the current pre-dab values, not older segment.
+		_commit_segment()
+		originals.clear()
+		for p: Vector2i in changes:
+			originals[p]=_sample(regions,p,size,spacing,data)
 	before.merge(originals)
 	if not changes.is_empty():
 		var write_error := _write(regions,changes,size,true)
 		if not write_error.is_empty():
 			return write_error
+	last_dab_ms = Time.get_ticks_msec()
+	last_dab_duration_ms = last_dab_ms-started
 	last_hit = center
 	if changes.is_empty() and tool == 0:
 		return "Raise: no editable samples at %.2f, %.2f (grid %d / %.2fm)." % [hit.x,hit.z,size,spacing]
@@ -155,10 +179,11 @@ func _write(regions: Dictionary, values: Dictionary, size: int, record: bool) ->
 	var written := 0
 	for p: Vector2i in values:
 		var loc := _loc(p,size)
-		var pos := _world(p,spacing)
-		var old := float(data.call("get_height",pos))
-		data.call("set_height",pos,float(values[p]))
-		var height := float(data.call("get_height",pos))
+		var img: Image = regions[loc]["image"]
+		var pixel := p-loc*size
+		var old := img.get_pixelv(pixel).r
+		img.set_pixelv(pixel,Color(float(values[p]),0,0,1))
+		var height := img.get_pixelv(pixel).r
 		# RF rounds to float32. Validate actual native readback, not planned edits.
 		if not is_finite(height) or not is_equal_approx(height,float(values[p])):
 			write_failures += 1
@@ -188,6 +213,9 @@ func _write(regions: Dictionary, values: Dictionary, size: int, record: bool) ->
 	return ""
 
 func end() -> void:
+	_commit_segment()
+
+func _commit_segment() -> void:
 	if not after.is_empty():
 		history.append({"before":before,"after":after})
 		redo_history.clear()

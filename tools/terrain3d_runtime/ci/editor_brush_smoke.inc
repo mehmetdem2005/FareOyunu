@@ -45,7 +45,40 @@ func _ci_editor_brush_smoke() -> void:
         push_error("NATIVE_EDITOR_BRUSH_FAIL: redo")
         get_tree().quit(1)
         return
+    _brush.begin()
+    var large_error := _brush.dab(Vector3(64,3,64),0,29.5,9.25)
+    _brush.end()
+    if not large_error.is_empty() or _brush.last_changed_cells<43000 or absf(float(data.call("get_height",center))-12.25)>0.00001:
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: large 29.5m dab: "+large_error)
+        get_tree().quit(1)
+        return
+    print("NATIVE_EDITOR_LARGE_BRUSH_OK radius=29.5 changed=",_brush.last_changed_cells)
+    _brush.begin()
+    large_error = _brush.dab(Vector3(64,12.25,64),0,36.0,1.0)
+    _brush.end()
+    if not large_error.is_empty() or _brush.last_changed_cells<64000 or absf(float(data.call("get_height",center))-13.25)>0.00001:
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: 36m dab: "+large_error)
+        get_tree().quit(1)
+        return
+    print("NATIVE_EDITOR_LARGE_BRUSH_OK radius=36 changed=",_brush.last_changed_cells)
     _toggle_brush(false)
     print("NATIVE_EDITOR_BRUSH_OK regions=1 radius=8 power=3 changed=",changed," height=",height)
-    # Never save the disposable scene.
+    # Disposable CI workspace only. Native pre-save should persist region files.
+    if get_editor_interface().save_scene()!=OK:
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: editor save")
+        get_tree().quit(1)
+        return
+    var scene_bytes := FileAccess.get_file_as_bytes("res://terraforge_workspace.tscn").size()
+    var saved_region_path := str(_active.get("data_directory")).path_join("terrain3d_00_00.res")
+    var saved_region := ResourceLoader.load(saved_region_path,"Terrain3DRegion",ResourceLoader.CACHE_MODE_IGNORE)
+    if scene_bytes>262144 or saved_region==null:
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: scene storage "+str(scene_bytes))
+        get_tree().quit(1)
+        return
+    var saved_height: Image = saved_region.call("get_height_map")
+    if saved_height==null or saved_height.get_format()!=Image.FORMAT_RF or absf(saved_height.get_pixel(256,256).r-13.25)>0.00001:
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: persisted RF height")
+        get_tree().quit(1)
+        return
+    print("NATIVE_EDITOR_EXTERNAL_STORAGE_OK scene_bytes=",scene_bytes)
     get_tree().quit(0)

@@ -375,6 +375,9 @@ func _set_active(node: Node3D) -> void:
     _finish_stroke()
     _active = node
     _brush.attach(node)
+    if is_instance_valid(node) and str(node.get("data_directory")).is_empty():
+        if not _ensure_data_directory(node):
+            push_warning("TerraForge: cannot assign native data directory; use panel Save before closing.")
     _sync_view_profile()
     _touch_session = false
     _touch_index = -1
@@ -486,12 +489,16 @@ func _create_terrain(side: int) -> void:
         _set_status("Native region count mismatch.")
         return
     for kind: String in ["soil","rock","sand","grass"]:
-        var pixels := ResourceLoader.load("res://world/"+kind+"_mips.res","Image",ResourceLoader.CACHE_MODE_IGNORE) as Image
-        if pixels == null or pixels.is_empty():
+        var texture := ResourceLoader.load("res://world/"+kind+"_texture.res","Texture2D") as Texture2D
+        if texture == null:
             terrain.free()
-            _set_status("Native surface texture missing.")
+            _set_status("External surface texture missing: "+kind)
             return
-        material.call("set_shader_param",kind+"_tex",ImageTexture.create_from_image(pixels))
+        material.call("set_shader_param",kind+"_tex",texture)
+    if not _ensure_data_directory(terrain):
+        terrain.free()
+        _set_status("Cannot create native data directory.")
+        return
     material.call("set_show_checkered",false)
     var view := get_editor_interface().get_editor_viewport_3d(0)
     if view != null and view.get_camera_3d() != null:
@@ -500,8 +507,48 @@ func _create_terrain(side: int) -> void:
     selection.clear()
     selection.add_node(terrain)
     _set_active(terrain)
-    _set_status("Native %d regions created. Save data and scene." % (side*side))
+    _set_status("Native %d regions created. Save terrain and scene." % (side*side))
     _popup.hide()
+
+# Native Terrain3D persists modified regions on Godot EDITOR_PRE_SAVE.
+# A new empty directory retains current data (no destructive reload).
+func _ensure_data_directory(node: Node3D) -> bool:
+    if not str(node.get("data_directory")).is_empty():
+        return true
+    var folder := "res://terraforge_data/native_"+Crypto.new().generate_random_bytes(12).hex_encode()
+    if DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(folder)) != OK:
+        return false
+    node.call("set_data_directory",folder)
+    return str(node.get("data_directory"))==folder
+
+# Migrate existing embedded surface textures without replacing custom pixels.
+# Explicit Save only; never read GPU textures per frame.
+func _externalize_surfaces(node: Node3D) -> bool:
+    var material: Resource = node.get("material")
+    if material == null:
+        return false
+    var folder := str(node.get("data_directory")).path_join("surfaces")
+    for kind: String in ["soil","rock","sand","grass"]:
+        var texture := material.call("get_shader_param",kind+"_tex") as Texture2D
+        if texture == null:
+            # Terrain3D property storage holds the actual resource if getter returns RID.
+            var params: Dictionary = material.call("_get_shader_parameters")
+            texture = params.get(kind+"_tex") as Texture2D
+        if texture == null:
+            return false
+        if not texture.resource_path.is_empty() and not texture.resource_path.contains("::"):
+            continue
+        if DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(folder)) != OK:
+            return false
+        var path := folder.path_join(kind+"_"+Crypto.new().generate_random_bytes(8).hex_encode()+".res")
+        if ResourceSaver.save(texture,path,ResourceSaver.FLAG_COMPRESS) != OK:
+            return false
+        var saved := ResourceLoader.load(path,"Texture2D",ResourceLoader.CACHE_MODE_IGNORE) as Texture2D
+        if saved == null or saved.get_size()!=texture.get_size():
+            return false
+        # Reload the exact saved resource rather than embed it in the scene.
+        material.call("set_shader_param",kind+"_tex",saved)
+    return true
 
 func _toggle_brush(enabled: bool) -> void:
     if enabled and not is_instance_valid(_active):
@@ -530,7 +577,18 @@ func _save_active() -> void:
     if not is_instance_valid(_active):
         _set_status("No native terrain selected.")
         return
-    _set_status(_brush.save_snapshot())
+    if not _ensure_data_directory(_active):
+        _set_status("Cannot create native data directory; scene not saved.")
+        return
+    if not _externalize_surfaces(_active):
+        _set_status("Surface externalization failed; scene not saved.")
+        return
+    var result := _brush.save_snapshot()
+    if not result.begins_with("Native RF saved"):
+        _set_status(result)
+        return
+    var error := get_editor_interface().save_scene()
+    _set_status("Terrain and scene saved." if error==OK else "Terrain snapshot saved; scene save failed: "+error_string(error))
 
 func _undo() -> void:
     _finish_stroke()
