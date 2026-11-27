@@ -311,6 +311,9 @@ uniform sampler2D soil_tex : source_color, filter_linear_mipmap, repeat_enable;
 uniform sampler2D rock_tex : source_color, filter_linear_mipmap, repeat_enable;
 uniform sampler2D sand_tex : source_color, filter_linear_mipmap, repeat_enable;
 uniform sampler2D grass_tex : source_color, filter_linear_mipmap, repeat_enable;
+// Explicit opt-in. Near material and default reference remain unchanged.
+uniform bool far_exact_texture_skip = false;
+uniform float far_texture_skip_start_m : hint_range(16.0, 512.0, 1.0) = 64.0;
 
 void fragment() {
 	// Recover UVs
@@ -493,13 +496,59 @@ void fragment() {
 	float variation = 0.5 + 0.25*sin(p.x*0.073 + p.z*0.026) + 0.25*sin(p.z*0.119-p.x*0.032);
 	float meadow = smoothstep(0.25, 0.65, variation) * (1.0-low) * (1.0-high) * (1.0-steep);
 	vec2 world_uv = p.xz;
-	vec3 soil = texture(soil_tex, world_uv / 2.6).rgb;
-	vec3 grass = texture(grass_tex, world_uv / 3.1).rgb;
-	vec3 sand = texture(sand_tex, world_uv / 1.8).rgb;
-	vec3 rock = texture(rock_tex, world_uv / 5.0).rgb;
-	vec3 base = mix(soil, grass, meadow);
-	base = mix(base,sand,low*(1.0-steep));
-	base = mix(base,rock,max(steep,high*0.58));
+	float sand_weight = low*(1.0-steep);
+	float rock_weight = max(steep,high*0.58);
+	// Derivatives evaluated in uniform flow, before any fragment-varying branch.
+	vec2 dx = dFdx(world_uv);
+	vec2 dy = dFdy(world_uv);
+	vec3 base;
+	if (!far_exact_texture_skip) {
+		vec3 soil = texture(soil_tex, world_uv / 2.6).rgb;
+		vec3 grass = texture(grass_tex, world_uv / 3.1).rgb;
+		vec3 sand = texture(sand_tex, world_uv / 1.8).rgb;
+		vec3 rock = texture(rock_tex, world_uv / 5.0).rgb;
+		base = mix(soil, grass, meadow);
+		base = mix(base,sand,low*(1.0-steep));
+		base = mix(base,rock,max(steep,high*0.58));
+	} else if (distance(p.xz, v_camera_pos.xz) >= far_texture_skip_start_m) {
+		// Skip only mathematically zero-contribution inputs, never approximate weights.
+		// Explicit gradients preserve the mip footprint in non-uniform control flow.
+		if (rock_weight >= 1.0) {
+			base = textureGrad(rock_tex, world_uv / 5.0, dx / 5.0, dy / 5.0).rgb;
+		} else {
+			if (sand_weight >= 1.0) {
+				base = textureGrad(sand_tex, world_uv / 1.8, dx / 1.8, dy / 1.8).rgb;
+			} else {
+				if (meadow <= 0.0) {
+					base = textureGrad(soil_tex, world_uv / 2.6, dx / 2.6, dy / 2.6).rgb;
+				} else if (meadow >= 1.0) {
+					base = textureGrad(grass_tex, world_uv / 3.1, dx / 3.1, dy / 3.1).rgb;
+				} else {
+					vec3 soil = textureGrad(soil_tex, world_uv / 2.6, dx / 2.6, dy / 2.6).rgb;
+					vec3 grass = textureGrad(grass_tex, world_uv / 3.1, dx / 3.1, dy / 3.1).rgb;
+					base = mix(soil, grass, meadow);
+				}
+				if (sand_weight > 0.0) {
+					vec3 sand = textureGrad(sand_tex, world_uv / 1.8, dx / 1.8, dy / 1.8).rgb;
+					base = mix(base, sand, sand_weight);
+				}
+			}
+			if (rock_weight > 0.0) {
+				vec3 rock = textureGrad(rock_tex, world_uv / 5.0, dx / 5.0, dy / 5.0).rgb;
+				base = mix(base, rock, rock_weight);
+			}
+		}
+	} else {
+		// Reference path uses explicit gradients too, so the distance branch does
+		// not invalidate implicit derivatives at its boundary.
+		vec3 soil = textureGrad(soil_tex, world_uv / 2.6, dx / 2.6, dy / 2.6).rgb;
+		vec3 grass = textureGrad(grass_tex, world_uv / 3.1, dx / 3.1, dy / 3.1).rgb;
+		vec3 sand = textureGrad(sand_tex, world_uv / 1.8, dx / 1.8, dy / 1.8).rgb;
+		vec3 rock = textureGrad(rock_tex, world_uv / 5.0, dx / 5.0, dy / 5.0).rgb;
+		base = mix(soil, grass, meadow);
+		base = mix(base,sand,sand_weight);
+		base = mix(base,rock,rock_weight);
+	}
 	ALBEDO = base * mix(0.82,1.12,variation);
 	ROUGHNESS = 0.88;
 	SPECULAR = 0.14;

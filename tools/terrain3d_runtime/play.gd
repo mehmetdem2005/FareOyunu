@@ -4,6 +4,7 @@ const Recorder = preload("res://session_recorder.gd")
 const PreviewRange = preload("res://preview_range.gd")
 var preview_range := PreviewRange.new()
 var range_label: Label
+var far_material_skip := false
 var recorder := Recorder.new()
 var report_path := ""
 var load_begin := 0
@@ -171,6 +172,15 @@ func make_ui() -> void:
 		apply_preview_range("manual_selection")
 	)
 	box.add_child(range_options)
+	var far_skip := CheckButton.new()
+	far_skip.text = "Uzak doku tasarrufu (deneysel)"
+	far_skip.toggled.connect(func(enabled: bool):
+		far_material_skip = enabled
+		if backend != null:
+			backend.terrain.get("material").call("set_shader_param","far_exact_texture_skip",enabled)
+		recorder.event("far_texture_skip",enabled)
+	)
+	box.add_child(far_skip)
 
 func apply_preview_range(reason: String) -> void:
 	var old_far := camera.far
@@ -238,6 +248,7 @@ func request_load() -> void:
 		fail_load("Başlangıç yüksekliği okunamadı")
 		return
 	backend = next
+	backend.terrain.get("material").call("set_shader_param","far_exact_texture_skip",far_material_skip)
 	spawn = Vector3(player.position.x,height+SPAWN_CLEARANCE_M,player.position.z)
 	respawn()
 	loading = false
@@ -250,6 +261,7 @@ func request_load() -> void:
 	# CPU wall-clock calls, not GPU completion timestamps. Recorded once, not per frame.
 	recorder.event("startup_phases_us",phases)
 	recorder.event("startup_io",backend.startup_io)
+	recorder.event("far_texture_skip",far_material_skip)
 	# Analytical clipmap tile coverage, not a visibility or GPU timing measurement.
 	var lod_count := int(backend.terrain.get("mesh_lods"))
 	var tile_size := int(backend.terrain.get("mesh_size"))
