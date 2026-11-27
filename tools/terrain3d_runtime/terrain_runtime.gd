@@ -56,9 +56,12 @@ func initialize(camera: Camera3D, collision_target: Node3D, spacing: float, prof
 			terrain.free()
 			terrain = null
 			return ERR_CANT_CREATE
+		material.call("set_show_checkered", false)
 		material.set("shader_override", shader)
 		material.set("shader_override_enabled", true)
 		if profile == "world":
+			material.call("set_shader_param", "textures_enabled", false)
+			material.call("set_shader_param", "macro_variation_enabled", false)
 			for kind in ["soil","rock","sand","grass"]:
 				var pixels := Image.load_from_file("res://world/"+kind+".png")
 				if pixels == null or pixels.is_empty():

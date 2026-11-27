@@ -65,7 +65,7 @@ group_uniforms general_uniforms;
 uniform float ground_level : hint_range(-1000., 1000.) = 0.0;
 uniform float region_blend : hint_range(.001, 1., 0.001) = 0.25;
 uniform bool flat_terrain_normals = false;
-uniform bool textures_enabled = true;
+uniform bool textures_enabled = false;
 uniform float blend_sharpness : hint_range(0, 1) = 0.5;
 group_uniforms;
 
@@ -77,7 +77,7 @@ uniform int auto_overlay_texture : hint_range(0, 31) = 1;
 group_uniforms;
 
 group_uniforms macro_variation;
-uniform bool macro_variation_enabled = true;
+uniform bool macro_variation_enabled = false;
 uniform vec3 macro_variation1 : source_color = vec3(1.);
 uniform vec3 macro_variation2 : source_color = vec3(1.);
 uniform float macro_variation_slope : hint_range(0., 1.)  = 0.333;
@@ -291,6 +291,187 @@ uniform sampler2D sand_tex : source_color, filter_linear_mipmap, repeat_enable;
 uniform sampler2D grass_tex : source_color, filter_linear_mipmap, repeat_enable;
 
 void fragment() {
+	// Recover UVs
+	vec2 uv = UV;
+	vec2 uv2 = UV2;
+
+	// Lookup offsets, ID and blend weight
+	vec3 region_uv = get_index_uv(uv2);
+	const vec3 offsets = vec3(0, 1, 2);
+	vec2 index_id = floor(uv);
+	vec2 weight = min(fract(uv), 1.0 - 1e-7);
+	vec2 invert = 1.0 - weight;
+	vec4 weights = vec4(
+		invert.x * weight.y, // 0
+		weight.x * weight.y, // 1
+		weight.x * invert.y, // 2
+		invert.x * invert.y  // 3
+	);
+
+	ivec3 index[4];
+	// control map lookups, used for some normal lookups as well
+	index[0] = get_index_coord(index_id + offsets.xy);
+	index[1] = get_index_coord(index_id + offsets.yy);
+	index[2] = get_index_coord(index_id + offsets.yx);
+	index[3] = get_index_coord(index_id + offsets.xx);
+
+	vec3 base_ddx = dFdxCoarse(v_vertex);
+	vec3 base_ddy = dFdyCoarse(v_vertex);
+	vec4 base_dd = vec4(base_ddx.xz, base_ddy.xz);
+	// Calculate the effective mipmap for regionspace
+	float region_mip = log2(max(length(base_ddx.xz), length(base_ddy.xz)) * _vertex_density);
+
+	// Color map
+	vec4 color_map = region_uv.z > -1.0 ? textureLod(_color_maps, region_uv, region_mip) : COLOR_MAP;
+
+	if (flat_terrain_normals) {
+		NORMAL = normalize(cross(dFdyCoarse(VERTEX),dFdxCoarse(VERTEX)));
+		TANGENT = normalize(cross(NORMAL, VIEW_MATRIX[2].xyz));
+		BINORMAL = normalize(cross(NORMAL, TANGENT));
+	}
+
+	// defaults
+	vec4 normal_rough = vec4(0., 1., 0., 0.7);
+	vec4 albedo_height = vec4(1.);
+	float normal_map_depth = 1.;
+	float ao = 1.0;
+	float ao_affect = 0.;
+
+	if (textures_enabled) {
+		// set to zero before accumulation
+		albedo_height = vec4(0.);
+		normal_rough = vec4(0.);
+		normal_map_depth = 0.;
+		ao = 0.;
+		float total_weight = 0.;
+		float sharpness = fma(56., blend_sharpness, 8.);
+
+		// Get index control data
+		// 1 - 4 lookups
+		uvec4 control = floatBitsToUint(vec4(
+			texelFetch(_control_maps, index[0], 0).r,
+			texelFetch(_control_maps, index[1], 0).r,
+			texelFetch(_control_maps, index[2], 0).r,
+			texelFetch(_control_maps, index[3], 0).r));
+
+		{
+			// Auto blend calculation
+			float auto_blend = clamp(fma(auto_slope * 2.0, (v_normal.y - 1.0), 1.0)
+				- auto_height_reduction * 0.01 * v_vertex.y, 0.0, 1.0);
+			// Enable Autoshader if outside regions or painted in regions, otherwise manual painted
+			uvec4 is_auto = (control & uvec4(0x1u)) |
+				uvec4(lessThan(ivec4(index[0].z, index[1].z, index[2].z, index[3].z), ivec4(0)));
+			uint u_auto =
+				((uint(auto_base_texture) & 0x1Fu) << 27u) |
+				((uint(auto_overlay_texture) & 0x1Fu) << 22u) |
+				((uint(fma(auto_blend, 255.0 , 0.5)) & 0xFFu) << 14u);
+			control = control * (1u - is_auto) + u_auto * is_auto;
+		}
+
+
+		// Texture weights
+		// Vectorised Deocode of all texture IDs, then swizzle to per index mapping.
+		ivec4 t_id[2] = {ivec4(control >> uvec4(27u) & uvec4(0x1Fu)),
+			ivec4(control >> uvec4(22u) & uvec4(0x1Fu))};
+		ivec2 texture_ids[4] = ivec2[4](
+			ivec2(t_id[0].x, t_id[1].x),
+			ivec2(t_id[0].y, t_id[1].y),
+			ivec2(t_id[0].z, t_id[1].z),
+			ivec2(t_id[0].w, t_id[1].w));
+
+		// interpolated weights.
+		vec4 weights_id_1 = vec4(control >> uvec4(14u) & uvec4(0xFFu)) * DIV_255 * weights;
+		vec4 weights_id_0 = weights - weights_id_1;
+		vec2 t_weights[4] = {vec2(0), vec2(0), vec2(0), vec2(0)};
+		for (int i = 0; i < 4; i++) {
+				vec2 w_0 = vec2(weights_id_0[i]);
+				vec2 w_1 = vec2(weights_id_1[i]);
+				ivec2 id_0 = texture_ids[i].xx;
+				ivec2 id_1 = texture_ids[i].yy;
+				t_weights[0] += fma(w_0, vec2(equal(texture_ids[0], id_0)), w_1 * vec2(equal(texture_ids[0], id_1)));
+				t_weights[1] += fma(w_0, vec2(equal(texture_ids[1], id_0)), w_1 * vec2(equal(texture_ids[1], id_1)));
+				t_weights[2] += fma(w_0, vec2(equal(texture_ids[2], id_0)), w_1 * vec2(equal(texture_ids[2], id_1)));
+				t_weights[3] += fma(w_0, vec2(equal(texture_ids[3], id_0)), w_1 * vec2(equal(texture_ids[3], id_1)));
+		}
+
+
+		// Process control data to determine each texture ID present, so that only
+		// a single sample will be needed later, as all id are contiguous when features
+		// like detiling, scale, rotation, and projection are not present.
+		// 2 to 16 lookups
+		uint id_read = 0u; // 1 bit per possible ID
+		// world normal adjustment requires acess to previous id during next iteration
+		vec4 nrm = vec4(0.0, 1.0, 0.0, 1.0);
+
+		vec2 world_uv = v_vertex.xz;
+		for (int i = 0; i < 4; i++) {
+			for (int t = 0; t < 2; t++) {
+				int id = texture_ids[i][t];
+				uint mask = 1u << uint(id);
+				if ((id_read & mask) == 0u) {
+					// Set this id bit
+					id_read |= mask;
+					float id_w = t_weights[i][t];
+					float id_scale = _texture_uv_scale_array[id] * 0.5;
+					vec2 id_uv = fma(world_uv, vec2(id_scale), vec2(0.5));
+					vec4 i_dd = base_dd * id_scale;
+					vec4 alb = textureGrad(_texture_array_albedo, vec3(id_uv, float(id)), i_dd.xy, i_dd.zw);
+					float world_normal = clamp(fma(TBN[0], vec3(nrm.x), fma(TBN[1], vec3(nrm.z), v_normal * vec3(nrm.y))).y, 0., 1.);
+					nrm = textureGrad(_texture_array_normal, vec3(id_uv, float(id)), i_dd.xy, i_dd.zw);
+					alb.rgb *= _texture_color_array[id].rgb;
+					nrm.a = clamp(nrm.a + _texture_roughness_mod_array[id], 0., 1.);
+					// Unpack normal map for blending.
+					nrm.xyz = fma(nrm.xzy, vec3(2.0), vec3(-1.0));
+					float id_ao = length(nrm.xyz) * 2.0 - 1.0;
+					id_ao = mix(id_ao * id_ao * _texture_ao_strength_array[id] + 1.0 - _texture_ao_strength_array[id], 1.0, alb.a * alb.a);
+					// height weight modifier.
+					float id_weight = exp2(sharpness * log2(id_w + alb.a * world_normal));
+					albedo_height += alb * id_weight;
+					normal_rough += nrm * id_weight;
+					normal_map_depth += _texture_normal_depth_array[id] * id_weight;
+					ao_affect += _texture_ao_affect_array[id] * id_weight;
+					ao += id_ao * id_weight;
+					total_weight += id_weight;
+				}
+			}
+		}
+		// normalize accumulated values back to 0.0 - 1.0 range.
+		float weight_inv = 1.0 / max(total_weight, 1e-8);
+		albedo_height *= weight_inv;
+		normal_rough *= weight_inv;
+		normal_map_depth *= weight_inv;
+		ao_affect *= weight_inv;
+		ao *= weight_inv;
+	}
+
+	// Macro variation. 2 lookups
+	vec3 macrov = vec3(1.);
+	if (macro_variation_enabled) {
+		float noise1 = texture(noise_texture, (uv * noise1_scale * .1 + noise1_offset) * rotate_plane(noise1_angle)).r;
+		float noise2 = texture(noise_texture, uv * noise2_scale * .1).r;
+		macrov = mix(macro_variation1, vec3(1.), noise1);
+		macrov *= mix(macro_variation2, vec3(1.), noise2);
+		macrov = mix(vec3(1.0), macrov, clamp(v_normal.y + macro_variation_slope, 0., 1.));
+	}
+
+	// Wetness/roughness modifier, converting 0 - 1 range to -1 to 1 range, clamped to Godot roughness values
+	float roughness = clamp(fma(color_map.a - 0.5, 2.0, normal_rough.a), 0., 1.);
+
+	// Apply PBR
+	ALBEDO = albedo_height.rgb * color_map.rgb * macrov;
+	ROUGHNESS = roughness;
+	SPECULAR = 1. - roughness;
+	// Repack final normal map value.
+	NORMAL_MAP = fma(normalize(normal_rough.xzy), vec3(0.5), vec3(0.5));
+	NORMAL_MAP_DEPTH = normal_map_depth;
+
+	AO = clamp(ao, 0., 1.);
+	AO_LIGHT_AFFECT = ao_affect;
+
+
+	// Terrain3D injection contract: preserve all upstream fragment locals and outputs.
+	{
+
 	vec3 wn = normalize(v_normal);
 	vec3 p = v_vertex;
 	float steep = smoothstep(0.18, 0.58, 1.0 - abs(wn.y));
@@ -309,4 +490,10 @@ void fragment() {
 	ALBEDO = base * mix(0.82,1.12,variation);
 	ROUGHNESS = 0.88;
 	SPECULAR = 0.14;
+
+	}
+	NORMAL_MAP = vec3(0.5, 0.5, 1.0);
+	NORMAL_MAP_DEPTH = 0.0;
+	AO = 1.0;
+	AO_LIGHT_AFFECT = 0.0;
 }
