@@ -12,6 +12,7 @@ var history: Array[Dictionary] = []
 var redo_history: Array[Dictionary] = []
 var last_hit := Vector2(INF,INF)
 var flatten_height := NAN
+var last_changed_cells := 0
 
 func attach(node: Node3D) -> void:
 	terrain = node
@@ -61,6 +62,7 @@ func begin() -> void:
 	flatten_height = NAN
 
 func dab(hit: Vector3, tool: int, radius: float, power: float) -> String:
+	last_changed_cells = 0
 	if tool<0 or tool>3 or not hit.is_finite() or not is_finite(radius) or radius<=0 or not is_finite(power):
 		return "Unsupported native brush."
 	var regions := _regions()
@@ -121,6 +123,7 @@ func dab(hit: Vector3, tool: int, radius: float, power: float) -> String:
 	before.merge(originals)
 	if not changes.is_empty():
 		_write(regions,changes,size,true)
+		last_changed_cells = changes.size()
 	last_hit = center
 	return ""
 

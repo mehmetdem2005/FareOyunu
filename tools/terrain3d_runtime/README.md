@@ -28,3 +28,5 @@ Ayrı araç sahnesi: res://authoring/landform_tool.tscn (F6). [Kullanım](author
 Aç: res://terraforge_workspace.tscn; Terrain → + New, Brush. Original layout adapted, only native backend. Initial single 512 RF region, basic four tools, bounded undo/redo and verified height snapshot Save; layers, advanced tools and quality switching disabled pending migration. F5 native fixture unchanged. No old addon packaged.
 
 Native panel migration 2: +New offers 1/4/16 regions (128/256/512m side at .25m); cross-region basic brushes, holes preserved, global grid history, verified multi-region height/control/color snapshots. Native directory reload remains synchronous/Android unverified. 7 LOD default unchanged.
+
+Brush ON hides popup; Check reports Input / Hit / Edit counts and last reason. If no edits on Android, report these counters; input forwarding change is not yet touch-tested. Streaming and adjustable editor range remain planned, not implemented in this fix.

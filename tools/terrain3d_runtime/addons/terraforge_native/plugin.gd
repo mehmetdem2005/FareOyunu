@@ -35,8 +35,17 @@ var _stroke_active: bool = false
 var _touch_session: bool = false
 var _last_touch_ms: int = -100000
 var _last_stats_update_ms: int = -100000
+var _input_count := 0
+var _hit_count := 0
+var _changed_count := 0
+var _last_input_result := "Brush OFF"
+var _touch_index := -1
+var _multi_touch := false
 
 func _enter_tree() -> void:
+    # Forward viewport events even when the native node is locked/deselected.
+    # The handler still passes all events through when Brush is off.
+    set_input_event_forwarding_always_enabled()
     _toolbar = HBoxContainer.new()
     _toolbar.name = "TerraForgeQuickTools"
     _toolbar.add_theme_constant_override("separation", 3)
@@ -276,7 +285,9 @@ func _process(_delta: float) -> void:
             _active.call("set_camera",camera)
     if _popup.visible:
         var data: Object = _active.get("data")
-        _stats_label.text = "Native C++ | RF Float32 | %d regions" % int(data.call("get_region_count"))
+        _stats_label.text = "Native C++ | RF Float32 | %d regions\nInput %d | Hit %d | Edit %d" % [int(data.call("get_region_count")),_input_count,_hit_count,_changed_count]
+        if _brush_button.button_pressed:
+            _status.text = _last_input_result
 
 func _refresh_layer_ui() -> void:
     _layer_enable.visible = true
@@ -308,6 +319,12 @@ func _set_active(node: Node3D) -> void:
     _finish_stroke()
     _active = node
     _brush.attach(node)
+    _touch_session = false
+    _touch_index = -1
+    _multi_touch = false
+    _input_count = 0
+    _hit_count = 0
+    _changed_count = 0
     _brush_button.set_pressed_no_signal(false)
     _brush_button.text = "Brush"
     _set_status("Native terrain selected" if node != null else "Create terrain or select an existing one.")
@@ -322,7 +339,21 @@ func _on_selection_changed() -> void:
             _set_active(node)
             return
     if not is_instance_valid(_active):
+        var root := get_editor_interface().get_edited_scene_root()
+        if root != null:
+            var candidates: Array[Node3D] = []
+            _find_workspaces(root,candidates)
+            # Never silently select among multiple editable terrains.
+            if candidates.size() == 1:
+                _set_active(candidates[0])
+                return
         _set_active(null)
+
+func _find_workspaces(node: Node, result: Array[Node3D]) -> void:
+    if _handles(node):
+        result.append(node as Node3D)
+    for child in node.get_children():
+        _find_workspaces(child,result)
 
 func _choose_new_size() -> void:
     var dialog := ConfirmationDialog.new()
@@ -417,11 +448,24 @@ func _create_terrain(side: int) -> void:
 
 func _toggle_brush(enabled: bool) -> void:
     if enabled and not is_instance_valid(_active):
+        _on_selection_changed()
+    if enabled and not is_instance_valid(_active):
         _brush_button.set_pressed_no_signal(false)
         _set_status("Create or select native terrain first.")
         return
     if not enabled:
         _finish_stroke()
+        _touch_session = false
+        _touch_index = -1
+        _multi_touch = false
+        _last_input_result = "Brush OFF"
+    else:
+        _brush_button.set_pressed_no_signal(true)
+        _input_count = 0
+        _hit_count = 0
+        _changed_count = 0
+        _last_input_result = "Brush ON: touch the terrain surface."
+        _popup.hide()
     _brush_button.text = "Brush ON" if enabled else "Brush"
 
 func _save_active() -> void:
@@ -446,7 +490,7 @@ func _run_self_test() -> void:
         _set_status("No native terrain selected.")
         return
     var data: Object = _active.get("data")
-    _set_status("Native regions: %d | spacing: %.2fm | LOD: %d" % [data.call("get_region_count"),_active.get("vertex_spacing"),_active.get("mesh_lods")])
+    _set_status("Native %d regions | %.2fm | %d LOD\nInput %d | Hit %d | Edit %d\n%s" % [data.call("get_region_count"),_active.get("vertex_spacing"),_active.get("mesh_lods"),_input_count,_hit_count,_changed_count,_last_input_result])
 
 func _finish_stroke() -> void:
     if _stroke_active and is_instance_valid(_active):
@@ -456,53 +500,82 @@ func _finish_stroke() -> void:
 func _paint_at(camera: Camera3D, position: Vector2) -> void:
     if not is_instance_valid(_active):
         return
+    _input_count += 1
+    var data: Object = _active.get("data")
+    if data == null:
+        _last_input_result = "Native data not ready."
+        return
+    if _active.call("get_camera") != camera:
+        _active.call("set_camera",camera)
     var hit: Vector3 = _active.call("get_intersection",camera.project_ray_origin(position),camera.project_ray_normal(position),false)
     if not hit.is_finite() or absf(hit.x)>1e8 or absf(hit.z)>1e8:
+        _last_input_result = "Input received; terrain ray missed."
         return
+    _hit_count += 1
     var result := _brush.dab(hit,_tool_select.selected,float(_radius.value),float(_strength.value))
-    if not result.is_empty():
-        _set_status(result)
+    if _brush.last_changed_cells>0:
+        _changed_count += _brush.last_changed_cells
+        _last_input_result = "Edited %d samples in last dab." % _brush.last_changed_cells
+    elif not result.is_empty():
+        _last_input_result = result
+    else:
+        _last_input_result = "Surface hit; no new height change (spacing/flat tool/edge)."
+    _set_status(_last_input_result)
+
+func _start_stroke(camera: Camera3D, position: Vector2) -> void:
+    _finish_stroke()
+    _brush.begin()
+    _stroke_active = true
+    _paint_at(camera,position)
 
 func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
-    if not is_instance_valid(_active) or not _brush_button.button_pressed:
+    if not is_instance_valid(_active) or not _brush_button.button_pressed or _popup.visible:
+        return EditorPlugin.AFTER_GUI_INPUT_PASS
+    var root := get_editor_interface().get_edited_scene_root()
+    if root == null or not root.is_ancestor_of(_active):
         return EditorPlugin.AFTER_GUI_INPUT_PASS
     if event is InputEventScreenTouch:
         _last_touch_ms = Time.get_ticks_msec()
-        if event.index > 0:
-            if event.pressed:
-                _finish_stroke()
-            return EditorPlugin.AFTER_GUI_INPUT_PASS
         if event.pressed:
+            if _touch_index != -1 and event.index != _touch_index:
+                _finish_stroke()
+                _multi_touch = true
+                return EditorPlugin.AFTER_GUI_INPUT_PASS
+            if _multi_touch:
+                return EditorPlugin.AFTER_GUI_INPUT_PASS
+            _touch_index = event.index
             _touch_session = true
-            _finish_stroke()
-            _brush.begin()
-            _stroke_active = true
-            _paint_at(camera, event.position)
-        else:
+            _start_stroke(camera,event.position)
+        elif event.index == _touch_index:
             _finish_stroke()
             _touch_session = false
+            _touch_index = -1
+            _multi_touch = false
+        else:
+            return EditorPlugin.AFTER_GUI_INPUT_PASS
         return EditorPlugin.AFTER_GUI_INPUT_STOP
-    if event is InputEventScreenDrag and event.index == 0:
+    if event is InputEventScreenDrag:
         _last_touch_ms = Time.get_ticks_msec()
-        if _stroke_active and _touch_session:
-            _paint_at(camera, event.position)
+        if _stroke_active and _touch_session and not _multi_touch and event.index == _touch_index:
+            _paint_at(camera,event.position)
             return EditorPlugin.AFTER_GUI_INPUT_STOP
         return EditorPlugin.AFTER_GUI_INPUT_PASS
-    if _touch_session:
+    # Suppress paired touch-generated mouse events only after a real touch
+    # reached this callback; pure mouse-emulated Android streams remain usable.
+    if _touch_session or Time.get_ticks_msec()-_last_touch_ms<350:
+        if (event is InputEventMouseButton and event.button_index==MOUSE_BUTTON_LEFT) or event is InputEventMouseMotion:
+            return EditorPlugin.AFTER_GUI_INPUT_STOP if not _multi_touch else EditorPlugin.AFTER_GUI_INPUT_PASS
         return EditorPlugin.AFTER_GUI_INPUT_PASS
-    # Filter synthetic mouse events emitted after a touch sequence on Android.
-    if Time.get_ticks_msec() - _last_touch_ms < 350:
-        return EditorPlugin.AFTER_GUI_INPUT_PASS
-    if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+    if event is InputEventMouseButton and event.button_index==MOUSE_BUTTON_LEFT:
         if event.pressed:
-            _finish_stroke()
-            _brush.begin()
-            _stroke_active = true
-            _paint_at(camera, event.position)
+            _start_stroke(camera,event.position)
         else:
             _finish_stroke()
         return EditorPlugin.AFTER_GUI_INPUT_STOP
     if event is InputEventMouseMotion and _stroke_active:
-        _paint_at(camera, event.position)
+        if not (event.button_mask & MOUSE_BUTTON_MASK_LEFT):
+            _finish_stroke()
+            return EditorPlugin.AFTER_GUI_INPUT_PASS
+        _paint_at(camera,event.position)
         return EditorPlugin.AFTER_GUI_INPUT_STOP
     return EditorPlugin.AFTER_GUI_INPUT_PASS
