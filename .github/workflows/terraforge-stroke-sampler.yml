@@ -21,9 +21,9 @@ jobs:
         run: |
           set -euo pipefail
           p="$RUNNER_TEMP/tf-stroke-test"
-          mkdir -p "$p"
+          mkdir -p "$p/addons/terraforge_native"
           printf 'config_version=5\n[application]\nconfig/name="Stroke test"\n' > "$p/project.godot"
-          cp tools/terrain3d_runtime/addons/terraforge_native/native_stroke_sampler.gd "$p/"
+          cp tools/terrain3d_runtime/addons/terraforge_native/native_stroke_sampler.gd "$p/addons/terraforge_native/"
           cp tools/terrain3d_runtime/ci/test_native_stroke_sampler.gd "$p/"
           timeout 60s godot --headless --path "$p" --script res://test_native_stroke_sampler.gd 2>&1 | tee "$RUNNER_TEMP/stroke.log"
           grep -q TF_STROKE_SAMPLER_PASS "$RUNNER_TEMP/stroke.log"

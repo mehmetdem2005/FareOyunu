@@ -1,5 +1,5 @@
 extends SceneTree
-const Sampler = preload("res://native_stroke_sampler.gd")
+const Sampler = preload("res://addons/terraforge_native/native_stroke_sampler.gd")
 
 func _drain(s: RefCounted) -> Array[Vector2]:
     var output: Array[Vector2] = []
