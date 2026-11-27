@@ -41,6 +41,7 @@ var _input_count := 0
 var _hit_count := 0
 var _changed_count := 0
 var _last_input_result := "Brush OFF"
+var _raw_status := ""
 var _touch_index := -1
 var _multi_touch := false
 var _corridor_points: Array[Vector2] = []
@@ -58,13 +59,13 @@ func _enter_tree() -> void:
     _toolbar.name = "TerraForgeQuickTools"
     _toolbar.add_theme_constant_override("separation", 3)
     _menu_button = Button.new()
-    _menu_button.text = "Terrain"
-    _menu_button.tooltip_text = "TerraForge tools and settings"
+    _menu_button.text = "Arazi"
+    _menu_button.tooltip_text = "TerraForge araçları ve ayarları"
     _menu_button.pressed.connect(_toggle_popup)
     _toolbar.add_child(_menu_button)
     _brush_button = CheckButton.new()
-    _brush_button.text = "Brush"
-    _brush_button.tooltip_text = "Enable sculpting; disable to move the camera"
+    _brush_button.text = "Fırça"
+    _brush_button.tooltip_text = "Araziyi şekillendirmek için aç; kamerayı hareket ettirmek için kapat."
     _brush_button.toggled.connect(_toggle_brush)
     _toolbar.add_child(_brush_button)
     # Godot's supported 3D toolbar container, NOT its large bottom panel.
@@ -85,23 +86,26 @@ func _enter_tree() -> void:
     title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     header.add_child(title)
     var new_button: Button = Button.new()
-    new_button.text = "+ New"
-    new_button.tooltip_text = "Create an empty editable terrain"
+    new_button.text = "+ Yeni"
+    new_button.tooltip_text = "Düzenlenebilir boş arazi oluştur."
     new_button.pressed.connect(_choose_new_size)
     header.add_child(new_button)
     var save_button: Button = Button.new()
-    save_button.text = "Save"
+    save_button.text = "Kaydet"
     save_button.pressed.connect(_save_active)
     header.add_child(save_button)
 
     var tool_row: HBoxContainer = HBoxContainer.new()
     content.add_child(tool_row)
     var label: Label = Label.new()
-    label.text = "Tool"
+    label.text = "Araç"
     tool_row.add_child(label)
     _tool_select = OptionButton.new()
-    for tool_name in ["Raise", "Lower", "Smooth", "Flatten", "Ridge", "Valley", "Ramp", "Stamp", "Weather"]:
+    for tool_name in ["Yükselt", "Alçalt", "Yumuşat", "Düzleştir", "Dağ sırtı", "Vadi", "Rampa", "Damga", "Aşındır"]:
         _tool_select.add_item(tool_name)
+    var tool_tips := ["Yüzeyi yükselt.", "Yüzeyi alçalt.", "Yükseklik geçişlerini yumuşat.", "Başlangıç yüksekliğine doğru düzleştir.", "Hat çiz; bırakınca dağ sırtı oluşur.", "Hat çiz; bırakınca vadi açılır.", "Eğimli geçiş (henüz hazır değil).", "Hazır arazi biçimleri (henüz hazır değil).", "Yamaç veya su aşınması; dokun ve bırak."]
+    for i in range(tool_tips.size()):
+        _tool_select.get_popup().set_item_tooltip(i,tool_tips[i])
     for index in [6,7]:
         _tool_select.set_item_disabled(index,true)
     _tool_select.item_selected.connect(_on_tool_changed)
@@ -109,22 +113,23 @@ func _enter_tree() -> void:
     tool_row.add_child(_tool_select)
     var undo_button: Button = Button.new()
     undo_button.text = "↶"
-    undo_button.tooltip_text = "Undo terrain stroke"
+    undo_button.tooltip_text = "Son arazi işlemini geri al."
     undo_button.pressed.connect(_undo)
     tool_row.add_child(undo_button)
     var redo_button: Button = Button.new()
     redo_button.text = "↷"
-    redo_button.tooltip_text = "Redo terrain stroke"
+    redo_button.tooltip_text = "Geri alınan işlemi yinele."
     redo_button.pressed.connect(_redo)
     tool_row.add_child(redo_button)
 
     var radius_row: HBoxContainer = HBoxContainer.new()
     content.add_child(radius_row)
     var radius_label: Label = Label.new()
-    radius_label.text = "Size"
+    radius_label.text = "Yarıçap"
     radius_label.custom_minimum_size.x = 58
     radius_row.add_child(radius_label)
     _radius = HSlider.new()
+    _radius.tooltip_text = "Fırçanın metre cinsinden yarıçapı."
     _radius.min_value = 1.0
     _radius.max_value = 36.0
     _radius.step = 0.5
@@ -140,10 +145,11 @@ func _enter_tree() -> void:
     var strength_row: HBoxContainer = HBoxContainer.new()
     content.add_child(strength_row)
     var strength_label: Label = Label.new()
-    strength_label.text = "Power"
+    strength_label.text = "Güç"
     strength_label.custom_minimum_size.x = 58
     strength_row.add_child(strength_label)
     _strength = HSlider.new()
+    _strength.tooltip_text = "Seçili aracın etki gücü."
     _strength.min_value = 0.25
     _strength.max_value = 12.0
     _strength.step = 0.25
@@ -160,11 +166,11 @@ func _enter_tree() -> void:
     _advanced_row.visible = false
     content.add_child(_advanced_row)
     _advanced_label = Label.new()
-    _advanced_label.text = "Shape"
+    _advanced_label.text = "Şekil"
     _advanced_label.custom_minimum_size.x = 58
     _advanced_row.add_child(_advanced_label)
     _stamp_preset = OptionButton.new()
-    for preset_name in ["Hill", "Crater", "Mesa"]:
+    for preset_name in ["Tepe", "Krater", "Düz tepeli dağ"]:
         _stamp_preset.add_item(preset_name)
     _stamp_preset.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     _advanced_row.add_child(_stamp_preset)
@@ -178,9 +184,9 @@ func _enter_tree() -> void:
     _advanced_row.add_child(_ramp_rise)
     _ramp_rise.visible = false
     _weather_mode = OptionButton.new()
-    _weather_mode.add_item("Thermal",0)
-    _weather_mode.add_item("Flow",1)
-    _weather_mode.tooltip_text = "Thermal: 3 talus passes. Flow: one closed-boundary D8 sediment pass."
+    _weather_mode.add_item("Yamaç aşınması",0)
+    _weather_mode.add_item("Su aşınması",1)
+    _weather_mode.tooltip_text = "Yamaç: 3 aşınma geçişi. Su: D8 yönlü, kapalı alanlı tek tortu geçişi."
     _weather_mode.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     _advanced_row.add_child(_weather_mode)
     _weather_mode.visible = false
@@ -188,22 +194,22 @@ func _enter_tree() -> void:
     var profile_row: HBoxContainer = HBoxContainer.new()
     content.add_child(profile_row)
     var profile_label: Label = Label.new()
-    profile_label.text = "View"
+    profile_label.text = "Görüş"
     profile_label.custom_minimum_size.x = 58
     profile_row.add_child(profile_label)
     _profile_select = OptionButton.new()
-    _profile_select.add_item("Near",5)
-    _profile_select.add_item("Medium",6)
-    _profile_select.add_item("Full",7)
+    _profile_select.add_item("Yakın",5)
+    _profile_select.add_item("Orta",6)
+    _profile_select.add_item("Tam",7)
     _profile_select.select(2)
     _profile_select.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     _profile_select.disabled = true
-    _profile_select.tooltip_text = "Native clipmap range; changes the scene's LOD count, not height data. Rebuild once per explicit selection."
+    _profile_select.tooltip_text = "Görüş mesafesi LOD sayısını değiştirir; yükseklik verisi aynı kalır."
     _profile_select.item_selected.connect(_view_profile_changed)
     profile_row.add_child(_profile_select)
     var diagnostics_button: Button = Button.new()
-    diagnostics_button.text = "Check"
-    diagnostics_button.tooltip_text = "Run non-destructive terrain geometry and performance self-test"
+    diagnostics_button.text = "Kontrol"
+    diagnostics_button.tooltip_text = "Bölge, giriş, temas ve düzenleme bilgilerini göster."
     diagnostics_button.pressed.connect(_run_self_test)
     profile_row.add_child(diagnostics_button)
 
@@ -212,8 +218,8 @@ func _enter_tree() -> void:
     _layer_row.add_theme_constant_override("separation", 3)
     content.add_child(_layer_row)
     _layer_enable = Button.new()
-    _layer_enable.text = "Enable Layers"
-    _layer_enable.tooltip_text = "Create a separate .tfl document; legacy .tfh remains untouched. Save the scene after enabling."
+    _layer_enable.text = "Katmanlar"
+    _layer_enable.tooltip_text = "Katman sistemi henüz etkin değil."
     _layer_enable.disabled = true
     _layer_row.add_child(_layer_enable)
     _layer_select = OptionButton.new()
@@ -222,27 +228,27 @@ func _enter_tree() -> void:
     _layer_row.add_child(_layer_select)
     _layer_add = Button.new()
     _layer_add.text = "+"
-    _layer_add.tooltip_text = "Add another independent sculpt layer (maximum 8)"
+    _layer_add.tooltip_text = "Bağımsız şekillendirme katmanı ekle (en fazla 8)."
     _layer_add.disabled = true
     _layer_row.add_child(_layer_add)
     _layer_visible = CheckButton.new()
-    _layer_visible.text = "On"
-    _layer_visible.tooltip_text = "Show or hide selected layer"
+    _layer_visible.text = "Açık"
+    _layer_visible.tooltip_text = "Seçilen katmanı göster veya gizle."
     _layer_visible.disabled = true
     _layer_row.add_child(_layer_visible)
     _layer_restore = Button.new()
-    _layer_restore.text = "Restore"
-    _layer_restore.tooltip_text = "Manually restore last verified .tfl.bak. Damaged original is preserved as .corrupt_*."
+    _layer_restore.text = "Kurtar"
+    _layer_restore.tooltip_text = "Katman kurtarma henüz etkin değil."
     _layer_restore.disabled = true
     _layer_row.add_child(_layer_restore)
     _refresh_layer_ui()
 
     _stats_label = Label.new()
-    _stats_label.text = "Tiles: -"
+    _stats_label.text = "Bölge: -"
     _stats_label.modulate.a = 0.7
     content.add_child(_stats_label)
     _status = Label.new()
-    _status.text = "Create terrain or select an existing one."
+    _set_status("Create terrain or select an existing one.")
     _status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     content.add_child(_status)
 
@@ -311,14 +317,14 @@ func _process(_delta: float) -> void:
             return
         if _profile_select.get_selected_id() != int(_active.get("mesh_lods")):
             _sync_view_profile()
-        _stats_label.text = "Native RF | %d regions | %d LOD\nInput %d | Hit %d | Edit %d" % [int(data.call("get_region_count")),int(_active.get("mesh_lods")),_input_count,_hit_count,_changed_count]
+        _stats_label.text = "Float32 | %d bölge | %d LOD\nGirdi %d | Temas %d | Düzenleme %d" % [int(data.call("get_region_count")),int(_active.get("mesh_lods")),_input_count,_hit_count,_changed_count]
         if _brush_button.button_pressed:
-            _status.text = _last_input_result
+            _status.text = _tr_status(_last_input_result)
 
 func _refresh_layer_ui() -> void:
     _layer_enable.visible = true
     _layer_enable.disabled = true
-    _layer_enable.tooltip_text = "Native layer composition pending; no legacy renderer"
+    _layer_enable.tooltip_text = "Native katman sistemi henüz hazır değil."
     _layer_select.hide()
     _layer_add.hide()
     _layer_visible.hide()
@@ -336,7 +342,7 @@ func _sync_view_profile() -> void:
     for i in range(3):
         var levels := _profile_select.get_item_id(i)
         var half_width := (2.0*mesh_size+2.0)*spacing*pow(2.0,levels-1)
-        var label := ["Near","Medium","Full"][i] as String
+        var label := ["Yakın","Orta","Tam"][i] as String
         _profile_select.set_item_text(i,"%s %.0fm" % [label,half_width])
     var index := _profile_select.get_item_index(lods)
     if index >= 0:
@@ -344,7 +350,7 @@ func _sync_view_profile() -> void:
     else:
         # Do not mutate a pre-existing custom profile just by selecting a node.
         _profile_select.select(-1)
-    _profile_select.tooltip_text = "Nominal clipmap half-width (not exact circular visibility). Explicit selection changes saved terrain LOD count. Near spacing unchanged."
+    _profile_select.tooltip_text = "Yaklaşık görüş yarıçapı. Seçim sahnenin LOD sayısını değiştirir; yakın çözünürlük korunur."
 
 func _view_profile_changed(index: int) -> void:
     if not is_instance_valid(_active) or index < 0 or index >= 3:
@@ -358,10 +364,10 @@ func _view_profile_changed(index: int) -> void:
     _touch_index = -1
     _multi_touch = false
     _brush_button.set_pressed_no_signal(false)
-    _brush_button.text = "Brush"
+    _brush_button.text = "Fırça"
     # Undoable explicit scene property change; no automatic rebuilding on camera moves.
     var undo_redo := get_undo_redo()
-    undo_redo.create_action("TerraForge native view range",UndoRedo.MERGE_DISABLE,_active)
+    undo_redo.create_action("TerraForge görüş mesafesi",UndoRedo.MERGE_DISABLE,_active)
     undo_redo.add_do_property(_active,"mesh_lods",levels)
     undo_redo.add_undo_property(_active,"mesh_lods",old)
     undo_redo.commit_action()
@@ -373,7 +379,7 @@ func _on_tool_changed(tool: int) -> void:
     _finish_stroke()
     _current_tool = tool
     _advanced_row.visible = tool==8
-    _advanced_label.text = "Mode" if tool==8 else "Shape"
+    _advanced_label.text = "Yöntem" if tool==8 else "Şekil"
     _stamp_preset.visible = false
     _ramp_rise.visible = false
     _weather_mode.visible = tool==8
@@ -382,9 +388,110 @@ func _on_tool_changed(tool: int) -> void:
     else:
         _set_status("Ridge/Valley: draw a path, release to apply." if tool in [4,5] else "Brush ON: drag to edit native heights.")
 
+func _tr_status(message: String) -> String:
+    # Presentation only: raw backend status and CI contracts stay unchanged.
+    var exact := {
+        "Brush OFF": "Fırça kapalı",
+        "Brush ON: touch the terrain surface.": "Fırça açık: araziye dokun.",
+        "Brush ON: drag to edit native heights.": "Fırça açık: sürükleyerek şekillendir.",
+        "Create terrain or select an existing one.": "Arazi oluştur veya mevcut araziyi seç.",
+        "Native terrain selected": "Arazi seçildi.",
+        "View updated; Brush OFF. Near resolution unchanged.": "Görüş güncellendi; fırça kapalı. Yakın çözünürlük aynı.",
+        "Ridge/Valley: draw a path, release to apply.": "Dağ sırtı / Vadi: hat çiz, bırakınca uygula.",
+        "Weather: touch area, release to apply one pass.": "Aşındır: alana dokun, bırakınca bir işlem uygula.",
+        "Open a Node3D scene; native extension required.": "Node3D sahnesi aç; native eklenti gerekli.",
+        "Native extension unavailable.": "Native eklenti yüklenemedi.",
+        "Native shader missing.": "Arazi shader dosyası eksik.",
+        "Native initialization failed.": "Arazi başlatılamadı.",
+        "Native region creation failed.": "Bölge oluşturulamadı.",
+        "Native region count mismatch.": "Bölge sayısı uyuşmuyor.",
+        "Cannot create native data directory.": "Arazi veri klasörü oluşturulamadı.",
+        "Create or select native terrain first.": "Önce arazi oluştur veya seç.",
+        "No native terrain selected.": "Arazi seçilmedi.",
+        "Cannot create native data directory; scene not saved.": "Veri klasörü oluşturulamadı; sahne kaydedilmedi.",
+        "Surface externalization failed; scene not saved.": "Dokular ayrı dosyaya taşınamadı; sahne kaydedilmedi.",
+        "Terrain and scene saved; verified backup retained.": "Arazi ve sahne kaydedildi; doğrulanmış yedek korundu.",
+        "Corridor cancelled.": "Hat işlemi iptal edildi.",
+        "Weather cancelled.": "Aşındırma iptal edildi.",
+        "Path too long; release and draw a shorter corridor.": "Hat çok uzun; bırakıp daha kısa bir hat çiz.",
+        "Native data not ready.": "Arazi verisi hazır değil.",
+        "Path left editable surface; action cancelled.": "Hat düzenlenebilir yüzeyin dışına çıktı; işlem iptal.",
+        "Input received; terrain ray missed.": "Girdi alındı; araziye temas edilemedi.",
+        "Weather: release to apply.": "Aşındır: uygulamak için bırak.",
+        "Surface hit; no new height change (spacing/flat tool/edge).": "Yüzeye temas edildi; yeni yükseklik değişimi yok.",
+        "No native terrain attached.": "Arazi bağlı değil.",
+        "Native data object missing.": "Arazi veri nesnesi eksik.",
+        "Native active region resource missing.": "Etkin bölge kaynağı eksik.",
+        "Unsupported native brush.": "Desteklenmeyen fırça.",
+        "Brush footprint exceeds grid budget; reduce radius for this spacing.": "Fırça işlem sınırını aştı; yarıçapı küçült.",
+        "Flatten target is outside editable terrain.": "Düzleştirme hedefi düzenlenebilir alan dışında.",
+        "Height out of bounds; dab rejected.": "Yükseklik sınır dışı; işlem reddedildi.",
+        "Invalid corridor tool or power.": "Hat aracı veya gücü geçersiz.",
+        "Corridor height out of bounds; no changes made.": "Hat yüksekliği sınır dışı; değişiklik yapılmadı.",
+        "Corridor has no editable samples.": "Hatta düzenlenebilir örnek yok.",
+        "Invalid Weather center or size.": "Aşındırma merkezi veya yarıçapı geçersiz.",
+        "Invalid Weather grid.": "Aşındırma ızgarası geçersiz.",
+        "Weather footprint exceeds grid budget.": "Aşındırma alanı işlem sınırını aştı.",
+        "Weather: no movable material at this slope.": "Bu eğimde taşınabilir malzeme yok.",
+        "Nothing to undo.": "Geri alınacak işlem yok.",
+        "Undo unavailable.": "Geri alma yapılamadı.",
+        "Native undo applied.": "İşlem geri alındı.",
+        "Nothing to redo.": "Yinelenecek işlem yok.",
+        "Redo unavailable.": "Yineleme yapılamadı.",
+        "Native redo applied.": "İşlem yinelendi.",
+        "Cannot create snapshot folder.": "Yedek klasörü oluşturulamadı.",
+        "Backup manifest write failed; live directory untouched.": "Yedek manifesti yazılamadı; mevcut veriye dokunulmadı.",
+        "No verified backup for current save.": "Bu kayıt için doğrulanmış yedek yok.",
+        "Invalid corridor parameters.": "Hat ayarları geçersiz.",
+        "Invalid corridor point.": "Hat noktası geçersiz.",
+        "Corridor exceeds 256m; draw shorter paths.": "Hat 256 metreyi aştı; daha kısa çiz.",
+        "Corridor work budget exceeded; use a shorter or narrower path.": "Hat işlem sınırını aştı; daha kısa veya dar çiz.",
+        "Corridor sample budget exceeded; draw shorter paths.": "Hat örnek sınırını aştı; daha kısa çiz.",
+        "Invalid Weather footprint.": "Aşındırma alanı geçersiz.",
+        "Invalid Weather source.": "Aşındırma kaynak verisi geçersiz.",
+        "Flow routing incomplete; no changes made.": "Akış hesabı tamamlanamadı; değişiklik yapılmadı.",
+        "Weather relief limit exceeded; reduce Size or Power.": "Aşındırma yükseklik sınırı aşıldı; yarıçapı veya gücü azalt.",
+        "Weather mass validation failed.": "Malzeme dengesi doğrulanamadı."
+    }
+    if exact.has(message):
+        return str(exact[message])
+    var result := message
+    # Only known dynamic message families; preserve coordinates and paths.
+    result = result.replace("External surface texture missing: ","Yüzey dokusu eksik: ")
+    result = result.replace("Verified backup saved; scene save failed: ","Yedek doğrulandı; sahne kaydedilemedi: ")
+    result = result.replace("Native region count ","Bölge sayısı ")
+    result = result.replace(" outside 1..64."," 1–64 aralığı dışında.")
+    result = result.replace("Native active list ","Etkin bölge listesi ")
+    result = result.replace(" != count "," / beklenen ")
+    result = result.replace("Duplicate native location ","Tekrarlanan bölge konumu ")
+    result = result.replace("RF source invalid at ","Geçersiz Float32 kaynak: ")
+    result = result.replace("; do not edit converted data.","; dönüştürülmüş veriyi düzenleme.")
+    result = result.replace("Native grid invalid: ","Geçersiz arazi ızgarası: ")
+    result = result.replace("Raise: no editable samples at ","Yükselt: düzenlenebilir örnek yok, konum ")
+    result = result.replace(" (grid "," (ızgara ")
+    result = result.replace("Native write readback mismatch: ","Yazılan veri doğrulanamadı: ")
+    result = result.replace("Backup blocked: invalid RF map at ","Yedek engellendi; geçersiz Float32 harita: ")
+    result = result.replace("Native backup failed: ","Arazi yedeği başarısız: ")
+    result = result.replace("Backup readback failed at ","Yedek doğrulanamadı: ")
+    result = result.replace("; live directory untouched.","; mevcut veriye dokunulmadı.")
+    result = result.replace("Scene region write mismatch at ","Bölge kaydı uyuşmuyor: ")
+    result = result.replace(". Verified backup: ",". Doğrulanmış yedek: ")
+    result = result.replace("Corridor edited ","Hat işlemi: ")
+    result = result.replace(" samples."," örnek değişti.")
+    result = result.replace("Weather edited ","Aşındırma: ")
+    result = result.replace("Edited ","Düzenlenen ")
+    result = result.replace(" samples in last dab."," örnek (son dokunuş).")
+    result = result.replace("Path ","Hat ")
+    result = result.replace(" points | release to apply"," nokta | bırakınca uygula")
+    result = result.replace(" regions created. Save terrain and scene."," bölge oluşturuldu. Araziyi ve sahneyi kaydet.")
+    result = result.replace(" RF saved ("," Float32 kaydedildi (")
+    result = result.replace(" regions). Backup: "," bölge). Yedek: ")
+    return result
+
 func _set_status(message: String) -> void:
+    _raw_status = message
     if is_instance_valid(_status):
-        _status.text = message
+        _status.text = _tr_status(message)
 
 func _handles(object: Object) -> bool:
     return object is Node3D and object.is_class("Terrain3D") and object.has_meta("terraforge_native_workspace")
@@ -410,7 +517,7 @@ func _set_active(node: Node3D) -> void:
     _hit_count = 0
     _changed_count = 0
     _brush_button.set_pressed_no_signal(false)
-    _brush_button.text = "Brush"
+    _brush_button.text = "Fırça"
     _set_status("Native terrain selected" if node != null else "Create terrain or select an existing one.")
 
 func _on_scene_changed(_root: Node) -> void:
@@ -441,12 +548,12 @@ func _find_workspaces(node: Node, result: Array[Node3D]) -> void:
 
 func _choose_new_size() -> void:
     var dialog := ConfirmationDialog.new()
-    dialog.title = "TerraForge — New"
-    dialog.dialog_text = "Native Float32 | 25 cm"
+    dialog.title = "TerraForge — Yeni arazi"
+    dialog.dialog_text = "Float32 arazi | 25 cm"
     var options := OptionButton.new()
-    options.add_item("128 × 128 m (1 region)",1)
-    options.add_item("256 × 256 m (4 regions)",2)
-    options.add_item("512 × 512 m (16 regions)",4)
+    options.add_item("128 × 128 m (1 bölge)",1)
+    options.add_item("256 × 256 m (4 bölge)",2)
+    options.add_item("512 × 512 m (16 bölge)",4)
     options.select(0)
     dialog.add_child(options)
     dialog.confirmed.connect(func():
@@ -596,7 +703,7 @@ func _toggle_brush(enabled: bool) -> void:
         _changed_count = 0
         _last_input_result = "Brush ON: touch the terrain surface."
         _popup.hide()
-    _brush_button.text = "Brush ON" if enabled else "Brush"
+    _brush_button.text = "Fırça açık" if enabled else "Fırça"
 
 func _save_active() -> void:
     _finish_stroke()
@@ -641,7 +748,7 @@ func _run_self_test() -> void:
         _set_status("No native terrain selected.")
         return
     var data: Object = _active.get("data")
-    _set_status("Native %d regions | %.2fm | %d LOD\nInput %d | Hit %d | Edit %d\n%s" % [data.call("get_region_count"),_active.get("vertex_spacing"),_active.get("mesh_lods"),_input_count,_hit_count,_changed_count,_last_input_result])
+    _set_status("Float32 | %d bölge | %.2fm | %d LOD\nGirdi %d | Temas %d | Düzenleme %d\n%s" % [data.call("get_region_count"),_active.get("vertex_spacing"),_active.get("mesh_lods"),_input_count,_hit_count,_changed_count,_tr_status(_last_input_result)])
 
 func _finish_stroke(apply_path: bool = false) -> void:
     if _stroke_active and is_instance_valid(_active):
@@ -723,10 +830,10 @@ func _paint_at(camera: Camera3D, position: Vector2) -> void:
         _last_input_result = result
     elif _brush.last_changed_cells>0:
         _last_input_result = "Edited %d samples in last dab." % _brush.last_changed_cells
-        _brush_button.tooltip_text = _last_input_result
+        _brush_button.tooltip_text = _tr_status(_last_input_result)
     else:
         _last_input_result = "Surface hit; no new height change (spacing/flat tool/edge)."
-    _brush_button.tooltip_text = _last_input_result
+    _brush_button.tooltip_text = _tr_status(_last_input_result)
     _set_status(_last_input_result)
 
 func _start_stroke(camera: Camera3D, position: Vector2) -> void:

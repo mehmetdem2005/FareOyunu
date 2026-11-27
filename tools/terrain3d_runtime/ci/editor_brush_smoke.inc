@@ -12,6 +12,11 @@ func _ci_editor_brush_smoke() -> void:
     if OS.get_environment("TF_EDITOR_REOPEN")=="1":
         await _ci_verify_reopened()
         return
+    if _tool_select.get_item_text(0)!="Yükselt" or _tool_select.get_item_text(8)!="Aşındır" or _weather_mode.get_item_text(1)!="Su aşınması" or not _tool_select.is_item_disabled(6) or not _tool_select.is_item_disabled(7):
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: Turkish labels / tool IDs")
+        get_tree().quit(1)
+        return
+    print("NATIVE_EDITOR_TR_UI_OK")
     _create_terrain(4)
     await get_tree().process_frame
     if not is_instance_valid(_active):
@@ -136,7 +141,7 @@ func _ci_editor_brush_smoke() -> void:
     var previous_data_id: int = data.get_instance_id()
     var previous_directory := str(_active.get("data_directory"))
     _save_active()
-    if not _status.text.begins_with("Terrain and scene saved;") or _brush.last_snapshot_path.is_empty() or str(_active.get("data_directory"))!=previous_directory or _active.get("data").get_instance_id()!=previous_data_id:
+    if not _raw_status.begins_with("Terrain and scene saved;") or _brush.last_snapshot_path.is_empty() or str(_active.get("data_directory"))!=previous_directory or _active.get("data").get_instance_id()!=previous_data_id:
         push_error("NATIVE_EDITOR_BRUSH_FAIL: panel save / live data identity: "+_status.text)
         get_tree().quit(1)
         return
