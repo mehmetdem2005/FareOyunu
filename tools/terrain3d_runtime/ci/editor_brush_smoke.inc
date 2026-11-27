@@ -223,6 +223,56 @@ func _ci_editor_brush_smoke() -> void:
             push_error("NATIVE_EDITOR_BRUSH_FAIL: upload profile undo")
             get_tree().quit(1)
             return
+    # Compare three native modes on identical Gaussian hill and micro-ripple.
+    # Restore the isolated 273x273 fixture before the storage/reopen gate.
+    var multi_center := Vector2(320,320)
+    var multi_key := Vector2i(1280,1280)
+    var multi_originals := {}
+    var multi_hill := {}
+    var multi_ripple := {}
+    for z in range(-136,137):
+        for x in range(-136,137):
+            var key := multi_key+Vector2i(x,z)
+            var pos := Vector3(key.x*0.25,0,key.y*0.25)
+            multi_originals[key]=float(data.call("get_height",pos))
+            var h := 13.25*exp(-float(x*x+z*z)*0.0625/128.0)
+            multi_hill[key]=h
+            multi_ripple[key]=h+0.2*cos(TAU*x/8.0)*cos(TAU*z/8.0)
+    var peak_plain: Array[float] = []
+    var peak_detail: Array[float] = []
+    var mode_times: Array[int] = []
+    for variant in [multi_hill,multi_ripple]:
+        var setup: Dictionary = data.call("tf_write_brush",variant)
+        if not str(setup["error"]).is_empty():
+            push_error("NATIVE_EDITOR_BRUSH_FAIL: multiscale setup")
+            get_tree().quit(1)
+            return
+        for mode in range(3):
+            var start_us := Time.get_ticks_usec()
+            var plan: Dictionary = data.call("tf_plan_brush",multi_center,2,24.0,6.0,0.0,mode)
+            var elapsed := Time.get_ticks_usec()-start_us
+            if not str(plan["error"]).is_empty() or not plan["changes"].has(multi_key):
+                push_error("NATIVE_EDITOR_BRUSH_FAIL: multiscale plan "+str(mode)+" "+str(plan["error"]))
+                get_tree().quit(1)
+                return
+            if variant==multi_hill:
+                peak_plain.append(float(plan["changes"][multi_key]))
+                mode_times.append(elapsed)
+            else:
+                peak_detail.append(float(plan["changes"][multi_key]))
+    var restore: Dictionary = data.call("tf_write_brush",multi_originals)
+    if not str(restore["error"]).is_empty():
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: multiscale restore")
+        get_tree().quit(1)
+        return
+    var retention: Array[float] = []
+    for mode in range(3):
+        retention.append(absf(peak_detail[mode]-peak_plain[mode])/0.2)
+    if retention[0]>0.15 or retention[1]<0.8 or retention[2]>0.15 or 13.25-peak_plain[1]<1.0 or absf(13.25-peak_plain[2])>0.25:
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: multiscale metrics "+str(retention)+" "+str(peak_plain))
+        get_tree().quit(1)
+        return
+    print("NATIVE_EDITOR_MULTISCALE_OK peaks=",peak_plain," retention=",retention," plan_us=",mode_times)
     var previous_data_id: int = data.get_instance_id()
     var previous_directory := str(_active.get("data_directory"))
     _save_active()

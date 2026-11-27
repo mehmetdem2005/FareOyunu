@@ -15,7 +15,7 @@ edit("src/terrain_3d_data.h",
     "void set_pixel(const MapType p_map_type, const Vector3 &p_global_position, const Color &p_pixel);",
     """// TerraForge: bounded main-thread brush transaction on the authoritative RF maps.
 	double tf_sample(const Vector2i &p) const;
-	Dictionary tf_plan_brush(const Vector2 &center, int tool, double radius, double power, double flatten) const;
+	Dictionary tf_plan_brush(const Vector2 &center, int tool, double radius, double power, double flatten, int smooth_mode = 0) const;
 	Dictionary tf_write_brush(const Dictionary &values);
 	void set_pixel(const MapType p_map_type, const Vector3 &p_global_position, const Color &p_pixel);""")
 edit("src/terrain_3d_data.cpp",
@@ -41,10 +41,10 @@ double Terrain3DData::tf_sample(const Vector2i &p) const {
 	return double(h->get_pixelv(pix).r);
 }
 
-Dictionary Terrain3DData::tf_plan_brush(const Vector2 &center, int tool, double radius, double power, double flatten) const {
+Dictionary Terrain3DData::tf_plan_brush(const Vector2 &center, int tool, double radius, double power, double flatten, int smooth_mode) const {
 	Dictionary out;
 	out["error"] = "Unsupported native brush.";
-	if (!_terrain || _region_size<=0 || _vertex_spacing<=0 || tool<0 || tool>3 ||
+	if (!_terrain || _region_size<=0 || _vertex_spacing<=0 || tool<0 || tool>3 || smooth_mode<0 || smooth_mode>2 ||
 			!std::isfinite(center.x) || !std::isfinite(center.y) ||
 			std::abs(center.x)>10000000.0 || std::abs(center.y)>10000000.0 ||
 			!std::isfinite(radius) || radius<=0 || radius>36.0 ||
@@ -61,26 +61,65 @@ Dictionary Terrain3DData::tf_plan_brush(const Vector2 &center, int tool, double 
 	// Radius-aware normalized box filter. Summed-area tables make each
 	// neighborhood lookup constant time, even for a large physical radius.
 	// Invalid/missing/hole samples contribute neither a value nor a count.
-	const int k=tool==2 ? std::max(1,int(std::round(r*0.35))) : 0;
+	// mode 0 legacy, 1 macro with retained residual, 2 fine.
+	const int broad_k=tool==2 ? std::max(1,int(std::round(r*0.35))) : 0;
+	const int fine_k=tool==2 ? std::max(1,int(std::round(std::min(1.0,radius)/_vertex_spacing))) : 0;
+	const int pass_k=tool==2 ? std::max(1,int(std::round(broad_k/std::sqrt(2.0)))) : 0;
+	const int k=tool!=2 ? 0 : smooth_mode==0 ? broad_k : smooth_mode==1 ? fine_k+2*pass_k : fine_k;
 	const int sw=width+2*k, sh=height+2*k, stride=sw+1;
-	const int n=(sw+1)*(sh+1);
-	std::vector<double> source, sums;
+	const int64_t n=int64_t(sw+1)*(sh+1);
+	std::vector<double> source, fine, target, sums;
 	std::vector<int> counts;
 	if (tool==2) {
-		if (n>180000) { out["error"]="Brush footprint exceeds grid budget; reduce radius for this spacing."; return out; }
+		if (n>(smooth_mode==0 ? 180000 : 300000)) { out["error"]="Brush footprint exceeds grid budget; reduce radius for this spacing."; return out; }
 		source.resize(sw*sh);
-		sums.assign(n,0.0);
-		counts.assign(n,0);
-		for (int y=0;y<sh;++y) {
-			double row_sum=0.0;
-			int row_count=0;
-			for (int x=0;x<sw;++x) {
-				const double z=tf_sample(Vector2i(x0-k+x,y0-k+y));
-				source[y*sw+x]=z;
-				if (std::isfinite(z)) { row_sum+=z; ++row_count; }
-				const int i=(y+1)*stride+x+1;
-				sums[i]=sums[i-stride]+row_sum;
-				counts[i]=counts[i-stride]+row_count;
+		for (int y=0;y<sh;++y) for (int x=0;x<sw;++x)
+			source[y*sw+x]=tf_sample(Vector2i(x0-k+x,y0-k+y));
+		// Same masked, normalized box passes as the Q4 numerical reference.
+		// All buffers are local to this transaction; no live RF access during filtering.
+		auto box = [&](const std::vector<double> &input, int half, std::vector<double> &output) {
+			sums.assign(n,0.0);
+			counts.assign(n,0);
+			for (int y=0;y<sh;++y) {
+				double row_sum=0.0;
+				int row_count=0;
+				for (int x=0;x<sw;++x) {
+					const double z=input[y*sw+x];
+					if (std::isfinite(z)) { row_sum+=z; ++row_count; }
+					const int i=(y+1)*stride+x+1;
+					sums[i]=sums[i-stride]+row_sum;
+					counts[i]=counts[i-stride]+row_count;
+				}
+			}
+			output.assign(sw*sh,std::numeric_limits<double>::quiet_NaN());
+			for (int y=0;y<sh;++y) for (int x=0;x<sw;++x) {
+				const int i=y*sw+x;
+				if (!std::isfinite(input[i])) continue;
+				const int ax=std::max(0,x-half), ay=std::max(0,y-half);
+				const int bx=std::min(sw,x+half+1), by=std::min(sh,y+half+1);
+				const int a=ay*stride+ax,b=ay*stride+bx,c=by*stride+ax,d=by*stride+bx;
+				const int count=counts[d]-counts[b]-counts[c]+counts[a];
+				if (count>0) output[i]=(sums[d]-sums[b]-sums[c]+sums[a])/count;
+			}
+		};
+		if (smooth_mode==0) {
+			// Preserve legacy SAT-only path (no full target grid allocation).
+			sums.assign(n,0.0); counts.assign(n,0);
+			for (int y=0;y<sh;++y) {
+				double row_sum=0.0; int row_count=0;
+				for (int x=0;x<sw;++x) {
+					const double z=source[y*sw+x];
+					if (std::isfinite(z)) { row_sum+=z; ++row_count; }
+					const int i=(y+1)*stride+x+1;
+					sums[i]=sums[i-stride]+row_sum; counts[i]=counts[i-stride]+row_count;
+				}
+			}
+		} else {
+			box(source,fine_k,fine);
+			if (smooth_mode==1) {
+				std::vector<double> intermediate;
+				box(fine,pass_k,intermediate);
+				box(intermediate,pass_k,target);
 			}
 		}
 	}
@@ -99,6 +138,12 @@ Dictionary Terrain3DData::tf_plan_brush(const Vector2 &center, int tool, double 
 			if (tool==0) value+=power*weight;
 			else if (tool==1) value-=power*weight;
 			else if (tool==3) value+=(flatten-old)*std::min(1.0,power/12.0*weight);
+			else if (smooth_mode!=0) {
+				const int i=(y-y0+k)*sw+(x-x0+k);
+				const double desired=smooth_mode==1 ? target[i]+0.9*(old-fine[i]) : fine[i];
+				if (std::isfinite(desired))
+					value+=(desired-old)*std::min(1.0,power/6.0*weight);
+			}
 			else {
 				const int ax=x-x0, ay=y-y0, bx=ax+2*k+1, by=ay+2*k+1;
 				const int a=ay*stride+ax, b=ay*stride+bx, c=by*stride+ax, d=by*stride+bx;
@@ -120,6 +165,8 @@ Dictionary Terrain3DData::tf_plan_brush(const Vector2 &center, int tool, double 
 	out["changes"]=changes;
 	out["originals"]=originals;
 	out["filter_half_width_m"]=k*_vertex_spacing;
+	out["smooth_mode"]=smooth_mode;
+	out["filter_grid_cells"]=n;
 	return out;
 }
 
@@ -233,6 +280,6 @@ void Terrain3DData::set_pixel(const MapType p_map_type, const Vector3 &p_global_
 edit("src/terrain_3d_data.cpp",
     'ClassDB::bind_method(D_METHOD("get_region_count"), &Terrain3DData::get_region_count);',
     '''ClassDB::bind_method(D_METHOD("get_region_count"), &Terrain3DData::get_region_count);
-	ClassDB::bind_method(D_METHOD("tf_plan_brush","center","tool","radius","power","flatten"), &Terrain3DData::tf_plan_brush);
+	ClassDB::bind_method(D_METHOD("tf_plan_brush","center","tool","radius","power","flatten","smooth_mode"), &Terrain3DData::tf_plan_brush, DEFVAL(0));
 	ClassDB::bind_method(D_METHOD("tf_write_brush","values"), &Terrain3DData::tf_write_brush);''')
 print("TF_NATIVE_BRUSH_BATCH_PATCH_APPLIED")
