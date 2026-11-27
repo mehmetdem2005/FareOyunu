@@ -16,13 +16,17 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install pinned native Terrain3D distribution
         run: bash tools/terrain3d_runtime/install_terrain3d.sh
+      - name: Bake fixed full-size world (offline Float32)
+        run: python3 tools/terrain3d_runtime/bake_world.py
       - name: Package Godot project (no benchmark or regression suite)
         shell: bash
         run: |
           set -euo pipefail
           cd tools/terrain3d_runtime
           mkdir -p "$RUNNER_TEMP/TerraForge-Play-Godot"
-          cp -a project.godot play.tscn play.gd terrain_runtime.gd import_source.gd addons shaders README.md "$RUNNER_TEMP/TerraForge-Play-Godot/"
+          cp -a project.godot play.tscn play.gd terrain_runtime.gd session_recorder.gd world shaders README.md "$RUNNER_TEMP/TerraForge-Play-Godot/"
+          mkdir -p "$RUNNER_TEMP/TerraForge-Play-Godot/addons"
+          cp -a addons/terrain_3d "$RUNNER_TEMP/TerraForge-Play-Godot/addons/"
       - uses: actions/upload-artifact@v4
         with:
           name: TerraForge-Play-Godot

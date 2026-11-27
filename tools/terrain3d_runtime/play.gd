@@ -1,13 +1,24 @@
 extends Node3D
 const Runtime = preload("res://terrain_runtime.gd")
-const Source = preload("res://import_source.gd")
+const Recorder = preload("res://session_recorder.gd")
+var recorder := Recorder.new()
+var report_path := ""
+var load_begin := 0
+var first_ground_ms := -1.0
+var physics_us := 0
+var ground_misses := 0
+var ground_checks := 0
+var last_probe := 0
+var traveled := 0.0
+var previous_position := Vector3.ZERO
+var has_previous_position := false
+var world_info: Dictionary = {}
 var backend: Runtime
 var player: CharacterBody3D
 var camera: Camera3D
 var status: Label
 var source_label: Label
 var menu: PanelContainer
-var path_field: LineEdit
 var dialog: FileDialog
 var extent := Vector2.ZERO
 var spawn := Vector3.ZERO
@@ -68,13 +79,9 @@ func _ready() -> void:
 	add_child(camera)
 	camera.current = true
 	make_ui()
-	if FileAccess.file_exists("res://world.tfh"):
-		request_load("res://world.tfh")
-	elif DirAccess.dir_exists_absolute("res://world"):
-		request_load("res://world")
-	else:
-		menu.show()
-		source_label.text = "Dünya seçin. DEMO ayrı bir örnek arazidir."
+	menu.hide()
+	load_begin = Time.get_ticks_usec()
+	request_load()
 
 func make_ui() -> void:
 	var layer := CanvasLayer.new()
@@ -101,13 +108,17 @@ func make_ui() -> void:
 	var bar := HBoxContainer.new()
 	top.add_child(bar)
 	var open := Button.new()
-	open.text = "Dünya / Ayarlar"
-	open.pressed.connect(func(): menu.visible = not menu.visible; stick = Vector2.ZERO)
+	open.text = "Ayarlar"
+	open.pressed.connect(func(): menu.visible = not menu.visible; reset_touch())
 	bar.add_child(open)
 	var reset := Button.new()
 	reset.text = "Başa dön"
 	reset.pressed.connect(respawn)
 	bar.add_child(reset)
+	var report := Button.new()
+	report.text = "Rapor kaydet"
+	report.pressed.connect(save_report)
+	bar.add_child(report)
 	menu = PanelContainer.new()
 	ui.add_child(menu)
 	menu.position = Vector2(12,104)
@@ -115,29 +126,13 @@ func make_ui() -> void:
 	var box := VBoxContainer.new()
 	menu.add_child(box)
 	var hint := Label.new()
-	hint.text = "TFH dosyası veya TFM1/TFM2 klasörü"
+	hint.text = "512 m × 512 m | 64 native region | Float32"
 	box.add_child(hint)
-	path_field = LineEdit.new()
-	path_field.placeholder_text = "res://world veya /storage/.../world"
-	box.add_child(path_field)
-	var row := HBoxContainer.new()
-	box.add_child(row)
-	var load_button := Button.new()
-	load_button.text = "Aç"
-	load_button.pressed.connect(func(): request_load(path_field.text.strip_edges()))
-	row.add_child(load_button)
-	var browse := Button.new()
-	browse.text = "Dosya"
-	browse.pressed.connect(func(): dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE; dialog.popup_centered_ratio(0.85))
-	row.add_child(browse)
-	var folder := Button.new()
-	folder.text = "Klasör"
-	folder.pressed.connect(func(): dialog.file_mode = FileDialog.FILE_MODE_OPEN_DIR; dialog.popup_centered_ratio(0.85))
-	row.add_child(folder)
-	var demo := Button.new()
-	demo.text = "DEMO"
-	demo.pressed.connect(func(): request_load("@demo"))
-	row.add_child(demo)
+	var cap := CheckButton.new()
+	cap.text = "60 FPS sınırı"
+	cap.button_pressed = true
+	cap.toggled.connect(func(on: bool): Engine.max_fps = 60 if on else 0; recorder.event("fps_cap",Engine.max_fps))
+	box.add_child(cap)
 	var speed_label := Label.new()
 	speed_label.text = "Hareket hızı: 2.5 m/s"
 	box.add_child(speed_label)
@@ -146,65 +141,107 @@ func make_ui() -> void:
 	slider.max_value = 12.0
 	slider.step = 0.5
 	slider.value = speed
-	slider.value_changed.connect(func(v: float): speed = v; speed_label.text = "Hareket hızı: %.1f m/s" % v)
+	slider.value_changed.connect(func(v: float): speed = v; speed_label.text = "Hareket hızı: %.1f m/s" % v; recorder.event("speed_mps",v))
 	box.add_child(slider)
 	dialog = FileDialog.new()
 	dialog.access = FileDialog.ACCESS_FILESYSTEM
-	dialog.file_selected.connect(func(p: String): path_field.text = p; request_load(p))
-	dialog.dir_selected.connect(func(p: String): path_field.text = p; request_load(p))
+	dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
+	dialog.filters = PackedStringArray(["*.json ; JSON performans raporu"])
+	dialog.file_selected.connect(copy_report)
 	add_child(dialog)
 
-func request_load(path: String) -> void:
-	if loading or path.is_empty():
-		return
+func request_load() -> void:
 	loading = true
-	ready_to_walk = false
-	stick = Vector2.ZERO
-	source_label.text = "Arazi içe aktarılıyor..."
+	source_label.text = "Dünya hazırlanıyor..."
 	await get_tree().process_frame
 	await get_tree().process_frame
-	var source := Source.new()
-	var result: Error = source.demo() if path == "@demo" else source.load_source(path)
-	if result != OK:
-		source_label.text = "Açılmadı: " + source.error_message
-		loading = false
-		ready_to_walk = backend != null
+	var manifest := FileAccess.open("res://world/world.json",FileAccess.READ)
+	if manifest == null:
+		fail_load("Dünya manifesti eksik")
 		return
-	if backend != null:
-		backend.free()
-		backend = null
-	var next := Runtime.new()
-	add_child(next)
-	extent = Vector2(source.cells)*source.spacing
+	var parsed: Variant = JSON.parse_string(manifest.get_as_text())
+	if not parsed is Dictionary:
+		fail_load("Dünya manifesti geçersiz")
+		return
+	world_info = parsed
+	var side := int(world_info.get("samples",0))
+	var spacing := float(world_info.get("spacing_m",0))
+	var world_path := "res://world/height.r32"
+	if side != 2048 or spacing != 0.25 or not FileAccess.file_exists(world_path):
+		fail_load("Dünya boyutu veya verisi geçersiz")
+		return
+	if FileAccess.get_sha256(world_path) != str(world_info.get("sha256","")):
+		fail_load("Dünya SHA256 uyuşmuyor")
+		return
+	var bytes := FileAccess.get_file_as_bytes(world_path)
+	if bytes.size() != side*side*4:
+		fail_load("Float32 veri boyutu geçersiz")
+		return
+	var image := Image.create_from_data(side,side,false,Image.FORMAT_RF,bytes)
+	bytes = PackedByteArray()
+	extent = Vector2(side-1,side-1)*spacing
 	player.position = Vector3(extent.x*0.5,0,extent.y*0.5)
 	update_camera()
-	result = next.initialize(camera,player,source.spacing,"lean")
+	var next := Runtime.new()
+	add_child(next)
+	var result: Error = next.initialize(camera,player,spacing,"lean")
 	if result == OK:
-		result = next.import_height_snapshot(source.height_image(),Vector3.ZERO,source.control_image())
+		result = next.import_height_snapshot(image)
 	if result != OK:
 		next.free()
-		source_label.text = "Terrain3D aktarımı başarısız: " + str(result)
-		loading = false
+		fail_load("Terrain3D aktarımı başarısız: " + str(result))
 		return
 	backend = next
 	var height: float = backend.surface_height(player.position)
 	if not is_finite(height):
-		source_label.text = "Başlangıç yüksekliği okunamadı."
-		loading = false
+		fail_load("Başlangıç yüksekliği okunamadı")
 		return
 	spawn = Vector3(player.position.x,height+0.20,player.position.z)
 	respawn()
-	source_label.text = ("DEMO — özgün dünya değil" if path=="@demo" else path.get_file()) + " | %.0f × %.0f m" % [extent.x,extent.y]
-	menu.hide()
+	source_label.text = "Kuzey Vadisi | %.1f × %.1f m | 64 bölge" % [extent.x,extent.y]
 	loading = false
 	gaps = 0
 	frame_ms.clear()
 	last_frame = 0
+	recorder.begin(world_info, float(Time.get_ticks_usec()-load_begin)/1000.0)
+	recorder.event("fps_cap",Engine.max_fps)
+
+func fail_load(message: String) -> void:
+	source_label.text = message
+	loading = false
+	ready_to_walk = false
+
+func reset_touch() -> void:
+	stick = Vector2.ZERO
+	stick_id = -1
+	look_id = -1
+	overlay.engaged = false
+	overlay.offset = Vector2.ZERO
+	overlay.queue_redraw()
+
+func save_report() -> void:
+	if not recorder.active:
+		return
+	reset_touch()
+	report_path = recorder.save()
+	if report_path.is_empty():
+		source_label.text = "Rapor yazılamadı"
+		return
+	source_label.text = "Rapor: " + ProjectSettings.globalize_path(report_path)
+	dialog.current_file = report_path.get_file()
+	dialog.popup_centered_ratio(0.85)
+
+func copy_report(path: String) -> void:
+	var dst := path if path.to_lower().ends_with(".json") else path+".json"
+	var result := DirAccess.copy_absolute(ProjectSettings.globalize_path(report_path),dst)
+	source_label.text = "Rapor kaydedildi: " + dst if result==OK else "Kopyalanamadı; rapor: " + ProjectSettings.globalize_path(report_path)
 
 func respawn() -> void:
 	if backend == null:
 		return
 	player.position = spawn
+	has_previous_position = false
+	recorder.event("respawn", [spawn.x,spawn.y,spawn.z])
 	player.velocity = Vector3.ZERO
 	ready_to_walk = false
 	update_camera()
@@ -244,6 +281,7 @@ func _input(event: InputEvent) -> void:
 func _physics_process(delta: float) -> void:
 	if backend == null or loading:
 		return
+	var tick := Time.get_ticks_usec()
 	if not ready_to_walk:
 		var p := player.global_position
 		var ray := PhysicsRayQueryParameters3D.create(p+Vector3.UP,p-Vector3.UP*2.0,1)
@@ -251,12 +289,15 @@ func _physics_process(delta: float) -> void:
 		if hit.is_empty():
 			return
 		ready_to_walk = true
+		if first_ground_ms < 0:
+			first_ground_ms = float(Time.get_ticks_usec()-load_begin)/1000.0
+			recorder.event("first_ground_ms",first_ground_ms)
 	var move := stick
 	if Input.is_physical_key_pressed(KEY_W): move.y -= 1
 	if Input.is_physical_key_pressed(KEY_S): move.y += 1
 	if Input.is_physical_key_pressed(KEY_A): move.x -= 1
 	if Input.is_physical_key_pressed(KEY_D): move.x += 1
-	if menu.visible: move = Vector2.ZERO
+	if menu.visible or dialog.visible: move = Vector2.ZERO
 	move = move.limit_length()
 	var direction := Vector3(move.x,0,move.y).rotated(Vector3.UP,yaw)
 	player.velocity.x = direction.x*speed
@@ -272,6 +313,24 @@ func _physics_process(delta: float) -> void:
 		gaps += 1
 		respawn()
 	update_camera()
+	if has_previous_position:
+		traveled += Vector2(player.position.x-previous_position.x,player.position.z-previous_position.z).length()
+	previous_position = player.position
+	has_previous_position = true
+	var now := Time.get_ticks_usec()
+	if now-last_probe>=1000000:
+		last_probe = now
+		var p := player.global_position
+		var expected := backend.surface_height(p)
+		var ray := PhysicsRayQueryParameters3D.create(p+Vector3.UP*2.0,p-Vector3.UP*3.0,1)
+		var hit := get_world_3d().direct_space_state.intersect_ray(ray)
+		ground_checks += 1
+		if hit.is_empty() or not is_finite(expected):
+			ground_misses += 1
+			recorder.event("ground_probe_miss",[p.x,p.y,p.z])
+		else:
+			recorder.last_ground_error_m = absf(float(hit.position.y)-expected)
+	physics_us += Time.get_ticks_usec()-tick
 
 func update_camera() -> void:
 	var aim := player.position + Vector3.UP*0.15
@@ -284,6 +343,8 @@ func _process(_delta: float) -> void:
 		return
 	var now := Time.get_ticks_usec()
 	if last_frame>0 and backend != null and not loading:
+		recorder.frame(now-last_frame,player.position,physics_us,traveled,gaps,ground_checks,ground_misses,speed,ready_to_walk,menu.visible or dialog.visible)
+		physics_us = 0
 		frame_ms.append(float(now-last_frame)/1000.0)
 		if frame_ms.size()>240:
 			frame_ms.pop_front()
@@ -295,4 +356,4 @@ func _process(_delta: float) -> void:
 	sorted.sort()
 	var p99 := 0.0 if sorted.is_empty() else float(sorted[clampi(ceili(sorted.size()*0.99)-1,0,sorted.size()-1)])
 	var worst := 0.0 if sorted.is_empty() else float(sorted[-1])
-	status.text = "FPS %d | P99 %.1f ms | MAX %.1f ms | düşme %d" % [Engine.get_frames_per_second(),p99,worst,gaps]
+	status.text = "FPS %d | P99 %.1f ms | MAX %.1f ms | düşme %d | %.0f m" % [Engine.get_frames_per_second(),p99,worst,gaps,traveled]
