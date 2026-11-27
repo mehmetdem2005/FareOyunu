@@ -16,6 +16,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install pinned native Terrain3D distribution
         run: bash tools/terrain3d_runtime/install_terrain3d.sh
+      - name: Install offline world baking dependencies
+        run: python3 -m pip install numpy scipy pillow
       - name: Bake fixed full-size world (offline Float32)
         run: python3 tools/terrain3d_runtime/bake_world.py
       - name: Package Godot project (no benchmark or regression suite)

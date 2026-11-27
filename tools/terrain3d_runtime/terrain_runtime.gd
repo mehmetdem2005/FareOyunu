@@ -5,11 +5,15 @@ const REGION_SIZE := 256
 const MAX_REGIONS := 64
 var terrain: Node3D
 var render_profile := "lean"
+var region_size := REGION_SIZE
 
-func initialize(camera: Camera3D, collision_target: Node3D, spacing: float, profile: String = "lean") -> Error:
-	if profile not in ["reference", "lean", "lean_lod4"]:
+func initialize(camera: Camera3D, collision_target: Node3D, spacing: float, profile: String = "lean", region_samples: int = REGION_SIZE) -> Error:
+	if profile not in ["reference", "lean", "lean_lod4", "world"]:
 		return ERR_INVALID_PARAMETER
 	render_profile = profile
+	if region_samples not in [256,512]:
+		return ERR_INVALID_PARAMETER
+	region_size = region_samples
 	if terrain != null or not is_instance_valid(camera) or not is_instance_valid(collision_target):
 		return ERR_INVALID_PARAMETER
 	if not is_finite(spacing) or spacing < 0.1 or spacing > 100.0:
@@ -21,10 +25,10 @@ func initialize(camera: Camera3D, collision_target: Node3D, spacing: float, prof
 	if terrain == null:
 		return ERR_CANT_CREATE
 	terrain.name = "Terrain3D"
-	terrain.set("region_size", REGION_SIZE)
+	terrain.set("region_size", region_size)
 	terrain.set("vertex_spacing", spacing)
 	terrain.set("mesh_size", 16)
-	terrain.set("mesh_lods", 4 if profile == "lean_lod4" else 5)
+	terrain.set("mesh_lods", 7 if profile == "world" else (4 if profile == "lean_lod4" else 5))
 	terrain.set("tessellation_level", 0)
 	# Fixture has no texture asset resource on disk.
 	terrain.set("free_editor_textures", false)
@@ -46,15 +50,25 @@ func initialize(camera: Camera3D, collision_target: Node3D, spacing: float, prof
 	if profile != "reference":
 		material.set("world_background", 0)
 		material.set("texture_filtering", 1)
-		var shader := load("res://shaders/terrain3d_lightweight.gdshader") as Shader
+		var shader_path := "res://shaders/world_surface.gdshader" if profile == "world" else "res://shaders/terrain3d_lightweight.gdshader"
+		var shader := load(shader_path) as Shader
 		if shader == null:
 			terrain.free()
 			terrain = null
 			return ERR_CANT_CREATE
 		material.set("shader_override", shader)
 		material.set("shader_override_enabled", true)
-		material.call("set_shader_param", "textures_enabled", false)
-		material.call("set_shader_param", "macro_variation_enabled", false)
+		if profile == "world":
+			for kind in ["soil","rock","sand","grass"]:
+				var tex := load("res://world/"+kind+".png") as Texture2D
+				if tex == null:
+					terrain.free()
+					terrain = null
+					return ERR_CANT_CREATE
+				material.call("set_shader_param", kind+"_tex", tex)
+		else:
+			material.call("set_shader_param", "textures_enabled", false)
+			material.call("set_shader_param", "macro_variation_enabled", false)
 	return OK
 
 ## Input is already in world height units. No normalization or 8-bit conversion.
@@ -68,16 +82,16 @@ func import_height_snapshot(image: Image, origin: Vector3 = Vector3.ZERO, contro
 		return ERR_ALREADY_IN_USE
 	var w: int = image.get_width()
 	var h: int = image.get_height()
-	if w % REGION_SIZE != 0 or h % REGION_SIZE != 0:
+	if w % region_size != 0 or h % region_size != 0:
 		return ERR_INVALID_PARAMETER
-	if (w / REGION_SIZE) * (h / REGION_SIZE) > MAX_REGIONS:
+	if (w / region_size) * (h / region_size) > MAX_REGIONS:
 		return ERR_OUT_OF_MEMORY
-	var region_world: float = REGION_SIZE * float(terrain.get("vertex_spacing"))
+	var region_world: float = region_size * float(terrain.get("vertex_spacing"))
 	var rx: float = origin.x / region_world
 	var rz: float = origin.z / region_world
 	if not origin.is_finite() or origin.y != 0.0 or not is_equal_approx(rx, roundf(rx)) or not is_equal_approx(rz, roundf(rz)):
 		return ERR_INVALID_PARAMETER
-	if rx < -16 or rz < -16 or rx + float(w) / REGION_SIZE > 16 or rz + float(h) / REGION_SIZE > 16:
+	if rx < -16 or rz < -16 or rx + float(w) / region_size > 16 or rz + float(h) / region_size > 16:
 		return ERR_INVALID_PARAMETER
 	for height in image.get_data().to_float32_array():
 		if not is_finite(height):
@@ -86,8 +100,11 @@ func import_height_snapshot(image: Image, origin: Vector3 = Vector3.ZERO, contro
 		return ERR_INVALID_PARAMETER
 	var maps: Array[Image] = [image, control, null]
 	data.call("import_images", maps, origin, 0.0, 1.0)
-	if int(data.call("get_region_count")) != (w / REGION_SIZE) * (h / REGION_SIZE):
+	if int(data.call("get_region_count")) != (w / region_size) * (h / region_size):
 		return ERR_INVALID_DATA
+	if render_profile == "world":
+		var material: Object = terrain.get("material")
+		material.call("set_show_checkered", false)
 	return OK
 
 func surface_height(position: Vector3) -> float:

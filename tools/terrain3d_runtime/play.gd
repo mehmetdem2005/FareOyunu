@@ -19,7 +19,6 @@ var camera: Camera3D
 var status: Label
 var source_label: Label
 var menu: PanelContainer
-var dialog: FileDialog
 var extent := Vector2.ZERO
 var spawn := Vector3.ZERO
 var yaw := 0.0
@@ -74,7 +73,7 @@ func _ready() -> void:
 	shape.shape = capsule
 	player.add_child(shape)
 	camera = Camera3D.new()
-	camera.far = 400
+	camera.far = 850
 	camera.near = 0.025
 	add_child(camera)
 	camera.current = true
@@ -126,12 +125,12 @@ func make_ui() -> void:
 	var box := VBoxContainer.new()
 	menu.add_child(box)
 	var hint := Label.new()
-	hint.text = "512 m × 512 m | 64 native region | Float32"
+	hint.text = "1024 m × 1024 m | 64 native region | Float32"
 	box.add_child(hint)
 	var cap := CheckButton.new()
 	cap.text = "60 FPS sınırı"
 	cap.button_pressed = true
-	cap.toggled.connect(func(on: bool): Engine.max_fps = 60 if on else 0; recorder.event("fps_cap",Engine.max_fps))
+	cap.toggled.connect(func(on: bool): Engine.max_fps = 60 if on else 0; DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if on else DisplayServer.VSYNC_DISABLED); recorder.event("fps_cap",Engine.max_fps); recorder.event("vsync_mode",DisplayServer.window_get_vsync_mode()))
 	box.add_child(cap)
 	var speed_label := Label.new()
 	speed_label.text = "Hareket hızı: 2.5 m/s"
@@ -143,12 +142,6 @@ func make_ui() -> void:
 	slider.value = speed
 	slider.value_changed.connect(func(v: float): speed = v; speed_label.text = "Hareket hızı: %.1f m/s" % v; recorder.event("speed_mps",v))
 	box.add_child(slider)
-	dialog = FileDialog.new()
-	dialog.access = FileDialog.ACCESS_FILESYSTEM
-	dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
-	dialog.filters = PackedStringArray(["*.json ; JSON performans raporu"])
-	dialog.file_selected.connect(copy_report)
-	add_child(dialog)
 
 func request_load() -> void:
 	loading = true
@@ -167,7 +160,7 @@ func request_load() -> void:
 	var side := int(world_info.get("samples",0))
 	var spacing := float(world_info.get("spacing_m",0))
 	var world_path := "res://world/height.r32"
-	if side != 2048 or spacing != 0.25 or not FileAccess.file_exists(world_path):
+	if side != 4096 or spacing != 0.25 or not FileAccess.file_exists(world_path):
 		fail_load("Dünya boyutu veya verisi geçersiz")
 		return
 	if FileAccess.get_sha256(world_path) != str(world_info.get("sha256","")):
@@ -180,11 +173,12 @@ func request_load() -> void:
 	var image := Image.create_from_data(side,side,false,Image.FORMAT_RF,bytes)
 	bytes = PackedByteArray()
 	extent = Vector2(side-1,side-1)*spacing
-	player.position = Vector3(extent.x*0.5,0,extent.y*0.5)
+	var start: Array = world_info.get("spawn_m",[512.0,512.0])
+	player.position = Vector3(float(start[0]),0,float(start[1]))
 	update_camera()
 	var next := Runtime.new()
 	add_child(next)
-	var result: Error = next.initialize(camera,player,spacing,"lean")
+	var result: Error = next.initialize(camera,player,spacing,"world",512)
 	if result == OK:
 		result = next.import_height_snapshot(image)
 	if result != OK:
@@ -198,7 +192,7 @@ func request_load() -> void:
 		return
 	spawn = Vector3(player.position.x,height+0.20,player.position.z)
 	respawn()
-	source_label.text = "Kuzey Vadisi | %.1f × %.1f m | 64 bölge" % [extent.x,extent.y]
+	source_label.text = "Dört Havza | %.1f × %.1f m | 64 bölge" % [extent.x,extent.y]
 	loading = false
 	gaps = 0
 	frame_ms.clear()
@@ -227,25 +221,15 @@ func save_report() -> void:
 	if report_path.is_empty():
 		source_label.text = "Rapor yazılamadı"
 		return
-	# Android editor project folder is normally user-accessible, unlike app-private user://.
 	var report_dir := ProjectSettings.globalize_path("res://reports")
 	var mkdir := DirAccess.make_dir_recursive_absolute(report_dir)
 	var project_copy := report_dir.path_join(report_path.get_file())
 	if mkdir == OK and DirAccess.copy_absolute(ProjectSettings.globalize_path(report_path),project_copy) == OK:
 		source_label.text = "Rapor kaydedildi: reports/" + report_path.get_file()
-		dialog.current_dir = report_dir
 	else:
 		source_label.text = "Rapor: " + ProjectSettings.globalize_path(report_path)
-		var downloads := OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS)
-		if not downloads.is_empty() and DirAccess.dir_exists_absolute(downloads):
-			dialog.current_dir = downloads
-	dialog.current_file = report_path.get_file()
-	dialog.popup_centered_ratio(0.85)
-
-func copy_report(path: String) -> void:
-	var dst := path if path.to_lower().ends_with(".json") else path+".json"
-	var result := DirAccess.copy_absolute(ProjectSettings.globalize_path(report_path),dst)
-	source_label.text = "Rapor kaydedildi: " + dst if result==OK else "Kopyalanamadı; rapor: " + ProjectSettings.globalize_path(report_path)
+	# No FileDialog / filesystem enumeration on Android.
+	recorder.skip_next = true
 
 func respawn() -> void:
 	if backend == null:
@@ -258,7 +242,7 @@ func respawn() -> void:
 	update_camera()
 
 func _input(event: InputEvent) -> void:
-	if menu == null or menu.visible or loading or dialog.visible:
+	if menu == null or menu.visible or loading :
 		return
 	var size := get_viewport().get_visible_rect().size
 	if event is InputEventScreenTouch:
