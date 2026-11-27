@@ -70,7 +70,7 @@ func _enter_tree() -> void:
     var new_button: Button = Button.new()
     new_button.text = "+ New"
     new_button.tooltip_text = "Create an empty editable terrain"
-    new_button.pressed.connect(_create_terrain)
+    new_button.pressed.connect(_choose_new_size)
     header.add_child(new_button)
     var save_button: Button = Button.new()
     save_button.text = "Save"
@@ -275,7 +275,8 @@ func _process(_delta: float) -> void:
         if camera != null and _active.call("get_camera") != camera:
             _active.call("set_camera",camera)
     if _popup.visible:
-        _stats_label.text = "Native C++ | RF Float32 | 7 LOD"
+        var data: Object = _active.get("data")
+        _stats_label.text = "Native C++ | RF Float32 | %d regions" % int(data.call("get_region_count"))
 
 func _refresh_layer_ui() -> void:
     _layer_enable.visible = true
@@ -323,7 +324,26 @@ func _on_selection_changed() -> void:
     if not is_instance_valid(_active):
         _set_active(null)
 
-func _create_terrain() -> void:
+func _choose_new_size() -> void:
+    var dialog := ConfirmationDialog.new()
+    dialog.title = "TerraForge — New"
+    dialog.dialog_text = "Native Float32 | 25 cm"
+    var options := OptionButton.new()
+    options.add_item("128 × 128 m (1 region)",1)
+    options.add_item("256 × 256 m (4 regions)",2)
+    options.add_item("512 × 512 m (16 regions)",4)
+    options.select(0)
+    dialog.add_child(options)
+    dialog.confirmed.connect(func():
+        var side := options.get_selected_id()
+        dialog.queue_free()
+        _create_terrain(side)
+    )
+    dialog.canceled.connect(dialog.queue_free)
+    get_editor_interface().get_base_control().add_child(dialog)
+    dialog.popup_centered()
+    
+func _create_terrain(side: int) -> void:
     var root := get_editor_interface().get_edited_scene_root()
     if not root is Node3D or not ClassDB.can_instantiate("Terrain3D"):
         _set_status("Open a Node3D scene; native extension required.")
@@ -365,10 +385,17 @@ func _create_terrain() -> void:
         terrain.free()
         _set_status("Native initialization failed.")
         return
-    var region: Resource = data.call("add_region_blank",Vector2i.ZERO,true)
-    if region == null:
+    for z in range(side):
+        for x in range(side):
+            var region: Resource = data.call("add_region_blank",Vector2i(x,z),false)
+            if region == null:
+                terrain.free()
+                _set_status("Native region creation failed.")
+                return
+    data.call("update_maps",3,true,false)
+    if int(data.call("get_region_count")) != side*side:
         terrain.free()
-        _set_status("Native region creation failed.")
+        _set_status("Native region count mismatch.")
         return
     for kind: String in ["soil","rock","sand","grass"]:
         var pixels := ResourceLoader.load("res://world/"+kind+"_mips.res","Image",ResourceLoader.CACHE_MODE_IGNORE) as Image
@@ -385,7 +412,7 @@ func _create_terrain() -> void:
     selection.clear()
     selection.add_node(terrain)
     _set_active(terrain)
-    _set_status("Native 128m region created. Save data and scene.")
+    _set_status("Native %d regions created. Save data and scene." % (side*side))
     _popup.hide()
 
 func _toggle_brush(enabled: bool) -> void:
