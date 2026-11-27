@@ -3,7 +3,7 @@
 Onay: 27 Kasım 2026, kullanıcı mevcut oynanabilir sürümü beğendi ve bu planın eski planlardan ayrı kaydedilmesini istedi.
 Dal: `feat/terraforge-terrain3d-runtime`
 Kararlı referans (kullanıcının oynadığı Dört Havza V2): `fdbf49b2b5c1e0133a050e2a5f5592011f1fbf2c`.
-Durum: P1.5 native temel gerçek cihazda çalıştı; P1.6.1–7 paket/uygulama hedefleri tamamlandı (7/43); yeni runtime cihaz doğrulaması açık. Sıradaki P1.7.1.
+Durum: P1.5 native temel gerçek cihazda çalıştı; P1.6.1–7 paket/uygulama hedefleri tamamlandı (7/43); yeni runtime cihaz doğrulaması açık. Sıradaki P1.7.2.
 Bu belge bu dalın TEK aktif geliştirme planıdır. Eski `addons/terra_forge/` altındaki özel CPU mesh/worker mimarisi planları tarihsel referanstır; görev sırası, faz numaraları ve başarı ölçütleri buraya taşınmaz. Orijinal dal `feat/terraforge-mobile-addon` korunur.
 
 ## Başlangıç noktası ve kararlar
@@ -27,7 +27,7 @@ Bu belge bu dalın TEK aktif geliştirme planıdır. Eski `addons/terra_forge/` 
 Hedef: ilk fiziksel zemin 6,71 s bazına göre iyileşsin; saniyelik donmaların kök nedeni belirlenip azaltılsın. Mevcut dünya aynı kalsın.
 
 ## P1.7 — Profesyonel chunk ve bellek yönetimi (10 adım)
-- [ ] 1.7.1 Native bölge ekleme/kaldırma maliyetlerini inceleme.
+- [x] 1.7.1 Native bölge ekleme/kaldırma kaynak analizi (gerçek cihaz maliyeti açık).
 - [ ] 1.7.2 Dünya bölge indeksi.
 - [ ] 1.7.3 Cihaz kapasitesine göre bellek bütçesi.
 - [ ] 1.7.4 Asenkron disk okuma.
@@ -90,3 +90,5 @@ Paket/ZIP boyutu optimizasyon hedefi değildir. En önemli hedef oyun içi takı
 Kullanıcı şartı: yakın grafik kalitesi bozulmadan akıcı FPS ve düşük gecikme hedeflenir. Fare ölçeğinde oyuncu/kamera çevresi birincil kalite alanıdır. Mevcut referans Dört Havza V2 (stable/native-terrain3d-dort-havza-v2): 25 cm yükseklik örnek aralığı, Float32, mevcut geometrik detay, dört doku, yedi clipmap LOD. Yakın LOD0 örnek aralığı, fizik doğruluğu, doku keskinliği/filtreleme, materyal ve siluet görünümü sırf FPS için düşürülmez; oyuncunun yakınında pop-in, doku bulanıklığı ve şekil değişimi kabul edilmez. İleride daha ayrıntılı mikro geometri ve 1K PBR hedefi korunur. Önce gereksiz CPU/GPU işi, görünmeyen geometri, uzak LOD ve uzak shader maliyeti, tekrarlanan texture fetch, kaynak kopyası, upload ve I/O optimizasyonu; sonra profil bazlı bütçe. Uzak kalite düşüşü de görünür geçiş ve siluet kaybı oluşturmamalı. Global dinamik çözünürlük (P1.8.6) yakın görüntüyü de etkilediğinden otomatik varsayılan değil; opt-in deney olarak değerlendirilir, yakın kalite koruması sağlanamıyorsa reddedilir veya kullanıcıya açık seçenek olarak sunulur. 60 FPS hedefi 16.67 ms toplam kare bütçesidir, gerçek GPU/CPU zamanları ve frame pacing ayrı ölçülür. Yeni materyal/obje özellikleri performans rezervi olmadan zorunlu açılmaz. Karşılaştırmalar aynı kamera, rota, görüş mesafesi, çözünürlük ve kalite ayarlarında yapılır; yakın görünüm referans kareleri ve ölçümleri saklanır. Görsel kalite ve kare süresi birlikte kabul kriteridir; donanım sınırında ikisi aynı anda sağlanamıyorsa bedel açıkça raporlanır, kullanıcıya danışmadan yakın kaliteyi düşürerek başarı ilan edilmez.
 
 Arka plan iş yükü de maliyet sayılır: öncelik gereksiz işi tamamen kaldırmak ve offline hazırlamak; ölçülmemiş worker, agresif prefetch ve sınırsız kuyruk eklenmez.
+
+P1.7.1 kararı: [NATIVE_RESIDENCY_AUDIT_TR.md](NATIVE_RESIDENCY_AUDIT_TR.md). Mevcut dünya resident kalır; naive add/remove streaming reddedildi. P1.7.4–8 gereklilik ve ölçüm koşullu; gereksiz worker/cache/prefetch oluşturma. 8/43.

@@ -53,3 +53,7 @@ Her sonraki geliştirmede tarih, adım numarası, commit, durum, ölçüm/kanıt
 ## P1.6 kapanış — 27 Kasım 2026
 - CI 46016265505 başarılı; 64 native region, 16.777.216 Float32 örnek, 4/4 mip zinciri kayıpsız doğrulandı; offline bake 2045 ms. Artifact 15205259073. Vulkan/VSync ortam uyarıları devam ediyor. Bu CI paket üretimi, recorder çalışma davranışı veya FPS benchmark değil.
 - 7/43 paket/uygulama hedefi; P1.6 7/7 bu kapsamda kapandı. Gerçek cihaz başlangıç/gate/recorder ve donma analizi açık; önceki donmanın nedeni kanıtlanmadı. P1.7.1 sırada. Kararlı V2 referans değişmedi.
+
+## P1.7.1 — kaynak denetimi tamamlandı
+- Native add/remove tüm texture array ve region_map_changed üzerinden fizik rebuild yapabilir; remove_region gerçek RAM eviction değil, save_directory silinmiş disk kaynaklarını silebilir. Ayrıntılı kaynak ve 213.333 MiB teorik harita yükü: NATIVE_RESIDENCY_AUDIT_TR.md. Cihaz GPU/RSS/timing ölçümü yok.
+- 64 region resident korunur, naive streaming reddedildi. 8/43, P1.7 1/10. Sıradaki 1.7.2 kararlı koordinat indeksi. Yalnız belge commit, CI tetiklenmez.

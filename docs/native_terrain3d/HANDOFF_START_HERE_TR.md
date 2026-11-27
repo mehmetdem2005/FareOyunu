@@ -18,3 +18,5 @@ Oyuncu çevresindeki geometri, doku, fizik ve görüntü keskinliğini FPS uğru
 Güncel: P1.6.5 paket başarılı (46015224588); P1.6.6–7 birleşik bellek içi recorder aday. Cihaz davranışı ölçülmedi; sıradaki P1.6.6–7 paket sonucu, ardından P1.7.1 native array maliyeti.
 
 P1.6 paket/uygulama kapanışı: 7/7, genel 7/43. Başarılı CI 46016265505, artifact 15205259073. Yeni runtime gerçek cihaz doğrulaması açık. Sıradaki P1.7.1 (native region ekleme/çıkarma ve GPU texture array yeniden oluşturma maliyetini incele); ölçümsüz agresif streaming/worker yok.
+
+P1.7.1 tamamlandı: 8/43; NATIVE_RESIDENCY_AUDIT_TR.md zorunlu oku. Mevcut 64 resident region; add/remove streaming veya save_directory ile eviction yapma. Sıradaki P1.7.2. Cihaz timing açık.
