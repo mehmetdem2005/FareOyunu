@@ -53,8 +53,8 @@ uniform float _texture_ao_affect_array[32];
 uniform float _texture_roughness_mod_array[32];
 uniform float _texture_uv_scale_array[32];
 uniform vec4 _texture_color_array[32];
-uniform highp sampler2DArray _height_maps : repeat_disable;
-uniform highp sampler2DArray _control_maps : repeat_disable;
+uniform highp sampler2DArray _height_maps : filter_nearest, repeat_disable;
+uniform highp sampler2DArray _control_maps : filter_nearest, repeat_disable;
 uniform highp sampler2DArray _color_maps : source_color, filter_linear_mipmap, repeat_disable;
 uniform highp sampler2DArray _texture_array_albedo : source_color, filter_linear_mipmap, repeat_enable;
 uniform highp sampler2DArray _texture_array_normal : hint_normal, filter_linear_mipmap, repeat_enable;
@@ -87,6 +87,12 @@ uniform float noise1_angle : hint_range(0, 6.283) = 0.;
 uniform vec2 noise1_offset = vec2(0.5);
 uniform float noise2_scale : hint_range(0.001, 1.) = 0.076; // Used for macro variation 2. Scaled up 10x
 group_uniforms;
+
+// TERRAFORGE_PACKED_RF_V1 -- native upload contract, little-endian raw 32-bit words.
+uint tf_unpack_word(vec4 rgba) {
+	uvec4 bytes = uvec4(round(clamp(rgba, vec4(0.0), vec4(1.0))*255.0));
+	return bytes.r | (bytes.g << 8u) | (bytes.b << 16u) | (bytes.a << 24u);
+}
 
 // Varyings & Types
 varying vec3 v_vertex;
@@ -177,10 +183,10 @@ float interpolated_height(vec2 pos) {
 	index[1] = get_index_coord(index_id + offsets.yy);
 	index[2] = get_index_coord(index_id + offsets.yx);
 	index[3] = get_index_coord(index_id + offsets.xx);
-	float h0 = texelFetch(_height_maps, index[0], 0).r;
-	float h1 = texelFetch(_height_maps, index[1], 0).r;
-	float h2 = texelFetch(_height_maps, index[2], 0).r;
-	float h3 = texelFetch(_height_maps, index[3], 0).r;
+	float h0 = uintBitsToFloat(tf_unpack_word(texelFetch(_height_maps, index[0], 0)));
+	float h1 = uintBitsToFloat(tf_unpack_word(texelFetch(_height_maps, index[1], 0)));
+	float h2 = uintBitsToFloat(tf_unpack_word(texelFetch(_height_maps, index[2], 0)));
+	float h3 = uintBitsToFloat(tf_unpack_word(texelFetch(_height_maps, index[3], 0)));
 	vec2 f = fract(pos);
 	vec2 i = 1.0 - f;
 	vec4 w = vec4(i.x * f.y, f.x * f.y, f.x * i.y, i.x * i.y);
@@ -224,7 +230,7 @@ void vertex() {
 
 	// Discard vertices for Holes. 1 lookup
 	ivec3 v_region = get_index_coord(start_pos);
-	uint control = floatBitsToUint(texelFetch(_control_maps, v_region, 0)).r;
+	uint control = tf_unpack_word(texelFetch(_control_maps, v_region, 0));
 	bool hole = DECODE_HOLE(control);
 
 	// Show holes to all cameras except mouse camera (on exactly 1 layer)
@@ -247,9 +253,9 @@ void vertex() {
 			ivec3 coord_ub = get_index_coord(end_pos + vec2(1, 0));
 			ivec3 coord_va = get_index_coord(start_pos + vec2(0, 1));
 			ivec3 coord_vb = get_index_coord(end_pos + vec2(0, 1));
-			h = mix(texelFetch(_height_maps, coord_a, 0).r, texelFetch(_height_maps, coord_b, 0).r, vertex_lerp);
-			u = mix(texelFetch(_height_maps, coord_ua, 0).r, texelFetch(_height_maps, coord_ub, 0).r, vertex_lerp);
-			v = mix(texelFetch(_height_maps, coord_va, 0).r, texelFetch(_height_maps, coord_vb, 0).r, vertex_lerp);
+			h = mix(uintBitsToFloat(tf_unpack_word(texelFetch(_height_maps, coord_a, 0))), uintBitsToFloat(tf_unpack_word(texelFetch(_height_maps, coord_b, 0))), vertex_lerp);
+			u = mix(uintBitsToFloat(tf_unpack_word(texelFetch(_height_maps, coord_ua, 0))), uintBitsToFloat(tf_unpack_word(texelFetch(_height_maps, coord_ub, 0))), vertex_lerp);
+			v = mix(uintBitsToFloat(tf_unpack_word(texelFetch(_height_maps, coord_va, 0))), uintBitsToFloat(tf_unpack_word(texelFetch(_height_maps, coord_vb, 0))), vertex_lerp);
 		}
 
 		// Apply background ground level and region blend
@@ -342,11 +348,11 @@ void fragment() {
 
 		// Get index control data
 		// 1 - 4 lookups
-		uvec4 control = floatBitsToUint(vec4(
-			texelFetch(_control_maps, index[0], 0).r,
-			texelFetch(_control_maps, index[1], 0).r,
-			texelFetch(_control_maps, index[2], 0).r,
-			texelFetch(_control_maps, index[3], 0).r));
+		uvec4 control = uvec4(
+			tf_unpack_word(texelFetch(_control_maps, index[0], 0)),
+			tf_unpack_word(texelFetch(_control_maps, index[1], 0)),
+			tf_unpack_word(texelFetch(_control_maps, index[2], 0)),
+			tf_unpack_word(texelFetch(_control_maps, index[3], 0)));
 
 		{
 			// Auto blend calculation

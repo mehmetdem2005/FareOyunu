@@ -51,6 +51,11 @@ func _run() -> void:
 	data.call("update_maps",3,true,false)
 	material.call("set_show_checkered",false)
 	await process_frame
+	var region0: Resource = data.call("get_region",Vector2i.ZERO)
+	var source_h: Image = region0.call("get_height_map")
+	var source_c: Image = region0.call("get_control_map")
+	check(source_h.get_format()==Image.FORMAT_RF and source_c.get_format()==Image.FORMAT_RF,"CPU RF survives upload")
+	var initial_control := source_c.get_data()
 	var brush := Brush.new()
 	brush.attach(terrain)
 	# Match the user brush radius/power on the interior of one region.
@@ -80,7 +85,18 @@ func _run() -> void:
 	error=brush.dab(center,1,2.0,1.0)
 	brush.end()
 	check(error.is_empty() and absf(float(data.call("get_height",center))-2.0)<0.00001,"lower")
+	var final_h: Image = region0.call("get_height_map")
+	var final_c: Image = region0.call("get_control_map")
+	check(final_h.get_format()==Image.FORMAT_RF and final_c.get_format()==Image.FORMAT_RF,"CPU RF survives incremental update")
+	check(final_c.get_data()==initial_control,"control word bytes unchanged")
+	# Linux CI readback only. No GPU readback in normal editing.
+	var layer := int(data.call("get_region_id",Vector2i.ZERO))
+	var gpu_h := RenderingServer.texture_2d_layer_get(data.call("get_height_maps_rid"),layer)
+	var gpu_c := RenderingServer.texture_2d_layer_get(data.call("get_control_maps_rid"),layer)
+	check(gpu_h!=null and gpu_h.get_format()==Image.FORMAT_RGBA8 and gpu_h.get_data()==final_h.get_data(),"GPU height RGBA8 exact bytes after update")
+	check(gpu_c!=null and gpu_c.get_format()==Image.FORMAT_RGBA8 and gpu_c.get_data()==final_c.get_data(),"GPU control RGBA8 exact bytes")
 	if failures==0:
+		print("TERRAFORGE_PACKED_RF_OK cpu_rf=true gpu_bytes_exact=true")
 		print("NATIVE_BRUSH_SMOKE_OK regions=2 raise_lower_undo_redo=true")
 	stage.free()
 	quit(0 if failures==0 else 1)

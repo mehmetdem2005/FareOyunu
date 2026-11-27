@@ -53,8 +53,8 @@ uniform float _texture_ao_affect_array[32];
 uniform float _texture_roughness_mod_array[32];
 uniform float _texture_uv_scale_array[32];
 uniform vec4 _texture_color_array[32];
-uniform highp sampler2DArray _height_maps : repeat_disable;
-uniform highp sampler2DArray _control_maps : repeat_disable;
+uniform highp sampler2DArray _height_maps : filter_nearest, repeat_disable;
+uniform highp sampler2DArray _control_maps : filter_nearest, repeat_disable;
 uniform highp sampler2DArray _color_maps : source_color, filter_linear_mipmap, repeat_disable;
 uniform highp sampler2DArray _texture_array_albedo : source_color, filter_linear_mipmap, repeat_enable;
 uniform highp sampler2DArray _texture_array_normal : hint_normal, filter_linear_mipmap, repeat_enable;
@@ -167,18 +167,24 @@ float get_region_blend(vec2 uv2) {
 // Invalid region indices are not valid texelFetch layer coordinates.
 // Missing data remains missing for the NONE background; ground_level is used
 // only as a defined sample for boundary normals/morphs, not as a new region.
+// TERRAFORGE_PACKED_RF_V1 -- native upload contract, little-endian raw 32-bit words.
+uint tf_unpack_word(vec4 rgba) {
+	uvec4 bytes = uvec4(round(clamp(rgba, vec4(0.0), vec4(1.0))*255.0));
+	return bytes.r | (bytes.g << 8u) | (bytes.b << 16u) | (bytes.a << 24u);
+}
+
 float sample_height(ivec3 coord) {
 	if (coord.z < 0 || coord.z >= MAX_REGIONS) {
 		return ground_level;
 	}
-	return texelFetch(_height_maps, coord, 0).r;
+	return uintBitsToFloat(tf_unpack_word(texelFetch(_height_maps, coord, 0)));
 }
 
 uint sample_control(ivec3 coord) {
 	if (coord.z < 0 || coord.z >= MAX_REGIONS) {
 		return 0u;
 	}
-	return floatBitsToUint(texelFetch(_control_maps, coord, 0)).r;
+	return tf_unpack_word(texelFetch(_control_maps, coord, 0));
 }
 
 float interpolated_height(vec2 pos) {
