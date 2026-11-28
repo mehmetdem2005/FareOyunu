@@ -21,7 +21,8 @@ edit("src/terrain_3d_data.h",
 	void tf_read_rf_rect(const Vector2i &origin, int width, int height, float *dst, bool bulk) const;
 	static Dictionary tf_plan_smooth_snapshot(const Dictionary &snapshot);
 	bool tf_verify_smooth_snapshot(const Dictionary &snapshot, bool bulk = true) const;
-	Dictionary tf_write_brush(const Dictionary &values, bool cached = true);
+	Dictionary tf_write_brush(const Dictionary &values, bool cached = true, bool coalesce = true);
+	int tf_publish_height_batch();
 	void set_pixel(const MapType p_map_type, const Vector3 &p_global_position, const Color &p_pixel);""")
 edit("src/terrain_3d_data.cpp",
     '#include "terrain_3d_data.h"',
@@ -456,7 +457,24 @@ Dictionary Terrain3DData::tf_plan_smooth_snapshot(const Dictionary &snapshot) {
 	return out;
 }
 
-Dictionary Terrain3DData::tf_write_brush(const Dictionary &values, bool cached) {
+// Native brush fast path, only for clean texture arrays. The ordinary
+// update_maps path still handles all rebuilds, material changes and imports.
+int Terrain3DData::tf_publish_height_batch() {
+	int count=0;
+	for (const Vector2i &loc : _region_locations) {
+		const Terrain3DRegion *reg=get_region_ptr(loc);
+		if (reg && reg->is_edited()) {
+			const int id=get_region_id(loc);
+			_generated_height_maps.update(reg->get_height_map(),id);
+			++count;
+		}
+	}
+	// All affected layers are enqueued before the single notification.
+	if (count>0) emit_signal("height_maps_changed");
+	return count;
+}
+
+Dictionary Terrain3DData::tf_write_brush(const Dictionary &values, bool cached, bool coalesce) {
 	using TFClock = std::chrono::steady_clock;
 	const auto started = TFClock::now();
 	auto elapsed_us = [](TFClock::time_point a, TFClock::time_point b) -> int64_t {
@@ -558,6 +576,8 @@ Dictionary Terrain3DData::tf_write_brush(const Dictionary &values, bool cached) 
 	int64_t layer_bytes_est = 0;
 	int64_t edited_regions_est = 0;
 	bool incremental_expected = false;
+	bool coalesced_publish=false;
+	int uploaded_layers=0;
 	if (dirty>0) {
 		// These counters describe expected CPU-side full-layer payload, not
 		// GPU completion. Dirty arrays may rebuild more than the edited layers.
@@ -571,7 +591,13 @@ Dictionary Terrain3DData::tf_write_brush(const Dictionary &values, bool cached) 
 			layer_bytes_est = edited_regions_est * int64_t(_region_size) * _region_size * 4;
 		calc_height_range(false);
 		ranged = TFClock::now();
-		update_maps(TYPE_HEIGHT,false,false);
+		if (coalesce && incremental_expected) {
+			uploaded_layers=tf_publish_height_batch();
+			coalesced_publish=true;
+		} else {
+			update_maps(TYPE_HEIGHT,false,false);
+			if (incremental_expected) uploaded_layers=int(edited_regions_est);
+		}
 		uploaded = TFClock::now();
 		for (Terrain3DRegion *reg:touched) if (reg) reg->set_edited(false);
 		_terrain->snap();
@@ -592,6 +618,9 @@ Dictionary Terrain3DData::tf_write_brush(const Dictionary &values, bool cached) 
 	profile["edited_regions_est"] = edited_regions_est;
 	profile["incremental_expected"] = incremental_expected;
 	profile["layer_bytes_est"] = layer_bytes_est;
+	profile["coalesced_publish"] = coalesced_publish;
+	profile["uploaded_layers"] = uploaded_layers;
+	profile["height_signal_est"] = coalesced_publish ? (uploaded_layers>0?1:0) : uploaded_layers;
 	out["profile"] = profile;
 	out["error"]="";
 	out["actual"]=actual;
@@ -605,7 +634,7 @@ edit("src/terrain_3d_data.cpp",
     '''ClassDB::bind_method(D_METHOD("get_region_count"), &Terrain3DData::get_region_count);
 	ClassDB::bind_method(D_METHOD("tf_pick_brush","origin","direction"), &Terrain3DData::tf_pick_brush);
 	ClassDB::bind_method(D_METHOD("tf_plan_brush","center","tool","radius","power","flatten","smooth_mode"), &Terrain3DData::tf_plan_brush, DEFVAL(0));
-	ClassDB::bind_method(D_METHOD("tf_write_brush","values","cached"), &Terrain3DData::tf_write_brush, DEFVAL(true));
+	ClassDB::bind_method(D_METHOD("tf_write_brush","values","cached","coalesce"), &Terrain3DData::tf_write_brush, DEFVAL(true), DEFVAL(true));
 	ClassDB::bind_method(D_METHOD("tf_capture_smooth","center","radius","power","smooth_mode","bulk"), &Terrain3DData::tf_capture_smooth, DEFVAL(true));
 	ClassDB::bind_static_method("Terrain3DData",D_METHOD("tf_plan_smooth_snapshot","snapshot"), &Terrain3DData::tf_plan_smooth_snapshot);
 	ClassDB::bind_method(D_METHOD("tf_verify_smooth_snapshot","snapshot","bulk"), &Terrain3DData::tf_verify_smooth_snapshot, DEFVAL(true));''')

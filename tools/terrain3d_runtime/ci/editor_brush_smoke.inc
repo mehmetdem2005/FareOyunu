@@ -317,6 +317,48 @@ func _ci_editor_brush_smoke() -> void:
             push_error("NATIVE_EDITOR_BRUSH_FAIL: upload profile undo")
             get_tree().quit(1)
             return
+    # R2a: exact native transaction with 1, 2 and 4 edited layers.
+    # Real signal callback counts; texture payload remains the same.
+    var publish_cases := [Vector2(192,192),Vector2(256,192),Vector2(256,256)]
+    for publish_case in range(publish_cases.size()):
+        var publish_plan: Dictionary=data.call("tf_plan_brush",publish_cases[publish_case],0,4.0,1.0,0.0)
+        if not str(publish_plan["error"]).is_empty() or publish_plan["changes"].is_empty():
+            push_error("NATIVE_EDITOR_BRUSH_FAIL: publish plan")
+            get_tree().quit(1)
+            return
+        var legacy_publish: Array[int]=[]
+        var grouped_publish: Array[int]=[]
+        var signal_counts := [0,0]
+        var signal_box := [0]
+        var on_height := func(): signal_box[0]+=1
+        data.connect("height_maps_changed",on_height)
+        var publish_valid := true
+        var expected_layers := [1,2,4][publish_case]
+        for repetition in range(5):
+            for grouped in ([false,true] if repetition%2==0 else [true,false]):
+                signal_box[0]=0
+                var published: Dictionary=data.call("tf_write_brush",publish_plan["changes"],true,grouped)
+                var observed := int(signal_box[0])
+                var profile: Dictionary=published.get("profile",{})
+                var restored: Dictionary=data.call("tf_write_brush",publish_plan["originals"],true,grouped)
+                if not str(published["error"]).is_empty() or not str(restored["error"]).is_empty() or published["actual"]!=publish_plan["changes"] or restored["actual"]!=publish_plan["originals"] or int(profile.get("uploaded_layers",0))!=expected_layers or int(profile.get("layer_bytes_est",0))!=expected_layers*layer_bytes or observed!=(1 if grouped else expected_layers):
+                    publish_valid=false
+                    break
+                signal_counts[int(grouped)]=observed
+                if grouped:
+                    grouped_publish.append(int(profile["publish_cpu_us"]))
+                else:
+                    legacy_publish.append(int(profile["publish_cpu_us"]))
+            if not publish_valid:
+                break
+        data.disconnect("height_maps_changed",on_height)
+        if not publish_valid:
+            push_error("NATIVE_EDITOR_BRUSH_FAIL: publish coalesce parity "+str(publish_case))
+            get_tree().quit(1)
+            return
+        legacy_publish.sort()
+        grouped_publish.sort()
+        print("NATIVE_EDITOR_PUBLISH_COALESCE_OK layers=",expected_layers," legacy_signals=",signal_counts[0]," grouped_signals=",signal_counts[1]," legacy_us=",legacy_publish[2]," grouped_us=",grouped_publish[2]," bytes=",expected_layers*layer_bytes)
     # Q6d2: same native write dictionaries, scalar vs cached validation.
     # Compare exact readback/restore, reject invalid transaction without
     # touching a valid sample. Alternate order on the same runner.
