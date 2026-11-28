@@ -16,7 +16,7 @@ edit("src/terrain_3d_data.h",
     """// TerraForge: bounded main-thread brush transaction on the authoritative RF maps.
 	double tf_sample(const Vector2i &p) const;
 	Vector3 tf_pick_brush(const Vector3 &origin, const Vector3 &direction) const;
-	Dictionary tf_plan_brush(const Vector2 &center, int tool, double radius, double power, double flatten, int smooth_mode = 0) const;
+	Dictionary tf_plan_brush(const Vector2 &center, int tool, double radius, double power, double flatten, int smooth_mode = 0, bool bulk_basic = true) const;
 	Dictionary tf_capture_smooth(const Vector2 &center, double radius, double power, int smooth_mode, bool bulk = true) const;
 	void tf_read_rf_rect(const Vector2i &origin, int width, int height, float *dst, bool bulk) const;
 	static Dictionary tf_plan_smooth_snapshot(const Dictionary &snapshot);
@@ -91,7 +91,7 @@ double Terrain3DData::tf_sample(const Vector2i &p) const {
 	return double(h->get_pixelv(pix).r);
 }
 
-Dictionary Terrain3DData::tf_plan_brush(const Vector2 &center, int tool, double radius, double power, double flatten, int smooth_mode) const {
+Dictionary Terrain3DData::tf_plan_brush(const Vector2 &center, int tool, double radius, double power, double flatten, int smooth_mode, bool bulk_basic) const {
 	Dictionary out;
 	out["error"] = "Unsupported native brush.";
 	if (!_terrain || _region_size<=0 || _vertex_spacing<=0 || tool<0 || tool>3 || smooth_mode<0 || smooth_mode>2 ||
@@ -173,6 +173,13 @@ Dictionary Terrain3DData::tf_plan_brush(const Vector2 &center, int tool, double 
 			}
 		}
 	}
+	// Large basic footprints reuse the exact RF reader; small dabs remain scalar.
+	const bool use_bulk=tool!=2 && bulk_basic && int64_t(width)*height>=1024;
+	std::vector<float> basic_samples;
+	if (use_bulk) {
+		basic_samples.resize(width*height);
+		tf_read_rf_rect(Vector2i(x0,y0),width,height,basic_samples.data(),true);
+	}
 	Dictionary changes, originals;
 	for (int y=y0;y<=y1;++y) {
 		for (int x=x0;x<=x1;++x) {
@@ -180,7 +187,7 @@ Dictionary Terrain3DData::tf_plan_brush(const Vector2 &center, int tool, double 
 			const double dist_sq=dx*dx+dy*dy;
 			if (dist_sq>=1.0) continue;
 			const Vector2i p(x,y);
-			const double old=tool==2 ? source[(y-y0+k)*sw+(x-x0+k)] : tf_sample(p);
+			const double old=tool==2 ? source[(y-y0+k)*sw+(x-x0+k)] : use_bulk ? double(basic_samples[(y-y0)*width+x-x0]) : tf_sample(p);
 			if (!std::isfinite(old)) continue;
 			const double t=std::sqrt(dist_sq);
 			const double weight=1.0-t*t*(3.0-2.0*t);
@@ -217,6 +224,7 @@ Dictionary Terrain3DData::tf_plan_brush(const Vector2 &center, int tool, double 
 	out["filter_half_width_m"]=k*_vertex_spacing;
 	out["smooth_mode"]=smooth_mode;
 	out["filter_grid_cells"]=n;
+	out["bulk_basic_used"]=use_bulk;
 	return out;
 }
 
@@ -633,7 +641,7 @@ edit("src/terrain_3d_data.cpp",
     'ClassDB::bind_method(D_METHOD("get_region_count"), &Terrain3DData::get_region_count);',
     '''ClassDB::bind_method(D_METHOD("get_region_count"), &Terrain3DData::get_region_count);
 	ClassDB::bind_method(D_METHOD("tf_pick_brush","origin","direction"), &Terrain3DData::tf_pick_brush);
-	ClassDB::bind_method(D_METHOD("tf_plan_brush","center","tool","radius","power","flatten","smooth_mode"), &Terrain3DData::tf_plan_brush, DEFVAL(0));
+	ClassDB::bind_method(D_METHOD("tf_plan_brush","center","tool","radius","power","flatten","smooth_mode","bulk_basic"), &Terrain3DData::tf_plan_brush, DEFVAL(0), DEFVAL(true));
 	ClassDB::bind_method(D_METHOD("tf_write_brush","values","cached","coalesce"), &Terrain3DData::tf_write_brush, DEFVAL(true), DEFVAL(true));
 	ClassDB::bind_method(D_METHOD("tf_capture_smooth","center","radius","power","smooth_mode","bulk"), &Terrain3DData::tf_capture_smooth, DEFVAL(true));
 	ClassDB::bind_static_method("Terrain3DData",D_METHOD("tf_plan_smooth_snapshot","snapshot"), &Terrain3DData::tf_plan_smooth_snapshot);

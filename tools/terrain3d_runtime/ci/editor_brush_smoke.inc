@@ -406,6 +406,41 @@ func _ci_editor_brush_smoke() -> void:
         legacy_publish.sort()
         grouped_publish.sort()
         print("NATIVE_EDITOR_PUBLISH_COALESCE_OK layers=",expected_layers," legacy_signals=",signal_counts[0]," grouped_signals=",signal_counts[1]," legacy_us=",legacy_publish[2]," grouped_us=",grouped_publish[2]," bytes=",expected_layers*layer_bytes)
+    # R5a: exact plan parity, same-run timings, including missing neighbor and hole.
+    var basic_cases := [[Vector2(192,192),2.0],[Vector2(256,256),24.0],[Vector2(384,384),36.0],[Vector2(0,0),24.0]]
+    var basic_hole_pos := Vector3(256,0,256)
+    var basic_control := int(data.call("get_control",basic_hole_pos))
+    data.call("set_control_hole",basic_hole_pos,true)
+    for basic_case in range(basic_cases.size()):
+        var basic_center: Vector2=basic_cases[basic_case][0]
+        var basic_radius: float=basic_cases[basic_case][1]
+        for basic_tool in [0,1,3]:
+            var scalar_plan_times: Array[int]=[]
+            var bulk_plan_times: Array[int]=[]
+            var plan_samples := 0
+            for repetition in range(5):
+                var scalar_basic: Dictionary={}
+                var bulk_basic: Dictionary={}
+                for fast_plan in ([false,true] if repetition%2==0 else [true,false]):
+                    var basic_started := Time.get_ticks_usec()
+                    var basic_result: Dictionary=data.call("tf_plan_brush",basic_center,basic_tool,basic_radius,1.0,1.25,0,fast_plan)
+                    var basic_elapsed := Time.get_ticks_usec()-basic_started
+                    if fast_plan:
+                        bulk_basic=basic_result
+                        bulk_plan_times.append(basic_elapsed)
+                    else:
+                        scalar_basic=basic_result
+                        scalar_plan_times.append(basic_elapsed)
+                if not str(scalar_basic["error"]).is_empty() or not str(bulk_basic["error"]).is_empty() or scalar_basic["changes"]!=bulk_basic["changes"] or scalar_basic["originals"]!=bulk_basic["originals"] or bool(bulk_basic["bulk_basic_used"])!=(basic_case!=0):
+                    data.call("set_control",basic_hole_pos,basic_control)
+                    push_error("NATIVE_EDITOR_BRUSH_FAIL: bulk basic parity")
+                    get_tree().quit(1)
+                    return
+                plan_samples=bulk_basic["changes"].size()
+            scalar_plan_times.sort()
+            bulk_plan_times.sort()
+            print("NATIVE_EDITOR_BASIC_BULK_OK case=",basic_case," tool=",basic_tool," samples=",plan_samples," scalar_us=",scalar_plan_times[2]," bulk_us=",bulk_plan_times[2])
+    data.call("set_control",basic_hole_pos,basic_control)
     # Q6d2: same native write dictionaries, scalar vs cached validation.
     # Compare exact readback/restore, reject invalid transaction without
     # touching a valid sample. Alternate order on the same runner.

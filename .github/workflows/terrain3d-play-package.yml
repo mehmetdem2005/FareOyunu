@@ -1,7 +1,7 @@
 name: TerraForge packed RF mobile candidate
 on:
   push:
-    branches: [fix/terraforge-rf-mobile-packed, experiment/terraforge-stroke-resampler, experiment/terraforge-async-weather, experiment/terraforge-smooth-native, experiment/terraforge-async-corridor, experiment/terraforge-async-smooth, experiment/terraforge-smooth-bulk-rf, experiment/terraforge-native-write-cache, experiment/terraforge-ray-broadphase, experiment/terraforge-publish-coalesce, experiment/terraforge-history-fastpath]
+    branches: [fix/terraforge-rf-mobile-packed, experiment/terraforge-stroke-resampler, experiment/terraforge-async-weather, experiment/terraforge-smooth-native, experiment/terraforge-async-corridor, experiment/terraforge-async-smooth, experiment/terraforge-smooth-bulk-rf, experiment/terraforge-native-write-cache, experiment/terraforge-ray-broadphase, experiment/terraforge-publish-coalesce, experiment/terraforge-history-fastpath, experiment/terraforge-basic-bulk-plan]
     paths: ["tools/terrain3d_runtime/**", "addons/terra_forge/**", ".github/workflows/terrain3d-play-package.yml"]
   workflow_dispatch:
 permissions:
@@ -191,6 +191,7 @@ jobs:
           grep -q "NATIVE_EDITOR_STROKE_QUEUE_OK dabs=11" "$RUNNER_TEMP/native-editor-brush.log"
           test "$(grep -c 'NATIVE_EDITOR_HISTORY_FAST_OK case=' "$RUNNER_TEMP/native-editor-brush.log")" -ge 7
           grep -q "NATIVE_EDITOR_HISTORY_ATOMIC_OK" "$RUNNER_TEMP/native-editor-brush.log"
+          test "$(grep -c 'NATIVE_EDITOR_BASIC_BULK_OK case=' "$RUNNER_TEMP/native-editor-brush.log")" -ge 12
           for tool in 0 1 2 3; do grep -q "NATIVE_EDITOR_RELEASE_STOP_OK tool=$tool pending=0 late_writes=0" "$RUNNER_TEMP/native-editor-brush.log"; done
           grep -q "NATIVE_EDITOR_UPLOAD_PROFILE_OK case=0" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_UPLOAD_PROFILE_OK case=1" "$RUNNER_TEMP/native-editor-brush.log"
