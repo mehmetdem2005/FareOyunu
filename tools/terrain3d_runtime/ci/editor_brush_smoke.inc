@@ -374,6 +374,61 @@ func _ci_editor_brush_smoke() -> void:
         get_tree().quit(1)
         return
     print("NATIVE_EDITOR_SMOOTH_UI_OK modes=3 frozen=true undo=true")
+    # Q6c1: same native result on isolated worker, with full halo verification.
+    var SmoothWorker = preload("res://addons/terraforge_native/native_smooth_worker.gd")
+    var smooth_worker = SmoothWorker.new()
+    for mode in [0,1,2]:
+        var capture_start := Time.get_ticks_usec()
+        var snap: Dictionary = data.call("tf_capture_smooth",Vector2(center.x,center.z),24.0,6.0,mode)
+        var capture_us := Time.get_ticks_usec()-capture_start
+        var reference: Dictionary = data.call("tf_plan_brush",Vector2(center.x,center.z),2,24.0,6.0,0.0,mode)
+        if not str(snap["error"]).is_empty() or smooth_worker.start(snap)!=OK:
+            push_error("NATIVE_EDITOR_BRUSH_FAIL: smooth snapshot dispatch")
+            smooth_worker.shutdown()
+            get_tree().quit(1)
+            return
+        var outcome: Dictionary = {}
+        var smooth_deadline := Time.get_ticks_msec()+10000
+        while outcome.is_empty() and Time.get_ticks_msec()<smooth_deadline:
+            await get_tree().process_frame
+            outcome=smooth_worker.poll()
+        var verify_start := Time.get_ticks_usec()
+        var valid := bool(data.call("tf_verify_smooth_snapshot",snap))
+        var verify_us := Time.get_ticks_usec()-verify_start
+        if outcome.is_empty() or not str(outcome.get("error","invalid")).is_empty() or not valid or outcome["changes"]!=reference["changes"] or outcome["originals"]!=reference["originals"]:
+            push_error("NATIVE_EDITOR_BRUSH_FAIL: smooth worker parity "+str(mode))
+            smooth_worker.shutdown()
+            get_tree().quit(1)
+            return
+        print("NATIVE_EDITOR_ASYNC_SMOOTH_PARITY_OK mode=",mode," cells=",outcome["changes"].size()," capture_us=",capture_us," worker_us=",outcome["worker_us"]," verify_us=",verify_us)
+    # Outside brush footprint, inside macro halo: must invalidate the result.
+    var stale_snap: Dictionary = data.call("tf_capture_smooth",Vector2(center.x,center.z),24.0,6.0,1)
+    var halo_key := Vector2i(roundi((center.x+27.0)/spacing),roundi(center.z/spacing))
+    var halo_pos := Vector3(halo_key.x*spacing,0,halo_key.y*spacing)
+    var halo_old := float(data.call("get_height",halo_pos))
+    var altered: Dictionary = data.call("tf_write_brush",{halo_key:halo_old+1.0})
+    var stale_rejected := not bool(data.call("tf_verify_smooth_snapshot",stale_snap))
+    var halo_restore: Dictionary = data.call("tf_write_brush",{halo_key:halo_old})
+    if not str(altered["error"]).is_empty() or not str(halo_restore["error"]).is_empty() or not stale_rejected or not bool(data.call("tf_verify_smooth_snapshot",stale_snap)):
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: stale Smooth halo")
+        get_tree().quit(1)
+        return
+    if smooth_worker.start(stale_snap)!=OK:
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: smooth cancel dispatch")
+        get_tree().quit(1)
+        return
+    smooth_worker.cancel()
+    var canceled: Dictionary = {}
+    var smooth_cancel_deadline := Time.get_ticks_msec()+10000
+    while canceled.is_empty() and Time.get_ticks_msec()<smooth_cancel_deadline:
+        await get_tree().process_frame
+        canceled=smooth_worker.poll()
+    if canceled.get("error","")!="Yumuşatma iptal edildi." or float(data.call("get_height",center))!=smooth_peak:
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: smooth cancel")
+        smooth_worker.shutdown()
+        get_tree().quit(1)
+        return
+    print("NATIVE_EDITOR_ASYNC_SMOOTH_STALE_CANCEL_OK halo=true")
     var previous_data_id: int = data.get_instance_id()
     var previous_directory := str(_active.get("data_directory"))
     _save_active()

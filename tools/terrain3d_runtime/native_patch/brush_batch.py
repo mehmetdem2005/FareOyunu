@@ -16,11 +16,14 @@ edit("src/terrain_3d_data.h",
     """// TerraForge: bounded main-thread brush transaction on the authoritative RF maps.
 	double tf_sample(const Vector2i &p) const;
 	Dictionary tf_plan_brush(const Vector2 &center, int tool, double radius, double power, double flatten, int smooth_mode = 0) const;
+	Dictionary tf_capture_smooth(const Vector2 &center, double radius, double power, int smooth_mode) const;
+	static Dictionary tf_plan_smooth_snapshot(const Dictionary &snapshot);
+	bool tf_verify_smooth_snapshot(const Dictionary &snapshot) const;
 	Dictionary tf_write_brush(const Dictionary &values);
 	void set_pixel(const MapType p_map_type, const Vector3 &p_global_position, const Color &p_pixel);""")
 edit("src/terrain_3d_data.cpp",
     '#include "terrain_3d_data.h"',
-    '#include "terrain_3d_data.h"\n#include <algorithm>\n#include <array>\n#include <cmath>\n#include <chrono>\n#include <limits>\n#include <vector>')
+    '#include "terrain_3d_data.h"\n#include <algorithm>\n#include <array>\n#include <cmath>\n#include <chrono>\n#include <limits>\n#include <vector>\n#include <godot_cpp/variant/packed_float32_array.hpp>')
 edit("src/terrain_3d_data.cpp",
     "void Terrain3DData::set_pixel(const MapType p_map_type, const Vector3 &p_global_position, const Color &p_pixel) {",
     r"""// All samples are on the integer global vertex grid; no world-float roundtrip.
@@ -170,6 +173,195 @@ Dictionary Terrain3DData::tf_plan_brush(const Vector2 &center, int tool, double 
 	return out;
 }
 
+// Q6c1: value-only snapshot. Capture/verify on main thread; static planner
+// may execute off-thread. No live object or rendering resource in snapshot.
+namespace {
+struct TFSmoothGrid {
+	int x0,y0,w,h,k,sw,sh;
+};
+bool tf_smooth_grid(const Vector2 &center,double radius,double power,int mode,double spacing,TFSmoothGrid &g) {
+	if (!std::isfinite(spacing) || spacing<0.25 || spacing>100.0 ||
+		!std::isfinite(center.x) || !std::isfinite(center.y) ||
+		std::abs(center.x)>10000000.0 || std::abs(center.y)>10000000.0 ||
+		!std::isfinite(radius) || radius<=0 || radius>36 ||
+		!std::isfinite(power) || power<=0 || power>12 || mode<0 || mode>2) return false;
+	const double gx=center.x/spacing, gy=center.y/spacing, r=radius/spacing;
+	g.x0=int(std::floor(gx-r)); g.y0=int(std::floor(gy-r));
+	g.w=int(std::ceil(gx+r))-g.x0+1; g.h=int(std::ceil(gy+r))-g.y0+1;
+	const int broad=std::max(1,int(std::round(r*0.35)));
+	const int fine=std::max(1,int(std::round(std::min(1.0,radius)/spacing)));
+	const int pass=std::max(1,int(std::round(broad/std::sqrt(2.0))));
+	g.k=mode==0 ? broad : mode==1 ? fine+2*pass : fine;
+	g.sw=g.w+2*g.k; g.sh=g.h+2*g.k;
+	return int64_t(g.w)*g.h<=85000 && int64_t(g.sw+1)*(g.sh+1)<=(mode==0?180000:300000);
+}
+}
+
+Dictionary Terrain3DData::tf_capture_smooth(const Vector2 &center,double radius,double power,int smooth_mode) const {
+	Dictionary out;
+	out["error"]="Invalid or oversized Smooth snapshot.";
+	TFSmoothGrid g{};
+	if (!_terrain || _region_size<=0 || !tf_smooth_grid(center,radius,power,smooth_mode,_vertex_spacing,g)) return out;
+	PackedFloat32Array samples;
+	samples.resize(g.sw*g.sh);
+	float *dst=samples.ptrw();
+	for (int y=0;y<g.sh;++y) for (int x=0;x<g.sw;++x)
+		dst[y*g.sw+x]=float(tf_sample(Vector2i(g.x0-g.k+x,g.y0-g.k+y)));
+	out["center"]=center;
+	out["radius"]=radius;
+	out["power"]=power;
+	out["mode"]=smooth_mode;
+	out["spacing"]=double(_vertex_spacing);
+	out["region_size"]=_region_size;
+	out["data_id"]=int64_t(get_instance_id());
+	out["samples"]=samples;
+	out["error"]="";
+	return out;
+}
+
+bool Terrain3DData::tf_verify_smooth_snapshot(const Dictionary &snapshot) const {
+	if (!_terrain || !snapshot.has("samples") || !snapshot.has("center") || !snapshot.has("radius") || !snapshot.has("power") || !snapshot.has("mode") || !snapshot.has("spacing") || !snapshot.has("region_size") || !snapshot.has("data_id")) return false;
+	if (int64_t(snapshot["data_id"])!=int64_t(get_instance_id()) || int(snapshot["region_size"])!=_region_size || double(snapshot["spacing"])!=double(_vertex_spacing)) return false;
+	const Vector2 center=snapshot["center"];
+	TFSmoothGrid g{};
+	if (!tf_smooth_grid(center,double(snapshot["radius"]),double(snapshot["power"]),int(snapshot["mode"]),_vertex_spacing,g)) return false;
+	const PackedFloat32Array samples=snapshot["samples"];
+	if (samples.size()!=g.sw*g.sh) return false;
+	const float *src=samples.ptr();
+	for (int y=0;y<g.sh;++y) for (int x=0;x<g.sw;++x) {
+		const float a=src[y*g.sw+x], b=float(tf_sample(Vector2i(g.x0-g.k+x,g.y0-g.k+y)));
+		if (std::isfinite(a)!=std::isfinite(b) || (std::isfinite(a) && a!=b)) return false;
+	}
+	return true;
+}
+
+Dictionary Terrain3DData::tf_plan_smooth_snapshot(const Dictionary &snapshot) {
+	Dictionary out;
+	out["error"]="Invalid Smooth snapshot.";
+	if (!snapshot.has("samples") || !snapshot.has("center") || !snapshot.has("radius") || !snapshot.has("power") || !snapshot.has("mode") || !snapshot.has("spacing")) return out;
+	const Vector2 center=snapshot["center"];
+	const double radius=snapshot["radius"],power=snapshot["power"],spacing=snapshot["spacing"];
+	const int smooth_mode=snapshot["mode"];
+	const PackedFloat32Array samples=snapshot["samples"];
+	TFSmoothGrid g{};
+	if (!tf_smooth_grid(center,radius,power,smooth_mode,spacing,g)) return out;
+	const double gx=center.x/spacing, gy=center.y/spacing, r=radius/spacing;
+	const int x0=int(std::floor(gx-r)), y0=int(std::floor(gy-r));
+	const int x1=int(std::ceil(gx+r)), y1=int(std::ceil(gy+r));
+	const int width=x1-x0+1, height=y1-y0+1;
+	if (int64_t(width)*height>85000) {
+		out["error"]="Brush footprint exceeds grid budget; reduce radius for this spacing.";
+		return out;
+	}
+	// Radius-aware normalized box filter. Summed-area tables make each
+	// neighborhood lookup constant time, even for a large physical radius.
+	// Invalid/missing/hole samples contribute neither a value nor a count.
+	// mode 0 legacy, 1 macro with retained residual, 2 fine.
+	const int broad_k=std::max(1,int(std::round(r*0.35)));
+	const int fine_k=std::max(1,int(std::round(std::min(1.0,radius)/spacing)));
+	const int pass_k=std::max(1,int(std::round(broad_k/std::sqrt(2.0))));
+	const int k=smooth_mode==0 ? broad_k : smooth_mode==1 ? fine_k+2*pass_k : fine_k;
+	const int sw=width+2*k, sh=height+2*k, stride=sw+1;
+	const int64_t n=int64_t(sw+1)*(sh+1);
+	std::vector<double> source, fine, target, sums;
+	std::vector<int> counts;
+	{
+		if (n>(smooth_mode==0 ? 180000 : 300000)) { out["error"]="Brush footprint exceeds grid budget; reduce radius for this spacing."; return out; }
+		if (samples.size()!=sw*sh) return out;
+		source.resize(sw*sh);
+		for (int i=0;i<sw*sh;++i) source[i]=samples[i];
+		// Same masked, normalized box passes as the Q4 numerical reference.
+		// All buffers are local to this transaction; no live RF access during filtering.
+		auto box = [&](const std::vector<double> &input, int half, std::vector<double> &output) {
+			sums.assign(n,0.0);
+			counts.assign(n,0);
+			for (int y=0;y<sh;++y) {
+				double row_sum=0.0;
+				int row_count=0;
+				for (int x=0;x<sw;++x) {
+					const double z=input[y*sw+x];
+					if (std::isfinite(z)) { row_sum+=z; ++row_count; }
+					const int i=(y+1)*stride+x+1;
+					sums[i]=sums[i-stride]+row_sum;
+					counts[i]=counts[i-stride]+row_count;
+				}
+			}
+			output.assign(sw*sh,std::numeric_limits<double>::quiet_NaN());
+			for (int y=0;y<sh;++y) for (int x=0;x<sw;++x) {
+				const int i=y*sw+x;
+				if (!std::isfinite(input[i])) continue;
+				const int ax=std::max(0,x-half), ay=std::max(0,y-half);
+				const int bx=std::min(sw,x+half+1), by=std::min(sh,y+half+1);
+				const int a=ay*stride+ax,b=ay*stride+bx,c=by*stride+ax,d=by*stride+bx;
+				const int count=counts[d]-counts[b]-counts[c]+counts[a];
+				if (count>0) output[i]=(sums[d]-sums[b]-sums[c]+sums[a])/count;
+			}
+		};
+		if (smooth_mode==0) {
+			// Preserve legacy SAT-only path (no full target grid allocation).
+			sums.assign(n,0.0); counts.assign(n,0);
+			for (int y=0;y<sh;++y) {
+				double row_sum=0.0; int row_count=0;
+				for (int x=0;x<sw;++x) {
+					const double z=source[y*sw+x];
+					if (std::isfinite(z)) { row_sum+=z; ++row_count; }
+					const int i=(y+1)*stride+x+1;
+					sums[i]=sums[i-stride]+row_sum; counts[i]=counts[i-stride]+row_count;
+				}
+			}
+		} else {
+			box(source,fine_k,fine);
+			if (smooth_mode==1) {
+				std::vector<double> intermediate;
+				box(fine,pass_k,intermediate);
+				box(intermediate,pass_k,target);
+			}
+		}
+	}
+	Dictionary changes, originals;
+	for (int y=y0;y<=y1;++y) {
+		for (int x=x0;x<=x1;++x) {
+			const double dx=(x-gx)/r, dy=(y-gy)/r;
+			const double dist_sq=dx*dx+dy*dy;
+			if (dist_sq>=1.0) continue;
+			const Vector2i p(x,y);
+			const double old=source[(y-y0+k)*sw+(x-x0+k)];
+			if (!std::isfinite(old)) continue;
+			const double t=std::sqrt(dist_sq);
+			const double weight=1.0-t*t*(3.0-2.0*t);
+			double value=old;
+			if (smooth_mode!=0) {
+				const int i=(y-y0+k)*sw+(x-x0+k);
+				const double desired=smooth_mode==1 ? target[i]+0.9*(old-fine[i]) : fine[i];
+				if (std::isfinite(desired))
+					value+=(desired-old)*std::min(1.0,power/6.0*weight);
+			}
+			else {
+				const int ax=x-x0, ay=y-y0, bx=ax+2*k+1, by=ay+2*k+1;
+				const int a=ay*stride+ax, b=ay*stride+bx, c=by*stride+ax, d=by*stride+bx;
+				const int count=counts[d]-counts[b]-counts[c]+counts[a];
+				if (count>0) {
+					const double average=(sums[d]-sums[b]-sums[c]+sums[a])/count;
+					value+=(average-old)*std::min(1.0,power/6.0*weight);
+				}
+			}
+			if (!std::isfinite(value) || std::abs(value)>1000000.0) {
+				out["error"]="Height out of bounds; dab rejected.";
+				return out;
+			}
+			const float actual=float(value);
+			if (actual!=float(old)) { changes[p]=actual; originals[p]=float(old); }
+		}
+	}
+	out["error"]="";
+	out["changes"]=changes;
+	out["originals"]=originals;
+	out["filter_half_width_m"]=k*spacing;
+	out["smooth_mode"]=smooth_mode;
+	out["filter_grid_cells"]=n;
+	return out;
+}
+
 Dictionary Terrain3DData::tf_write_brush(const Dictionary &values) {
 	using TFClock = std::chrono::steady_clock;
 	const auto started = TFClock::now();
@@ -281,5 +473,8 @@ edit("src/terrain_3d_data.cpp",
     'ClassDB::bind_method(D_METHOD("get_region_count"), &Terrain3DData::get_region_count);',
     '''ClassDB::bind_method(D_METHOD("get_region_count"), &Terrain3DData::get_region_count);
 	ClassDB::bind_method(D_METHOD("tf_plan_brush","center","tool","radius","power","flatten","smooth_mode"), &Terrain3DData::tf_plan_brush, DEFVAL(0));
-	ClassDB::bind_method(D_METHOD("tf_write_brush","values"), &Terrain3DData::tf_write_brush);''')
+	ClassDB::bind_method(D_METHOD("tf_write_brush","values"), &Terrain3DData::tf_write_brush);
+	ClassDB::bind_method(D_METHOD("tf_capture_smooth","center","radius","power","smooth_mode"), &Terrain3DData::tf_capture_smooth);
+	ClassDB::bind_static_method("Terrain3DData",D_METHOD("tf_plan_smooth_snapshot","snapshot"), &Terrain3DData::tf_plan_smooth_snapshot);
+	ClassDB::bind_method(D_METHOD("tf_verify_smooth_snapshot","snapshot"), &Terrain3DData::tf_verify_smooth_snapshot);''')
 print("TF_NATIVE_BRUSH_BATCH_PATCH_APPLIED")
