@@ -19,7 +19,7 @@ edit("src/terrain_3d_data.h",
 	Dictionary tf_capture_smooth(const Vector2 &center, double radius, double power, int smooth_mode) const;
 	static Dictionary tf_plan_smooth_snapshot(const Dictionary &snapshot);
 	bool tf_verify_smooth_snapshot(const Dictionary &snapshot) const;
-	Dictionary tf_write_brush(const Dictionary &values);
+	Dictionary tf_write_brush(const Dictionary &values, bool cached = true);
 	void set_pixel(const MapType p_map_type, const Vector3 &p_global_position, const Color &p_pixel);""")
 edit("src/terrain_3d_data.cpp",
     '#include "terrain_3d_data.h"',
@@ -362,7 +362,7 @@ Dictionary Terrain3DData::tf_plan_smooth_snapshot(const Dictionary &snapshot) {
 	return out;
 }
 
-Dictionary Terrain3DData::tf_write_brush(const Dictionary &values) {
+Dictionary Terrain3DData::tf_write_brush(const Dictionary &values, bool cached) {
 	using TFClock = std::chrono::steady_clock;
 	const auto started = TFClock::now();
 	auto elapsed_us = [](TFClock::time_point a, TFClock::time_point b) -> int64_t {
@@ -377,6 +377,11 @@ Dictionary Terrain3DData::tf_write_brush(const Dictionary &values) {
 	writes.reserve(values.size());
 	std::array<Terrain3DRegion*,1024> touched{};
 	std::array<Vector2,1024> bounds{};
+	// Transaction-local non-owning pointers: no mutation or thread transfer
+	// during validation. Same RF pixel read/write and exact rollback as before.
+	struct RegionRead { Terrain3DRegion *reg=nullptr; Image *height=nullptr; Image *control=nullptr; };
+	std::array<RegionRead,1024> read_cache{};
+	int resolved_regions=0;
 	const Array keys=values.keys();
 	// Validate everything before the first write, including holes and finite RF.
 	for (int i=0;i<keys.size();++i) {
@@ -385,21 +390,51 @@ Dictionary Terrain3DData::tf_write_brush(const Dictionary &values) {
 		const Variant v=values[p];
 		if (v.get_type()!=Variant::FLOAT && v.get_type()!=Variant::INT) return out;
 		const double value=double(v);
-		const double old=tf_sample(p);
-		if (!std::isfinite(old) || !std::isfinite(value) || std::abs(value)>1000000.0) return out;
-		const float actual=float(value);
-		if (actual==float(old)) continue;
+		if (!std::isfinite(value) || std::abs(value)>1000000.0) return out;
 		const Vector2i loc=V2I_DIVIDE_FLOOR(p,_region_size);
 		const int index=get_region_map_index(loc);
-		Terrain3DRegion *reg=get_region_ptr(loc);
-		if (index<0 || index>=1024 || !reg) return out;
+		Terrain3DRegion *reg=nullptr;
+		Image *height_map=nullptr;
+		Vector2i pixel;
+		double old;
+		if (cached) {
+			if (index<0 || index>=1024) return out;
+			RegionRead &entry=read_cache[index];
+			if (!entry.reg) {
+				entry.reg=get_region_ptr(loc);
+				if (!entry.reg || entry.reg->is_deleted()) return out;
+				entry.height=entry.reg->get_map_ptr(TYPE_HEIGHT);
+				entry.control=entry.reg->get_map_ptr(TYPE_CONTROL);
+				if (!entry.height || !entry.control || entry.height->get_format()!=Image::FORMAT_RF ||
+					entry.control->get_format()!=Image::FORMAT_RF || entry.height->get_size()!=_region_sizev ||
+					entry.control->get_size()!=_region_sizev) return out;
+				++resolved_regions;
+			}
+			reg=entry.reg;
+			height_map=entry.height;
+			pixel=p-loc*_region_size;
+			const float control=entry.control->get_pixelv(pixel).r;
+			if (std::isnan(control) || is_hole(control)) return out;
+			old=double(height_map->get_pixelv(pixel).r);
+		} else {
+			old=tf_sample(p);
+		}
+		if (!std::isfinite(old)) return out;
+		const float actual=float(value);
+		if (actual==float(old)) continue;
+		if (!cached) {
+			reg=get_region_ptr(loc);
+			if (index<0 || index>=1024 || !reg) return out;
+			height_map=reg->get_map_ptr(TYPE_HEIGHT);
+			pixel=vgrid_to_pixelv(p);
+		}
 		if (!touched[index]) {
 			touched[index]=reg;
 			bounds[index]=reg->get_height_range();
 		}
 		bounds[index].x=std::min(bounds[index].x,real_t(actual));
 		bounds[index].y=std::max(bounds[index].y,real_t(actual));
-		writes.push_back({p,reg->get_map_ptr(TYPE_HEIGHT),vgrid_to_pixelv(p),float(old),actual,index});
+		writes.push_back({p,height_map,pixel,float(old),actual,index});
 	}
 	const auto validated = TFClock::now();
 	Dictionary actual;
@@ -457,6 +492,8 @@ Dictionary Terrain3DData::tf_write_brush(const Dictionary &values) {
 	profile["publish_cpu_us"] = elapsed_us(ranged,uploaded);
 	profile["snap_us"] = elapsed_us(uploaded,snapped);
 	profile["changed_samples"] = int64_t(writes.size());
+	profile["cached_validation"] = cached;
+	profile["resolved_regions"] = resolved_regions;
 	profile["dirty_regions"] = dirty;
 	profile["edited_regions_est"] = edited_regions_est;
 	profile["incremental_expected"] = incremental_expected;
@@ -473,7 +510,7 @@ edit("src/terrain_3d_data.cpp",
     'ClassDB::bind_method(D_METHOD("get_region_count"), &Terrain3DData::get_region_count);',
     '''ClassDB::bind_method(D_METHOD("get_region_count"), &Terrain3DData::get_region_count);
 	ClassDB::bind_method(D_METHOD("tf_plan_brush","center","tool","radius","power","flatten","smooth_mode"), &Terrain3DData::tf_plan_brush, DEFVAL(0));
-	ClassDB::bind_method(D_METHOD("tf_write_brush","values"), &Terrain3DData::tf_write_brush);
+	ClassDB::bind_method(D_METHOD("tf_write_brush","values","cached"), &Terrain3DData::tf_write_brush, DEFVAL(true));
 	ClassDB::bind_method(D_METHOD("tf_capture_smooth","center","radius","power","smooth_mode"), &Terrain3DData::tf_capture_smooth);
 	ClassDB::bind_static_method("Terrain3DData",D_METHOD("tf_plan_smooth_snapshot","snapshot"), &Terrain3DData::tf_plan_smooth_snapshot);
 	ClassDB::bind_method(D_METHOD("tf_verify_smooth_snapshot","snapshot"), &Terrain3DData::tf_verify_smooth_snapshot);''')
