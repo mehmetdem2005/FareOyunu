@@ -1102,7 +1102,12 @@ func _start_stroke(camera: Camera3D, position: Vector2) -> void:
 
 func _trace_ray(origin: Vector3, direction: Vector3) -> Vector3:
     var started := Time.get_ticks_usec() if _drop_active else 0
-    var hit: Vector3=_active.call("get_intersection",origin,direction,false)
+    var data: Object=_active.get("data")
+    var hit: Vector3
+    if data!=null and data.has_method("tf_pick_brush"):
+        hit=data.call("tf_pick_brush",origin,direction)
+    else:
+        hit=_active.call("get_intersection",origin,direction,false)
     if _drop_active:
         var elapsed := Time.get_ticks_usec()-started
         _drop_ray_count+=1

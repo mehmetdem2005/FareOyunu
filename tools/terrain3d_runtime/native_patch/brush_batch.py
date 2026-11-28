@@ -15,6 +15,7 @@ edit("src/terrain_3d_data.h",
     "void set_pixel(const MapType p_map_type, const Vector3 &p_global_position, const Color &p_pixel);",
     """// TerraForge: bounded main-thread brush transaction on the authoritative RF maps.
 	double tf_sample(const Vector2i &p) const;
+	Vector3 tf_pick_brush(const Vector3 &origin, const Vector3 &direction) const;
 	Dictionary tf_plan_brush(const Vector2 &center, int tool, double radius, double power, double flatten, int smooth_mode = 0) const;
 	Dictionary tf_capture_smooth(const Vector2 &center, double radius, double power, int smooth_mode, bool bulk = true) const;
 	void tf_read_rf_rect(const Vector2i &origin, int width, int height, float *dst, bool bulk) const;
@@ -28,6 +29,50 @@ edit("src/terrain_3d_data.cpp",
 edit("src/terrain_3d_data.cpp",
     "void Terrain3DData::set_pixel(const MapType p_map_type, const Vector3 &p_global_position, const Color &p_pixel) {",
     r"""// All samples are on the integer global vertex grid; no world-float roundtrip.
+// Conservative horizontal broad phase; preserve original step positions.
+Vector3 Terrain3DData::tf_pick_brush(const Vector3 &origin,const Vector3 &ray) const {
+	if (!_terrain || ray.is_zero_approx() || !ray.is_finite() || !origin.is_finite()) return V3_NAN;
+	const Vector3 direction=ray.normalized();
+	if (direction.y<-.99999f) {
+		const real_t h=get_surface_height(origin);
+		if (std::isfinite(h)) return Vector3(origin.x,h,origin.z);
+	}
+	const real_t initial=get_surface_height(origin);
+	if (initial>origin.y) return V3_MAX;
+	double min_x=std::numeric_limits<double>::infinity(), min_z=min_x;
+	double max_x=-min_x, max_z=-min_x;
+	bool bounded=std::isfinite(_vertex_spacing) && _vertex_spacing>=0.25 && _vertex_spacing<=100.0 && _region_size>0;
+	bool any=false;
+	// Iterate live region dictionary, not a potentially stale active map.
+	if (bounded) for (const Vector2i &loc : _regions.keys()) {
+		const Terrain3DRegion *reg=get_region_ptr(loc);
+		if (!reg || reg->is_deleted()) continue;
+		any=true;
+		const double extent=double(_region_size)*_vertex_spacing;
+		const double x=double(loc.x)*extent, z=double(loc.y)*extent;
+		// Conservative float precision bound; unusual coordinates fall back.
+		if (std::abs(x)>100000.0 || std::abs(z)>100000.0 || extent>100000.0) { bounded=false; break; }
+		const double pad=2.0*_vertex_spacing+0.02;
+		min_x=std::min(min_x,x-pad); min_z=std::min(min_z,z-pad);
+		max_x=std::max(max_x,x+extent+pad); max_z=std::max(max_z,z+extent+pad);
+	}
+	if (bounded && !any) return V3_MAX;
+	Vector3 point=origin;
+	for (int i=0;i<4000;++i) {
+		if (bounded) {
+			const bool left=point.x<min_x, right=point.x>max_x;
+			const bool near=point.z<min_z, far=point.z>max_z;
+			if ((left && direction.x<=0) || (right && direction.x>=0) ||
+				(near && direction.z<=0) || (far && direction.z>=0)) return V3_MAX;
+			if (left || right || near || far) { point+=direction; continue; }
+		}
+		const real_t h=get_surface_height(point);
+		if (point.y-h<=0.f) return point;
+		point+=direction;
+	}
+	return V3_MAX;
+}
+
 double Terrain3DData::tf_sample(const Vector2i &p) const {
 	const Vector2i loc = V2I_DIVIDE_FLOOR(p, _region_size);
 	const Terrain3DRegion *reg = get_region_ptr(loc);
@@ -558,6 +603,7 @@ void Terrain3DData::set_pixel(const MapType p_map_type, const Vector3 &p_global_
 edit("src/terrain_3d_data.cpp",
     'ClassDB::bind_method(D_METHOD("get_region_count"), &Terrain3DData::get_region_count);',
     '''ClassDB::bind_method(D_METHOD("get_region_count"), &Terrain3DData::get_region_count);
+	ClassDB::bind_method(D_METHOD("tf_pick_brush","origin","direction"), &Terrain3DData::tf_pick_brush);
 	ClassDB::bind_method(D_METHOD("tf_plan_brush","center","tool","radius","power","flatten","smooth_mode"), &Terrain3DData::tf_plan_brush, DEFVAL(0));
 	ClassDB::bind_method(D_METHOD("tf_write_brush","values","cached"), &Terrain3DData::tf_write_brush, DEFVAL(true));
 	ClassDB::bind_method(D_METHOD("tf_capture_smooth","center","radius","power","smooth_mode","bulk"), &Terrain3DData::tf_capture_smooth, DEFVAL(true));

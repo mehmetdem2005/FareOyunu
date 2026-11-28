@@ -1,7 +1,7 @@
 name: TerraForge packed RF mobile candidate
 on:
   push:
-    branches: [fix/terraforge-rf-mobile-packed, experiment/terraforge-stroke-resampler, experiment/terraforge-async-weather, experiment/terraforge-smooth-native, experiment/terraforge-async-corridor, experiment/terraforge-async-smooth, experiment/terraforge-smooth-bulk-rf, experiment/terraforge-native-write-cache]
+    branches: [fix/terraforge-rf-mobile-packed, experiment/terraforge-stroke-resampler, experiment/terraforge-async-weather, experiment/terraforge-smooth-native, experiment/terraforge-async-corridor, experiment/terraforge-async-smooth, experiment/terraforge-smooth-bulk-rf, experiment/terraforge-native-write-cache, experiment/terraforge-ray-broadphase]
     paths: ["tools/terrain3d_runtime/**", "addons/terra_forge/**", ".github/workflows/terrain3d-play-package.yml"]
   workflow_dispatch:
 permissions:
@@ -195,6 +195,7 @@ jobs:
           test "$(grep -c 'NATIVE_EDITOR_WRITE_CACHE_OK case=' "$RUNNER_TEMP/native-editor-brush.log")" -ge 3
           grep -q "NATIVE_EDITOR_WRITE_CACHE_REJECT_OK atomic=true hole=true" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_DROP_TRACE_OK" "$RUNNER_TEMP/native-editor-brush.log"
+          test "$(grep -c 'NATIVE_EDITOR_RAY_BROAD_OK case=' "$RUNNER_TEMP/native-editor-brush.log")" -ge 9
           grep -q "NATIVE_EDITOR_RIDGE_VALLEY_OK signed=true undo=true" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_WEATHER_OK mode=0" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_WEATHER_OK mode=1" "$RUNNER_TEMP/native-editor-brush.log"

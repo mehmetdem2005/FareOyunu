@@ -639,6 +639,42 @@ func _ci_editor_brush_smoke() -> void:
         return
     print("NATIVE_EDITOR_RELEASE_STOP_OK tool=2 pending=0 late_writes=0")
     print("NATIVE_EDITOR_SMOOTH_QUEUE_OK sequential=true undo=true cancel=true")
+    # Same ray/terrain on both pickers: exact Vector3 parity, including sky,
+    # outside inward, outside outward, seams and the vertical shortcut.
+    var ray_cases := [
+        [Vector3(64,80,64),Vector3.DOWN],
+        [Vector3(64,80,64),Vector3(0.3,-1,0.2)],
+        [Vector3(64,80,64),Vector3(1,0.3,0)],
+        [Vector3(-30,50,64),Vector3(1,-0.5,0)],
+        [Vector3(-30,50,64),Vector3(-1,-0.5,0)],
+        [Vector3(128,50,128),Vector3(-0.2,-1,0.3)],
+        [Vector3(64,-5,64),Vector3(0.3,-1,0.2)],
+        [Vector3(1000,80,1000),Vector3(1,0,1)],
+        [Vector3(64,80,64),Vector3.UP]
+    ]
+    for ray_case in range(ray_cases.size()):
+        var ray_origin: Vector3=ray_cases[ray_case][0]
+        var ray_dir: Vector3=ray_cases[ray_case][1]
+        var legacy_times: Array[int]=[]
+        var broad_times: Array[int]=[]
+        for repetition in range(5):
+            var legacy_hit: Vector3
+            var broad_hit: Vector3
+            for broad in ([false,true] if repetition%2==0 else [true,false]):
+                var ray_start := Time.get_ticks_usec()
+                if broad:
+                    broad_hit=data.call("tf_pick_brush",ray_origin,ray_dir)
+                    broad_times.append(Time.get_ticks_usec()-ray_start)
+                else:
+                    legacy_hit=_active.call("get_intersection",ray_origin,ray_dir,false)
+                    legacy_times.append(Time.get_ticks_usec()-ray_start)
+            if legacy_hit!=broad_hit:
+                push_error("NATIVE_EDITOR_BRUSH_FAIL: ray broadphase parity "+str(ray_case)+" "+str(legacy_hit)+" "+str(broad_hit))
+                get_tree().quit(1)
+                return
+        legacy_times.sort()
+        broad_times.sort()
+        print("NATIVE_EDITOR_RAY_BROAD_OK case=",ray_case," legacy_us=",legacy_times[2]," broad_us=",broad_times[2])
     # Real shared ray path: vertical hit, oblique hit and sky miss; compare
     # measured CPU timings, no assumption about mobile GPU or frame budget.
     _start_drop_trace()
