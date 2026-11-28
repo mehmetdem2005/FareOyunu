@@ -600,6 +600,44 @@ func _ci_editor_brush_smoke() -> void:
         get_tree().quit(1)
         return
     print("NATIVE_EDITOR_SMOOTH_QUEUE_OK sequential=true undo=true cancel=true")
+    # Real shared ray path: vertical hit, oblique hit and sky miss; compare
+    # measured CPU timings, no assumption about mobile GPU or frame budget.
+    _start_drop_trace()
+    var ray_probe: Array = []
+    for direction in [Vector3.DOWN,Vector3(0.3,-1,0.2),Vector3(1,0.3,0)]:
+        var ray_times: Array[int]=[]
+        for repeat in range(5):
+            var ray_started := Time.get_ticks_usec()
+            _trace_ray(Vector3(64,80,64),direction)
+            ray_times.append(Time.get_ticks_usec()-ray_started)
+        ray_times.sort()
+        ray_probe.append(ray_times[2])
+    var probe_plan: Dictionary=data.call("tf_plan_brush",Vector2(192,192),0,2.0,1.0,0.0)
+    _brush.begin()
+    var probe_error := _brush.dab(Vector3(192,0,192),0,2.0,1.0)
+    _brush.end()
+    if not probe_error.is_empty() or _brush.undo()!="Native undo applied.":
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: drop trace write")
+        get_tree().quit(1)
+        return
+    for frame in range(3):
+        await get_tree().process_frame
+    var trace_path := _stop_drop_trace()
+    var trace_data: Variant=JSON.parse_string(FileAccess.get_file_as_string(trace_path)) if not trace_path.is_empty() else null
+    if not trace_data is Dictionary or trace_data["rows"].size()<2 or trace_data["columns"].size()!=DROP_COLUMNS.size():
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: drop trace export")
+        get_tree().quit(1)
+        return
+    var total_rays := 0
+    var total_writes := 0
+    for trace_row in trace_data["rows"]:
+        total_rays+=int(trace_row[5])
+        total_writes+=int(trace_row[11])
+    if total_rays!=15 or total_writes<2:
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: drop trace counters")
+        get_tree().quit(1)
+        return
+    print("NATIVE_EDITOR_DROP_TRACE_OK rays=",total_rays," writes=",total_writes," ray_median_us=",ray_probe)
     var previous_data_id: int = data.get_instance_id()
     var previous_directory := str(_active.get("data_directory"))
     _save_active()

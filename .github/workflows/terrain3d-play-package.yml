@@ -193,6 +193,7 @@ jobs:
           grep -q "NATIVE_EDITOR_UPLOAD_PROFILE_OK case=1" "$RUNNER_TEMP/native-editor-brush.log"
           test "$(grep -c 'NATIVE_EDITOR_WRITE_CACHE_OK case=' "$RUNNER_TEMP/native-editor-brush.log")" -ge 3
           grep -q "NATIVE_EDITOR_WRITE_CACHE_REJECT_OK atomic=true hole=true" "$RUNNER_TEMP/native-editor-brush.log"
+          grep -q "NATIVE_EDITOR_DROP_TRACE_OK" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_RIDGE_VALLEY_OK signed=true undo=true" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_WEATHER_OK mode=0" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_WEATHER_OK mode=1" "$RUNNER_TEMP/native-editor-brush.log"

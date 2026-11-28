@@ -53,6 +53,22 @@ var _hit_count := 0
 var _changed_count := 0
 var _last_input_result := "Brush OFF"
 var _raw_status := ""
+var _drop_button: Button
+var _drop_active := false
+var _drop_started := 0
+var _drop_previous_frame := 0
+var _drop_rows: Array = []
+var _drop_meta: Dictionary = {}
+var _drop_ray_count := 0
+var _drop_ray_us := 0
+var _drop_ray_max_us := 0
+var _drop_input_us := 0
+var _drop_input_count := 0
+var _drop_pump_us := 0
+var _drop_advanced_us := 0
+var _drop_status_us := 0
+const DROP_LIMIT := 3600
+const DROP_COLUMNS := ["t_us","frame_interval_us","plugin_process_us","input_count","input_us","ray_count","ray_us","ray_max_us","pump_us","advanced_poll_us","status_us","native_write_count","native_write_us","publish_cpu_us","layer_bytes_est","changed_samples","history_merge_us","tool","radius_m","stroke_active","worker_busy","brush_enabled","pending_dabs","draw_calls","render_objects","physics_process_s"]
 var _touch_index := -1
 var _multi_touch := false
 var _corridor_points: Array[Vector2] = []
@@ -241,7 +257,10 @@ func _enter_tree() -> void:
     var diagnostics_button: Button = Button.new()
     diagnostics_button.text = "Kontrol"
     diagnostics_button.tooltip_text = "Bölge, giriş, temas ve düzenleme bilgilerini göster."
-    diagnostics_button.pressed.connect(_run_self_test)
+    diagnostics_button.pressed.connect(_toggle_drop_trace)
+    diagnostics_button.text = "Drop kaydı"
+    diagnostics_button.tooltip_text = "30 saniyelik kare/fırça ölçümü başlat; yeniden dokunarak bitir. JSON kullanıcı klasörüne kaydedilir."
+    _drop_button=diagnostics_button
     profile_row.add_child(diagnostics_button)
 
     # One small contextual row instead of another tall mobile dock.
@@ -290,6 +309,8 @@ func _enter_tree() -> void:
     call_deferred("_on_selection_changed")
 
 func _exit_tree() -> void:
+    if _drop_active:
+        _stop_drop_trace()
     _finish_stroke()
     _brush.shutdown_advanced()
     var selection: EditorSelection = get_editor_interface().get_selection()
@@ -331,7 +352,72 @@ func _strength_changed(value: float) -> void:
     _strength_display.text = "%.1f" % value
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+    if not _drop_active:
+        _process_body(delta)
+        return
+    var started := Time.get_ticks_usec()
+    var interval := started-_drop_previous_frame if _drop_previous_frame>0 else 0
+    _drop_previous_frame=started
+    _process_body(delta)
+    var process_us := Time.get_ticks_usec()-started
+    _drop_rows.append([started-_drop_started,interval,process_us,_drop_input_count,_drop_input_us,_drop_ray_count,_drop_ray_us,_drop_ray_max_us,_drop_pump_us,_drop_advanced_us,_drop_status_us,_brush.trace_write_count,_brush.trace_write_us,_brush.trace_publish_us,_brush.trace_payload_bytes,_brush.trace_samples,_brush.trace_history_us,_corridor_tool,_corridor_radius,int(_stroke_active),int(_brush.advanced_busy()),int(_brush_button.button_pressed),_stroke_sampler.pending_count(),int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),int(Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME)),Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS)])
+    _reset_drop_counters()
+    if _drop_rows.size()>=DROP_LIMIT or started-_drop_started>=30000000:
+        _stop_drop_trace()
+
+func _reset_drop_counters() -> void:
+    _drop_ray_count=0
+    _drop_ray_us=0
+    _drop_ray_max_us=0
+    _drop_input_us=0
+    _drop_input_count=0
+    _drop_pump_us=0
+    _drop_advanced_us=0
+    _drop_status_us=0
+    _brush.reset_trace_counters()
+
+func _toggle_drop_trace() -> void:
+    if _drop_active:
+        _stop_drop_trace()
+    else:
+        _start_drop_trace()
+    _popup.hide()
+
+func _start_drop_trace() -> void:
+    _drop_rows=[]
+    _drop_started=Time.get_ticks_usec()
+    _drop_previous_frame=0
+    _reset_drop_counters()
+    _drop_meta={"schema":1,"device":OS.get_model_name(),"os":OS.get_name(),"godot":Engine.get_version_info(),"renderer":RenderingServer.get_current_rendering_method(),"gpu":RenderingServer.get_video_adapter_name(),"viewport":str(get_editor_interface().get_editor_viewport_3d(0).size),"scene":str(get_editor_interface().get_edited_scene_root().scene_file_path) if get_editor_interface().get_edited_scene_root()!=null else ""}
+    if is_instance_valid(_active):
+        _drop_meta["spacing"]=_active.get("vertex_spacing")
+        _drop_meta["region_size"]=_active.call("get_region_size")
+        _drop_meta["lods"]=_active.get("mesh_lods")
+        _drop_meta["collision_mode"]=_active.get("collision_mode")
+        _drop_meta["regions"]=_active.get("data").call("get_region_count")
+    _drop_active=true
+    _brush.trace_enabled=true
+    _drop_button.text="Kaydı bitir"
+    print("TerraForge drop trace started; 30 seconds maximum.")
+
+func _stop_drop_trace() -> String:
+    _drop_active=false
+    _brush.trace_enabled=false
+    _drop_button.text="Drop kaydı"
+    var path := "user://TerraForge_Drop_%s.json" % str(Time.get_unix_time_from_system()).replace(".","_")
+    var file := FileAccess.open(path,FileAccess.WRITE)
+    if file==null:
+        push_warning("TerraForge drop trace write failed: "+error_string(FileAccess.get_open_error()))
+        return ""
+    file.store_string(JSON.stringify({"meta":_drop_meta,"columns":DROP_COLUMNS,"rows":_drop_rows,"notes":"Frame callback intervals, not GPU timings; event counters may precede frame, render/physics monitors editor-wide and may lag. Native upload bytes estimated. Trace overhead nonzero."}))
+    file.close()
+    print("TerraForge drop trace: "+ProjectSettings.globalize_path(path))
+    _set_status("Drop kaydı kaydedildi: "+path.get_file())
+    return path
+
+func _process_body(_delta: float) -> void:
+    var advanced_started := Time.get_ticks_usec() if _drop_active else 0
     # Drain discarded work even after a scene switch or interrupted gesture.
     if _brush.smooth_busy() and (not _stroke_active or _corridor_tool!=2 or not is_instance_valid(_active)):
         _brush.cancel_smooth()
@@ -346,11 +432,16 @@ func _process(_delta: float) -> void:
         _changed_count += _brush.last_changed_cells if str(weather["error"]).is_empty() else 0
         _last_input_result = str(weather["error"]) if not str(weather["error"]).is_empty() else "Weather edited %d samples." % _brush.last_changed_cells
         _set_status(_last_input_result)
+    if _drop_active:
+        _drop_advanced_us+=Time.get_ticks_usec()-advanced_started
     if not is_instance_valid(_active):
         return
     # A single native dab is an indivisible main-thread transaction for now.
     # Never catch up by executing multiple expensive dabs in one frame.
+    var pump_started := Time.get_ticks_usec() if _drop_active else 0
     _pump_basic()
+    if _drop_active:
+        _drop_pump_us+=Time.get_ticks_usec()-pump_started
     var now := Time.get_ticks_msec()
     if now - _last_stats_update_ms < 200:
         return
@@ -556,9 +647,14 @@ func _tr_status(message: String) -> String:
     return result
 
 func _set_status(message: String) -> void:
+    var started := Time.get_ticks_usec() if _drop_active else 0
     _raw_status = message
     if is_instance_valid(_status):
-        _status.text = _tr_status(message)
+        var translated := _tr_status(message)
+        if _status.text!=translated:
+            _status.text=translated
+    if _drop_active:
+        _drop_status_us+=Time.get_ticks_usec()-started
 
 func _handles(object: Object) -> bool:
     return object is Node3D and object.is_class("Terrain3D") and object.has_meta("terraforge_native_workspace")
@@ -985,7 +1081,7 @@ func _paint_at(camera: Camera3D, position: Vector2) -> void:
         return
     if _active.call("get_camera") != camera:
         _active.call("set_camera",camera)
-    var hit: Vector3 = _active.call("get_intersection",camera.project_ray_origin(position),camera.project_ray_normal(position),false)
+    var hit := _trace_ray(camera.project_ray_origin(position),camera.project_ray_normal(position))
     if not hit.is_finite() or absf(hit.x)>1e8 or absf(hit.y)>1e8 or absf(hit.z)>1e8:
         if _corridor_tool in [4,5,8]:
             _corridor_error = "Path left editable surface; action cancelled."
@@ -1024,7 +1120,26 @@ func _start_stroke(camera: Camera3D, position: Vector2) -> void:
         _begin_basic()
     _paint_at(camera,position)
 
+func _trace_ray(origin: Vector3, direction: Vector3) -> Vector3:
+    var started := Time.get_ticks_usec() if _drop_active else 0
+    var hit: Vector3=_active.call("get_intersection",origin,direction,false)
+    if _drop_active:
+        var elapsed := Time.get_ticks_usec()-started
+        _drop_ray_count+=1
+        _drop_ray_us+=elapsed
+        _drop_ray_max_us=maxi(_drop_ray_max_us,elapsed)
+    return hit
+
 func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
+    if not _drop_active:
+        return _input_body(camera,event)
+    var started := Time.get_ticks_usec()
+    var result := _input_body(camera,event)
+    _drop_input_count+=1
+    _drop_input_us+=Time.get_ticks_usec()-started
+    return result
+
+func _input_body(camera: Camera3D, event: InputEvent) -> int:
     if not is_instance_valid(_active) or not _brush_button.button_pressed or _popup.visible:
         return EditorPlugin.AFTER_GUI_INPUT_PASS
     var root := get_editor_interface().get_edited_scene_root()

@@ -43,6 +43,21 @@ var last_dab_duration_ms := 0
 var last_plan_us := 0
 var last_write_us := 0
 var last_write_profile: Dictionary = {}
+var trace_enabled := false
+var trace_write_count := 0
+var trace_write_us := 0
+var trace_publish_us := 0
+var trace_payload_bytes := 0
+var trace_samples := 0
+var trace_history_us := 0
+func reset_trace_counters() -> void:
+	trace_write_count=0
+	trace_write_us=0
+	trace_publish_us=0
+	trace_payload_bytes=0
+	trace_samples=0
+	trace_history_us=0
+
 var last_filter_half_width_m := 0.0
 
 func attach(node: Node3D) -> void:
@@ -183,7 +198,10 @@ func _commit_dab_plan(planned: Dictionary, regions: Dictionary, size: int) -> St
 		var write_error := _write(regions,changes,size,true)
 		if not write_error.is_empty():
 			return write_error
+		var history_started := Time.get_ticks_usec() if trace_enabled else 0
 		before.merge(originals,false)
+		if trace_enabled:
+			trace_history_us+=Time.get_ticks_usec()-history_started
 	return ""
 
 func smooth_busy() -> bool:
@@ -497,12 +515,21 @@ func _write(_regions_checked: Dictionary, values: Dictionary, _size: int, record
 	var result: Dictionary = data.call("tf_write_brush",values)
 	last_write_us=Time.get_ticks_usec()-started
 	last_write_profile = result.get("profile",{})
+	if trace_enabled:
+		trace_write_count+=1
+		trace_write_us+=last_write_us
+		trace_publish_us+=int(last_write_profile.get("publish_cpu_us",0))
+		trace_payload_bytes+=int(last_write_profile.get("layer_bytes_est",0))
+		trace_samples+=int(last_write_profile.get("changed_samples",0))
 	if not str(result["error"]).is_empty():
 		return str(result["error"])
 	var actual: Dictionary = result["actual"]
 	if record:
+		var history_started := Time.get_ticks_usec() if trace_enabled else 0
 		after.merge(actual,true)
 		last_changed_cells=actual.size()
+		if trace_enabled:
+			trace_history_us+=Time.get_ticks_usec()-history_started
 	return ""
 
 func end() -> void:
