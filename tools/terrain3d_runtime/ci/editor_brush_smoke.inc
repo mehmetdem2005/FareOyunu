@@ -282,6 +282,69 @@ func _ci_editor_brush_smoke() -> void:
             push_error("NATIVE_EDITOR_BRUSH_FAIL: upload profile undo")
             get_tree().quit(1)
             return
+    # Q6d2: same native write dictionaries, scalar vs cached validation.
+    # Compare exact readback/restore, reject invalid transaction without
+    # touching a valid sample. Alternate order on the same runner.
+    var write_centers := [Vector2(192,192),Vector2(256,256),Vector2(384,384)]
+    var write_radii := [2.0,24.0,36.0]
+    for write_case in range(3):
+        var write_plan: Dictionary=data.call("tf_plan_brush",write_centers[write_case],0,write_radii[write_case],1.0,0.0)
+        if not str(write_plan["error"]).is_empty() or write_plan["changes"].is_empty():
+            push_error("NATIVE_EDITOR_BRUSH_FAIL: cached write fixture")
+            get_tree().quit(1)
+            return
+        var old_times: Array[int]=[]
+        var new_times: Array[int]=[]
+        var old_total: Array[int]=[]
+        var new_total: Array[int]=[]
+        var resolved := 0
+        for repetition in range(3):
+            for use_cache in ([false,true] if repetition%2==0 else [true,false]):
+                var write_started := Time.get_ticks_usec()
+                var write_out: Dictionary=data.call("tf_write_brush",write_plan["changes"],use_cache)
+                var total_us := Time.get_ticks_usec()-write_started
+                var restore_out: Dictionary=data.call("tf_write_brush",write_plan["originals"],use_cache)
+                if not str(write_out["error"]).is_empty() or not str(restore_out["error"]).is_empty() or write_out["actual"]!=write_plan["changes"] or restore_out["actual"]!=write_plan["originals"]:
+                    push_error("NATIVE_EDITOR_BRUSH_FAIL: cached write parity "+str(write_case))
+                    get_tree().quit(1)
+                    return
+                var validate_us := int(write_out["profile"]["validate_us"])
+                if use_cache:
+                    new_times.append(validate_us)
+                    new_total.append(total_us)
+                    resolved=int(write_out["profile"]["resolved_regions"])
+                    if resolved!=int(write_out["profile"]["dirty_regions"]):
+                        push_error("NATIVE_EDITOR_BRUSH_FAIL: cached write region count")
+                        get_tree().quit(1)
+                        return
+                else:
+                    old_times.append(validate_us)
+                    old_total.append(total_us)
+        old_times.sort()
+        new_times.sort()
+        old_total.sort()
+        new_total.sort()
+        print("NATIVE_EDITOR_WRITE_CACHE_OK case=",write_case," samples=",write_plan["changes"].size()," regions=",resolved," scalar_validate_us=",old_times[1]," cached_validate_us=",new_times[1]," scalar_total_us=",old_total[1]," cached_total_us=",new_total[1])
+    var valid_key := Vector2i(768,768)
+    var valid_pos := Vector3(192,0,192)
+    var valid_height := float(data.call("get_height",valid_pos))
+    for use_cache in [false,true]:
+        var rejected: Dictionary=data.call("tf_write_brush",{valid_key:valid_height+1.0,Vector2i(-999999,-999999):1.0},use_cache)
+        if str(rejected["error"]).is_empty() or float(data.call("get_height",valid_pos))!=valid_height:
+            push_error("NATIVE_EDITOR_BRUSH_FAIL: invalid cached transaction")
+            get_tree().quit(1)
+            return
+    var blocked_pos := Vector3(192.25,0,192)
+    var blocked_key := valid_key+Vector2i.RIGHT
+    var control_before := int(data.call("get_control",blocked_pos))
+    data.call("set_control_hole",blocked_pos,true)
+    var blocked_out: Dictionary=data.call("tf_write_brush",{valid_key:valid_height+1.0,blocked_key:1.0},true)
+    data.call("set_control",blocked_pos,control_before)
+    if str(blocked_out["error"]).is_empty() or float(data.call("get_height",valid_pos))!=valid_height:
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: cached transaction hole")
+        get_tree().quit(1)
+        return
+    print("NATIVE_EDITOR_WRITE_CACHE_REJECT_OK atomic=true hole=true")
     # Compare three native modes on identical Gaussian hill and micro-ripple.
     # Restore the isolated 273x273 fixture before the storage/reopen gate.
     var multi_center := Vector2(320,320)
