@@ -184,15 +184,33 @@ func dab(hit: Vector3, tool: int, radius: float, power: float, scheduled: bool =
 	return ""
 
 # Shared history path for synchronous and asynchronous plans.
+# Exact union-capacity test. Most dabs fit even if no keys overlap.
+# When the upper bound exceeds the cap, stop as soon as sufficient overlap
+# is proved. Iterate the smaller dictionary; no new dictionary allocation.
+static func history_needs_split(prior: Dictionary, incoming: Dictionary, limit: int) -> bool:
+	var excess := prior.size()+incoming.size()-limit
+	if excess<=0:
+		return false
+	if maxi(prior.size(),incoming.size())>limit:
+		return true
+	var smaller := prior if prior.size()<incoming.size() else incoming
+	var larger := incoming if prior.size()<incoming.size() else prior
+	for key in smaller:
+		if larger.has(key):
+			excess-=1
+			if excess==0:
+				return false
+	return true
+
 func _commit_dab_plan(planned: Dictionary, regions: Dictionary, size: int) -> String:
 	var changes: Dictionary = planned["changes"]
 	var originals: Dictionary = planned["originals"]
 	# Original heights belong to the earliest dab of the current undo segment.
-	var already := 0
-	for key in originals:
-		if before.has(key):
-			already+=1
-	if before.size()+originals.size()-already>MAX_STROKE_CELLS:
+	var capacity_started := Time.get_ticks_usec() if trace_enabled else 0
+	var split := history_needs_split(before,originals,MAX_STROKE_CELLS)
+	if trace_enabled:
+		trace_history_us+=Time.get_ticks_usec()-capacity_started
+	if split:
 		_commit_segment()
 	if not changes.is_empty():
 		var write_error := _write(regions,changes,size,true)
@@ -553,12 +571,9 @@ func _apply(values: Dictionary) -> bool:
 	if regions.is_empty():
 		return false
 	var size := int(terrain.call("get_region_size"))
-	var spacing := float(terrain.get("vertex_spacing"))
-	var data: Object = terrain.get("data")
-	# Validate every coordinate before the first write.
-	for p: Vector2i in values:
-		if not is_finite(_sample(regions,p,size,spacing,data)):
-			return false
+	# Native tf_write_brush validates the entire dictionary, including all
+	# holes, bounds and finite heights, before its first pixel mutation.
+	# Do not repeat that scan through per-sample GDScript calls.
 	return _write(regions,values,size,false).is_empty()
 
 func undo() -> String:

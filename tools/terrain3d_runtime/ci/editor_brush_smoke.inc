@@ -295,6 +295,53 @@ func _ci_editor_brush_smoke() -> void:
                 get_tree().quit(1)
                 return
         print("NATIVE_EDITOR_RELEASE_STOP_OK tool=",release_tool," pending=0 late_writes=0")
+    # R4a: exact union-capacity decisions versus the old complete scan.
+    # Synthetic dictionaries exercise both common O(1) and overflow paths.
+    var hist_a: Dictionary={}
+    var hist_b: Dictionary={}
+    var hist_c: Dictionary={}
+    for idx in range(65000):
+        hist_a[Vector2i(idx,0)]=1.0
+        hist_b[Vector2i(idx+32500,0)]=2.0
+        hist_c[Vector2i(idx,1)]=3.0
+    var hist_cases := [[{},hist_a,131072],[hist_a,hist_b,131072],[hist_a,hist_b,97500],[hist_a,hist_b,97499],[hist_a,hist_c,129999],[hist_a,hist_c,130000],[hist_a,{},64999]]
+    for hist_case in range(hist_cases.size()):
+        var hist_prior: Dictionary=hist_cases[hist_case][0]
+        var hist_in: Dictionary=hist_cases[hist_case][1]
+        var hist_limit: int=hist_cases[hist_case][2]
+        var old_hist_times: Array[int]=[]
+        var new_hist_times: Array[int]=[]
+        var old_split := false
+        var new_split := false
+        for repetition in range(5):
+            for fast_path in ([false,true] if repetition%2==0 else [true,false]):
+                var history_start := Time.get_ticks_usec()
+                if fast_path:
+                    new_split=_brush.history_needs_split(hist_prior,hist_in,hist_limit)
+                    new_hist_times.append(Time.get_ticks_usec()-history_start)
+                else:
+                    var overlap := 0
+                    for key in hist_in:
+                        if hist_prior.has(key):
+                            overlap+=1
+                    old_split=hist_prior.size()+hist_in.size()-overlap>hist_limit
+                    old_hist_times.append(Time.get_ticks_usec()-history_start)
+            if old_split!=new_split:
+                push_error("NATIVE_EDITOR_BRUSH_FAIL: history split parity "+str(hist_case))
+                get_tree().quit(1)
+                return
+        old_hist_times.sort()
+        new_hist_times.sort()
+        print("NATIVE_EDITOR_HISTORY_FAST_OK case=",hist_case," legacy_us=",old_hist_times[2]," fast_us=",new_hist_times[2]," split=",new_split)
+    # Undo/reapply now relies on native all-before-write validation. Reject
+    # an invalid second key without changing the first valid key.
+    var atomic_key := Vector2i(800,800)
+    var atomic_height := float(data.call("get_height",Vector3(200,0,200)))
+    if _brush._apply({atomic_key:atomic_height+1.0,Vector2i(-999999,-999999):0.0}) or float(data.call("get_height",Vector3(200,0,200)))!=atomic_height:
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: native history atomic rejection")
+        get_tree().quit(1)
+        return
+    print("NATIVE_EDITOR_HISTORY_ATOMIC_OK")
     # Small interior vs region seam: actual native transaction counters.
     var region_size := int(_active.call("get_region_size"))
     var spacing := float(_active.get("vertex_spacing"))
