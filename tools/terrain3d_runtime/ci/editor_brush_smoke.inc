@@ -333,7 +333,7 @@ func _ci_editor_brush_smoke() -> void:
         var on_height := func(): signal_box[0]+=1
         data.connect("height_maps_changed",on_height)
         var publish_valid := true
-        var expected_layers := [1,2,4][publish_case]
+        var expected_layers: int = [1,2,4][publish_case]
         for repetition in range(5):
             for grouped in ([false,true] if repetition%2==0 else [true,false]):
                 signal_box[0]=0
