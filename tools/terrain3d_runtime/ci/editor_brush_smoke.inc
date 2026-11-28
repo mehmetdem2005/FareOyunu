@@ -295,6 +295,37 @@ func _ci_editor_brush_smoke() -> void:
                 get_tree().quit(1)
                 return
         print("NATIVE_EDITOR_RELEASE_STOP_OK tool=",release_tool," pending=0 late_writes=0")
+    # R3a: stationary camera: native height change must not force all LOD
+    # transforms to recenter. Probe the same mesher snap used by physics tick.
+    var snap_plan: Dictionary=data.call("tf_plan_brush",Vector2(192,192),0,4.0,1.0,0.0)
+    if not str(snap_plan["error"]).is_empty() or snap_plan["changes"].is_empty():
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: mesh snap fixture")
+        get_tree().quit(1)
+        return
+    var old_snap_times: Array[int]=[]
+    var new_snap_times: Array[int]=[]
+    var snap_totals := [0,0]
+    for repetition in range(5):
+        for preserve in ([false,true] if repetition%2==0 else [true,false]):
+            _active.call("snap")
+            var count_before := int(_active.call("tf_mesh_recenter_count",true))
+            var edited: Dictionary=data.call("tf_write_brush",snap_plan["changes"],true,preserve)
+            var snap_start := Time.get_ticks_usec()
+            var count_after := int(_active.call("tf_mesh_recenter_count",true))
+            var snap_elapsed := Time.get_ticks_usec()-snap_start
+            var restored: Dictionary=data.call("tf_write_brush",snap_plan["originals"],true,false)
+            if count_before<0 or not str(edited["error"]).is_empty() or not str(restored["error"]).is_empty() or edited["actual"]!=snap_plan["changes"] or restored["actual"]!=snap_plan["originals"] or bool(edited["profile"]["mesh_target_preserved"])!=preserve or count_after-count_before!=(0 if preserve else 1):
+                push_error("NATIVE_EDITOR_BRUSH_FAIL: mesh snap parity")
+                get_tree().quit(1)
+                return
+            snap_totals[int(preserve)]+=count_after-count_before
+            if preserve:
+                new_snap_times.append(snap_elapsed)
+            else:
+                old_snap_times.append(snap_elapsed)
+    old_snap_times.sort()
+    new_snap_times.sort()
+    print("NATIVE_EDITOR_MESH_SNAP_OK legacy_recenters=",snap_totals[0]," preserved_recenters=",snap_totals[1]," legacy_us=",old_snap_times[2]," preserved_us=",new_snap_times[2])
     # Small interior vs region seam: actual native transaction counters.
     var region_size := int(_active.call("get_region_size"))
     var spacing := float(_active.get("vertex_spacing"))

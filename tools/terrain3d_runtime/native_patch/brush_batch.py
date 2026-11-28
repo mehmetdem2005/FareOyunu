@@ -21,7 +21,7 @@ edit("src/terrain_3d_data.h",
 	void tf_read_rf_rect(const Vector2i &origin, int width, int height, float *dst, bool bulk) const;
 	static Dictionary tf_plan_smooth_snapshot(const Dictionary &snapshot);
 	bool tf_verify_smooth_snapshot(const Dictionary &snapshot, bool bulk = true) const;
-	Dictionary tf_write_brush(const Dictionary &values, bool cached = true);
+	Dictionary tf_write_brush(const Dictionary &values, bool cached = true, bool keep_mesh_target = true);
 	void set_pixel(const MapType p_map_type, const Vector3 &p_global_position, const Color &p_pixel);""")
 edit("src/terrain_3d_data.cpp",
     '#include "terrain_3d_data.h"',
@@ -456,7 +456,7 @@ Dictionary Terrain3DData::tf_plan_smooth_snapshot(const Dictionary &snapshot) {
 	return out;
 }
 
-Dictionary Terrain3DData::tf_write_brush(const Dictionary &values, bool cached) {
+Dictionary Terrain3DData::tf_write_brush(const Dictionary &values, bool cached, bool keep_mesh_target) {
 	using TFClock = std::chrono::steady_clock;
 	const auto started = TFClock::now();
 	auto elapsed_us = [](TFClock::time_point a, TFClock::time_point b) -> int64_t {
@@ -558,6 +558,7 @@ Dictionary Terrain3DData::tf_write_brush(const Dictionary &values, bool cached) 
 	int64_t layer_bytes_est = 0;
 	int64_t edited_regions_est = 0;
 	bool incremental_expected = false;
+	bool mesh_target_preserved=false;
 	if (dirty>0) {
 		// These counters describe expected CPU-side full-layer payload, not
 		// GPU completion. Dirty arrays may rebuild more than the edited layers.
@@ -574,7 +575,10 @@ Dictionary Terrain3DData::tf_write_brush(const Dictionary &values, bool cached) 
 		update_maps(TYPE_HEIGHT,false,false);
 		uploaded = TFClock::now();
 		for (Terrain3DRegion *reg:touched) if (reg) reg->set_edited(false);
-		_terrain->snap();
+		if (keep_mesh_target && incremental_expected)
+			mesh_target_preserved=_terrain->tf_snap_height_edit();
+		else
+			_terrain->snap();
 		snapped = TFClock::now();
 	}
 	out["profile"] = Dictionary();
@@ -592,6 +596,7 @@ Dictionary Terrain3DData::tf_write_brush(const Dictionary &values, bool cached) 
 	profile["edited_regions_est"] = edited_regions_est;
 	profile["incremental_expected"] = incremental_expected;
 	profile["layer_bytes_est"] = layer_bytes_est;
+	profile["mesh_target_preserved"] = mesh_target_preserved;
 	out["profile"] = profile;
 	out["error"]="";
 	out["actual"]=actual;
@@ -605,8 +610,44 @@ edit("src/terrain_3d_data.cpp",
     '''ClassDB::bind_method(D_METHOD("get_region_count"), &Terrain3DData::get_region_count);
 	ClassDB::bind_method(D_METHOD("tf_pick_brush","origin","direction"), &Terrain3DData::tf_pick_brush);
 	ClassDB::bind_method(D_METHOD("tf_plan_brush","center","tool","radius","power","flatten","smooth_mode"), &Terrain3DData::tf_plan_brush, DEFVAL(0));
-	ClassDB::bind_method(D_METHOD("tf_write_brush","values","cached"), &Terrain3DData::tf_write_brush, DEFVAL(true));
+	ClassDB::bind_method(D_METHOD("tf_write_brush","values","cached","keep_mesh_target"), &Terrain3DData::tf_write_brush, DEFVAL(true), DEFVAL(true));
 	ClassDB::bind_method(D_METHOD("tf_capture_smooth","center","radius","power","smooth_mode","bulk"), &Terrain3DData::tf_capture_smooth, DEFVAL(true));
 	ClassDB::bind_static_method("Terrain3DData",D_METHOD("tf_plan_smooth_snapshot","snapshot"), &Terrain3DData::tf_plan_smooth_snapshot);
 	ClassDB::bind_method(D_METHOD("tf_verify_smooth_snapshot","snapshot","bulk"), &Terrain3DData::tf_verify_smooth_snapshot, DEFVAL(true));''')
+# R3a: keep editor clipmap transforms when only RF heights change.
+# Collision invalidation remains identical; tessellation and rebuilds use snap.
+edit("src/terrain_3d.h", "void snap();",
+    """void snap();
+	bool tf_snap_height_edit();
+	int64_t tf_mesh_recenter_count(bool probe = false);""")
+edit("src/terrain_3d_mesher.h", "Vector2 _last_target_position = V2_MAX;",
+    "Vector2 _last_target_position = V2_MAX;\n\tint64_t _tf_recenter_count = 0;")
+edit("src/terrain_3d_mesher.h", "void reset_target_position() { _last_target_position = V2_MAX; }",
+    """void reset_target_position() { _last_target_position = V2_MAX; }
+	int64_t tf_recenter_count() const { return _tf_recenter_count; }""")
+edit("src/terrain_3d_mesher.cpp", "// Recenter terrain on the target",
+    "++_tf_recenter_count;\n\t// Recenter terrain on the target")
+edit("src/terrain_3d.cpp", "void Terrain3D::snap() {", r"""// Height texture and AABB notifications already happened in update_maps.
+// Non-tessellated clipmap transforms depend on camera XZ, not sample heights.
+// Keep collision invalidation exactly as in snap(); all other modes fall back.
+bool Terrain3D::tf_snap_height_edit() {
+	if (!IS_EDITOR || !_initialized || !_terrain_mesher || _tessellation_level>0) {
+		snap();
+		return false;
+	}
+	if (_collision) _collision->reset_target_position();
+	// Ocean is deliberately unchanged by a terrain height-only edit.
+	return true;
+}
+
+int64_t Terrain3D::tf_mesh_recenter_count(bool probe) {
+	if (!_terrain_mesher) return -1;
+	if (probe) _terrain_mesher->snap();
+	return _terrain_mesher->tf_recenter_count();
+}
+
+void Terrain3D::snap() {""")
+edit("src/terrain_3d.cpp", 'ClassDB::bind_method(D_METHOD("snap"), &Terrain3D::snap);',
+    '''ClassDB::bind_method(D_METHOD("snap"), &Terrain3D::snap);
+	ClassDB::bind_method(D_METHOD("tf_mesh_recenter_count","probe"), &Terrain3D::tf_mesh_recenter_count, DEFVAL(false));''')
 print("TF_NATIVE_BRUSH_BATCH_PATCH_APPLIED")

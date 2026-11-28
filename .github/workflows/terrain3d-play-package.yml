@@ -1,7 +1,7 @@
 name: TerraForge packed RF mobile candidate
 on:
   push:
-    branches: [fix/terraforge-rf-mobile-packed, experiment/terraforge-stroke-resampler, experiment/terraforge-async-weather, experiment/terraforge-smooth-native, experiment/terraforge-async-corridor, experiment/terraforge-async-smooth, experiment/terraforge-smooth-bulk-rf, experiment/terraforge-native-write-cache, experiment/terraforge-ray-broadphase]
+    branches: [fix/terraforge-rf-mobile-packed, experiment/terraforge-stroke-resampler, experiment/terraforge-async-weather, experiment/terraforge-smooth-native, experiment/terraforge-async-corridor, experiment/terraforge-async-smooth, experiment/terraforge-smooth-bulk-rf, experiment/terraforge-native-write-cache, experiment/terraforge-ray-broadphase, experiment/terraforge-editor-mesh-snap]
     paths: ["tools/terrain3d_runtime/**", "addons/terra_forge/**", ".github/workflows/terrain3d-play-package.yml"]
   workflow_dispatch:
 permissions:
@@ -192,6 +192,7 @@ jobs:
           for tool in 0 1 2 3; do grep -q "NATIVE_EDITOR_RELEASE_STOP_OK tool=$tool pending=0 late_writes=0" "$RUNNER_TEMP/native-editor-brush.log"; done
           grep -q "NATIVE_EDITOR_UPLOAD_PROFILE_OK case=0" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_UPLOAD_PROFILE_OK case=1" "$RUNNER_TEMP/native-editor-brush.log"
+          grep -q "NATIVE_EDITOR_MESH_SNAP_OK legacy_recenters=5 preserved_recenters=0" "$RUNNER_TEMP/native-editor-brush.log"
           test "$(grep -c 'NATIVE_EDITOR_WRITE_CACHE_OK case=' "$RUNNER_TEMP/native-editor-brush.log")" -ge 3
           grep -q "NATIVE_EDITOR_WRITE_CACHE_REJECT_OK atomic=true hole=true" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_DROP_TRACE_OK" "$RUNNER_TEMP/native-editor-brush.log"
