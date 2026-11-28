@@ -245,21 +245,56 @@ func _ci_editor_brush_smoke() -> void:
         push_error("NATIVE_EDITOR_BRUSH_FAIL: queued input mutation or count")
         get_tree().quit(1)
         return
-    _finish_stroke(true)
     _pump_basic()
     if _basic_dabs!=1 or _stroke_sampler.pending_count()!=10 or not _stroke_active:
         push_error("NATIVE_EDITOR_BRUSH_FAIL: frame pump budget")
         get_tree().quit(1)
         return
     for frame in range(30):
-        if not _stroke_active:
+        if _stroke_sampler.pending_count()==0:
             break
         await get_tree().process_frame
+    _finish_stroke(true)
     if _stroke_active or _basic_dabs!=11 or float(data.call("get_height",queue_a))<=queue_before or float(data.call("get_height",queue_b))<=queue_end_before or _brush.undo()!="Native undo applied." or float(data.call("get_height",queue_a))!=queue_before or float(data.call("get_height",queue_b))!=queue_end_before:
         push_error("NATIVE_EDITOR_BRUSH_FAIL: queued release / undo")
         get_tree().quit(1)
         return
     print("NATIVE_EDITOR_STROKE_QUEUE_OK dabs=",_basic_dabs," max_dab_us=",_basic_max_us," undo=true")
+    for release_tool in [0,1,3]:
+        _brush.begin()
+        _corridor_tool=release_tool
+        _corridor_radius=4.0
+        _corridor_power=1.0
+        _stroke_active=true
+        _begin_basic()
+        _offer_basic(Vector2(queue_a.x,queue_a.z))
+        _offer_basic(Vector2(queue_b.x,queue_b.z))
+        _pump_basic()
+        if _basic_dabs!=1 or _stroke_sampler.pending_count()!=10:
+            push_error("NATIVE_EDITOR_BRUSH_FAIL: release backlog setup")
+            get_tree().quit(1)
+            return
+        var release_height := float(data.call("get_height",queue_a))
+        var release_end := float(data.call("get_height",queue_b))
+        var release_map := _brush.after.duplicate()
+        var release_event := InputEventScreenTouch.new()
+        release_event.index=7
+        release_event.pressed=false
+        _touch_index=7
+        _touch_session=true
+        _input(release_event)
+        for frame in range(12):
+            await get_tree().process_frame
+        if _stroke_active or _stroke_sampler.pending_count()!=0 or _basic_dabs!=1 or float(data.call("get_height",queue_a))!=release_height or float(data.call("get_height",queue_b))!=release_end:
+            push_error("NATIVE_EDITOR_BRUSH_FAIL: late write after release")
+            get_tree().quit(1)
+            return
+        if not release_map.is_empty():
+            if _brush.history.back()["after"]!=release_map or _brush.undo()!="Native undo applied.":
+                push_error("NATIVE_EDITOR_BRUSH_FAIL: release prefix history")
+                get_tree().quit(1)
+                return
+        print("NATIVE_EDITOR_RELEASE_STOP_OK tool=",release_tool," pending=0 late_writes=0")
     # Small interior vs region seam: actual native transaction counters.
     var region_size := int(_active.call("get_region_size"))
     var spacing := float(_active.get("vertex_spacing"))
@@ -423,15 +458,15 @@ func _ci_editor_brush_smoke() -> void:
         _begin_basic()
         _smooth_mode.select((mode+1)%3)
         _offer_basic(Vector2(center.x,center.z))
-        _finish_stroke(true)
         _pump_basic()
         if not _brush.smooth_busy() or float(data.call("get_height",center))!=smooth_peak:
             push_error("NATIVE_EDITOR_BRUSH_FAIL: Smooth queue dispatch changed terrain")
             get_tree().quit(1)
             return
         var live_smooth_deadline := Time.get_ticks_msec()+10000
-        while _stroke_active and Time.get_ticks_msec()<live_smooth_deadline:
+        while _brush.smooth_busy() and Time.get_ticks_msec()<live_smooth_deadline:
             await get_tree().process_frame
+        _finish_stroke(true)
         print("NATIVE_EDITOR_SMOOTH_QUEUE_TIMING mode=",mode," capture_us=",_brush.last_smooth_capture_us," worker_us=",_brush.last_smooth_worker_us," verify_us=",_brush.last_smooth_verify_us," commit_us=",_brush.last_smooth_commit_us," max_pump_us=",_basic_max_us)
         if _stroke_active or _basic_dabs!=1 or float(data.call("get_height",center))!=float(expected_plan["changes"][center_key]) or _brush.undo()!="Native undo applied." or float(data.call("get_height",center))!=smooth_peak:
             push_error("NATIVE_EDITOR_BRUSH_FAIL: Smooth UI mode "+str(mode))
@@ -573,10 +608,10 @@ func _ci_editor_brush_smoke() -> void:
     _begin_basic()
     _offer_basic(seq_a)
     _offer_basic(seq_b)
-    _finish_stroke(true)
     var seq_deadline := Time.get_ticks_msec()+10000
-    while _stroke_active and Time.get_ticks_msec()<seq_deadline:
+    while (_stroke_sampler.pending_count()>0 or _brush.smooth_busy()) and Time.get_ticks_msec()<seq_deadline:
         await get_tree().process_frame
+    _finish_stroke(true)
     if _stroke_active or _basic_dabs!=2 or _brush.history.is_empty() or _brush.history.back()["after"]!=seq_expected or _brush.history.back()["before"]!=seq_originals or _brush.undo()!="Native undo applied.":
         push_error("NATIVE_EDITOR_BRUSH_FAIL: sequential async Smooth equality")
         get_tree().quit(1)
@@ -591,7 +626,10 @@ func _ci_editor_brush_smoke() -> void:
     _begin_basic()
     _offer_basic(seq_a)
     _pump_basic()
-    _finish_stroke(false)
+    var smooth_release := InputEventMouseButton.new()
+    smooth_release.button_index=MOUSE_BUTTON_LEFT
+    smooth_release.pressed=false
+    _input(smooth_release)
     var queue_cancel_deadline := Time.get_ticks_msec()+10000
     while _brush.smooth_busy() and Time.get_ticks_msec()<queue_cancel_deadline:
         await get_tree().process_frame
@@ -599,6 +637,7 @@ func _ci_editor_brush_smoke() -> void:
         push_error("NATIVE_EDITOR_BRUSH_FAIL: live Smooth cancellation")
         get_tree().quit(1)
         return
+    print("NATIVE_EDITOR_RELEASE_STOP_OK tool=2 pending=0 late_writes=0")
     print("NATIVE_EDITOR_SMOOTH_QUEUE_OK sequential=true undo=true cancel=true")
     # Real shared ray path: vertical hit, oblique hit and sky miss; compare
     # measured CPU timings, no assumption about mobile GPU or frame budget.

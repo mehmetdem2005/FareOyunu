@@ -6,9 +6,7 @@ const Brush = preload("res://addons/terraforge_native/native_brush.gd")
 var _brush := Brush.new()
 const StrokeSampler = preload("res://addons/terraforge_native/native_stroke_sampler.gd")
 var _stroke_sampler := StrokeSampler.new()
-var _basic_released := false
 var _basic_accepting := false
-var _basic_sealed := false
 var _basic_dabs := 0
 var _basic_max_us := 0
 var _basic_error := ""
@@ -936,8 +934,6 @@ func _is_basic() -> bool:
     return _corridor_tool >= 0 and _corridor_tool <= 3
 
 func _begin_basic() -> void:
-    _basic_released = false
-    _basic_sealed = false
     _basic_error = ""
     _basic_dabs = 0
     _basic_max_us = 0
@@ -945,7 +941,7 @@ func _begin_basic() -> void:
     _basic_accepting = _stroke_sampler.begin(maxf(float(_active.get("vertex_spacing")),_corridor_radius*0.2))
 
 func _offer_basic(point: Vector2) -> void:
-    if not _basic_accepting or _basic_released:
+    if not _basic_accepting:
         return
     if not _stroke_sampler.offer(point):
         # Explicit backpressure: keep accepted samples; never silently bridge
@@ -957,8 +953,6 @@ func _offer_basic(point: Vector2) -> void:
 func _pump_basic() -> void:
     if not _stroke_active or not _is_basic() or not is_instance_valid(_active):
         return
-    if _basic_released and not _basic_sealed:
-        _basic_sealed = _stroke_sampler.seal()
     # At most one Smooth job in flight. Commit and next capture never share
     # a pump; next snapshot sees the previous dab's committed heights.
     if _corridor_tool==2 and _brush.smooth_busy():
@@ -997,22 +991,9 @@ func _pump_basic() -> void:
             _finish_stroke(false)
             return
         _last_input_result = _basic_error if not _basic_error.is_empty() else "Fırça: %d örnek bekliyor." % _stroke_sampler.pending_count()
-    if _basic_released and _basic_sealed and _stroke_sampler.is_complete():
-        _brush.end()
-        _stroke_sampler.cancel()
-        _stroke_active = false
-        _corridor_tool = -1
-        _basic_accepting = false
-        _basic_released = false
-        _last_input_result = _basic_error if not _basic_error.is_empty() else "Fırça tamamlandı: %d uygulama." % _basic_dabs
     _set_status(_last_input_result)
 
 func _finish_stroke(apply_path: bool = false) -> void:
-    if _stroke_active and _is_basic() and apply_path and is_instance_valid(_active):
-        _basic_released = true
-        _basic_accepting = false
-        _basic_sealed = _stroke_sampler.seal()
-        return
     if _stroke_active and _is_basic():
         var dropped := _stroke_sampler.pending_count()
         if _corridor_tool==2 and _brush.smooth_busy():
@@ -1020,12 +1001,14 @@ func _finish_stroke(apply_path: bool = false) -> void:
             dropped+=1
         _stroke_sampler.cancel()
         _basic_accepting = false
-        _basic_released = false
-        _basic_sealed = false
-        if dropped>0 or not _basic_error.is_empty():
-            _last_input_result = "Fırça kesildi; %d bekleyen örnek iptal. %s" % [dropped,_basic_error]
-            _set_status(_last_input_result)
-            push_warning(_last_input_result)
+        # Release: keep committed prefix; discard all uncommitted work.
+        if not _basic_error.is_empty():
+            _last_input_result = _basic_error
+        elif dropped>0:
+            _last_input_result = "Fırça durdu; %d gecikmiş örnek iptal." % dropped
+        else:
+            _last_input_result = "Fırça tamamlandı: %d uygulama." % _basic_dabs
+        _set_status(_last_input_result)
     if _stroke_active and is_instance_valid(_active):
         if _corridor_tool in [4,5]:
             if apply_path and _corridor_error.is_empty() and not _corridor_points.is_empty():
@@ -1069,7 +1052,7 @@ func _collect_corridor(hit: Vector3) -> void:
     _set_status(_last_input_result)
 
 func _paint_at(camera: Camera3D, position: Vector2) -> void:
-    if not is_instance_valid(_active) or (_is_basic() and _basic_released):
+    if not is_instance_valid(_active) or not _stroke_active:
         return
     _input_count += 1
     # Weather is a single local action, not repeated per motion event.
@@ -1106,9 +1089,6 @@ func _start_stroke(camera: Camera3D, position: Vector2) -> void:
     if _brush.advanced_busy():
         _set_status("Arazi işlemi hesaplanıyor; bitince yeniden dene.")
         return
-    if _stroke_active and _is_basic() and _basic_released:
-        _set_status("Önceki fırça tamamlanıyor.")
-        return
     _finish_stroke()
     _brush.begin()
     _corridor_tool = _tool_select.selected
@@ -1139,6 +1119,26 @@ func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
     _drop_input_us+=Time.get_ticks_usec()-started
     return result
 
+# Release guard outside the viewport, for continuous brushes only.
+func _input(event: InputEvent) -> void:
+    if not _stroke_active or not _is_basic():
+        return
+    if event is InputEventScreenTouch and event.index==_touch_index and (not event.pressed or event.canceled):
+        _finish_stroke(true)
+        _touch_session=false
+        _touch_index=-1
+        _multi_touch=false
+        _last_touch_ms=Time.get_ticks_msec()
+    elif event is InputEventMouseButton and event.button_index==MOUSE_BUTTON_LEFT and not event.pressed and not _touch_session:
+        _finish_stroke(true)
+
+func _notification(what: int) -> void:
+    if what==NOTIFICATION_APPLICATION_FOCUS_OUT and _stroke_active:
+        _finish_stroke(false)
+        _touch_session=false
+        _touch_index=-1
+        _multi_touch=false
+
 func _input_body(camera: Camera3D, event: InputEvent) -> int:
     if not is_instance_valid(_active) or not _brush_button.button_pressed or _popup.visible:
         return EditorPlugin.AFTER_GUI_INPUT_PASS
@@ -1147,6 +1147,13 @@ func _input_body(camera: Camera3D, event: InputEvent) -> int:
         return EditorPlugin.AFTER_GUI_INPUT_PASS
     if event is InputEventScreenTouch:
         _last_touch_ms = Time.get_ticks_msec()
+        if event.canceled:
+            if event.index==_touch_index:
+                _finish_stroke(false)
+                _touch_session=false
+                _touch_index=-1
+                _multi_touch=false
+            return EditorPlugin.AFTER_GUI_INPUT_STOP
         if event.pressed:
             if _touch_index != -1 and event.index != _touch_index:
                 _finish_stroke()

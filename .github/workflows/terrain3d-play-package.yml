@@ -189,6 +189,7 @@ jobs:
           grep -q "NATIVE_EDITOR_ASYNC_CORRIDOR_CANCEL_OK" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_NATIVE_BATCH_OK lower=true flatten=true undo=true" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_STROKE_QUEUE_OK dabs=11" "$RUNNER_TEMP/native-editor-brush.log"
+          for tool in 0 1 2 3; do grep -q "NATIVE_EDITOR_RELEASE_STOP_OK tool=$tool pending=0 late_writes=0" "$RUNNER_TEMP/native-editor-brush.log"; done
           grep -q "NATIVE_EDITOR_UPLOAD_PROFILE_OK case=0" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_UPLOAD_PROFILE_OK case=1" "$RUNNER_TEMP/native-editor-brush.log"
           test "$(grep -c 'NATIVE_EDITOR_WRITE_CACHE_OK case=' "$RUNNER_TEMP/native-editor-brush.log")" -ge 3
