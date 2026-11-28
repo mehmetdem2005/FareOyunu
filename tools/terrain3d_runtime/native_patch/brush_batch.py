@@ -16,14 +16,15 @@ edit("src/terrain_3d_data.h",
     """// TerraForge: bounded main-thread brush transaction on the authoritative RF maps.
 	double tf_sample(const Vector2i &p) const;
 	Dictionary tf_plan_brush(const Vector2 &center, int tool, double radius, double power, double flatten, int smooth_mode = 0) const;
-	Dictionary tf_capture_smooth(const Vector2 &center, double radius, double power, int smooth_mode) const;
+	Dictionary tf_capture_smooth(const Vector2 &center, double radius, double power, int smooth_mode, bool bulk = true) const;
+	void tf_read_rf_rect(const Vector2i &origin, int width, int height, float *dst, bool bulk) const;
 	static Dictionary tf_plan_smooth_snapshot(const Dictionary &snapshot);
-	bool tf_verify_smooth_snapshot(const Dictionary &snapshot) const;
+	bool tf_verify_smooth_snapshot(const Dictionary &snapshot, bool bulk = true) const;
 	Dictionary tf_write_brush(const Dictionary &values);
 	void set_pixel(const MapType p_map_type, const Vector3 &p_global_position, const Color &p_pixel);""")
 edit("src/terrain_3d_data.cpp",
     '#include "terrain_3d_data.h"',
-    '#include "terrain_3d_data.h"\n#include <algorithm>\n#include <array>\n#include <cmath>\n#include <chrono>\n#include <limits>\n#include <vector>\n#include <godot_cpp/variant/packed_float32_array.hpp>')
+    '#include "terrain_3d_data.h"\n#include <algorithm>\n#include <array>\n#include <cmath>\n#include <chrono>\n#include <cstring>\n#include <limits>\n#include <vector>\n#include <godot_cpp/variant/packed_float32_array.hpp>')
 edit("src/terrain_3d_data.cpp",
     "void Terrain3DData::set_pixel(const MapType p_map_type, const Vector3 &p_global_position, const Color &p_pixel) {",
     r"""// All samples are on the integer global vertex grid; no world-float roundtrip.
@@ -197,16 +198,62 @@ bool tf_smooth_grid(const Vector2 &center,double radius,double power,int mode,do
 }
 }
 
-Dictionary Terrain3DData::tf_capture_smooth(const Vector2 &center,double radius,double power,int smooth_mode) const {
+// Resolve each overlapping region once; copy raw RF bytes only for that
+// region, with no pointer lifetime crossing the function or thread boundary.
+// Keep scalar path as reference and fallback for unexpected image layout.
+void Terrain3DData::tf_read_rf_rect(const Vector2i &origin,int width,int height,float *dst,bool bulk) const {
+	const float invalid=std::numeric_limits<float>::quiet_NaN();
+	if (!bulk) {
+		for (int y=0;y<height;++y) for (int x=0;x<width;++x)
+			dst[y*width+x]=float(tf_sample(origin+Vector2i(x,y)));
+		return;
+	}
+	std::fill(dst,dst+int64_t(width)*height,invalid);
+	const Vector2i end=origin+Vector2i(width-1,height-1);
+	const Vector2i lo=V2I_DIVIDE_FLOOR(origin,_region_size);
+	const Vector2i hi=V2I_DIVIDE_FLOOR(end,_region_size);
+	for (int ry=lo.y;ry<=hi.y;++ry) for (int rx=lo.x;rx<=hi.x;++rx) {
+		const Vector2i loc(rx,ry);
+		const Terrain3DRegion *reg=get_region_ptr(loc);
+		if (!reg || reg->is_deleted()) continue;
+		Image *h=reg->get_map_ptr(TYPE_HEIGHT);
+		Image *c=reg->get_map_ptr(TYPE_CONTROL);
+		if (!h || !c || h->get_format()!=Image::FORMAT_RF || c->get_format()!=Image::FORMAT_RF ||
+				h->get_size()!=_region_sizev || c->get_size()!=_region_sizev) continue;
+		const Vector2i base=loc*_region_size;
+		const int x0=std::max(origin.x,base.x), x1=std::min(end.x,base.x+_region_size-1);
+		const int y0=std::max(origin.y,base.y), y1=std::min(end.y,base.y+_region_size-1);
+		const int64_t bytes=int64_t(_region_size)*_region_size*4;
+		const PackedByteArray hb=h->get_data(), cb=c->get_data();
+		if (sizeof(float)!=4 || hb.size()!=bytes || cb.size()!=bytes || h->has_mipmaps() || c->has_mipmaps()) {
+			for (int y=y0;y<=y1;++y) for (int x=x0;x<=x1;++x)
+				dst[(y-origin.y)*width+x-origin.x]=float(tf_sample(Vector2i(x,y)));
+			continue;
+		}
+		const uint8_t *hp=hb.ptr(), *cp=cb.ptr();
+		for (int y=y0;y<=y1;++y) {
+			int64_t offset=(int64_t(y-base.y)*_region_size+x0-base.x)*4;
+			float *row=dst+(y-origin.y)*width+x0-origin.x;
+			// memcpy avoids alignment/aliasing UB. Preserve existing control
+			// NaN and hole semantics; RF bytes are native float storage.
+			for (int x=x0;x<=x1;++x,offset+=4,++row) {
+				float control;
+				std::memcpy(&control,cp+offset,4);
+				if (!std::isnan(control) && !is_hole(control))
+					std::memcpy(row,hp+offset,4);
+			}
+		}
+	}
+}
+
+Dictionary Terrain3DData::tf_capture_smooth(const Vector2 &center,double radius,double power,int smooth_mode,bool bulk) const {
 	Dictionary out;
 	out["error"]="Invalid or oversized Smooth snapshot.";
 	TFSmoothGrid g{};
 	if (!_terrain || _region_size<=0 || !tf_smooth_grid(center,radius,power,smooth_mode,_vertex_spacing,g)) return out;
 	PackedFloat32Array samples;
 	samples.resize(g.sw*g.sh);
-	float *dst=samples.ptrw();
-	for (int y=0;y<g.sh;++y) for (int x=0;x<g.sw;++x)
-		dst[y*g.sw+x]=float(tf_sample(Vector2i(g.x0-g.k+x,g.y0-g.k+y)));
+	tf_read_rf_rect(Vector2i(g.x0-g.k,g.y0-g.k),g.sw,g.sh,samples.ptrw(),bulk);
 	out["center"]=center;
 	out["radius"]=radius;
 	out["power"]=power;
@@ -219,7 +266,7 @@ Dictionary Terrain3DData::tf_capture_smooth(const Vector2 &center,double radius,
 	return out;
 }
 
-bool Terrain3DData::tf_verify_smooth_snapshot(const Dictionary &snapshot) const {
+bool Terrain3DData::tf_verify_smooth_snapshot(const Dictionary &snapshot,bool bulk) const {
 	if (!_terrain || !snapshot.has("samples") || !snapshot.has("center") || !snapshot.has("radius") || !snapshot.has("power") || !snapshot.has("mode") || !snapshot.has("spacing") || !snapshot.has("region_size") || !snapshot.has("data_id")) return false;
 	if (int64_t(snapshot["data_id"])!=int64_t(get_instance_id()) || int(snapshot["region_size"])!=_region_size || double(snapshot["spacing"])!=double(_vertex_spacing)) return false;
 	const Vector2 center=snapshot["center"];
@@ -228,8 +275,10 @@ bool Terrain3DData::tf_verify_smooth_snapshot(const Dictionary &snapshot) const 
 	const PackedFloat32Array samples=snapshot["samples"];
 	if (samples.size()!=g.sw*g.sh) return false;
 	const float *src=samples.ptr();
-	for (int y=0;y<g.sh;++y) for (int x=0;x<g.sw;++x) {
-		const float a=src[y*g.sw+x], b=float(tf_sample(Vector2i(g.x0-g.k+x,g.y0-g.k+y)));
+	std::vector<float> live(g.sw*g.sh);
+	tf_read_rf_rect(Vector2i(g.x0-g.k,g.y0-g.k),g.sw,g.sh,live.data(),bulk);
+	for (int i=0;i<g.sw*g.sh;++i) {
+		const float a=src[i], b=live[i];
 		if (std::isfinite(a)!=std::isfinite(b) || (std::isfinite(a) && a!=b)) return false;
 	}
 	return true;
@@ -474,7 +523,7 @@ edit("src/terrain_3d_data.cpp",
     '''ClassDB::bind_method(D_METHOD("get_region_count"), &Terrain3DData::get_region_count);
 	ClassDB::bind_method(D_METHOD("tf_plan_brush","center","tool","radius","power","flatten","smooth_mode"), &Terrain3DData::tf_plan_brush, DEFVAL(0));
 	ClassDB::bind_method(D_METHOD("tf_write_brush","values"), &Terrain3DData::tf_write_brush);
-	ClassDB::bind_method(D_METHOD("tf_capture_smooth","center","radius","power","smooth_mode"), &Terrain3DData::tf_capture_smooth);
+	ClassDB::bind_method(D_METHOD("tf_capture_smooth","center","radius","power","smooth_mode","bulk"), &Terrain3DData::tf_capture_smooth, DEFVAL(true));
 	ClassDB::bind_static_method("Terrain3DData",D_METHOD("tf_plan_smooth_snapshot","snapshot"), &Terrain3DData::tf_plan_smooth_snapshot);
-	ClassDB::bind_method(D_METHOD("tf_verify_smooth_snapshot","snapshot"), &Terrain3DData::tf_verify_smooth_snapshot);''')
+	ClassDB::bind_method(D_METHOD("tf_verify_smooth_snapshot","snapshot","bulk"), &Terrain3DData::tf_verify_smooth_snapshot, DEFVAL(true));''')
 print("TF_NATIVE_BRUSH_BATCH_PATCH_APPLIED")

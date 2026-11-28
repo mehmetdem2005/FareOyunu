@@ -382,6 +382,54 @@ func _ci_editor_brush_smoke() -> void:
         get_tree().quit(1)
         return
     print("NATIVE_EDITOR_SMOOTH_UI_OK modes=3 frozen=true undo=true")
+    # Q6d1: compare scalar/bulk on identical live RF, including region seams,
+    # missing negative-coordinate neighbor, and a temporary control-map hole.
+    for bulk_pos in [Vector2(center.x,center.z),Vector2(128,128),Vector2(0,0)]:
+        for bulk_mode in [0,1,2]:
+            var scalar_times: Array[int]=[]
+            var bulk_times: Array[int]=[]
+            var scalar_verify_times: Array[int]=[]
+            var bulk_verify_times: Array[int]=[]
+            for repeat in range(3):
+                # Alternate order to reduce warm-cache bias.
+                for use_bulk in ([false,true] if repeat%2==0 else [true,false]):
+                    var sample_start := Time.get_ticks_usec()
+                    var sample: Dictionary=data.call("tf_capture_smooth",bulk_pos,24.0,6.0,bulk_mode,use_bulk)
+                    var elapsed := Time.get_ticks_usec()-sample_start
+                    if not str(sample["error"]).is_empty():
+                        push_error("NATIVE_EDITOR_BRUSH_FAIL: bulk capture")
+                        get_tree().quit(1)
+                        return
+                    var verification_start := Time.get_ticks_usec()
+                    var verified := bool(data.call("tf_verify_smooth_snapshot",sample,use_bulk))
+                    var verify_elapsed := Time.get_ticks_usec()-verification_start
+                    if not verified or not bool(data.call("tf_verify_smooth_snapshot",sample,not use_bulk)):
+                        push_error("NATIVE_EDITOR_BRUSH_FAIL: bulk/scalar mismatch "+str(bulk_pos))
+                        get_tree().quit(1)
+                        return
+                    if use_bulk:
+                        bulk_times.append(elapsed)
+                        bulk_verify_times.append(verify_elapsed)
+                    else:
+                        scalar_times.append(elapsed)
+                        scalar_verify_times.append(verify_elapsed)
+            scalar_times.sort()
+            bulk_times.sort()
+            scalar_verify_times.sort()
+            bulk_verify_times.sort()
+            print("NATIVE_EDITOR_BULK_RF_OK pos=",bulk_pos," mode=",bulk_mode," scalar_capture_us=",scalar_times[1]," bulk_capture_us=",bulk_times[1]," scalar_verify_us=",scalar_verify_times[1]," bulk_verify_us=",bulk_verify_times[1])
+    var test_hole_pos := Vector3(128,0,128)
+    var original_control := int(data.call("get_control",test_hole_pos))
+    var hole_before: Dictionary=data.call("tf_capture_smooth",Vector2(128,128),4.0,6.0,1)
+    data.call("set_control_hole",test_hole_pos,true)
+    var hole_after: Dictionary=data.call("tf_capture_smooth",Vector2(128,128),4.0,6.0,1)
+    var hole_ok := bool(data.call("get_control_hole",test_hole_pos)) and not bool(data.call("tf_verify_smooth_snapshot",hole_before,true)) and bool(data.call("tf_verify_smooth_snapshot",hole_after,false))
+    data.call("set_control",test_hole_pos,original_control)
+    if not hole_ok or not bool(data.call("tf_verify_smooth_snapshot",hole_before,true)):
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: bulk hole parity")
+        get_tree().quit(1)
+        return
+    print("NATIVE_EDITOR_BULK_RF_HOLE_OK")
     # Q6c1: same native result on isolated worker, with full halo verification.
     var SmoothWorker = preload("res://addons/terraforge_native/native_smooth_worker.gd")
     var smooth_worker = SmoothWorker.new()
