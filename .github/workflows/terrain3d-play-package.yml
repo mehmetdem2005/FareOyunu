@@ -178,6 +178,7 @@ jobs:
           grep -q "NATIVE_EDITOR_ASYNC_SMOOTH_PARITY_OK mode=1" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_ASYNC_SMOOTH_PARITY_OK mode=2" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_ASYNC_SMOOTH_STALE_CANCEL_OK" "$RUNNER_TEMP/native-editor-brush.log"
+          grep -q "NATIVE_EDITOR_SMOOTH_QUEUE_OK sequential=true undo=true cancel=true" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_ASYNC_WEATHER_OK mode=0" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_ASYNC_WEATHER_OK mode=1" "$RUNNER_TEMP/native-editor-brush.log"
           grep -q "NATIVE_EDITOR_ASYNC_CANCEL_OK" "$RUNNER_TEMP/native-editor-brush.log"

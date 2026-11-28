@@ -332,6 +332,10 @@ func _strength_changed(value: float) -> void:
 
 
 func _process(_delta: float) -> void:
+    # Drain discarded work even after a scene switch or interrupted gesture.
+    if _brush.smooth_busy() and (not _stroke_active or _corridor_tool!=2 or not is_instance_valid(_active)):
+        _brush.cancel_smooth()
+        _brush.poll_smooth()
     var corridor := _brush.poll_corridor()
     if not corridor.is_empty():
         _changed_count += _brush.last_changed_cells if str(corridor["error"]).is_empty() else 0
@@ -859,9 +863,34 @@ func _pump_basic() -> void:
         return
     if _basic_released and not _basic_sealed:
         _basic_sealed = _stroke_sampler.seal()
+    # At most one Smooth job in flight. Commit and next capture never share
+    # a pump; next snapshot sees the previous dab's committed heights.
+    if _corridor_tool==2 and _brush.smooth_busy():
+        var poll_started := Time.get_ticks_usec()
+        var outcome := _brush.poll_smooth()
+        _basic_max_us=maxi(_basic_max_us,Time.get_ticks_usec()-poll_started)
+        if outcome.is_empty():
+            return
+        var failure := str(outcome["error"])
+        if not failure.is_empty():
+            _basic_error=failure
+            _finish_stroke(false)
+            return
+        _basic_dabs+=1
+        _changed_count+=_brush.last_changed_cells
+        _last_input_result="Yumuşatma: %d örnek bekliyor." % _stroke_sampler.pending_count()
+        _set_status(_last_input_result)
+        return
     if _stroke_sampler.pending_count()>0:
         var point: Vector2 = _stroke_sampler.take_next()
         var started := Time.get_ticks_usec()
+        if _corridor_tool==2:
+            var dispatch_error := _brush.start_smooth(point,_corridor_radius,_corridor_power,_smooth_mode_at_press)
+            _basic_max_us=maxi(_basic_max_us,Time.get_ticks_usec()-started)
+            if not dispatch_error.is_empty():
+                _basic_error=dispatch_error
+                _finish_stroke(false)
+            return
         var error := _brush.dab(Vector3(point.x,0.0,point.y),_corridor_tool,_corridor_radius,_corridor_power,true,_smooth_mode_at_press)
         _basic_max_us = maxi(_basic_max_us,Time.get_ticks_usec()-started)
         _basic_dabs += 1
@@ -890,6 +919,9 @@ func _finish_stroke(apply_path: bool = false) -> void:
         return
     if _stroke_active and _is_basic():
         var dropped := _stroke_sampler.pending_count()
+        if _corridor_tool==2 and _brush.smooth_busy():
+            _brush.cancel_smooth()
+            dropped+=1
         _stroke_sampler.cancel()
         _basic_accepting = false
         _basic_released = false

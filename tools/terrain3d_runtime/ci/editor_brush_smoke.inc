@@ -362,6 +362,14 @@ func _ci_editor_brush_smoke() -> void:
         _offer_basic(Vector2(center.x,center.z))
         _finish_stroke(true)
         _pump_basic()
+        if not _brush.smooth_busy() or float(data.call("get_height",center))!=smooth_peak:
+            push_error("NATIVE_EDITOR_BRUSH_FAIL: Smooth queue dispatch changed terrain")
+            get_tree().quit(1)
+            return
+        var live_smooth_deadline := Time.get_ticks_msec()+10000
+        while _stroke_active and Time.get_ticks_msec()<live_smooth_deadline:
+            await get_tree().process_frame
+        print("NATIVE_EDITOR_SMOOTH_QUEUE_TIMING mode=",mode," capture_us=",_brush.last_smooth_capture_us," worker_us=",_brush.last_smooth_worker_us," verify_us=",_brush.last_smooth_verify_us," commit_us=",_brush.last_smooth_commit_us," max_pump_us=",_basic_max_us)
         if _stroke_active or _basic_dabs!=1 or float(data.call("get_height",center))!=float(expected_plan["changes"][center_key]) or _brush.undo()!="Native undo applied." or float(data.call("get_height",center))!=smooth_peak:
             push_error("NATIVE_EDITOR_BRUSH_FAIL: Smooth UI mode "+str(mode))
             get_tree().quit(1)
@@ -429,6 +437,58 @@ func _ci_editor_brush_smoke() -> void:
         get_tree().quit(1)
         return
     print("NATIVE_EDITOR_ASYNC_SMOOTH_STALE_CANCEL_OK halo=true")
+    # Multiple dependent dabs: compare sequential sync reference and actual
+    # queue; undo must restore every modified height, not merely the center.
+    var seq_a := Vector2(center.x,center.z)
+    var seq_b := seq_a+Vector2(2.0,0.0)
+    _brush.begin()
+    var seq_err_a := _brush.dab(Vector3(seq_a.x,0,seq_a.y),2,10.0,6.0,true,1)
+    var seq_err_b := _brush.dab(Vector3(seq_b.x,0,seq_b.y),2,10.0,6.0,true,1)
+    var seq_expected := _brush.after.duplicate()
+    var seq_originals := _brush.before.duplicate()
+    _brush.end()
+    if not seq_err_a.is_empty() or not seq_err_b.is_empty() or seq_expected.is_empty() or _brush.undo()!="Native undo applied.":
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: sequential Smooth reference")
+        get_tree().quit(1)
+        return
+    _tool_select.select(2)
+    _on_tool_changed(2)
+    _smooth_mode.select(1)
+    _brush.begin()
+    _corridor_tool=2
+    _corridor_radius=10.0
+    _corridor_power=6.0
+    _stroke_active=true
+    _begin_basic()
+    _offer_basic(seq_a)
+    _offer_basic(seq_b)
+    _finish_stroke(true)
+    var seq_deadline := Time.get_ticks_msec()+10000
+    while _stroke_active and Time.get_ticks_msec()<seq_deadline:
+        await get_tree().process_frame
+    if _stroke_active or _basic_dabs!=2 or _brush.history.is_empty() or _brush.history.back()["after"]!=seq_expected or _brush.history.back()["before"]!=seq_originals or _brush.undo()!="Native undo applied.":
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: sequential async Smooth equality")
+        get_tree().quit(1)
+        return
+    # Cancel in-flight live queue before polling; no new history or writes.
+    var history_before := _brush.history.size()
+    _brush.begin()
+    _corridor_tool=2
+    _corridor_radius=24.0
+    _corridor_power=6.0
+    _stroke_active=true
+    _begin_basic()
+    _offer_basic(seq_a)
+    _pump_basic()
+    _finish_stroke(false)
+    var queue_cancel_deadline := Time.get_ticks_msec()+10000
+    while _brush.smooth_busy() and Time.get_ticks_msec()<queue_cancel_deadline:
+        await get_tree().process_frame
+    if _brush.smooth_busy() or _brush.history.size()!=history_before or float(data.call("get_height",center))!=smooth_peak:
+        push_error("NATIVE_EDITOR_BRUSH_FAIL: live Smooth cancellation")
+        get_tree().quit(1)
+        return
+    print("NATIVE_EDITOR_SMOOTH_QUEUE_OK sequential=true undo=true cancel=true")
     var previous_data_id: int = data.get_instance_id()
     var previous_directory := str(_active.get("data_directory"))
     _save_active()

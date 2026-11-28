@@ -7,6 +7,13 @@ const WeatherWorker = preload("res://addons/terraforge_native/native_weather_wor
 var _weather_worker := WeatherWorker.new()
 const CorridorWorker = preload("res://addons/terraforge_native/native_corridor_worker.gd")
 var _corridor_worker := CorridorWorker.new()
+const SmoothWorker = preload("res://addons/terraforge_native/native_smooth_worker.gd")
+var _smooth_worker := SmoothWorker.new()
+var _smooth_snapshot: Dictionary = {}
+var last_smooth_capture_us := 0
+var last_smooth_worker_us := 0
+var last_smooth_verify_us := 0
+var last_smooth_commit_us := 0
 var _corridor_context: Dictionary = {}
 var last_corridor_worker_us := 0
 var last_corridor_commit_us := 0
@@ -151,6 +158,18 @@ func dab(hit: Vector3, tool: int, radius: float, power: float, scheduled: bool =
 	last_filter_half_width_m=float(planned.get("filter_half_width_m",0.0))
 	if not str(planned["error"]).is_empty():
 		return str(planned["error"])
+	var write_error := _commit_dab_plan(planned,regions,size)
+	if not write_error.is_empty():
+		return write_error
+	last_dab_ms = Time.get_ticks_msec()
+	last_dab_duration_ms = last_dab_ms-started
+	last_hit = center
+	if planned["changes"].is_empty() and tool == 0:
+		return "Raise: no editable samples at %.2f, %.2f (grid %d / %.2fm)." % [hit.x,hit.z,size,spacing]
+	return ""
+
+# Shared history path for synchronous and asynchronous plans.
+func _commit_dab_plan(planned: Dictionary, regions: Dictionary, size: int) -> String:
 	var changes: Dictionary = planned["changes"]
 	var originals: Dictionary = planned["originals"]
 	# Original heights belong to the earliest dab of the current undo segment.
@@ -165,18 +184,70 @@ func dab(hit: Vector3, tool: int, radius: float, power: float, scheduled: bool =
 		if not write_error.is_empty():
 			return write_error
 		before.merge(originals,false)
-	last_dab_ms = Time.get_ticks_msec()
-	last_dab_duration_ms = last_dab_ms-started
-	last_hit = center
-	if changes.is_empty() and tool == 0:
-		return "Raise: no editable samples at %.2f, %.2f (grid %d / %.2fm)." % [hit.x,hit.z,size,spacing]
 	return ""
+
+func smooth_busy() -> bool:
+	return _smooth_worker.busy()
+
+func start_smooth(center: Vector2, radius: float, power: float, mode: int) -> String:
+	last_changed_cells=0
+	if advanced_busy() or not is_instance_valid(terrain):
+		return "Başka bir arazi işlemi hesaplanıyor veya arazi yok."
+	var regions := _regions()
+	if regions.is_empty():
+		return region_error
+	var data: Object=terrain.get("data")
+	if not data.has_method("tf_capture_smooth"):
+		return "Native Smooth snapshot extension missing."
+	var started := Time.get_ticks_usec()
+	var snapshot: Dictionary=data.call("tf_capture_smooth",center,radius,power,mode)
+	if not str(snapshot["error"]).is_empty():
+		return str(snapshot["error"])
+	var error := _smooth_worker.start(snapshot)
+	last_smooth_capture_us=Time.get_ticks_usec()-started
+	if error!=OK:
+		return "Smooth worker start failed: "+error_string(error)
+	_smooth_snapshot=snapshot
+	last_smooth_worker_us=0
+	last_smooth_verify_us=0
+	last_smooth_commit_us=0
+	return ""
+
+func cancel_smooth() -> void:
+	_smooth_worker.cancel()
+	_smooth_snapshot={}
+
+func poll_smooth() -> Dictionary:
+	var result := _smooth_worker.poll()
+	if result.is_empty():
+		return {}
+	var snapshot := _smooth_snapshot
+	_smooth_snapshot={}
+	last_changed_cells=0
+	last_smooth_worker_us=int(result.get("worker_us",0))
+	if not str(result["error"]).is_empty():
+		return {"done":true,"error":str(result["error"])}
+	if snapshot.is_empty() or not is_instance_valid(terrain):
+		return {"done":true,"error":"Yumuşatma iptal: arazi değişti."}
+	var data: Object=terrain.get("data")
+	var started := Time.get_ticks_usec()
+	var valid := data!=null and bool(data.call("tf_verify_smooth_snapshot",snapshot))
+	last_smooth_verify_us=Time.get_ticks_usec()-started
+	if not valid:
+		return {"done":true,"error":"Yumuşatma iptal: kaynak veya komşu arazi değişti."}
+	started=Time.get_ticks_usec()
+	var regions := _regions()
+	var error := region_error if regions.is_empty() else _commit_dab_plan(result,regions,int(terrain.call("get_region_size")))
+	last_smooth_commit_us=Time.get_ticks_usec()-started
+	last_filter_half_width_m=float(result.get("filter_half_width_m",0.0))
+	return {"done":true,"error":error}
 
 # One complete corridor transaction; no repeated dab accumulation.
 func advanced_busy() -> bool:
-	return weather_busy() or corridor_busy()
+	return weather_busy() or corridor_busy() or smooth_busy()
 
 func cancel_advanced() -> void:
+	cancel_smooth()
 	cancel_weather()
 	_corridor_worker.cancel()
 	_corridor_context.clear()
@@ -185,6 +256,7 @@ func shutdown_advanced() -> void:
 	cancel_advanced()
 	shutdown_weather()
 	_corridor_worker.shutdown()
+	_smooth_worker.shutdown()
 
 func corridor_busy() -> bool:
 	return _corridor_worker.busy()
